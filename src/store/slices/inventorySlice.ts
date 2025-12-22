@@ -32,6 +32,9 @@ const inventorySlice = createSlice({
                 state.status = 'succeeded';
                 state.stockMap = action.payload.total;
                 state.detailedStockMap = action.payload.detailed;
+            })
+            .addCase(fetchInventory.rejected, (state) => {
+                state.status = 'failed';
             });
     },
 });
@@ -46,7 +49,9 @@ export const selectDetailedStock = (state: RootState, productId: string, distric
     }
 
     const districtKey = district || '';
-    const statusKey = itemStatus || '';
+    // If itemStatus is NOT provided, we want the Aggregated District Total (*ALL*)
+    // If itemStatus IS provided, we want strict match
+    const statusKey = itemStatus !== undefined && itemStatus !== '' ? itemStatus : '*ALL*';
     const key = `${productId}|${districtKey}|${statusKey}`;
     return state.inventory.detailedStockMap?.[key] || 0;
 };

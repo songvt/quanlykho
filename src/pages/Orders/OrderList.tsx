@@ -261,6 +261,7 @@ const OrderList = () => {
                             <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Ngày đặt</TableCell>
                             <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Nhân viên</TableCell>
                             <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Vật tư hàng hóa</TableCell>
+                            <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Tồn kho</TableCell>
                             <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Số lượng</TableCell>
                             <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Trạng thái</TableCell>
                             {isAdmin && (
@@ -271,7 +272,7 @@ const OrderList = () => {
                     <TableBody>
                         {filteredOrders.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={isAdmin ? 7 : 6} align="center" sx={{ py: 4, color: 'text.secondary', fontSize: '0.875rem' }}>Chưa có đơn hàng nào phù hợp</TableCell>
+                                <TableCell colSpan={isAdmin ? 8 : 7} align="center" sx={{ py: 4, color: 'text.secondary', fontSize: '0.875rem' }}>Chưa có đơn hàng nào phù hợp</TableCell>
                             </TableRow>
                         ) : (
                             filteredOrders.map((order) => {
@@ -303,6 +304,14 @@ const OrderList = () => {
                                                     SKU: {products.find(p => p.id === order.product_id)?.item_code}
                                                 </Typography>
                                             </Box>
+                                        </TableCell>
+                                        <TableCell align="center" sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>
+                                            <Chip
+                                                label={inventory[order.product_id] || 0}
+                                                size="small"
+                                                color={(inventory[order.product_id] || 0) > 0 ? 'default' : 'error'}
+                                                variant="outlined"
+                                            />
                                         </TableCell>
                                         <TableCell align="right" sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>
                                             <Typography variant="body2" fontWeight="bold" sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>{order.quantity}</Typography>
@@ -395,7 +404,6 @@ const OrderList = () => {
                                 onChange={(e) => setNewOrder({ ...newOrder, product_id: e.target.value })}
                             >
                                 {products
-                                    .filter(p => (inventory[p.id] || 0) > 0)
                                     .map((p) => (
                                         <MenuItem key={p.id} value={p.id}>
                                             {p.name} ({p.item_code}) - Tồn: {inventory[p.id] || 0}

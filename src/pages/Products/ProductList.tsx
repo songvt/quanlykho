@@ -20,7 +20,7 @@ const ProductList = () => {
     const dispatch = useDispatch<AppDispatch>();
     const { items: products, status, error } = useSelector((state: RootState) => state.products);
     const { profile } = useSelector((state: RootState) => state.auth);
-    const isAdmin = profile?.role === 'admin';
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';
 
     const [openDialog, setOpenDialog] = useState(false);
     const [currentProduct, setCurrentProduct] = useState<Partial<Product>>({});

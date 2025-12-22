@@ -3,28 +3,28 @@ import { createTheme } from '@mui/material/styles';
 const theme = createTheme({
     palette: {
         primary: {
-            main: '#0f172a', // Slate 900 - Deep Telecom Navy
-            light: '#334155', // Slate 700
-            dark: '#020617', // Slate 950
+            main: '#0f172a', // Deep Navy - The Core Style
+            light: '#334155',
+            dark: '#020617', // Almost Black Navy
             contrastText: '#ffffff',
         },
         secondary: {
-            main: '#0ea5e9', // Sky 500 - Tech Blue accent
+            main: '#0ea5e9', // Cyan/Sky Blue - Neon Accent
             light: '#38bdf8',
             dark: '#0284c7',
             contrastText: '#ffffff',
         },
         background: {
-            default: '#f8fafc', // Slate 50 - Very clean light gray
+            default: '#f1f5f9', // Light Slate for content readability
             paper: '#ffffff',
         },
         text: {
-            primary: '#0f172a', // Slate 900 - High contrast for readability
-            secondary: '#475569', // Slate 600 - Softer secondary text
+            primary: '#0f172a',
+            secondary: '#475569',
         },
         action: {
-            hover: 'rgba(15, 23, 42, 0.04)',
-            selected: 'rgba(15, 23, 42, 0.08)',
+            hover: 'rgba(56, 189, 248, 0.08)', // Cyan hover
+            selected: 'rgba(56, 189, 248, 0.12)',
         },
     },
     typography: {
@@ -126,7 +126,7 @@ const theme = createTheme({
         MuiDrawer: {
             styleOverrides: {
                 paper: {
-                    backgroundColor: '#0f172a', // Deep Navy Sidebar
+                    backgroundColor: '#020617', // Deepest Navy (The Core)
                     color: '#e2e8f0',
                     borderRight: '1px solid #1e293b',
                 },
@@ -138,10 +138,10 @@ const theme = createTheme({
                     borderRadius: '6px',
                     margin: '4px 8px',
                     '&.Mui-selected': {
-                        backgroundColor: '#0ea5e9', // Sky 500
+                        backgroundColor: '#D32F2F', // ACT Red for selected item
                         color: 'white',
                         '&:hover': {
-                            backgroundColor: '#0284c7', // Sky 600
+                            backgroundColor: '#9a0007', // Darker Red
                         },
                         '& .MuiListItemIcon-root': {
                             color: 'white',

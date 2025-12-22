@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts } from '../store/slices/productsSlice';
+import { fetchInventory, selectProductStock } from '../store/slices/inventorySlice';
 import { addInboundTransaction } from '../store/slices/transactionsSlice';
 import type { RootState, AppDispatch } from '../store';
 import {
@@ -14,6 +15,8 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DeleteIcon from '@mui/icons-material/Delete';
 import QRScanner from '../components/QRScanner';
 import { readExcelFile, generateInboundTemplate } from '../utils/excelUtils';
+import { useScanDetection } from '../hooks/useScanDetection';
+import { playBeep } from '../utils/audio';
 import { importInboundTransactions } from '../store/slices/transactionsSlice';
 
 export const Inbound = () => {
@@ -24,6 +27,7 @@ export const Inbound = () => {
 
     // Form state
     const [selectedProduct, setSelectedProduct] = useState('');
+    const currentStock = useSelector((state: RootState) => selectProductStock(state, selectedProduct));
     const [quantity, setQuantity] = useState(1);
     const [serial, setSerial] = useState('');
     const [price, setPrice] = useState(0);
@@ -39,7 +43,14 @@ export const Inbound = () => {
         if (status === 'idle') {
             dispatch(fetchProducts());
         }
+        dispatch(fetchInventory());
     }, [status, dispatch]);
+
+    // Physical Scanners (Keyboard Mode)
+    useScanDetection((code) => {
+        playBeep(); // Beep for physical scanner
+        handleScanSuccess(code);
+    });
 
     const handleSave = async () => {
         if (!selectedProduct) {
@@ -110,6 +121,9 @@ export const Inbound = () => {
     const handleScanSuccess = (decodedText: string) => {
         const product = products.find(p => p.id === selectedProduct);
         const isSerialized = product?.category?.toLowerCase() === 'hàng hóa';
+
+        // Note: QRScanner plays beep internally. useScanDetection plays beep in its callback.
+        // So we don't play beep here to avoid double-beep for camera.
 
         if (isSerialized) {
             if (scannedSerials.includes(decodedText)) {
@@ -264,6 +278,11 @@ export const Inbound = () => {
                                 <Paper elevation={8} sx={{ borderRadius: 2 }}>{children}</Paper>
                             )}
                         />
+                        {selectedProduct && (
+                            <FormHelperText sx={{ mt: 1, fontSize: '0.9rem', color: 'primary.main', fontWeight: 600 }}>
+                                Tồn kho hiện tại: {currentStock}
+                            </FormHelperText>
+                        )}
                     </FormControl>
 
                     <Box display="grid" gridTemplateColumns={{ xs: '1fr', md: '1fr 1fr' }} gap={{ xs: 2, md: 4 }}>
@@ -403,13 +422,14 @@ export const Inbound = () => {
                     <DialogTitle sx={{ fontWeight: 900, textTransform: 'uppercase', color: 'primary.main', textAlign: 'center' }}>
                         QUÉT MÃ QR/MÃ VẠCH
                     </DialogTitle>
-                    <DialogContent>
+                    <DialogContent sx={{ p: 0, overflow: 'hidden' }}>
                         <QRScanner
                             onScanSuccess={handleScanSuccess}
                             onScanFailure={(err) => console.log(err)}
+                            height={400}
                         />
-                        <Box textAlign="center" mt={3}>
-                            <Button onClick={() => setShowScanner(false)} color="inherit">Đóng</Button>
+                        <Box textAlign="center" p={2}>
+                            <Button onClick={() => setShowScanner(false)} variant="outlined" color="inherit">Đóng Camera</Button>
                         </Box>
                     </DialogContent>
                 </Dialog>

@@ -202,31 +202,31 @@ export const SupabaseService = {
 
     // --- Inventory Calculation (Primitive) ---
     async getInventorySnapshot() {
-        const allTrans = await this.fetchTransactions();
-        const stockMap: Record<string, number> = {}; // Total stock by product_id
-        const detailedStockMap: Record<string, number> = {}; // detailed key: product_id|district|status
+        const { data, error } = await supabase.rpc('get_inventory_summary');
 
-        allTrans.forEach(t => {
+        if (error) throw error;
+
+        const stockMap: Record<string, number> = {};
+        const detailedStockMap: Record<string, number> = {};
+
+        (data || []).forEach((item: any) => {
             // Total Stock
-            if (!stockMap[t.product_id]) stockMap[t.product_id] = 0;
+            if (!stockMap[item.product_id]) stockMap[item.product_id] = 0;
+            stockMap[item.product_id] += Number(item.total_quantity);
 
-            // Detailed Stock
-            // Key format: "product_id|district|status"
-            // We normalize null/undefined to empty string or specific placeholder if needed. 
-            // Let's use empty string for missing district/status to group them.
-            const districtKey = t.district || '';
-            const statusKey = t.item_status || '';
-            const detailedKey = `${t.product_id}|${districtKey}|${statusKey}`;
+            // Sanitize inputs
+            const pId = item.product_id;
+            const dist = item.district || '';
+            const status = item.item_status || '';
+            const qty = Number(item.total_quantity);
 
-            if (!detailedStockMap[detailedKey]) detailedStockMap[detailedKey] = 0;
+            // Detailed Stock (Specific Status)
+            const specificKey = `${pId}|${dist}|${status}`;
+            detailedStockMap[specificKey] = (detailedStockMap[specificKey] || 0) + qty;
 
-            if (t.type === 'inbound') {
-                stockMap[t.product_id] += t.quantity;
-                detailedStockMap[detailedKey] += t.quantity;
-            } else {
-                stockMap[t.product_id] -= t.quantity;
-                detailedStockMap[detailedKey] -= t.quantity;
-            }
+            // Aggregated Stock (District Level - Any Status)
+            const districtAggKey = `${pId}|${dist}|*ALL*`;
+            detailedStockMap[districtAggKey] = (detailedStockMap[districtAggKey] || 0) + qty;
         });
 
         return { total: stockMap, detailed: detailedStockMap };

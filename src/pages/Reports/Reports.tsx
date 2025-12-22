@@ -32,7 +32,7 @@ const Reports = () => {
 
     // Selectors
     const { items: products, status: productsStatus } = useSelector((state: RootState) => state.products);
-    const { stockMap } = useSelector((state: RootState) => state.inventory);
+    const { stockMap, detailedStockMap } = useSelector((state: RootState) => state.inventory);
     const { items: transactions, status } = useSelector((state: RootState) => state.transactions);
     const { items: orders } = useSelector((state: RootState) => state.orders);
     const { items: employees } = useSelector((state: RootState) => state.employees);
@@ -42,7 +42,6 @@ const Reports = () => {
 
     // State for Handover Dialog
     const [openHandover, setOpenHandover] = useState(false);
-    // handoverBase and handoverLocation unused, removed.
     // Auto-fill for Staff
     const [selectedEmployee, setSelectedEmployee] = useState<string | null>(
         isAdmin ? null : (profile?.full_name || profile?.username || profile?.email || '')
@@ -321,6 +320,65 @@ const Reports = () => {
         setOpenStockCard(false);
     };
 
+    const handleExportStockByDistrict = () => {
+        if (products.length === 0) return alert('Không có dữ liệu sản phẩm');
+
+        // detailedStockMap keys: `${productId}|${districtKey}|${statusKey}`
+        // Group by District -> Product
+        const data: any[] = [];
+
+        // We iterate products to ensure we list essential items, but stock is in map.
+        // Actually, let's iterate detailedStockMap to find where items are.
+        // But iterating map keys is better for "what exists".
+        // HOWEVER, user might want to see specific products. 
+        // Let's iterate keys of detailedStockMap to capture all non-zero stock locations.
+
+        Object.entries(detailedStockMap).forEach(([key, quantity]) => {
+            if (quantity <= 0) return; // Skip zero/negative stock for report clarity? User might want to see 0? 
+            // Usually stock report shows what is available.
+
+            const [productId, district, status] = key.split('|');
+            const product = products.find(p => p.id === productId);
+
+            if (product) {
+                data.push({
+                    item_code: product.item_code,
+                    name: product.name,
+                    district: district || 'Chưa phân loại',
+                    item_status: status || 'N/A',
+                    quantity: quantity,
+                    unit: product.unit
+                });
+            }
+        });
+
+        if (data.length === 0) return alert('Không có dữ liệu tồn kho chi tiết theo khu vực');
+
+        // Sort by District then Name
+        data.sort((a, b) => {
+            if (a.district === b.district) return a.name.localeCompare(b.name);
+            return a.district.localeCompare(b.district);
+        });
+
+        const columns: ReportColumn[] = [
+            { header: 'STT', key: 'stt', width: 6, align: 'center' },
+            { header: 'QUẬN/HUYỆN', key: 'district', width: 15, align: 'center' },
+            { header: 'MÃ HÀNG', key: 'item_code', width: 15 },
+            { header: 'TÊN HÀNG HÓA', key: 'name', width: 30 },
+            { header: 'TRẠNG THÁI', key: 'item_status', width: 15, align: 'center' },
+            { header: 'ĐVT', key: 'unit', width: 10, align: 'center' },
+            { header: 'TỒN KHO', key: 'quantity', width: 12, align: 'center' },
+        ];
+
+        exportStandardReport(
+            data.map((item, index) => ({ ...item, stt: index + 1 })),
+            `Ton_kho_theo_quan_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}`,
+            'BÁO CÁO TỒN KHO THEO KHU VỰC',
+            columns,
+            reporterName
+        );
+    };
+
     const getHandoverData = () => {
         if (!selectedEmployee) { alert('Vui lòng chọn nhân viên nhận bàn giao'); return null; }
         if (!selectedDate) { alert('Vui lòng chọn ngày xuất kho'); return null; }
@@ -585,15 +643,26 @@ const Reports = () => {
                     </Grid>
 
                     {isAdmin && (
-                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                            <ReportCard
-                                title="Thẻ Kho"
-                                desc="Chi tiết biến động của từng mặt hàng."
-                                icon={<AssignmentIcon />}
-                                color="error"
-                                onClick={() => setOpenStockCard(true)}
-                            />
-                        </Grid>
+                        <>
+                            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                                <ReportCard
+                                    title="Thẻ Kho"
+                                    desc="Chi tiết biến động của từng mặt hàng."
+                                    icon={<AssignmentIcon />}
+                                    color="error"
+                                    onClick={() => setOpenStockCard(true)}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                                <ReportCard
+                                    title="Tồn Kho Theo Quận"
+                                    desc="Báo cáo số lượng tồn kho theo từng khu vực."
+                                    icon={<InventoryIcon />}
+                                    color="success"
+                                    onClick={handleExportStockByDistrict}
+                                />
+                            </Grid>
+                        </>
                     )}
                 </Grid>
             )}
@@ -613,180 +682,182 @@ const Reports = () => {
             )}
 
             {/* Tab 3: Data Management (Admin Only) */}
-            {selectedTab === 2 && isAdmin && (
-                <Box maxWidth={1200} mx="auto">
-                    <Alert severity="warning" sx={{ mb: 2, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
-                        <Typography fontWeight="bold" sx={{ fontSize: 'inherit' }}>CẢNH BÁO QUAN TRỌNG:</Typography>
-                        Hệ thống tính toán tồn kho dựa trên lịch sử nhập/xuất.
-                        <br />
-                        Việc xóa các giao dịch cũ sẽ làm <b>THAY ĐỔI SỐ LƯỢNG TỒN KHO HIỆN TẠI</b>.
-                        <br />
-                        Chỉ thực hiện khi bạn thực sự hiểu rõ hậu quả.
-                    </Alert>
+            {
+                selectedTab === 2 && isAdmin && (
+                    <Box maxWidth={1200} mx="auto">
+                        <Alert severity="warning" sx={{ mb: 2, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+                            <Typography fontWeight="bold" sx={{ fontSize: 'inherit' }}>CẢNH BÁO QUAN TRỌNG:</Typography>
+                            Hệ thống tính toán tồn kho dựa trên lịch sử nhập/xuất.
+                            <br />
+                            Việc xóa các giao dịch cũ sẽ làm <b>THAY ĐỔI SỐ LƯỢNG TỒN KHO HIỆN TẠI</b>.
+                            <br />
+                            Chỉ thực hiện khi bạn thực sự hiểu rõ hậu quả.
+                        </Alert>
 
-                    <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
-                        <Grid container spacing={2} alignItems="center">
-                            {/* ... filter inputs ... */}
-                            <Grid size={{ xs: 12, md: 3 }}>
-                                <TextField
-                                    label="Từ ngày"
-                                    type="date"
-                                    fullWidth
-                                    InputLabelProps={{ shrink: true }}
-                                    value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                    size="small"
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 12, md: 3 }}>
-                                <TextField
-                                    label="Đến ngày"
-                                    type="date"
-                                    fullWidth
-                                    InputLabelProps={{ shrink: true }}
-                                    value={endDate}
-                                    onChange={(e) => setEndDate(e.target.value)}
-                                    size="small"
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 12, md: 3 }}>
-                                <FormControl fullWidth size="small">
-                                    <InputLabel>Loại giao dịch</InputLabel>
-                                    <Select
-                                        value={filterType}
-                                        label="Loại giao dịch"
-                                        onChange={(e) => setFilterType(e.target.value as any)}
-                                    >
-                                        <MenuItem value="all">Tất cả</MenuItem>
-                                        <MenuItem value="inbound">Nhập kho</MenuItem>
-                                        <MenuItem value="outbound">Xuất kho</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid size={{ xs: 12, md: 3 }}>
-                                <Box display="flex" justifyContent="flex-end">
-                                    <Button
-                                        variant="contained"
-                                        color="error"
-                                        startIcon={<DeleteIcon />}
-                                        disabled={selectedIds.length === 0}
-                                        onClick={() => setOpenDeleteConfirm(true)}
-                                        size="medium"
+                        <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
+                            <Grid container spacing={2} alignItems="center">
+                                {/* ... filter inputs ... */}
+                                <Grid size={{ xs: 12, md: 3 }}>
+                                    <TextField
+                                        label="Từ ngày"
+                                        type="date"
                                         fullWidth
-                                        sx={{ fontSize: { xs: '0.8rem', sm: '0.9rem' } }}
-                                    >
-                                        Xóa ({selectedIds.length})
-                                    </Button>
-                                </Box>
+                                        InputLabelProps={{ shrink: true }}
+                                        value={startDate}
+                                        onChange={(e) => setStartDate(e.target.value)}
+                                        size="small"
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 3 }}>
+                                    <TextField
+                                        label="Đến ngày"
+                                        type="date"
+                                        fullWidth
+                                        InputLabelProps={{ shrink: true }}
+                                        value={endDate}
+                                        onChange={(e) => setEndDate(e.target.value)}
+                                        size="small"
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 3 }}>
+                                    <FormControl fullWidth size="small">
+                                        <InputLabel>Loại giao dịch</InputLabel>
+                                        <Select
+                                            value={filterType}
+                                            label="Loại giao dịch"
+                                            onChange={(e) => setFilterType(e.target.value as any)}
+                                        >
+                                            <MenuItem value="all">Tất cả</MenuItem>
+                                            <MenuItem value="inbound">Nhập kho</MenuItem>
+                                            <MenuItem value="outbound">Xuất kho</MenuItem>
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 3 }}>
+                                    <Box display="flex" justifyContent="flex-end">
+                                        <Button
+                                            variant="contained"
+                                            color="error"
+                                            startIcon={<DeleteIcon />}
+                                            disabled={selectedIds.length === 0}
+                                            onClick={() => setOpenDeleteConfirm(true)}
+                                            size="medium"
+                                            fullWidth
+                                            sx={{ fontSize: { xs: '0.8rem', sm: '0.9rem' } }}
+                                        >
+                                            Xóa ({selectedIds.length})
+                                        </Button>
+                                    </Box>
+                                </Grid>
                             </Grid>
-                        </Grid>
-                    </Paper>
+                        </Paper>
 
-                    <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #eee' }}>
-                        <Table size="small">
-                            <TableHead>
-                                <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                                    <TableCell padding="checkbox">
-                                        <Checkbox
-                                            checked={managementTransactions.length > 0 && selectedIds.length === managementTransactions.length}
-                                            indeterminate={selectedIds.length > 0 && selectedIds.length < managementTransactions.length}
-                                            onChange={handleSelectAll}
-                                            size="small"
-                                        />
-                                    </TableCell>
-                                    <TableCell width={100} sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' }, py: 1 }}>Loại</TableCell>
-                                    <TableCell width={120} sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' }, py: 1 }}>Ngày</TableCell>
-                                    <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' }, py: 1 }}>Sản phẩm</TableCell>
-                                    <TableCell width={80} sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' }, py: 1 }}>Serial</TableCell>
-                                    <TableCell width={100} align="right" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' }, py: 1 }}>Số lượng</TableCell>
-                                    <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' }, py: 1 }}>Quận/Huyện</TableCell>
-                                    <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' }, py: 1 }}>Trạng thái</TableCell>
-                                    <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' }, py: 1 }}>Đối tác/Ghi chú</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {managementTransactions.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={8} align="center" sx={{ py: 3, color: 'text.secondary', fontSize: '0.875rem' }}>
-                                            Vui lòng chọn khoảng thời gian để xem dữ liệu
+                        <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #eee' }}>
+                            <Table size="small">
+                                <TableHead>
+                                    <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+                                        <TableCell padding="checkbox">
+                                            <Checkbox
+                                                checked={managementTransactions.length > 0 && selectedIds.length === managementTransactions.length}
+                                                indeterminate={selectedIds.length > 0 && selectedIds.length < managementTransactions.length}
+                                                onChange={handleSelectAll}
+                                                size="small"
+                                            />
                                         </TableCell>
+                                        <TableCell width={100} sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' }, py: 1 }}>Loại</TableCell>
+                                        <TableCell width={120} sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' }, py: 1 }}>Ngày</TableCell>
+                                        <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' }, py: 1 }}>Sản phẩm</TableCell>
+                                        <TableCell width={80} sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' }, py: 1 }}>Serial</TableCell>
+                                        <TableCell width={100} align="right" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' }, py: 1 }}>Số lượng</TableCell>
+                                        <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' }, py: 1 }}>Quận/Huyện</TableCell>
+                                        <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' }, py: 1 }}>Trạng thái</TableCell>
+                                        <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' }, py: 1 }}>Đối tác/Ghi chú</TableCell>
                                     </TableRow>
-                                ) : (
-                                    managementTransactions.map((t) => (
-                                        <TableRow key={t.id} hover selected={selectedIds.includes(t.id)}>
-                                            <TableCell padding="checkbox">
-                                                <Checkbox
-                                                    checked={selectedIds.includes(t.id)}
-                                                    onChange={() => handleSelectOne(t.id)}
-                                                />
+                                </TableHead>
+                                <TableBody>
+                                    {managementTransactions.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={8} align="center" sx={{ py: 3, color: 'text.secondary', fontSize: '0.875rem' }}>
+                                                Vui lòng chọn khoảng thời gian để xem dữ liệu
                                             </TableCell>
-                                            <TableCell>
-                                                <Box sx={{
-                                                    color: t.type === 'inbound' ? 'success.main' : 'error.main',
-                                                    fontWeight: 'bold',
-                                                    fontSize: '0.8rem',
-                                                    border: '1px solid',
-                                                    borderColor: t.type === 'inbound' ? 'success.light' : 'error.light',
-                                                    borderRadius: 1,
-                                                    textAlign: 'center',
-                                                    py: 0.5
-                                                }}>
-                                                    {t.type === 'inbound' ? 'NHẬP' : 'XUẤT'}
-                                                </Box>
-                                            </TableCell>
-                                            <TableCell>{new Date(t.date).toLocaleDateString('vi-VN')}</TableCell>
-                                            <TableCell>
-                                                <Typography variant="body2" fontWeight="500">{t.product?.name}</Typography>
-                                                <Typography variant="caption" color="text.secondary">{t.product?.item_code}</Typography>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Typography variant="body2" fontFamily="monospace">{t.serial_code || '-'}</Typography>
-                                            </TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                                                {t.quantity}
-                                            </TableCell>
-                                            <TableCell>{t.district || '-'}</TableCell>
-                                            <TableCell>{t.item_status || '-'}</TableCell>
-                                            <TableCell>{t.group_name || '-'}</TableCell>
                                         </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
+                                    ) : (
+                                        managementTransactions.map((t) => (
+                                            <TableRow key={t.id} hover selected={selectedIds.includes(t.id)}>
+                                                <TableCell padding="checkbox">
+                                                    <Checkbox
+                                                        checked={selectedIds.includes(t.id)}
+                                                        onChange={() => handleSelectOne(t.id)}
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Box sx={{
+                                                        color: t.type === 'inbound' ? 'success.main' : 'error.main',
+                                                        fontWeight: 'bold',
+                                                        fontSize: '0.8rem',
+                                                        border: '1px solid',
+                                                        borderColor: t.type === 'inbound' ? 'success.light' : 'error.light',
+                                                        borderRadius: 1,
+                                                        textAlign: 'center',
+                                                        py: 0.5
+                                                    }}>
+                                                        {t.type === 'inbound' ? 'NHẬP' : 'XUẤT'}
+                                                    </Box>
+                                                </TableCell>
+                                                <TableCell>{new Date(t.date).toLocaleDateString('vi-VN')}</TableCell>
+                                                <TableCell>
+                                                    <Typography variant="body2" fontWeight="500">{t.product?.name}</Typography>
+                                                    <Typography variant="caption" color="text.secondary">{t.product?.item_code}</Typography>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Typography variant="body2" fontFamily="monospace">{t.serial_code || '-'}</Typography>
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                                                    {t.quantity}
+                                                </TableCell>
+                                                <TableCell>{t.district || '-'}</TableCell>
+                                                <TableCell>{t.item_status || '-'}</TableCell>
+                                                <TableCell>{t.group_name || '-'}</TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
 
-                    {/* Confirmation Dialog */}
-                    <Dialog open={openDeleteConfirm} onClose={() => setOpenDeleteConfirm(false)}>
-                        <DialogTitle sx={{ color: 'error.main', display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <WarningIcon /> Xác nhận xóa dữ liệu
-                        </DialogTitle>
-                        <DialogContent>
-                            <Typography gutterBottom>
-                                Bạn đang chuẩn bị xóa <b>{selectedIds.length}</b> giao dịch.
-                            </Typography>
-                            <Alert severity="error" sx={{ mt: 2 }}>
-                                Hành động này sẽ cập nhật lại số lượng tồn kho hiện tại.
-                                Nếu bạn xóa phiếu Nhập, tồn kho sẽ GIẢM.
-                                Nếu bạn xóa phiếu Xuất, tồn kho sẽ TĂNG.
-                            </Alert>
-                            <Typography sx={{ mt: 2, fontStyle: 'italic' }}>
-                                Bạn có chắc chắn muốn tiếp tục không?
-                            </Typography>
-                        </DialogContent>
-                        <DialogActions>
-                            <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit">Hủy bỏ</Button>
-                            <Button
-                                onClick={handleDeleteSelected}
-                                variant="contained"
-                                color="error"
-                                disabled={deleteProcessing}
-                            >
-                                {deleteProcessing ? 'Đang xóa...' : 'Xác nhận Xóa'}
-                            </Button>
-                        </DialogActions>
-                    </Dialog>
-                </Box>
-            )}
+                        {/* Confirmation Dialog */}
+                        <Dialog open={openDeleteConfirm} onClose={() => setOpenDeleteConfirm(false)}>
+                            <DialogTitle sx={{ color: 'error.main', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <WarningIcon /> Xác nhận xóa dữ liệu
+                            </DialogTitle>
+                            <DialogContent>
+                                <Typography gutterBottom>
+                                    Bạn đang chuẩn bị xóa <b>{selectedIds.length}</b> giao dịch.
+                                </Typography>
+                                <Alert severity="error" sx={{ mt: 2 }}>
+                                    Hành động này sẽ cập nhật lại số lượng tồn kho hiện tại.
+                                    Nếu bạn xóa phiếu Nhập, tồn kho sẽ GIẢM.
+                                    Nếu bạn xóa phiếu Xuất, tồn kho sẽ TĂNG.
+                                </Alert>
+                                <Typography sx={{ mt: 2, fontStyle: 'italic' }}>
+                                    Bạn có chắc chắn muốn tiếp tục không?
+                                </Typography>
+                            </DialogContent>
+                            <DialogActions>
+                                <Button onClick={() => setOpenDeleteConfirm(false)} color="inherit">Hủy bỏ</Button>
+                                <Button
+                                    onClick={handleDeleteSelected}
+                                    variant="contained"
+                                    color="error"
+                                    disabled={deleteProcessing}
+                                >
+                                    {deleteProcessing ? 'Đang xóa...' : 'Xác nhận Xóa'}
+                                </Button>
+                            </DialogActions>
+                        </Dialog>
+                    </Box>
+                )
+            }
 
             {/* Handover Dialog */}
             <Dialog
@@ -1040,7 +1111,7 @@ const Reports = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
-        </Box>
+        </Box >
     );
 };
 

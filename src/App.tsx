@@ -52,7 +52,7 @@ function App() {
           <Route path="outbound" element={<Outbound />} />
 
           {/* Admin only routes */}
-          <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+          <Route element={<ProtectedRoute allowedRoles={['admin', 'manager']} />}>
             <Route path="products" element={<ProductList />} />
             <Route path="inbound" element={<Inbound />} />
             <Route path="employees" element={<EmployeeList />} />

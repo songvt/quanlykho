@@ -76,43 +76,46 @@ const MainLayout: React.FC = () => {
 
     const menuItems = [
         { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
-        ...(profile?.role === 'admin' ? [
+        ...((profile?.role === 'admin' || profile?.role === 'manager') ? [
             { text: 'Hàng hóa', icon: <InventoryIcon />, path: '/products' },
             { text: 'Nhập kho', icon: <InputIcon />, path: '/inbound' },
         ] : []),
         { text: 'Đặt hàng', icon: <OrderIcon />, path: '/orders' },
         { text: 'Xuất kho', icon: <OutputIcon />, path: '/outbound' },
         { text: 'Báo cáo', icon: <AssessmentIcon />, path: '/reports' },
-        ...(profile?.role === 'admin' ? [{ text: 'Nhân viên', icon: <PeopleIcon />, path: '/employees' }] : []),
+        ...(profile?.role === 'admin' || profile?.role === 'manager' ? [{ text: 'Nhân viên', icon: <PeopleIcon />, path: '/employees' }] : []),
     ];
 
     const drawer = (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             {/* Logo Area */}
-            <Box sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box
+            {/* Logo Area */}
+            <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', gap: 0.5 }}>
+                <Typography
+                    variant="caption"
                     sx={{
-                        width: 40,
-                        height: 40,
-                        bgcolor: 'primary.main',
-                        borderRadius: '10px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontWeight: 'bold',
-                        fontSize: '1.2rem',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        letterSpacing: '2px',
+                        textTransform: 'uppercase',
+                        fontWeight: 600,
+                        fontSize: '0.65rem'
                     }}
                 >
-                    Q
-                </Box>
-                <Typography variant="h6" fontWeight="bold" sx={{ color: 'white', letterSpacing: '0.5px' }}>
-                    Quan Ly Kho
+                    Quản lý kho
+                </Typography>
+                <Typography
+                    variant="h4"
+                    sx={{
+                        fontWeight: 900,
+                        background: 'linear-gradient(45deg, #38bdf8 30%, #818cf8 90%)', // Gradient Cyan to Indigo
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        letterSpacing: '1px'
+                    }}
+                >
+                    CĐBR
                 </Typography>
             </Box>
-
-            <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', mb: 2, mx: 2 }} />
 
             {/* Menu Items */}
             <List sx={{ px: 2, flexGrow: 1 }}>
@@ -124,7 +127,19 @@ const MainLayout: React.FC = () => {
                                 onClick={() => navigate(item.path)}
                                 selected={isActive}
                                 sx={{
-                                    height: 48
+                                    height: 48,
+                                    borderRadius: '6px',
+                                    '&.Mui-selected': {
+                                        backgroundColor: 'rgba(56, 189, 248, 0.15)', // Transparent Cyan Glow
+                                        color: '#38bdf8', // Neon text color
+                                        borderLeft: '3px solid #38bdf8',
+                                        '&:hover': {
+                                            backgroundColor: 'rgba(56, 189, 248, 0.25)',
+                                        },
+                                        '& .MuiListItemIcon-root': {
+                                            color: '#38bdf8', // Neon icon color
+                                        },
+                                    },
                                 }}
                             >
                                 <ListItemIcon sx={{
@@ -206,7 +221,7 @@ const MainLayout: React.FC = () => {
                                 {profile?.full_name || 'Administrator'}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                                {profile?.role === 'admin' ? 'Quản trị viên' : 'Nhân viên'}
+                                {profile?.role === 'admin' || profile?.role === 'manager' ? 'Quản trị viên' : 'Nhân viên'}
                             </Typography>
                         </Box>
                         <IconButton onClick={handleMenuOpen} sx={{ p: 0 }}>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts } from '../store/slices/productsSlice';
 import { addOutboundTransaction } from '../store/slices/transactionsSlice';
-import { fetchInventory, selectProductStock } from '../store/slices/inventorySlice';
+import { fetchInventory, selectProductStock, selectDetailedStock } from '../store/slices/inventorySlice';
 import { fetchEmployees } from '../store/slices/employeesSlice';
 import { fetchOrders, updateOrderStatus } from '../store/slices/ordersSlice';
 import type { RootState, AppDispatch } from '../store';
@@ -18,6 +18,8 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DeleteIcon from '@mui/icons-material/Delete';
 import QRScanner from '../components/QRScanner';
 import { readExcelFile, generateOutboundTemplate } from '../utils/excelUtils';
+import { useScanDetection } from '../hooks/useScanDetection';
+import { playBeep } from '../utils/audio';
 import { importOutboundTransactions } from '../store/slices/transactionsSlice';
 import type { Order } from '../types';
 
@@ -28,7 +30,7 @@ export const Outbound = () => {
     const { items: orders, status: orderStatus } = useSelector((state: RootState) => state.orders);
     const { profile } = useSelector((state: RootState) => state.auth);
     const inventoryStatus = useSelector((state: RootState) => state.inventory.status);
-    const isAdmin = profile?.role === 'admin';
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';
 
     // Form state (Admin)
     const [selectedProduct, setSelectedProduct] = useState('');
@@ -49,9 +51,17 @@ export const Outbound = () => {
     const [scannedSerials, setScannedSerials] = useState<string[]>([]); // For multi-scan
     const [isProductVerified, setIsProductVerified] = useState(false); // For non-serialized
 
-    // Get current stock (for Admin form or specific checks)
-    const currentStock = useSelector((state: RootState) => selectProductStock(state, selectedProduct));
+    // Get current stock
+    // Total Stock (Global)
+    const currentTotalStock = useSelector((state: RootState) => selectProductStock(state, selectedProduct));
 
+    // Detailed Stock (Specific to District/Status) - Use 'items' status by default for now if generic
+    // Note: If no district/status selected, detailedStock == totalStock (based on selector logic, check inventorySlice)
+    // Actually inventorySlice.ts: `if (!district && !itemStatus) return total`
+    // So if district is empty, it returns Total. That matches "General" check.
+    const currentDetailedStock = useSelector((state: RootState) =>
+        selectDetailedStock(state, selectedProduct, district, itemStatus)
+    );
 
     useEffect(() => {
         if (status === 'idle') dispatch(fetchProducts());
@@ -59,6 +69,12 @@ export const Outbound = () => {
         if (orderStatus === 'idle') dispatch(fetchOrders());
         if (isAdmin && employeeStatus === 'idle') dispatch(fetchEmployees());
     }, [status, inventoryStatus, employeeStatus, orderStatus, dispatch, isAdmin]);
+
+    // Physical Scanner Listener
+    useScanDetection((code) => {
+        playBeep(); // Beep for physical scanner
+        handleScanSuccess(code);
+    });
 
     // Admin Direct Save
     const handleAdminSave = async () => {
@@ -91,23 +107,31 @@ export const Outbound = () => {
 
         const totalQuantity = isSerialized ? serialList.length : Number(quantity);
 
-        // Detailed Stock Check
-        // If district is provided, we check against that specific stock.
-        // Item Status is hidden but logic remains supported if we ever default it.
-        // Note: If no district is entered, we might need to rely on total stock or allow it.
-        // But the requirement implies strict check by district.
-        // We use `currentDetailedStock` for validation
+        // Validation Logic
+        if (!isAdmin) {
+            // Staff: Strict Total Check
+            if (totalQuantity > currentTotalStock) {
+                setNotification({ type: 'error', message: `Số lượng xuất (${totalQuantity}) vượt quá tổng tồn kho (${currentTotalStock})` });
+                return;
+            }
+        } else {
+            // Admin: Warning/Errror based on Context
+            // If District is selected, we MUST check if that district has stock.
+            // If stock is 0 in that district, it's physically impossible to pick from there (unless data error).
+            if (district && totalQuantity > currentDetailedStock) {
+                // Format msg
+                const msg = `Kho Quận/Huyện "${district}" không đủ tồn! (Có: ${currentDetailedStock}, Cần: ${totalQuantity})`;
+                setNotification({ type: 'error', message: msg });
+                return;
+            }
 
-        // We use `currentDetailedStock` for validation
-        // Detail Stock check removed as District is Destination
-        // if (totalQuantity > currentDetailedStock) { ... }
-
-        // Basic sanity check against total stock (redundant but safe)
-        // Basic sanity check against total stock
-        // Update: Admins can bypass this check to allow negative stock
-        if (!isAdmin && totalQuantity > currentStock) {
-            setNotification({ type: 'error', message: `Số lượng xuất (${totalQuantity}) vượt quá tổng tồn kho (${currentStock})` });
-            return;
+            // If no district, user is picking from "General" pile? Or we just warn about total?
+            // Existing logic: warn if total exceeded.
+            if (totalQuantity > currentTotalStock) {
+                if (!window.confirm(`CẢNH BÁO: Số lượng xuất (${totalQuantity}) lớn hơn TỔNG tồn kho hệ thống (${currentTotalStock}). Bạn có chắc chắn muốn xuất âm không?`)) {
+                    return;
+                }
+            }
         }
 
         // For non-serialized, ensure quantity is valid
@@ -139,6 +163,18 @@ export const Outbound = () => {
     // The `handleAdminSave` function closes over `currentDetailedStock`.
     // Let's add `import { store } from '../store';` to the top imports block if not there to be super safe? 
     // No, standard react `useSelector` value is fine.
+
+    const StockDisplay = ({ productId }: { productId: string }) => {
+        const stock = useSelector((state: RootState) => selectProductStock(state, productId));
+        return (
+            <Chip
+                label={stock}
+                size="small"
+                color={stock > 0 ? 'default' : 'error'}
+                variant="outlined"
+            />
+        );
+    }
 
     // Shared Outbound Logic
     const executeOutbound = async (prodId: string, qty: number, serials: string[], receiverName: string, price: number, isSerialized: boolean, districtVal?: string, itemStatusVal?: string) => {
@@ -174,6 +210,8 @@ export const Outbound = () => {
     };
 
     const handleScanSuccess = (decodedText: string) => {
+        // playBeep(); // Removed to avoid double-beep (Handled in QRScanner and useScanDetection)
+
         // If in fulfillment dialog (Staff)
         if (openFulfillDialog && selectedOrder) {
             const product = products.find(p => p.id === selectedOrder.product_id);
@@ -354,6 +392,7 @@ export const Outbound = () => {
                             <TableRow>
                                 <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Ngày đặt</TableCell>
                                 <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Sản phẩm</TableCell>
+                                <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Tồn kho</TableCell>
                                 <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>SL Yêu cầu</TableCell>
                                 <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Trạng thái</TableCell>
                                 <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Thao tác</TableCell>
@@ -362,7 +401,7 @@ export const Outbound = () => {
                         <TableBody>
                             {myApprovedOrders.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                                    <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>
                                         Không có đơn hàng nào chờ xuất kho.
                                     </TableCell>
                                 </TableRow>
@@ -375,6 +414,16 @@ export const Outbound = () => {
                                             <TableCell>
                                                 <Typography variant="subtitle2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{product?.name || 'Unknown'}</Typography>
                                                 <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>{product?.item_code}</Typography>
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                {/* Use selector dynamically? No, hooks in loop is bad. Use a component or store variable passed down? 
+                                                    Actually we can just use `useSelector` inside a small sub-component for the row, OR use `inventory` state if available.
+                                                    Outbound doesn't have `inventory` state. It has `fetchInventory` which updates redux.
+                                                    We cannot call `useSelector` in a loop.
+                                                    Refactor to `OutboundRequestRow` component? Or just accept we need to access state differently?
+                                                    Accessing store state directly is hacky. Creating a StockCell component is better.
+                                                */}
+                                                <StockDisplay productId={order.product_id} />
                                             </TableCell>
                                             <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{order.quantity}</TableCell>
                                             <TableCell align="center">
@@ -486,15 +535,18 @@ export const Outbound = () => {
                 </Dialog>
 
                 {/* Shared Scanner Dialog */}
-                <Dialog open={showScanner} onClose={() => setShowScanner(false)} maxWidth="sm" fullWidth>
-                    <DialogTitle>Quét Mã QR/Mã Vạch</DialogTitle>
-                    <DialogContent>
+                <Dialog open={showScanner} onClose={() => setShowScanner(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3, m: 2 } }}>
+                    <DialogTitle sx={{ fontWeight: 900, textTransform: 'uppercase', color: 'primary.main', textAlign: 'center' }}>
+                        QUÉT MÃ QR/MÃ VẠCH
+                    </DialogTitle>
+                    <DialogContent sx={{ p: 0, overflow: 'hidden' }}>
                         <QRScanner
                             onScanSuccess={handleScanSuccess}
                             onScanFailure={(err) => console.log(err)}
+                            height={400}
                         />
-                        <Box textAlign="center" mt={3}>
-                            <Button onClick={() => setShowScanner(false)} color="inherit">Đóng</Button>
+                        <Box textAlign="center" p={2}>
+                            <Button onClick={() => setShowScanner(false)} variant="outlined" color="inherit">Đóng Camera</Button>
                         </Box>
                     </DialogContent>
                 </Dialog>
@@ -578,7 +630,7 @@ export const Outbound = () => {
                 )}
 
                 <Stack spacing={4}>
-                    <FormControl fullWidth error={quantity > currentStock} size="small">
+                    <FormControl fullWidth error={quantity > (district ? currentDetailedStock : currentTotalStock)} size="small">
                         <Autocomplete
                             options={products}
                             getOptionLabel={(option) => `${option.name} - ${option.item_code}`}
@@ -594,7 +646,7 @@ export const Outbound = () => {
                                     {...params}
                                     label="Tên vật tư hàng hóa"
                                     placeholder="Tìm kiếm vật tư..."
-                                    error={quantity > currentStock}
+                                    error={quantity > (district ? currentDetailedStock : currentTotalStock)}
                                     size="small"
                                 />
                             )}
@@ -604,8 +656,9 @@ export const Outbound = () => {
                         />
                         {selectedProduct && (
                             <FormHelperText sx={{ display: 'flex', alignItems: 'center', mt: 1, fontSize: '0.9rem' }}>
-                                <Box component="span" sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: currentStock > 0 ? 'success.main' : 'error.main', mr: 1 }} />
-                                Tồn kho: <Box component="span" fontWeight="bold" ml={0.5}>{currentStock}</Box>
+                                <Box component="span" sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: currentDetailedStock > 0 ? 'success.main' : 'error.main', mr: 1 }} />
+                                Tồn kho: <Box component="span" fontWeight="bold" ml={0.5}>{currentDetailedStock}</Box>
+                                {district && <Box component="span" color="text.secondary" ml={1}>(Tổng: {currentTotalStock})</Box>}
                             </FormHelperText>
                         )}
                     </FormControl>
@@ -618,7 +671,7 @@ export const Outbound = () => {
                             value={quantity}
                             onChange={e => setQuantity(Number(e.target.value))}
                             inputProps={{ min: 1 }}
-                            error={quantity > currentStock}
+                            error={quantity > (district ? currentDetailedStock : currentTotalStock)}
                             InputProps={{ sx: { borderRadius: 2, height: { xs: 40, sm: 56 }, fontSize: { xs: '0.875rem', md: '1rem' } } }}
                             InputLabelProps={{ sx: { fontSize: { xs: '0.875rem', md: '1rem' }, top: { xs: -5, sm: 0 } } }}
                             size="small"
@@ -780,13 +833,14 @@ export const Outbound = () => {
                     <DialogTitle sx={{ fontWeight: 900, textTransform: 'uppercase', color: 'primary.main', textAlign: 'center' }}>
                         QUÉT MÃ QR/MÃ VẠCH
                     </DialogTitle>
-                    <DialogContent>
+                    <DialogContent sx={{ p: 0, overflow: 'hidden' }}>
                         <QRScanner
                             onScanSuccess={handleScanSuccess}
                             onScanFailure={(err) => console.log(err)}
+                            height={400}
                         />
-                        <Box textAlign="center" mt={3}>
-                            <Button onClick={() => setShowScanner(false)} color="inherit">Đóng</Button>
+                        <Box textAlign="center" p={2}>
+                            <Button onClick={() => setShowScanner(false)} variant="outlined" color="inherit">Đóng Camera</Button>
                         </Box>
                     </DialogContent>
                 </Dialog>
