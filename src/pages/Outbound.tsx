@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts } from '../store/slices/productsSlice';
 import { addOutboundTransaction } from '../store/slices/transactionsSlice';
-import { fetchInventory, selectProductStock, selectDetailedStock } from '../store/slices/inventorySlice';
+import { fetchInventory, selectProductStock } from '../store/slices/inventorySlice';
 import { fetchEmployees } from '../store/slices/employeesSlice';
 import { fetchOrders, updateOrderStatus } from '../store/slices/ordersSlice';
 import type { RootState, AppDispatch } from '../store';
@@ -51,8 +51,7 @@ export const Outbound = () => {
 
     // Get current stock (for Admin form or specific checks)
     const currentStock = useSelector((state: RootState) => selectProductStock(state, selectedProduct));
-    // Get detailed stock for validation
-    const currentDetailedStock = useSelector((state: RootState) => selectDetailedStock(state, selectedProduct, district, itemStatus));
+
 
     useEffect(() => {
         if (status === 'idle') dispatch(fetchProducts());
