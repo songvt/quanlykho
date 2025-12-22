@@ -25,19 +25,24 @@ const QRScanner = ({ onScanSuccess, onScanFailure }: QRScannerProps) => {
         const scanner = new Html5QrcodeScanner(
             regionId,
             {
-                fps: 15,
-                qrbox: { width: 320, height: 200 }, // Wider and taller
+                fps: 50, // Higher FPS for modern devices (smoother)
+                qrbox: (viewfinderWidth, _viewfinderHeight) => {
+                    // Optimized for Barcodes (Serial): Very wide, not too tall
+                    return { width: Math.floor(viewfinderWidth * 0.9), height: 120 };
+                },
                 aspectRatio: 1.0,
                 showTorchButtonIfSupported: true,
                 videoConstraints: {
                     facingMode: "environment",
-                    focusMode: "continuous" // Force Auto-focus
+                    // Ideal resolution for balance of speed/accuracy
+                    width: { min: 640, ideal: 1920, max: 1920 },
+                    height: { min: 480, ideal: 1080, max: 1080 },
+                    focusMode: "continuous"
                 } as any,
                 formatsToSupport: formatsToSupport,
-                // experimentalFeatures: {
-                //     useBarCodeDetectorIfSupported: true
-                // } 
-                // Disable experimental native detector for now to ensure consistency across devices using WASM
+                experimentalFeatures: {
+                    useBarCodeDetectorIfSupported: true // CRITICAL: Native speed
+                }
             },
             /* verbose= */ false
         );

@@ -100,13 +100,13 @@ export const Outbound = () => {
         // We use `currentDetailedStock` for validation
 
         // We use `currentDetailedStock` for validation
-        if (totalQuantity > currentDetailedStock) {
-            setNotification({ type: 'error', message: `Số lượng xuất (${totalQuantity}) vượt quá tồn kho tại Quận/Huyện này (${currentDetailedStock})` });
-            return;
-        }
+        // Detail Stock check removed as District is Destination
+        // if (totalQuantity > currentDetailedStock) { ... }
 
         // Basic sanity check against total stock (redundant but safe)
-        if (totalQuantity > currentStock) {
+        // Basic sanity check against total stock
+        // Update: Admins can bypass this check to allow negative stock
+        if (!isAdmin && totalQuantity > currentStock) {
             setNotification({ type: 'error', message: `Số lượng xuất (${totalQuantity}) vượt quá tổng tồn kho (${currentStock})` });
             return;
         }
@@ -605,10 +605,8 @@ export const Outbound = () => {
                         />
                         {selectedProduct && (
                             <FormHelperText sx={{ display: 'flex', alignItems: 'center', mt: 1, fontSize: '0.9rem' }}>
-                                <Box component="span" sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: currentDetailedStock > 0 ? 'success.main' : 'error.main', mr: 1 }} />
-                                Tồn kho hiện tại (theo bộ lọc): <Box component="span" fontWeight="bold" ml={0.5}>{currentDetailedStock}</Box>
-                                <Box component="span" sx={{ mx: 1, color: 'text.disabled' }}>|</Box>
-                                Tổng tồn kho: <Box component="span" fontWeight="bold" ml={0.5}>{currentStock}</Box>
+                                <Box component="span" sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: currentStock > 0 ? 'success.main' : 'error.main', mr: 1 }} />
+                                Tồn kho: <Box component="span" fontWeight="bold" ml={0.5}>{currentStock}</Box>
                             </FormHelperText>
                         )}
                     </FormControl>

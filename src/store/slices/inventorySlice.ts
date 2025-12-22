@@ -40,6 +40,11 @@ export const selectProductStock = (state: RootState, productId: string) =>
     state.inventory.stockMap[productId] || 0;
 
 export const selectDetailedStock = (state: RootState, productId: string, district?: string, itemStatus?: string) => {
+    // If no filters are applied, return total stock
+    if (!district && !itemStatus) {
+        return state.inventory.stockMap[productId] || 0;
+    }
+
     const districtKey = district || '';
     const statusKey = itemStatus || '';
     const key = `${productId}|${districtKey}|${statusKey}`;
