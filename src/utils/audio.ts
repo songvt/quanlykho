@@ -1,30 +1,43 @@
+let audioCtx: AudioContext | null = null;
+
 /**
  * Play a beep sound using the Web Audio API.
- * Useful for scanner feedback without external assets.
+ * Uses a singleton AudioContext to adhere to browser autoplay policies.
  */
-export const playBeep = (frequency = 1000, duration = 100, type: OscillatorType = 'square') => {
+export const playBeep = async (frequency = 1200, duration = 150, type: OscillatorType = 'square') => {
     try {
-        const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
+        if (!audioCtx) {
+            const CtxClass = window.AudioContext || (window as any).webkitAudioContext;
+            if (CtxClass) {
+                audioCtx = new CtxClass();
+            } else {
+                return;
+            }
+        }
 
-        const ctx = new AudioContext();
-        const oscillator = ctx.createOscillator();
-        const gainNode = ctx.createGain();
+        // Resume context if suspended (common in browsers preventing autoplay)
+        if (audioCtx.state === 'suspended') {
+            await audioCtx.resume();
+        }
+
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
 
         oscillator.type = type;
-        oscillator.frequency.value = frequency; // Hz
+        oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
 
-        gainNode.gain.value = 0.1; // Volume (0.0 - 1.0)
+        // Increase volume (was 0.1, now 0.5)
+        gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        // Fade out to avoid clicking sound at end
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + (duration / 1000));
 
         oscillator.connect(gainNode);
-        gainNode.connect(ctx.destination);
+        gainNode.connect(audioCtx.destination);
 
         oscillator.start();
+        oscillator.stop(audioCtx.currentTime + (duration / 1000));
 
-        setTimeout(() => {
-            oscillator.stop();
-        }, duration);
     } catch (e) {
-        console.error("Audio API not supported or error playing beep", e);
+        console.error("Error playing beep", e);
     }
 };

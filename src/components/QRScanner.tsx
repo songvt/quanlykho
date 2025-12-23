@@ -61,7 +61,8 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                     Html5QrcodeSupportedFormats.RSS_14,
                     Html5QrcodeSupportedFormats.RSS_EXPANDED
                 ],
-                verbose: false
+                verbose: false,
+                useBarCodeDetectorIfSupported: true // Enable native barcode detector for speed
             });
             scannerRef.current = scanner;
 
@@ -132,12 +133,14 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                 await scannerRef.current.start(
                     selectedCameraId,
                     {
-                        fps: 20,
-                        qrbox: { width: 320, height: 200 },
-                        aspectRatio: 1.0,
-                        // videoConstraints is important for mobile
+                        fps: 15,
+                        // qrbox removed for full-screen scanning
+                        // aspectRatio removed for full-screen scanning
                         videoConstraints: {
-                            focusMode: "continuous"
+                            focusMode: "continuous",
+                            facingMode: "environment",
+                            width: { min: 640, ideal: 1280, max: 1920 },
+                            height: { min: 480, ideal: 720, max: 1080 }
                         } as any
                     },
                     (decodedText, _result) => {
@@ -275,34 +278,51 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                         </Box>
                     </Box>
 
-                    {/* Visual Guide */}
+                    {/* Visual Guide - Full screen style */}
                     {isScanning && (
                         <Box sx={{
                             position: 'absolute',
-                            top: '50%',
-                            left: '50%',
-                            transform: 'translate(-50%, -50%)',
-                            width: '320px',
-                            height: '200px',
-                            border: '2px solid rgba(255, 255, 255, 0.6)',
-                            borderRadius: 4,
-                            boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.5)',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
                             pointerEvents: 'none',
                             zIndex: 1
                         }}>
+                            {/* Central Focus Corner Markers (Visual Only) */}
                             <Box sx={{
-                                width: '100%',
-                                height: '2px',
-                                bgcolor: 'red',
                                 position: 'absolute',
                                 top: '50%',
-                                animation: 'scan 2s infinite linear',
-                                '@keyframes scan': {
-                                    '0%': { top: '10%' },
-                                    '50%': { top: '90%' },
-                                    '100%': { top: '10%' }
-                                }
-                            }} />
+                                left: '50%',
+                                transform: 'translate(-50%, -50%)',
+                                width: '80%',
+                                height: '60%',
+                                border: '2px solid rgba(255, 255, 255, 0.3)',
+                                borderRadius: 4,
+                            }}>
+                                {/* Corner markers */}
+                                <Box sx={{ position: 'absolute', top: -2, left: -2, width: 20, height: 20, borderColor: '#00e676', borderStyle: 'solid', borderWidth: '4px 0 0 4px', borderRadius: '4px 0 0 0' }} />
+                                <Box sx={{ position: 'absolute', top: -2, right: -2, width: 20, height: 20, borderColor: '#00e676', borderStyle: 'solid', borderWidth: '4px 4px 0 0', borderRadius: '0 4px 0 0' }} />
+                                <Box sx={{ position: 'absolute', bottom: -2, left: -2, width: 20, height: 20, borderColor: '#00e676', borderStyle: 'solid', borderWidth: '0 0 4px 4px', borderRadius: '0 0 0 4px' }} />
+                                <Box sx={{ position: 'absolute', bottom: -2, right: -2, width: 20, height: 20, borderColor: '#00e676', borderStyle: 'solid', borderWidth: '0 4px 4px 0', borderRadius: '0 0 4px 0' }} />
+
+                                {/* Scanning Line */}
+                                <Box sx={{
+                                    width: '100%',
+                                    height: '2px',
+                                    bgcolor: '#00e676',
+                                    position: 'absolute',
+                                    top: '50%',
+                                    boxShadow: '0 0 4px #00e676',
+                                    animation: 'scan 2s infinite linear',
+                                    '@keyframes scan': {
+                                        '0%': { top: '5%', opacity: 0 },
+                                        '25%': { opacity: 1 },
+                                        '75%': { opacity: 1 },
+                                        '100%': { top: '95%', opacity: 0 }
+                                    }
+                                }} />
+                            </Box>
                         </Box>
                     )}
                 </>
