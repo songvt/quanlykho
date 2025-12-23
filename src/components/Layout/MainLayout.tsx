@@ -244,7 +244,10 @@ const MainLayout: React.FC = () => {
                             open={Boolean(anchorEl)}
                             onClose={handleMenuClose}
                         >
-                            <MenuItem disabled>
+                            <MenuItem onClick={() => {
+                                handleMenuClose();
+                                navigate('/profile');
+                            }}>
                                 <ListItemIcon><PersonIcon fontSize="small" /></ListItemIcon>
                                 Hồ sơ
                             </MenuItem>

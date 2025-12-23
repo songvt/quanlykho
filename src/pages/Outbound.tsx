@@ -21,6 +21,8 @@ import { readExcelFile, generateOutboundTemplate } from '../utils/excelUtils';
 import { useScanDetection } from '../hooks/useScanDetection';
 import { playBeep } from '../utils/audio';
 import { importOutboundTransactions } from '../store/slices/transactionsSlice';
+import ProductSearchDialog from '../components/ProductSearchDialog';
+import SearchIcon from '@mui/icons-material/Search';
 import type { Order } from '../types';
 
 export const Outbound = () => {
@@ -44,6 +46,7 @@ export const Outbound = () => {
 
     // Scanner state
     const [showScanner, setShowScanner] = useState(false);
+    const [showProductSearch, setShowProductSearch] = useState(false);
 
     // Staff Fulfillment State
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -631,38 +634,47 @@ export const Outbound = () => {
                 )}
 
                 <Stack spacing={4}>
-                    <FormControl fullWidth error={quantity > (district ? currentDetailedStock : currentTotalStock)} size="small">
-                        <Autocomplete
-                            options={products}
-                            getOptionLabel={(option) => `${option.name} - ${option.item_code}`}
-                            value={products.find(p => p.id === selectedProduct) || null}
-                            onChange={(_, newValue) => {
-                                setSelectedProduct(newValue ? newValue.id : '');
-                                setScannedSerials([]); // Clear scans on product change
-                                setSerial('');
-                                setQuantity(1);
-                            }}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label="Tên vật tư hàng hóa"
-                                    placeholder="Tìm kiếm vật tư..."
-                                    error={quantity > (district ? currentDetailedStock : currentTotalStock)}
-                                    size="small"
-                                />
+                    <Box display="flex" alignItems="flex-start" gap={1}>
+                        <FormControl fullWidth error={quantity > (district ? currentDetailedStock : currentTotalStock)} size="small">
+                            <Autocomplete
+                                options={products}
+                                getOptionLabel={(option) => `${option.name} - ${option.item_code}`}
+                                value={products.find(p => p.id === selectedProduct) || null}
+                                onChange={(_, newValue) => {
+                                    setSelectedProduct(newValue ? newValue.id : '');
+                                    setScannedSerials([]); // Clear scans on product change
+                                    setSerial('');
+                                    setQuantity(1);
+                                }}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Tên vật tư hàng hóa"
+                                        placeholder="Tìm kiếm vật tư..."
+                                        error={quantity > (district ? currentDetailedStock : currentTotalStock)}
+                                        size="small"
+                                    />
+                                )}
+                                PaperComponent={({ children }) => (
+                                    <Paper elevation={8} sx={{ borderRadius: 2 }}>{children}</Paper>
+                                )}
+                            />
+                            {selectedProduct && (
+                                <FormHelperText sx={{ display: 'flex', alignItems: 'center', mt: 1, fontSize: '0.9rem' }}>
+                                    <Box component="span" sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: currentDetailedStock > 0 ? 'success.main' : 'error.main', mr: 1 }} />
+                                    Tồn kho: <Box component="span" fontWeight="bold" ml={0.5}>{currentDetailedStock}</Box>
+                                    {district && <Box component="span" color="text.secondary" ml={1}>(Tổng: {currentTotalStock})</Box>}
+                                </FormHelperText>
                             )}
-                            PaperComponent={({ children }) => (
-                                <Paper elevation={8} sx={{ borderRadius: 2 }}>{children}</Paper>
-                            )}
-                        />
-                        {selectedProduct && (
-                            <FormHelperText sx={{ display: 'flex', alignItems: 'center', mt: 1, fontSize: '0.9rem' }}>
-                                <Box component="span" sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: currentDetailedStock > 0 ? 'success.main' : 'error.main', mr: 1 }} />
-                                Tồn kho: <Box component="span" fontWeight="bold" ml={0.5}>{currentDetailedStock}</Box>
-                                {district && <Box component="span" color="text.secondary" ml={1}>(Tổng: {currentTotalStock})</Box>}
-                            </FormHelperText>
-                        )}
-                    </FormControl>
+                        </FormControl>
+                        <Button
+                            variant="outlined"
+                            sx={{ height: 40, minWidth: 40, px: 2 }}
+                            onClick={() => setShowProductSearch(true)}
+                        >
+                            <SearchIcon />
+                        </Button>
+                    </Box>
 
                     <Box display="grid" gridTemplateColumns={{ xs: '1fr', md: '1fr 1fr' }} gap={{ xs: 2, md: 4 }}>
                         <TextField
@@ -681,7 +693,10 @@ export const Outbound = () => {
                         {isAdmin ? (
                             <Autocomplete
                                 options={employees}
-                                getOptionLabel={(option) => (typeof option === 'string' ? option : option.full_name)}
+                                getOptionLabel={(option) => {
+                                    const name = typeof option === 'string' ? option : option.full_name;
+                                    return name.replace(/\(\s*\)/g, '').trim();
+                                }}
                                 value={employees.find(e => e.full_name === receiver) || null}
                                 onChange={(_, newValue) => {
                                     if (newValue) {
@@ -823,6 +838,7 @@ export const Outbound = () => {
                             fullWidth
                             onClick={handleAdminSave}
                             disabled={(status as string) === 'loading'}
+
                             sx={{ py: { xs: 1.5, sm: 2 }, borderRadius: 3, fontSize: { xs: '0.9rem', sm: '1.1rem' }, fontWeight: 700, textTransform: 'none', boxShadow: 'none' }}
                         >
                             Xuất Kho
@@ -845,7 +861,20 @@ export const Outbound = () => {
                         </Box>
                     </DialogContent>
                 </Dialog>
+
+                <ProductSearchDialog
+                    open={showProductSearch}
+                    onClose={() => setShowProductSearch(false)}
+                    products={products}
+                    onSelect={(product) => {
+                        setSelectedProduct(product.id);
+                        setScannedSerials([]);
+                        setSerial('');
+                        setQuantity(1);
+                        setShowProductSearch(false);
+                    }}
+                />
             </Paper>
-        </Box>
+        </Box >
     );
 }

@@ -17,6 +17,7 @@ import OrderList from './pages/Orders/OrderList';
 import Reports from './pages/Reports/Reports';
 import EmployeeList from './pages/Employees/EmployeeList';
 import ChangePassword from './pages/ChangePassword';
+import UserProfile from './pages/UserProfile';
 
 const NotFound = () => <Typography variant="h4">404 - Không tìm thấy trang</Typography>;
 
@@ -57,6 +58,8 @@ function App() {
             <Route path="inbound" element={<Inbound />} />
             <Route path="employees" element={<EmployeeList />} />
           </Route>
+
+          <Route path="profile" element={<UserProfile />} />
 
           <Route path="*" element={<NotFound />} />
         </Route>

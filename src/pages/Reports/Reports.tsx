@@ -903,7 +903,10 @@ const Reports = () => {
                         {isAdmin ? (
                             <Autocomplete
                                 options={employees}
-                                getOptionLabel={(option) => option.full_name || ''}
+                                getOptionLabel={(option) => {
+                                    const name = option.full_name || '';
+                                    return name.replace(/\(\s*\)/g, '').trim();
+                                }}
                                 value={employees.find(e => e.full_name === selectedEmployee) || null}
                                 onChange={(_, newValue) => {
                                     setSelectedEmployee(newValue ? newValue.full_name : null);

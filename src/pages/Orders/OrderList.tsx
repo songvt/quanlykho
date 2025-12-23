@@ -4,7 +4,7 @@ import {
     Box, Paper, Typography, Button, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Dialog,
     DialogTitle, DialogContent, DialogActions, TextField, Stack,
-    CircularProgress, Alert, Chip, Select, MenuItem, FormControl, InputLabel, Checkbox
+    CircularProgress, Alert, Chip, Select, MenuItem, FormControl, InputLabel, Checkbox, Autocomplete
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -14,6 +14,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { InputAdornment } from '@mui/material';
+import ProductSearchDialog from '../../components/ProductSearchDialog';
+
 
 import { fetchOrders, addOrder, updateOrderStatus, deleteOrders } from '../../store/slices/ordersSlice';
 import { fetchProducts } from '../../store/slices/productsSlice'; // Need products for the dropdown
@@ -36,9 +38,22 @@ const OrderList = () => {
         quantity: 1,
         requester_group: '',
     });
+    const [showProductSearch, setShowProductSearch] = useState(false);
+
 
     const [inventory, setInventory] = useState<Record<string, number>>({});
     const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+
+    // Date Filter State
+    const [startDate, setStartDate] = useState(() => {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    });
+    const [endDate, setEndDate] = useState(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    });
 
     useEffect(() => {
         if (orderStatus === 'idle') dispatch(fetchOrders());
@@ -126,6 +141,13 @@ const OrderList = () => {
     const filteredOrders = visibleOrders.filter(order => {
         const product = products.find(p => p.id === order.product_id);
         const term = searchTerm.toLowerCase();
+
+        // Date Filter
+        const d = new Date(order.order_date);
+        const orderDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        if (startDate && orderDate < startDate) return false;
+        if (endDate && orderDate > endDate) return false;
+
         return (
             (order.requester_group || '').toLowerCase().includes(term) ||
             (product?.name || '').toLowerCase().includes(term) ||
@@ -216,6 +238,24 @@ const OrderList = () => {
                         </>
                     )}
 
+                    <TextField
+                        size="small"
+                        type="date"
+                        label="Từ ngày"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                        sx={{ bgcolor: 'white', borderRadius: 2, width: { xs: '48%', sm: 'auto' } }}
+                    />
+                    <TextField
+                        size="small"
+                        type="date"
+                        label="Đến ngày"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                        sx={{ bgcolor: 'white', borderRadius: 2, width: { xs: '48%', sm: 'auto' } }}
+                    />
                     <TextField
                         size="small"
                         placeholder="Tìm kiếm..."
@@ -372,20 +412,24 @@ const OrderList = () => {
                 <DialogContent>
                     <Stack spacing={3} sx={{ mt: 1 }}>
                         {isAdmin ? (
-                            <FormControl fullWidth>
-                                <InputLabel>Nhân viên</InputLabel>
-                                <Select
-                                    value={newOrder.requester_group}
-                                    label="Nhân viên"
-                                    onChange={(e) => setNewOrder({ ...newOrder, requester_group: e.target.value })}
-                                >
-                                    {employees.map((emp) => (
-                                        <MenuItem key={emp.id} value={emp.full_name}>
-                                            {emp.full_name} ({emp.username})
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
+                            <Autocomplete
+                                options={employees}
+                                getOptionLabel={(option) => {
+                                    const name = typeof option === 'string' ? option : option.full_name;
+                                    return name.replace(/\(\s*\)/g, '').trim();
+                                }}
+                                value={employees.find(e => e.full_name === newOrder.requester_group) || null}
+                                onChange={(_, newValue) => {
+                                    setNewOrder({ ...newOrder, requester_group: newValue ? newValue.full_name : '' });
+                                }}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Nhân viên"
+                                        placeholder="Tìm kiếm nhân viên..."
+                                    />
+                                )}
+                            />
                         ) : (
                             <TextField
                                 label="Nhân viên"
@@ -396,21 +440,32 @@ const OrderList = () => {
                             />
                         )}
 
-                        <FormControl fullWidth>
-                            <InputLabel>Vật tư hàng hóa</InputLabel>
-                            <Select
-                                value={newOrder.product_id}
-                                label="Vật tư hàng hóa"
-                                onChange={(e) => setNewOrder({ ...newOrder, product_id: e.target.value })}
+
+
+                        <Box display="flex" alignItems="center" gap={1}>
+                            <FormControl fullWidth>
+                                <InputLabel>Vật tư hàng hóa</InputLabel>
+                                <Select
+                                    value={newOrder.product_id}
+                                    label="Vật tư hàng hóa"
+                                    onChange={(e) => setNewOrder({ ...newOrder, product_id: e.target.value })}
+                                >
+                                    {products
+                                        .map((p) => (
+                                            <MenuItem key={p.id} value={p.id}>
+                                                {p.name} ({p.item_code}) - Tồn: {inventory[p.id] || 0}
+                                            </MenuItem>
+                                        ))}
+                                </Select>
+                            </FormControl>
+                            <Button
+                                variant="outlined"
+                                sx={{ height: 56, minWidth: 50, px: 0 }}
+                                onClick={() => setShowProductSearch(true)}
                             >
-                                {products
-                                    .map((p) => (
-                                        <MenuItem key={p.id} value={p.id}>
-                                            {p.name} ({p.item_code}) - Tồn: {inventory[p.id] || 0}
-                                        </MenuItem>
-                                    ))}
-                            </Select>
-                        </FormControl>
+                                <SearchIcon />
+                            </Button>
+                        </Box>
 
                         <TextField
                             label="Số lượng"
@@ -427,7 +482,18 @@ const OrderList = () => {
                     <Button onClick={handleSave} variant="contained">Tạo đơn</Button>
                 </DialogActions>
             </Dialog>
-        </Box>
+
+
+            <ProductSearchDialog
+                open={showProductSearch}
+                onClose={() => setShowProductSearch(false)}
+                products={products}
+                onSelect={(product) => {
+                    setNewOrder(prev => ({ ...prev, product_id: product.id }));
+                    setShowProductSearch(false);
+                }}
+            />
+        </Box >
     );
 };
 

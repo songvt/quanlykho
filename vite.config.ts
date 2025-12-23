@@ -3,6 +3,19 @@ import react from '@vitejs/plugin-react'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react(), basicSsl()],
-})
+export default defineConfig(({ mode }) => ({
+  plugins: [react(), mode === 'development' && basicSsl()].filter(Boolean),
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor': ['react', 'react-dom', 'react-router-dom', '@reduxjs/toolkit', 'react-redux'],
+          'ui': ['@mui/material', '@mui/icons-material', '@emotion/react', '@emotion/styled'],
+          'utils': ['xlsx', 'file-saver', 'html5-qrcode', 'exceljs'],
+          'db': ['@supabase/supabase-js']
+        }
+      }
+    }
+  }
+}))
