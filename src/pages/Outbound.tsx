@@ -119,10 +119,11 @@ export const Outbound = () => {
             // If District is selected, we MUST check if that district has stock.
             // If stock is 0 in that district, it's physically impossible to pick from there (unless data error).
             if (district && totalQuantity > currentDetailedStock) {
-                // Format msg
-                const msg = `Kho Quận/Huyện "${district}" không đủ tồn! (Có: ${currentDetailedStock}, Cần: ${totalQuantity})`;
-                setNotification({ type: 'error', message: msg });
-                return;
+                // Warning only for Admin
+                const msg = `Kho Quận/Huyện "${district}" không đủ tồn! (Có: ${currentDetailedStock}, Cần: ${totalQuantity}). Bạn có chắc chắn muốn xuất âm không?`;
+                if (!window.confirm(msg)) {
+                    return;
+                }
             }
 
             // If no district, user is picking from "General" pile? Or we just warn about total?

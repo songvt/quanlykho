@@ -1,19 +1,18 @@
 import { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-    Box, Paper, Typography, Card, CardContent, List, ListItem, ListItemText, CircularProgress, Chip, Grid,
+    Box, Paper, Typography, List, ListItem, ListItemText, CircularProgress, Chip, Grid,
 } from '@mui/material';
 import { fetchProducts } from '../store/slices/productsSlice';
 import { fetchInventory } from '../store/slices/inventorySlice';
 import { fetchTransactions } from '../store/slices/transactionsSlice';
 import type { RootState, AppDispatch } from '../store';
-import InventoryIcon from '@mui/icons-material/Inventory';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import WarningIcon from '@mui/icons-material/Warning';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import {
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-    PieChart, Pie, Cell, AreaChart, Area
+    PieChart, Pie, Cell, AreaChart, Area, BarChart, Bar
 } from 'recharts';
 
 const Dashboard = () => {
@@ -110,29 +109,7 @@ const Dashboard = () => {
 
     if (isLoading) return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
 
-    const StatCard = ({ title, value, icon, gradient }: any) => (
-        <Card sx={{
-            height: '100%',
-            borderRadius: 3,
-            background: gradient,
-            color: 'white',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-            position: 'relative',
-            overflow: 'hidden',
-        }}>
-            <Box sx={{ position: 'absolute', top: -15, right: -15, opacity: 0.15, transform: 'rotate(15deg)' }}>
-                {/* Clone icon to modify props if needed, or just wrap */}
-                <Box sx={{ transform: 'scale(0.8)' }}>{icon}</Box>
-            </Box>
-            <CardContent sx={{ p: { xs: 2, sm: 3 }, '&:last-child': { pb: { xs: 2, sm: 3 } }, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 1, sm: 2 } }}>
-                    <Typography variant="subtitle2" sx={{ opacity: 0.95, fontWeight: 700, fontSize: { xs: '0.9rem', sm: '1rem' } }}>{title}</Typography>
-                    <Typography variant="h3" fontWeight="bold" sx={{ fontSize: { xs: '1.75rem', sm: '3rem' }, lineHeight: 1 }}>{value}</Typography>
-                </Box>
-                <Box sx={{ bgcolor: 'rgba(255,255,255,0.2)', height: 4, borderRadius: 2, width: '100%' }} />
-            </CardContent>
-        </Card>
-    );
+
 
     return (
         <Box p={{ xs: 1, sm: 3 }} sx={{ bgcolor: '#F8FAFC', minHeight: '100vh', maxWidth: 1000, mx: 'auto', zoom: { xs: 0.85, md: 1 } }}>
@@ -152,39 +129,40 @@ const Dashboard = () => {
                 </Typography>
             </Box>
 
-            {/* KPI Cards */}
+            {/* KPI Cards Removed as per request */}
+
+            {/* KPI Summary Chart (New) */}
             <Grid container spacing={{ xs: 1, sm: 3 }} mb={{ xs: 2, sm: 4 }}>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                    <StatCard
-                        title="TỔNG SẢN PHẨM"
-                        value={totalProducts}
-                        icon={<InventoryIcon sx={{ fontSize: 120 }} />}
-                        gradient="linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)"
-                    />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                    <StatCard
-                        title="GIAO DỊCH HÔM NAY"
-                        value={todayTransactions}
-                        icon={<SwapHorizIcon sx={{ fontSize: 120 }} />}
-                        gradient="linear-gradient(135deg, #10B981 0%, #059669 100%)"
-                    />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                    <StatCard
-                        title="CẢNH BÁO HẾT HÀNG"
-                        value={inventoryStats.stats.lowStock + inventoryStats.stats.outOfStock}
-                        icon={<WarningIcon sx={{ fontSize: 120 }} />}
-                        gradient="linear-gradient(135deg, #F59E0B 0%, #D97706 100%)"
-                    />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                    <StatCard
-                        title="TỔNG TỒN KHO"
-                        value={inventoryStats.stats.totalItems}
-                        icon={<TrendingUpIcon sx={{ fontSize: 120 }} />}
-                        gradient="linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)"
-                    />
+                <Grid size={{ xs: 12 }}>
+                    <Paper elevation={0} sx={{ p: 3, borderRadius: 4, height: 400, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
+                        <Typography variant="h6" fontWeight="700" mb={3}>Biểu Đồ Thống Kê Chỉ Số</Typography>
+                        <ResponsiveContainer width="100%" height="90%">
+                            <BarChart
+                                data={[{
+                                    name: 'Chỉ số',
+                                    products: totalProducts,
+                                    transactions: todayTransactions,
+                                    warning: inventoryStats.stats.lowStock + inventoryStats.stats.outOfStock,
+                                    stock: inventoryStats.stats.totalItems
+                                }]}
+                                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                            >
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                                <YAxis yAxisId="left" orientation="left" stroke="#64748B" />
+                                <YAxis yAxisId="right" orientation="right" stroke="#8B5CF6" />
+                                <Tooltip
+                                    cursor={{ fill: 'transparent' }}
+                                    contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                                />
+                                <Legend />
+                                <Bar yAxisId="left" dataKey="products" name="Tổng Sản phẩm" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={60} />
+                                <Bar yAxisId="left" dataKey="transactions" name="GD Hôm nay" fill="#10B981" radius={[4, 4, 0, 0]} barSize={60} />
+                                <Bar yAxisId="left" dataKey="warning" name="Cảnh báo" fill="#F59E0B" radius={[4, 4, 0, 0]} barSize={60} />
+                                <Bar yAxisId="right" dataKey="stock" name="Tổng Tồn kho" fill="#8B5CF6" radius={[4, 4, 0, 0]} barSize={60} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </Paper>
                 </Grid>
             </Grid>
 

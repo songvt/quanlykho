@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { Box, IconButton, Select, MenuItem, Typography, Button, CircularProgress, Alert } from '@mui/material';
-import type { SelectChangeEvent } from '@mui/material';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
 import FlashOffIcon from '@mui/icons-material/FlashOff';
 import RefreshIcon from '@mui/icons-material/Refresh';

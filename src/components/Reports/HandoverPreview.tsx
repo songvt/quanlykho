@@ -46,7 +46,7 @@ const HandoverPreview = ({ data, employeeName, date, reporterName }: HandoverPre
                     onClick={() => window.print()}
                     sx={{ bgcolor: 'primary.main', fontWeight: 'bold' }}
                 >
-                    In Biên Bản
+                    In / Xuất PDF
                 </Button>
             </Box>
 

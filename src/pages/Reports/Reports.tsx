@@ -22,7 +22,7 @@ import { fetchOrders } from '../../store/slices/ordersSlice';
 import { fetchEmployees } from '../../store/slices/employeesSlice';
 import type { RootState, AppDispatch } from '../../store';
 
-import { exportHandoverMinutes, exportStandardReport } from '../../utils/excelUtils';
+import { exportHandoverMinutesV2, exportStandardReport } from '../../utils/excelUtils';
 import type { ReportColumn } from '../../utils/excelUtils';
 import HandoverPreview from '../../components/Reports/HandoverPreview';
 import { formatCurrency } from '../../utils/format';
@@ -414,15 +414,42 @@ const Reports = () => {
         }));
     };
 
-    const handleExportHandover = () => {
+    const handleExportHandover = async () => {
         const exportData = getHandoverData();
-        if (exportData && selectedEmployee) {
+        if (exportData && selectedEmployee && selectedDate) {
             // Find employee to get phone number
             const receiverObj = employees.find(e => e.full_name === selectedEmployee);
             const receiverPhone = receiverObj?.phone_number || '';
             const senderPhone = profile?.phone_number || '';
 
-            exportHandoverMinutes(exportData, selectedEmployee, selectedDate, reporterName, senderPhone, receiverPhone);
+            // Calculate Report Number Logic
+            // Count distinct dates in the current month where transactions occurred
+            const [year, month] = selectedDate.split('-');
+            const currentMonthPrefix = `${year}-${month}`;
+
+            // Get all outbound transaction dates in this month
+            const datesInMonth = Array.from(new Set(transactions
+                .filter(t => t.type === 'outbound' && t.date.startsWith(currentMonthPrefix))
+                .map(t => new Date(t.date).toISOString().split('T')[0])
+            )).sort();
+
+            // Find index + 1
+            const index = datesInMonth.indexOf(selectedDate);
+            let reportNumber = '.......';
+
+            if (index !== -1) {
+                const count = index + 1;
+                // Format: just the number (1, 2, 3)
+                // The prefix "BBBG-BSG/ACT :PX-" is added in excelUtils
+                reportNumber = count.toString();
+            }
+
+            try {
+                await exportHandoverMinutesV2(exportData, selectedEmployee, selectedDate, reporterName, senderPhone, receiverPhone, reportNumber);
+            } catch (error: any) {
+                console.error(error);
+                alert("Lỗi xuất báo cáo: " + (error?.message || JSON.stringify(error)));
+            }
             setOpenHandover(false);
         }
     };
