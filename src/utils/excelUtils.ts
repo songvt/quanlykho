@@ -342,7 +342,6 @@ export const exportHandoverMinutesV2 = async (
     receiverPhone: string = '',
     reportNumber: string = '.......' // Added reportNumber
 ) => {
-    console.log("Exporting Handover V2...");
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Bien_Ban_Ban_Giao', {
         pageSetup: {

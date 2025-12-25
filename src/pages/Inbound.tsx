@@ -126,17 +126,28 @@ export const Inbound = () => {
         // So we don't play beep here to avoid double-beep for camera.
 
         if (isSerialized) {
-            if (scannedSerials.includes(decodedText)) {
-                setNotification({ type: 'error', message: `Đã quét: ${decodedText}` });
-                return;
-            }
+            // Split scannned text by space, newline, comma, semicolon
+            const newCodes = decodedText.split(/[\s,;\n]+/).map(s => s.trim()).filter(s => s !== '');
+            let addedCount = 0;
+
             setScannedSerials(prev => {
-                const newer = [...prev, decodedText];
+                const uniqueNewCodes = newCodes.filter(code => !prev.includes(code));
+                if (uniqueNewCodes.length === 0) return prev;
+                addedCount = uniqueNewCodes.length;
+                const newer = [...prev, ...uniqueNewCodes];
                 setQuantity(newer.length);
                 return newer;
             });
-            setNotification({ type: 'success', message: `Đã thêm: ${decodedText}` });
-            // Do NOT close scanner for continuous scanning
+
+            if (addedCount > 0) {
+                setNotification({ type: 'success', message: `Đã thêm ${addedCount} serial: ${newCodes.join(', ')}` });
+                setShowScanner(false); // Close scanner after success (batch scan complete)
+            } else {
+                setNotification({ type: 'error', message: `Các serial này đã tồn tại: ${decodedText}` });
+                // Optional: Close scanner even if duplicate? User said "scan done then close".
+                // Let's close it to be consistent with "scan done".
+                setShowScanner(false);
+            }
         } else {
             setSerial(decodedText);
             setShowScanner(false);
@@ -425,7 +436,7 @@ export const Inbound = () => {
                     <DialogContent sx={{ p: 0, overflow: 'hidden' }}>
                         <QRScanner
                             onScanSuccess={handleScanSuccess}
-                            onScanFailure={(err) => console.log(err)}
+                            onScanFailure={() => { }}
                             height={400}
                         />
                         <Box textAlign="center" p={2}>

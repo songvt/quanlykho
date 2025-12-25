@@ -12,7 +12,9 @@ export default defineConfig(({ mode }) => ({
         manualChunks: {
           'vendor': ['react', 'react-dom', 'react-router-dom', '@reduxjs/toolkit', 'react-redux'],
           'ui': ['@mui/material', '@mui/icons-material', '@emotion/react', '@emotion/styled'],
-          'utils': ['xlsx', 'file-saver', 'html5-qrcode', 'exceljs'],
+          'xlsx': ['xlsx'],
+          'exceljs': ['exceljs'],
+          'common-utils': ['file-saver', 'html5-qrcode'],
           'db': ['@supabase/supabase-js']
         }
       }

@@ -294,16 +294,38 @@ export const Outbound = () => {
             const isSerialized = product?.category?.toLowerCase() === 'hàng hóa';
 
             if (isSerialized) {
-                if (scannedSerials.includes(decodedText)) return;
-                if (scannedSerials.length >= selectedOrder.quantity) {
+                // Split logic
+                const newCodes = decodedText.split(/[\s,;\n]+/).map(s => s.trim()).filter(s => s !== '');
+
+                // We need to check if adding these exceeds requirement or duplicates
+                if (newCodes.length === 0) return;
+
+                // Find valid new codes (not already scanned, and fits within quantity)
+                const uniqueNewCodes = newCodes.filter(code => !scannedSerials.includes(code));
+
+                if (uniqueNewCodes.length === 0) return;
+
+                // How many more do we need?
+                const needed = selectedOrder.quantity - scannedSerials.length;
+
+                if (needed <= 0) {
                     setShowScanner(false);
                     return;
                 }
-                setScannedSerials(prev => [...prev, decodedText]);
-                if (scannedSerials.length + 1 >= selectedOrder.quantity) {
-                    setShowScanner(false);
-                    setNotification({ type: 'success', message: 'Đã quét đủ số lượng serial theo đơn hàng!' });
-                }
+
+                // If scanned more than needed? Take first N
+                const taking = uniqueNewCodes.slice(0, needed);
+
+                setScannedSerials(prev => {
+                    const newer = [...prev, ...taking];
+                    if (newer.length >= selectedOrder.quantity) {
+                        setShowScanner(false);
+                        setNotification({ type: 'success', message: 'Đã quét đủ số lượng serial theo đơn hàng!' });
+                    } else {
+                        setNotification({ type: 'success', message: `Đã thêm ${taking.length} serial. Còn thiếu: ${selectedOrder.quantity - newer.length}` });
+                    }
+                    return newer;
+                });
             } else {
                 if (decodedText === product?.item_code || decodedText === product?.id) {
                     setIsProductVerified(true);
@@ -319,17 +341,25 @@ export const Outbound = () => {
 
             if (isSerialized) {
                 // allow continuous scanning
-                if (!scannedSerials.includes(decodedText)) {
-                    setScannedSerials(prev => {
-                        const newer = [...prev, decodedText];
-                        // Auto update quantity field to match scan count
-                        setQuantity(newer.length);
-                        return newer;
-                    });
-                    setNotification({ type: 'success', message: `Đã thêm: ${decodedText}` });
-                    // Do NOT close scanner
+                // Allow splitting multiple serials
+                const newCodes = decodedText.split(/[\s,;\n]+/).map(s => s.trim()).filter(s => s !== '');
+                let addedCount = 0;
+
+                setScannedSerials(prev => {
+                    const uniqueNewCodes = newCodes.filter(code => !prev.includes(code));
+                    if (uniqueNewCodes.length === 0) return prev;
+                    addedCount = uniqueNewCodes.length;
+                    const newer = [...prev, ...uniqueNewCodes];
+                    setQuantity(newer.length);
+                    return newer;
+                });
+
+                if (addedCount > 0) {
+                    setNotification({ type: 'success', message: `Đã thêm ${addedCount} serial: ${newCodes.join(', ')}` });
+                    setShowScanner(false);
                 } else {
-                    setNotification({ type: 'error', message: `Đã quét rồi: ${decodedText}` });
+                    setNotification({ type: 'error', message: `Các serial này đã quét rồi: ${decodedText}` });
+                    setShowScanner(false);
                 }
             } else {
                 // Non-serialized or no product selected yet -> just fill the text field?
@@ -618,7 +648,7 @@ export const Outbound = () => {
                     <DialogContent sx={{ p: 0, overflow: 'hidden' }}>
                         <QRScanner
                             onScanSuccess={handleScanSuccess}
-                            onScanFailure={(err) => console.log(err)}
+                            onScanFailure={() => { }}
                             height={400}
                         />
                         <Box textAlign="center" p={2}>
@@ -942,7 +972,7 @@ export const Outbound = () => {
                 <DialogContent sx={{ p: 0, overflow: 'hidden' }}>
                     <QRScanner
                         onScanSuccess={handleScanSuccess}
-                        onScanFailure={(err) => console.log(err)}
+                        onScanFailure={() => { }}
                         height={400}
                     />
                     <Box textAlign="center" p={2}>

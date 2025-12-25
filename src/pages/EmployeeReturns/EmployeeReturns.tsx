@@ -447,10 +447,26 @@ const EmployeeReturns = () => {
                 <DialogContent sx={{ p: 0 }}>
                     <QRScanner
                         onScanSuccess={(decodedText) => {
-                            // Add to serials if not exists
-                            if (!serials.includes(decodedText)) {
-                                setSerials(prev => [decodedText, ...prev]);
-                                // Optional: Toast/Sound feedback is handled in QRScanner, but toast here?
+                            // Split scannned text by space, newline, comma, semicolon
+                            const newCodes = decodedText.split(/[\s,;\n]+/).map(s => s.trim()).filter(s => s !== '');
+
+                            if (newCodes.length > 0) {
+                                setSerials(prev => {
+                                    const uniqueNew = newCodes.filter(c => !prev.includes(c));
+                                    if (uniqueNew.length > 0) {
+                                        // Optional: Toast message logic here?
+                                        // Since we don't have local notification state in this component visible in Dialog?
+                                        // Actually there is no notification state in EmployeeReturns.
+                                        // Maybe just alert? Or silent add?
+                                        // User asked for logic application "ap dung cho tat ca".
+                                        // It implies "auto close" too.
+                                        setTimeout(() => setOpenScanner(false), 200); // Small delay or immediate
+                                        return [...prev, ...uniqueNew];
+                                    }
+                                    return prev;
+                                });
+                                // If duplications only? Close anyway?
+                                setOpenScanner(false);
                             }
                         }}
                         onScanFailure={() => { }}
