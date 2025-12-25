@@ -169,7 +169,7 @@ export const Inbound = () => {
     if (status === 'loading' as string) return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
 
     return (
-        <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: 1000, mx: 'auto', width: '100%', overflowX: 'hidden', zoom: { xs: 0.85, md: 1 } }}>
+        <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: '100%', mx: 'auto', width: '100%', overflowX: 'hidden' }}>
             <Box mb={{ xs: 3, md: 5 }} display="flex" flexDirection="column" alignItems="center">
                 <Typography variant="h4" component="h1" fontWeight="900" gutterBottom sx={{
                     fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' },

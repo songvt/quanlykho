@@ -10,10 +10,14 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import { fetchEmployees, addEmployee, updateEmployee, deleteEmployee, deleteEmployees, importEmployees } from '../../store/slices/employeesSlice';
 import type { RootState, AppDispatch } from '../../store';
-import type { Employee } from '../../types';
+import type { Employee, PermissionCode } from '../../types';
 import { generateEmployeeTemplate, readExcelFile } from '../../utils/excelUtils';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import { InputAdornment } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import VpnKeyIcon from '@mui/icons-material/VpnKey';
+import PermissionDialog from '../../components/PermissionDialog';
 
 const EmployeeList = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -33,6 +37,7 @@ const EmployeeList = () => {
     });
 
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => {
         if (status === 'idle') {
@@ -129,6 +134,27 @@ const EmployeeList = () => {
         }
     };
 
+    // Permission Dialog Logic
+    const [permDialogOpen, setPermDialogOpen] = useState(false);
+    const [permEmployee, setPermEmployee] = useState<Employee | null>(null);
+
+    const handleOpenPermissions = (emp: Employee) => {
+        setPermEmployee(emp);
+        setPermDialogOpen(true);
+    };
+
+    const handleSavePermissions = async (id: string, permissions: PermissionCode[]) => {
+        try {
+            await dispatch(updateEmployee({ id, updates: { permissions } })).unwrap();
+            setPermDialogOpen(false);
+            setPermEmployee(null);
+            // Optionally dispatch fetchEmployees to refresh list if needed, but slice update should suffice
+        } catch (err) {
+            console.error('Failed to save permissions:', err);
+            alert('Lỗi khi lưu phân quyền');
+        }
+    };
+
     const getRoleLabel = (role: string) => {
         switch (role) {
             case 'admin': return <Chip label="Quản trị" color="error" size="small" />;
@@ -137,11 +163,18 @@ const EmployeeList = () => {
         }
     };
 
+    const filteredEmployees = employees.filter(emp =>
+        (emp.full_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (emp.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (emp.username?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (emp.phone_number?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+    );
+
     if (status === 'loading') return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
     if (status === 'failed') return <Alert severity="error">{error}</Alert>;
 
     return (
-        <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: 1000, mx: 'auto', width: '100%', overflowX: 'hidden', zoom: { xs: 0.85, md: 1 } }}>
+        <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: '100%', mx: 'auto', width: '100%', overflowX: 'hidden' }}>
             <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} mb={{ xs: 2, sm: 4 }} spacing={2}>
                 <Box>
                     <Typography variant="h4" fontWeight="900" sx={{
@@ -157,6 +190,21 @@ const EmployeeList = () => {
                     <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>Quản lý tài khoản và phân quyền truy cập</Typography>
                 </Box>
                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} width={{ xs: '100%', sm: 'auto' }}>
+                    <TextField
+                        size="small"
+                        placeholder="Tìm kiếm nhân viên..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchIcon color="action" />
+                                </InputAdornment>
+                            ),
+                            sx: { borderRadius: 2, bgcolor: 'white' }
+                        }}
+                        sx={{ minWidth: 200 }}
+                    />
                     {isAdmin && (
                         <>
                             {selectedIds.length > 0 && (
@@ -238,8 +286,8 @@ const EmployeeList = () => {
                 </Stack>
             </Stack>
 
-            <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}>
-                <Table size="small">
+            <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)', overflowX: 'auto' }}>
+                <Table size="small" sx={{ minWidth: 800 }}>
                     <TableHead>
                         <TableRow>
                             {isAdmin && (
@@ -261,12 +309,12 @@ const EmployeeList = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {employees.length === 0 ? (
+                        {filteredEmployees.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={isAdmin ? 7 : 6} align="center" sx={{ py: 4, color: 'text.secondary' }}>Chưa có dữ liệu nhân viên</TableCell>
                             </TableRow>
                         ) : (
-                            employees.map((employee) => {
+                            filteredEmployees.map((employee) => {
                                 const isSelected = selectedIds.includes(employee.id);
                                 return (
                                     <TableRow key={employee.id} hover sx={{ transition: 'all 0.2s', bgcolor: isSelected ? 'action.selected' : 'inherit' }}>
@@ -290,8 +338,17 @@ const EmployeeList = () => {
                                             <Stack direction="row" spacing={1} justifyContent="flex-end">
                                                 <IconButton
                                                     size="small"
+                                                    onClick={() => handleOpenPermissions(employee)}
+                                                    sx={{ color: 'secondary.main', bgcolor: 'secondary.50', '&:hover': { bgcolor: 'secondary.100' } }}
+                                                    title="Phân quyền"
+                                                >
+                                                    <VpnKeyIcon fontSize="small" />
+                                                </IconButton>
+                                                <IconButton
+                                                    size="small"
                                                     onClick={() => handleOpen(employee)}
                                                     sx={{ color: 'primary.main', bgcolor: 'primary.50', '&:hover': { bgcolor: 'primary.100' } }}
+                                                    title="Sửa thông tin"
                                                 >
                                                     <EditIcon fontSize="small" />
                                                 </IconButton>
@@ -299,6 +356,7 @@ const EmployeeList = () => {
                                                     size="small"
                                                     onClick={() => handleDelete(employee.id)}
                                                     sx={{ color: 'error.main', bgcolor: 'error.50', '&:hover': { bgcolor: 'error.100' } }}
+                                                    title="Xóa"
                                                 >
                                                     <DeleteIcon fontSize="small" />
                                                 </IconButton>
@@ -384,6 +442,13 @@ const EmployeeList = () => {
                     <Button onClick={handleSubmit} variant="contained">Lưu</Button>
                 </DialogActions>
             </Dialog>
+
+            <PermissionDialog
+                open={permDialogOpen}
+                onClose={() => setPermDialogOpen(false)}
+                employee={permEmployee}
+                onSave={handleSavePermissions}
+            />
         </Box>
     );
 };

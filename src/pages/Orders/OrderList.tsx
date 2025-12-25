@@ -22,6 +22,7 @@ import { fetchProducts } from '../../store/slices/productsSlice'; // Need produc
 import { fetchEmployees } from '../../store/slices/employeesSlice';
 import type { RootState, AppDispatch } from '../../store';
 import type { Order } from '../../types';
+import { usePermission } from '../../hooks/usePermission';
 
 const OrderList = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -29,7 +30,16 @@ const OrderList = () => {
     const { items: products, status: productStatus } = useSelector((state: RootState) => state.products);
     const { items: employees, status: employeeStatus } = useSelector((state: RootState) => state.employees);
     const { profile } = useSelector((state: RootState) => state.auth);
-    const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';
+    const { hasPermission } = usePermission();
+
+    // Permissions
+    const canViewAll = hasPermission('orders.view_all');
+    const canCreate = hasPermission('orders.create');
+    const canApprove = hasPermission('orders.approve');
+    const canDelete = hasPermission('orders.delete');
+
+    // Legacy isAdmin for logic not strictly covered by basic permissions if any, or just strictly replaced
+    const isAdmin = canViewAll; // For backward compatibility in this file mostly meant view_all or manage
 
     const [openDialog, setOpenDialog] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -131,8 +141,8 @@ const OrderList = () => {
         }
     };
 
-    // Filter orders based on role first
-    const visibleOrders = isAdmin ? orders : orders.filter(o => {
+    // Filter orders based on permissions
+    const visibleOrders = canViewAll ? orders : orders.filter(o => {
         const isCreator = o.created_by === profile?.id;
         const isRequester = o.requester_group === (profile?.full_name || profile?.username || profile?.email);
         return isCreator || isRequester;
@@ -194,7 +204,7 @@ const OrderList = () => {
     if (orderStatus === 'failed') return <Alert severity="error">{error}</Alert>;
 
     return (
-        <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: 1000, mx: 'auto', zoom: { xs: 0.85, md: 1 } }}>
+        <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: '100%', mx: 'auto' }}>
             <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} mb={{ xs: 2, sm: 4 }} spacing={2}>
                 <Box>
                     <Typography variant="h4" fontWeight="900" sx={{
@@ -210,7 +220,7 @@ const OrderList = () => {
                     <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' }, mt: 0.5 }}>Quản lý yêu cầu đặt hàng từ các đơn vị</Typography>
                 </Box>
                 <Stack direction="row" spacing={1} alignItems="center" width={{ xs: '100%', sm: 'auto' }} flexWrap="wrap" useFlexGap sx={{ gap: 1 }}>
-                    {isAdmin && selectedOrderIds.length > 0 && (
+                    {canDelete && selectedOrderIds.length > 0 && (
                         <>
                             <Button
                                 variant="contained"
@@ -223,7 +233,7 @@ const OrderList = () => {
                                 Xóa ({selectedOrderIds.length})
                             </Button>
                             {/* Only show 'Approve' if there are pending orders selected */}
-                            {selectedOrderIds.some(id => orders.find(o => o.id === id)?.status === 'pending') && (
+                            {canApprove && selectedOrderIds.some(id => orders.find(o => o.id === id)?.status === 'pending') && (
                                 <Button
                                     variant="contained"
                                     color="success"
@@ -271,23 +281,25 @@ const OrderList = () => {
                         }}
                         sx={{ flex: { xs: 1, sm: 'none' }, minWidth: '150px' }}
                     />
-                    <Button
-                        variant="contained"
-                        size="small"
-                        startIcon={<AddIcon />}
-                        onClick={handleOpenAdd}
-                        sx={{ px: 2, py: 1, borderRadius: 2, whiteSpace: 'nowrap', flex: { xs: 1, sm: 'none' }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                    >
-                        Tạo mới
-                    </Button>
+                    {canCreate && (
+                        <Button
+                            variant="contained"
+                            size="small"
+                            startIcon={<AddIcon />}
+                            onClick={handleOpenAdd}
+                            sx={{ px: 2, py: 1, borderRadius: 2, whiteSpace: 'nowrap', flex: { xs: 1, sm: 'none' }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                        >
+                            Tạo mới
+                        </Button>
+                    )}
                 </Stack>
             </Stack>
 
-            <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 2px 4px -1px rgb(0 0 0 / 0.1)' }}>
-                <Table size="small">
+            <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 2px 4px -1px rgb(0 0 0 / 0.1)', overflowX: 'auto' }}>
+                <Table size="small" sx={{ minWidth: 800 }}>
                     <TableHead>
                         <TableRow>
-                            {isAdmin && (
+                            {(canDelete || canApprove) && (
                                 <TableCell padding="checkbox">
                                     <Checkbox
                                         checked={filteredOrders.length > 0 && selectedOrderIds.length === filteredOrders.length}
@@ -304,7 +316,7 @@ const OrderList = () => {
                             <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Tồn kho</TableCell>
                             <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Số lượng</TableCell>
                             <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Trạng thái</TableCell>
-                            {isAdmin && (
+                            {(canApprove) && (
                                 <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Thao tác</TableCell>
                             )}
                         </TableRow>
@@ -312,7 +324,7 @@ const OrderList = () => {
                     <TableBody>
                         {filteredOrders.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={isAdmin ? 8 : 7} align="center" sx={{ py: 4, color: 'text.secondary', fontSize: '0.875rem' }}>Chưa có đơn hàng nào phù hợp</TableCell>
+                                <TableCell colSpan={(canDelete || canApprove) ? 8 : 7} align="center" sx={{ py: 4, color: 'text.secondary', fontSize: '0.875rem' }}>Chưa có đơn hàng nào phù hợp</TableCell>
                             </TableRow>
                         ) : (
                             filteredOrders.map((order) => {
@@ -320,7 +332,7 @@ const OrderList = () => {
 
                                 return (
                                     <TableRow key={order.id} hover sx={{ transition: 'all 0.2s', bgcolor: isSelected ? 'action.selected' : 'inherit' }}>
-                                        {isAdmin && (
+                                        {canDelete && (
                                             <TableCell padding="checkbox">
                                                 <Checkbox
                                                     checked={isSelected}
@@ -358,7 +370,7 @@ const OrderList = () => {
                                         </TableCell>
                                         <TableCell sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>{getStatusChip(order.status)}</TableCell>
 
-                                        {isAdmin && (
+                                        {(canApprove) && (
                                             <TableCell align="center">
                                                 {order.status === 'pending' && (
                                                     <Stack direction="row" spacing={1} justifyContent="center">

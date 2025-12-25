@@ -1,3 +1,13 @@
+// Permission Codes
+export type PermissionCode =
+    | 'inventory.view' | 'inventory.manage'
+    | 'inbound.view' | 'inbound.create'
+    | 'outbound.view' | 'outbound.create'
+    | 'orders.create' | 'orders.view_own' | 'orders.view_all' | 'orders.approve' | 'orders.delete'
+    | 'reports.view_all' | 'reports.handover'
+    | 'employees.view' | 'employees.manage'
+    | '*'; // Admin full access
+
 export interface Employee {
     id: string;
     auth_user_id?: string;
@@ -9,7 +19,7 @@ export interface Employee {
     district?: string;
     password?: string;
     must_change_password?: boolean;
-    permissions?: any;
+    permissions?: PermissionCode[];
 }
 
 export interface Product {
@@ -49,4 +59,41 @@ export interface Transaction {
     // Join fields
     product?: Product;
     user_name?: string; // Tên nhân viên thực hiện (created_by)
+}
+
+export interface DashboardStats {
+    total_products: number;
+    total_inventory: number;
+    low_stock_items: number;
+    out_of_stock_items: number;
+    recent_transactions: Transaction[];
+    weekly_stats: { date: string; inbound: number; outbound: number }[];
+    category_stats: { name: string; value: number }[];
+}
+
+export interface FifoAgingItem {
+    id: string; // Transaction ID
+    product_name: string;
+    item_code: string;
+    inbound_date: string;
+    serial_code?: string;
+    quantity_remaining: number;
+    days_in_stock: number;
+}
+
+export interface EmployeeReturn {
+    id: string;
+    product_id: string;
+    serial_code?: string;
+    quantity: number;
+    reason: 'Hàng tồn lâu' | 'Hàng mới hỏng' | 'Hàng thu hồi khách hàng rời mạng';
+    unit_price: number;
+    total_price: number;
+    return_date: string;
+    employee_id: string;
+    created_at: string;
+    created_by?: string;
+    // Joins
+    product?: Product;
+    employee?: Employee;
 }

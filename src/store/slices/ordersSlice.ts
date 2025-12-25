@@ -16,14 +16,7 @@ const initialState: OrdersState = {
 };
 
 export const fetchOrders = createAsyncThunk('orders/fetchOrders', async () => {
-    const { data, error } = await supabase
-        .from('orders')
-        .select('*')
-        .order('order_date', { ascending: false });
-
-    if (error) {
-        throw error;
-    }
+    const data = await SupabaseService.fetchOrders();
     return data as Order[];
 });
 

@@ -1,5 +1,5 @@
 
-import { Box, Typography, Table, TableBody, TableCell, TableHead, TableRow, Paper, Button } from '@mui/material';
+import { Box, Typography, Table, TableBody, TableCell, TableHead, TableRow, Paper } from '@mui/material';
 import { readMoney } from '../../utils/excelUtils';
 
 interface HandoverPreviewProps {
@@ -39,16 +39,7 @@ const HandoverPreview = ({ data, employeeName, date, reporterName }: HandoverPre
                 `}
             </style>
 
-            {/* Print Button */}
-            <Box className="no-print" sx={{ position: 'absolute', top: -60, right: 0, mb: 2 }}>
-                <Button
-                    variant="contained"
-                    onClick={() => window.print()}
-                    sx={{ bgcolor: 'primary.main', fontWeight: 'bold' }}
-                >
-                    In / Xuất PDF
-                </Button>
-            </Box>
+            {/* Print Button removed - moved to parent component */}
 
             <div id="handover-preview-content">
                 <Paper elevation={0} sx={{ p: 4, bgcolor: 'white', color: 'black', minWidth: 800 }}>

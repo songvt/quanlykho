@@ -14,6 +14,7 @@ import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import DeleteIcon from '@mui/icons-material/Delete';
 import WarningIcon from '@mui/icons-material/Warning';
+import PrintIcon from '@mui/icons-material/Print';
 
 import { fetchProducts } from '../../store/slices/productsSlice';
 import { fetchInventory } from '../../store/slices/inventorySlice';
@@ -544,6 +545,48 @@ const Reports = () => {
         setOpenPeriodReport(false);
     };
 
+    const handleExportFifoAging = async () => {
+        try {
+            const data = await import('../../services/SupabaseService').then(m => m.SupabaseService.getFifoInventoryAging());
+            if (!data || data.length === 0) {
+                alert('Không có dữ liệu hàng tồn kho quá hạn (theo FIFO).');
+                return;
+            }
+
+            const columns: ReportColumn[] = [
+                { header: 'STT', key: 'stt', width: 6, align: 'center' },
+                { header: 'MÃ HÀNG', key: 'item_code', width: 15 },
+                { header: 'TÊN HÀNG', key: 'product_name', width: 30 },
+                { header: 'SERIAL', key: 'serial_code', width: 20 },
+                { header: 'NGÀY NHẬP', key: 'inbound_date', width: 15, align: 'center' },
+                { header: 'TUỔI KHO (NGÀY)', key: 'days_in_stock', width: 12, align: 'center' },
+                { header: 'SỐ LƯỢNG TỒN', key: 'quantity_remaining', width: 15, align: 'right' },
+            ];
+
+            const reportData = data.map((item, index) => ({
+                stt: index + 1,
+                item_code: item.item_code,
+                product_name: item.product_name,
+                serial_code: item.serial_code || '',
+                inbound_date: new Date(item.inbound_date).toLocaleDateString('vi-VN'),
+                days_in_stock: item.days_in_stock,
+                quantity_remaining: item.quantity_remaining
+            }));
+
+            exportStandardReport(
+                reportData,
+                `Bao_cao_tuoi_kho_FIFO_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}`,
+                'BÁO CÁO TUỔI KHO (FIFO)',
+                columns,
+                reporterName
+            );
+
+        } catch (error) {
+            console.error(error);
+            alert('Lỗi khi tải báo cáo FIFO.');
+        }
+    };
+
     const ReportCard = ({ title, desc, icon, color, onClick }: any) => (
         <Card sx={{
             height: '100%',
@@ -687,6 +730,15 @@ const Reports = () => {
                                     icon={<InventoryIcon />}
                                     color="success"
                                     onClick={handleExportStockByDistrict}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                                <ReportCard
+                                    title="Tuổi Kho (FIFO)"
+                                    desc="Cảnh báo hàng nhập kho lâu ngày chưa xuất."
+                                    icon={<WarningIcon />}
+                                    color="secondary"
+                                    onClick={handleExportFifoAging}
                                 />
                             </Grid>
                         </>
@@ -983,12 +1035,25 @@ const Reports = () => {
                 PaperProps={{ sx: { bgcolor: 'transparent', boxShadow: 'none' } }}
             >
                 <Box position="relative">
-                    <Button
-                        onClick={() => setOpenHandoverPreview(false)}
-                        sx={{ position: 'absolute', right: 0, top: -40, color: 'white', fontWeight: 'bold' }}
-                    >
-                        Đóng
-                    </Button>
+                    <Stack direction="row" spacing={2} sx={{ position: 'absolute', right: 0, top: -50 }} className="no-print">
+                        <Button
+                            variant="contained"
+                            color="info"
+                            startIcon={<PrintIcon />}
+                            onClick={() => window.print()}
+                            sx={{ fontWeight: 'bold' }}
+                        >
+                            In / Xuất PDF
+                        </Button>
+                        <Button
+                            variant="contained"
+                            color="error"
+                            onClick={() => setOpenHandoverPreview(false)}
+                            sx={{ fontWeight: 'bold' }}
+                        >
+                            Đóng
+                        </Button>
+                    </Stack>
                     <HandoverPreview
                         data={previewData}
                         employeeName={selectedEmployee || ''}

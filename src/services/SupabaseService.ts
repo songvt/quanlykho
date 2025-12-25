@@ -1,16 +1,41 @@
 import { supabase } from '../supabaseClient';
 import type { Product, Transaction } from '../types';
 
+// Helper to fetch all data with pagination (to bypass 1000 rows limit)
+const fetchAll = async (table: string, select: string = '*', orderCol: string = 'created_at', ascending: boolean = false) => {
+    let allData: any[] = [];
+    let from = 0;
+    const BATCH_SIZE = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+        const { data, error } = await supabase
+            .from(table)
+            .select(select)
+            .order(orderCol, { ascending: ascending })
+            .range(from, from + BATCH_SIZE - 1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+            allData = [...allData, ...data];
+            if (data.length < BATCH_SIZE) {
+                hasMore = false;
+            } else {
+                from += BATCH_SIZE;
+            }
+        } else {
+            hasMore = false;
+        }
+    }
+    return allData;
+};
+
 export const SupabaseService = {
     // --- Products ---
     async fetchProducts(): Promise<Product[]> {
-        const { data, error } = await supabase
-            .from('products')
-            .select('*')
-            .order('name');
-
-        if (error) throw error;
-        return data || [];
+        const data = await fetchAll('products', '*', 'name', true);
+        return data as Product[];
     },
 
     async addProduct(product: Omit<Product, 'id'>) {
@@ -58,32 +83,10 @@ export const SupabaseService = {
 
     // --- Transactions ---
     async fetchTransactions(): Promise<Transaction[]> {
-        // Fetch both tables and combine
-
-
-        // Fetch employees map for quick lookup (optimize if needed, but for now join logic is below)
-        // Actually, let's update queries to join.
-
-        // Refetch with join
-        const { data: inboundJoined, error: errInJ } = await supabase
-            .from('inbound_transactions')
-            .select(`
-                *,
-                product:products(name, item_code)
-            `)
-            .order('inbound_date', { ascending: false });
-
-        if (errInJ) throw errInJ;
-
-        const { data: outboundJoined, error: errOutJ } = await supabase
-            .from('outbound_transactions')
-            .select(`
-                 *,
-                 product:products(name, item_code)
-             `)
-            .order('outbound_date', { ascending: false });
-
-        if (errOutJ) throw errOutJ;
+        const [inboundJoined, outboundJoined] = await Promise.all([
+            fetchAll('inbound_transactions', '*, product:products(name, item_code)', 'inbound_date'),
+            fetchAll('outbound_transactions', '*, product:products(name, item_code)', 'outbound_date')
+        ]);
 
         // Map to unified Transaction interface
         const inboundTrans: Transaction[] = (inboundJoined || []).map((t: any) => ({
@@ -232,6 +235,18 @@ export const SupabaseService = {
         return { total: stockMap, detailed: detailedStockMap };
     },
 
+    async getDashboardStats() {
+        const { data, error } = await supabase.rpc('get_dashboard_stats');
+        if (error) throw error;
+        return data as import('../types').DashboardStats;
+    },
+
+    async getFifoInventoryAging() {
+        const { data, error } = await supabase.rpc('get_fifo_inventory_aging');
+        if (error) throw error;
+        return data as import('../types').FifoAgingItem[];
+    },
+
     // --- Authentication & Employees ---
     // --- Authentication & Employees ---
     async login(email: string, password: string) {
@@ -247,14 +262,32 @@ export const SupabaseService = {
             throw new Error('Email hoặc mật khẩu không chính xác.');
         }
 
+        // Assign default permissions if not present
+        let permissions = data.permissions;
+        if (!permissions || permissions.length === 0) {
+            if (data.role === 'staff') {
+                // Default permissions for Staff
+                permissions = [
+                    'orders.create',
+                    'orders.view_own',
+                    'outbound.create',
+                    'outbound.view',
+                    'reports.handover'
+                ];
+            } else if (data.role === 'admin' || data.role === 'manager') {
+                // Full access for Admin/Manager
+                permissions = ['*'];
+            }
+        }
+
         // Create a session object
         const session = {
             user: {
-                id: data.auth_user_id || data.id, // Use employee ID if auth_id not present
+                id: data.auth_user_id || data.id,
                 email: data.email,
                 role: 'authenticated'
             },
-            profile: data
+            profile: { ...data, permissions }
         };
 
         // Persist to localStorage
@@ -327,16 +360,25 @@ export const SupabaseService = {
 
     // --- Employee Management (Admin) ---
     async fetchEmployees() {
-        const { data, error } = await supabase
-            .from('employees')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        return data || [];
+        return await fetchAll('employees', '*', 'created_at', false);
     },
 
     async addEmployee(employee: any) { // Type will be defined better in slice
+        // Set default permissions if not provided
+        if (!employee.permissions) {
+            if (employee.role === 'staff') {
+                employee.permissions = [
+                    'orders.create',
+                    'orders.view_own',
+                    'outbound.create',
+                    'outbound.view',
+                    'reports.handover'
+                ];
+            } else if (employee.role === 'admin' || employee.role === 'manager') {
+                employee.permissions = ['*'];
+            }
+        }
+
         // Note: Creating a user in auth.users typically requires Admin API or sign up
         // Here we just add to employees table. Linking to auth.users is manual or via Trigger.
         const { data, error } = await supabase
@@ -391,6 +433,11 @@ export const SupabaseService = {
         return ids;
     },
 
+    // --- Orders ---
+    async fetchOrders() {
+        return await fetchAll('orders', '*', 'order_date', false);
+    },
+
     // --- Orders (Bulk Delete) ---
     async bulkDeleteOrders(ids: string[]) {
         const { error } = await supabase
@@ -411,5 +458,106 @@ export const SupabaseService = {
 
         if (error) throw error;
         return ids;
+    },
+
+    // --- Employee Returns ---
+    async getEmployeeReturns() {
+        // Fetch all returns with related product and employee data
+        const data = await fetchAll('employee_returns', '*, product:products!id(name, item_code, unit), employee:employees!id(full_name)', 'return_date', false);
+        return data as import('../types').EmployeeReturn[];
+    },
+
+    async addEmployeeReturn(data: Partial<import('../types').EmployeeReturn>) {
+        // 1. Add record to employee_returns
+        const { data: newReturn, error } = await supabase
+            .from('employee_returns')
+            .insert([data])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        // 2. Automatically update inventory stock (Increase quantity)
+        const inboundRecord = {
+            product_id: data.product_id,
+            quantity: data.quantity,
+            serial_code: data.serial_code,
+            unit_price: data.unit_price,
+            district: '',
+            item_status: data.reason,
+            created_by: data.created_by
+        };
+
+        await supabase.from('inbound_transactions').insert([inboundRecord]);
+
+        return newReturn;
+    },
+
+    async bulkAddEmployeeReturns(returns: Partial<import('../types').EmployeeReturn>[]) {
+        if (!returns.length) return [];
+
+        // 1. Bulk insert returns
+        const { data, error } = await supabase
+            .from('employee_returns')
+            .insert(returns)
+            .select();
+
+        if (error) throw error;
+
+        // 2. Bulk insert inbound transactions for stock update
+        const inboundRecords = returns.map(r => ({
+            product_id: r.product_id,
+            quantity: r.quantity,
+            serial_code: r.serial_code,
+            unit_price: r.unit_price,
+            district: '',
+            item_status: r.reason,
+            created_by: r.created_by
+        }));
+
+        await supabase.from('inbound_transactions').insert(inboundRecords);
+
+        return data;
+    },
+
+    async deleteEmployeeReturns(ids: string[]) {
+        const { error } = await supabase
+            .from('employee_returns')
+            .delete()
+            .in('id', ids);
+
+        if (error) throw error;
+        return ids;
+    },
+
+    // --- District Storekeepers (Settings) ---
+    async getDistrictStorekeepers() {
+        const { data, error } = await supabase
+            .from('district_storekeepers')
+            .select('*');
+
+        if (error) throw error;
+        return data as { district: string; storekeeper_name: string }[];
+    },
+
+    async upsertDistrictStorekeeper(district: string, name: string) {
+        const { data, error } = await supabase
+            .from('district_storekeepers')
+            .upsert({ district, storekeeper_name: name })
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
+    },
+
+    async deleteDistrictStorekeeper(district: string) {
+        const { error } = await supabase
+            .from('district_storekeepers')
+            .delete()
+            .eq('district', district);
+
+        if (error) throw error;
+        return district;
     }
 };

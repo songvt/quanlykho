@@ -3,6 +3,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import type { RootState, AppDispatch } from '../../store';
 import { logoutUser } from '../../store/slices/authSlice';
+import { usePermission } from '../../hooks/usePermission';
 import {
     AppBar,
     Box,
@@ -34,6 +35,7 @@ import {
     Person as PersonIcon,
     Settings as SettingsIcon,
     Assessment as AssessmentIcon,
+    AssignmentReturn as ReturnIcon,
 } from '@mui/icons-material';
 
 const drawerWidth = 260; // Slightly wider for better look
@@ -74,21 +76,36 @@ const MainLayout: React.FC = () => {
         navigate('/login');
     };
 
+    const { hasPermission, hasAnyPermission } = usePermission();
+
     const menuItems = [
         { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
-        ...((profile?.role === 'admin' || profile?.role === 'manager') ? [
-            { text: 'Hàng hóa', icon: <InventoryIcon />, path: '/products' },
-            { text: 'Nhập kho', icon: <InputIcon />, path: '/inbound' },
+        ...(hasPermission('inventory.view') ? [
+            { text: 'Hàng hóa', icon: <InventoryIcon />, path: '/products' }
         ] : []),
-        { text: 'Đặt hàng', icon: <OrderIcon />, path: '/orders' },
-        { text: 'Xuất kho', icon: <OutputIcon />, path: '/outbound' },
-        { text: 'Báo cáo', icon: <AssessmentIcon />, path: '/reports' },
-        ...(profile?.role === 'admin' || profile?.role === 'manager' ? [{ text: 'Nhân viên', icon: <PeopleIcon />, path: '/employees' }] : []),
+        ...(hasPermission('inbound.view') ? [
+            { text: 'Nhập kho', icon: <InputIcon />, path: '/inbound' }
+        ] : []),
+        ...(hasPermission('orders.create') || hasPermission('orders.view_own') ? [
+            { text: 'Đặt hàng', icon: <OrderIcon />, path: '/orders' }
+        ] : []),
+        ...(hasPermission('outbound.view') ? [
+            { text: 'Xuất kho', icon: <OutputIcon />, path: '/outbound' }
+        ] : []),
+        { text: 'Trả hàng', icon: <ReturnIcon />, path: '/employee-returns' },
+        ...(hasAnyPermission(['reports.view_all', 'reports.handover']) ? [
+            { text: 'Báo cáo', icon: <AssessmentIcon />, path: '/reports' }
+        ] : []),
+        ...(hasPermission('employees.view') ? [
+            { text: 'Nhân viên', icon: <PeopleIcon />, path: '/employees' }
+        ] : []),
+        ...(hasPermission('*') ? [ // Or specific settings permission. Using '*' (Admin) for now.
+            { text: 'Thiết lập', icon: <SettingsIcon />, path: '/settings' }
+        ] : []),
     ];
 
     const drawer = (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            {/* Logo Area */}
             {/* Logo Area */}
             <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', gap: 0.5 }}>
                 <Typography
@@ -303,7 +320,14 @@ const MainLayout: React.FC = () => {
             {/* Main Content */}
             <Box
                 component="main"
-                sx={{ flexGrow: 1, p: { xs: 2, sm: 3 }, width: { sm: `calc(100% - ${drawerWidth}px)` }, minHeight: '100vh', bgcolor: 'background.default' }}
+                sx={{
+                    flexGrow: 1,
+                    p: { xs: 1, sm: 3 }, // Reduced padding on mobile
+                    width: { sm: `calc(100% - ${drawerWidth}px)` },
+                    minHeight: '100vh',
+                    bgcolor: 'background.default',
+                    overflowX: 'hidden' // Prevent horizontal scroll on body
+                }}
             >
                 <Toolbar /> {/* Spacer for fixed AppBar */}
                 <Outlet />

@@ -4,7 +4,7 @@ import {
     Box, Paper, Typography, Button, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, IconButton, Dialog,
     DialogTitle, DialogContent, DialogActions, TextField, Stack,
-    CircularProgress, Alert, Tooltip, Checkbox
+    CircularProgress, Alert, Tooltip, Checkbox, FormControl, InputLabel, Select, MenuItem
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -15,12 +15,13 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import type { RootState, AppDispatch } from '../../store';
 import type { Product } from '../../types';
+import { usePermission } from '../../hooks/usePermission';
 
 const ProductList = () => {
     const dispatch = useDispatch<AppDispatch>();
     const { items: products, status, error } = useSelector((state: RootState) => state.products);
-    const { profile } = useSelector((state: RootState) => state.auth);
-    const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';
+    const { hasPermission } = usePermission();
+    const canManage = hasPermission('inventory.manage');
 
     const [openDialog, setOpenDialog] = useState(false);
     const [currentProduct, setCurrentProduct] = useState<Partial<Product>>({});
@@ -112,7 +113,7 @@ const ProductList = () => {
     if (status === 'failed') return <Alert severity="error">{error}</Alert>;
 
     return (
-        <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: 1000, mx: 'auto', zoom: { xs: 0.85, md: 1 } }}>
+        <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: '100%', mx: 'auto' }}>
             <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} mb={{ xs: 2, sm: 4 }} spacing={2}>
                 <Box>
                     <Typography variant="h4" fontWeight="900" sx={{
@@ -129,7 +130,7 @@ const ProductList = () => {
                 </Box>
                 {/* ... buttons stack ... */}
                 <Stack direction="row" spacing={1} width={{ xs: '100%', sm: 'auto' }} flexWrap="wrap" useFlexGap sx={{ gap: 1 }}>
-                    {isAdmin && (
+                    {canManage && (
                         <>
                             {selectedIds.length > 0 && (
                                 <Button
@@ -236,11 +237,11 @@ const ProductList = () => {
                 />
             </Paper>
 
-            <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 2px 4px -1px rgb(0 0 0 / 0.1)' }}>
-                <Table size="small">
+            <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 2px 4px -1px rgb(0 0 0 / 0.1)', overflowX: 'auto' }}>
+                <Table size="small" sx={{ minWidth: 800 }}>
                     <TableHead>
                         <TableRow>
-                            {isAdmin && (
+                            {canManage && (
                                 <TableCell padding="checkbox">
                                     <Checkbox
                                         checked={filteredProducts.length > 0 && selectedIds.length === filteredProducts.length}
@@ -255,7 +256,9 @@ const ProductList = () => {
                             <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 600, color: 'text.secondary', py: 1.5 }}>Danh Mục</TableCell>
                             <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 600, color: 'text.secondary', py: 1.5 }}>Đơn Giá</TableCell>
                             <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 600, color: 'text.secondary', py: 1.5 }}>ĐVT</TableCell>
-                            <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 600, color: 'text.secondary', py: 1.5 }}>Hành động</TableCell>
+                            {canManage && (
+                                <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 600, color: 'text.secondary', py: 1.5 }}>Hành động</TableCell>
+                            )}
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -263,7 +266,7 @@ const ProductList = () => {
                             const isSelected = selectedIds.includes(product.id);
                             return (
                                 <TableRow key={product.id} hover sx={{ transition: 'all 0.2s', bgcolor: isSelected ? 'action.selected' : 'inherit' }}>
-                                    {isAdmin && (
+                                    {canManage && (
                                         <TableCell padding="checkbox">
                                             <Checkbox
                                                 checked={isSelected}
@@ -293,34 +296,36 @@ const ProductList = () => {
                                         </Typography>
                                     </TableCell>
                                     <TableCell sx={{ py: 1, fontSize: '14px' }}>{product.unit}</TableCell>
-                                    <TableCell align="center" sx={{ py: 1 }}>
-                                        <Stack direction="row" spacing={0.5} justifyContent="center">
-                                            <Tooltip title="Chỉnh sửa">
-                                                <IconButton
-                                                    size="small"
-                                                    onClick={() => handleOpenEdit(product)}
-                                                    sx={{ color: 'primary.main', bgcolor: 'primary.50', '&:hover': { bgcolor: 'primary.100' }, padding: 0.5 }}
-                                                >
-                                                    <EditIcon sx={{ fontSize: '1rem' }} />
-                                                </IconButton>
-                                            </Tooltip>
-                                            <Tooltip title="Xóa">
-                                                <IconButton
-                                                    size="small"
-                                                    onClick={() => handleDelete(product.id)}
-                                                    sx={{ color: 'error.main', bgcolor: 'error.50', '&:hover': { bgcolor: 'error.100' }, padding: 0.5 }}
-                                                >
-                                                    <DeleteIcon sx={{ fontSize: '1rem' }} />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </Stack>
-                                    </TableCell>
+                                    {canManage && (
+                                        <TableCell align="center" sx={{ py: 1 }}>
+                                            <Stack direction="row" spacing={0.5} justifyContent="center">
+                                                <Tooltip title="Chỉnh sửa">
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => handleOpenEdit(product)}
+                                                        sx={{ color: 'primary.main', bgcolor: 'primary.50', '&:hover': { bgcolor: 'primary.100' }, padding: 0.5 }}
+                                                    >
+                                                        <EditIcon sx={{ fontSize: '1rem' }} />
+                                                    </IconButton>
+                                                </Tooltip>
+                                                <Tooltip title="Xóa">
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => handleDelete(product.id)}
+                                                        sx={{ color: 'error.main', bgcolor: 'error.50', '&:hover': { bgcolor: 'error.100' }, padding: 0.5 }}
+                                                    >
+                                                        <DeleteIcon sx={{ fontSize: '1rem' }} />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </Stack>
+                                        </TableCell>
+                                    )}
                                 </TableRow>
                             )
                         })}
                         {filteredProducts.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={isAdmin ? 7 : 6} align="center" sx={{ py: 4 }}>
+                                <TableCell colSpan={canManage ? 7 : 6} align="center" sx={{ py: 4 }}>
                                     <Typography color="text.secondary" variant="body2">Không tìm thấy sản phẩm nào.</Typography>
                                 </TableCell>
                             </TableRow>
@@ -363,14 +368,20 @@ const ProductList = () => {
                             InputProps={{ sx: { borderRadius: 2 } }}
                         />
                         <Stack direction="row" spacing={2}>
-                            <TextField
-                                label="Danh Mục"
-                                fullWidth
-                                variant="outlined"
-                                value={currentProduct.category}
-                                onChange={(e) => setCurrentProduct({ ...currentProduct, category: e.target.value })}
-                                InputProps={{ sx: { borderRadius: 2 } }}
-                            />
+                            <FormControl fullWidth>
+                                <InputLabel id="category-label">Danh Mục</InputLabel>
+                                <Select
+                                    labelId="category-label"
+                                    id="category-select"
+                                    value={currentProduct.category}
+                                    label="Danh Mục"
+                                    onChange={(e) => setCurrentProduct({ ...currentProduct, category: e.target.value })}
+                                    sx={{ borderRadius: 2 }}
+                                >
+                                    <MenuItem value="Vật tư">Vật tư</MenuItem>
+                                    <MenuItem value="Hàng hóa">Hàng hóa</MenuItem>
+                                </Select>
+                            </FormControl>
                             <TextField
                                 label="Đơn Vị"
                                 fullWidth

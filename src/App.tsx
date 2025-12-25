@@ -18,6 +18,8 @@ import Reports from './pages/Reports/Reports';
 import EmployeeList from './pages/Employees/EmployeeList';
 import ChangePassword from './pages/ChangePassword';
 import UserProfile from './pages/UserProfile';
+import EmployeeReturns from './pages/EmployeeReturns/EmployeeReturns';
+import Settings from './pages/Settings';
 
 const NotFound = () => <Typography variant="h4">404 - Không tìm thấy trang</Typography>;
 
@@ -60,6 +62,11 @@ function App() {
           </Route>
 
           <Route path="profile" element={<UserProfile />} />
+          <Route path="employee-returns" element={<EmployeeReturns />} />
+
+          <Route element={<ProtectedRoute allowedRoles={['admin', 'manager']} />}>
+            <Route path="settings" element={<Settings />} />
+          </Route>
 
           <Route path="*" element={<NotFound />} />
         </Route>

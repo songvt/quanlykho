@@ -1,118 +1,59 @@
-import { useEffect, useMemo } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useEffect, useState } from 'react';
 import {
     Box, Paper, Typography, List, ListItem, ListItemText, CircularProgress, Chip, Grid,
 } from '@mui/material';
-import { fetchProducts } from '../store/slices/productsSlice';
-import { fetchInventory } from '../store/slices/inventorySlice';
-import { fetchTransactions } from '../store/slices/transactionsSlice';
-import type { RootState, AppDispatch } from '../store';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import WarningIcon from '@mui/icons-material/Warning';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import {
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-    PieChart, Pie, Cell, AreaChart, Area, BarChart, Bar
+    PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 
 const Dashboard = () => {
-    const dispatch = useDispatch<AppDispatch>();
-
-    // Selectors
-    const { items: products, status: prodStatus } = useSelector((state: RootState) => state.products);
-    const { stockMap, status: invStatus } = useSelector((state: RootState) => state.inventory);
-    const { items: transactions, status: transStatus } = useSelector((state: RootState) => state.transactions);
+    const [stats, setStats] = useState<import('../types').DashboardStats | null>(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (prodStatus === 'idle') dispatch(fetchProducts());
-        if (invStatus === 'idle') dispatch(fetchInventory());
-        if (transStatus === 'idle') dispatch(fetchTransactions());
-    }, [dispatch, prodStatus, invStatus, transStatus]);
-
-    const isLoading = prodStatus === 'loading' || invStatus === 'loading' || transStatus === 'loading';
-
-    // Data Processing
-    const totalProducts = products.length;
-
-    // Inventory Status
-    const inventoryStats = useMemo(() => {
-        const stats = {
-            inStock: 0,
-            lowStock: 0,
-            outOfStock: 0,
-            totalItems: 0
+        const loadStats = async () => {
+            try {
+                const data = await import('../services/SupabaseService').then(m => m.SupabaseService.getDashboardStats());
+                setStats(data);
+            } catch (error) {
+                console.error('Failed to load dashboard stats', error);
+            } finally {
+                setLoading(false);
+            }
         };
-        const lowDetails: any[] = [];
+        loadStats();
+    }, []);
 
-        Object.entries(stockMap).forEach(([prodId, qty]) => {
-            stats.totalItems += qty;
-            if (qty === 0) {
-                stats.outOfStock++;
-                lowDetails.push({ id: prodId, qty: 0 });
-            } else if (qty < 10) {
-                stats.lowStock++;
-                lowDetails.push({ id: prodId, qty });
-            } else {
-                stats.inStock++;
-            }
-        });
-        return { stats, lowDetails };
-    }, [stockMap]);
+    if (loading) return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
 
-    const pieData = [
-        { name: 'Còn hàng', value: inventoryStats.stats.inStock, color: '#10B981' }, // Emerald 500
-        { name: 'Sắp hết', value: inventoryStats.stats.lowStock, color: '#F59E0B' }, // Amber 500
-        { name: 'Hết hàng', value: inventoryStats.stats.outOfStock, color: '#EF4444' }, // Red 500
-    ];
+    if (!stats) {
+        return (
+            <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" p={4} minHeight="50vh">
+                <WarningIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                    Không thể tải dữ liệu Dashboard.
+                </Typography>
+                <Typography variant="body2" color="text.secondary" align="center" sx={{ maxWidth: 400 }}>
+                    Có thể bạn chưa cập nhật Cơ sở dữ liệu (SQL). Vui lòng chạy file migration để tạo hàm <code>get_dashboard_stats</code>.
+                </Typography>
+            </Box>
+        );
+    }
 
-    // Transaction History (Last 7 Days)
-    const transactionHistory = useMemo(() => {
-        const last7Days = Array.from({ length: 7 }, (_, i) => {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            return d.toISOString().split('T')[0];
-        }).reverse();
-
-        const data = last7Days.map(date => ({
-            date: date.split('-').slice(1).join('/'), // MM/DD
-            fullDate: date,
-            inbound: 0,
-            outbound: 0
-        }));
-
-        transactions.forEach(t => {
-            if (!t.date) return;
-            const tDate = t.date.split('T')[0];
-            const dayData = data.find(d => d.fullDate === tDate);
-            if (dayData) {
-                if (t.type === 'inbound') dayData.inbound += t.quantity;
-                else dayData.outbound += t.quantity;
-            }
-        });
-
-        return data;
-    }, [transactions]);
-
-    const todayTransactions = transactions.filter(t => {
-        if (!t.date) return false;
-        const tDate = new Date(t.date).toDateString();
-        const today = new Date().toDateString();
-        return tDate === today;
-    }).length;
-
-    // Recent Transactions (Last 5)
-    const recentTransactions = [...transactions].sort((a, b) => {
-        const dateA = a.date ? new Date(a.date).getTime() : 0;
-        const dateB = b.date ? new Date(b.date).getTime() : 0;
-        return dateB - dateA;
-    }).slice(0, 5);
-
-    if (isLoading) return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
-
-
+    const pieData = stats.category_stats.length > 0
+        ? stats.category_stats.map((c, i) => ({
+            name: c.name || 'Khác',
+            value: Number(c.value),
+            color: ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6'][i % 5]
+        }))
+        : [{ name: 'Chưa có dữ liệu', value: 1, color: '#E2E8F0' }];
 
     return (
-        <Box p={{ xs: 1, sm: 3 }} sx={{ bgcolor: '#F8FAFC', minHeight: '100vh', maxWidth: 1000, mx: 'auto', zoom: { xs: 0.85, md: 1 } }}>
+        <Box p={{ xs: 1, sm: 3 }} sx={{ bgcolor: '#F8FAFC', minHeight: '100vh', maxWidth: '100%', mx: 'auto' }}>
             <Box mb={{ xs: 2, sm: 4 }}>
                 <Typography variant="h4" fontWeight="900" sx={{
                     fontSize: { xs: '1.5rem', sm: '2.125rem' },
@@ -129,42 +70,7 @@ const Dashboard = () => {
                 </Typography>
             </Box>
 
-            {/* KPI Cards Removed as per request */}
 
-            {/* KPI Summary Chart (New) */}
-            <Grid container spacing={{ xs: 1, sm: 3 }} mb={{ xs: 2, sm: 4 }}>
-                <Grid size={{ xs: 12 }}>
-                    <Paper elevation={0} sx={{ p: 3, borderRadius: 4, height: 400, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-                        <Typography variant="h6" fontWeight="700" mb={3}>Biểu Đồ Thống Kê Chỉ Số</Typography>
-                        <ResponsiveContainer width="100%" height="90%">
-                            <BarChart
-                                data={[{
-                                    name: 'Chỉ số',
-                                    products: totalProducts,
-                                    transactions: todayTransactions,
-                                    warning: inventoryStats.stats.lowStock + inventoryStats.stats.outOfStock,
-                                    stock: inventoryStats.stats.totalItems
-                                }]}
-                                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                            >
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                                <YAxis yAxisId="left" orientation="left" stroke="#64748B" />
-                                <YAxis yAxisId="right" orientation="right" stroke="#8B5CF6" />
-                                <Tooltip
-                                    cursor={{ fill: 'transparent' }}
-                                    contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
-                                />
-                                <Legend />
-                                <Bar yAxisId="left" dataKey="products" name="Tổng Sản phẩm" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={60} />
-                                <Bar yAxisId="left" dataKey="transactions" name="GD Hôm nay" fill="#10B981" radius={[4, 4, 0, 0]} barSize={60} />
-                                <Bar yAxisId="left" dataKey="warning" name="Cảnh báo" fill="#F59E0B" radius={[4, 4, 0, 0]} barSize={60} />
-                                <Bar yAxisId="right" dataKey="stock" name="Tổng Tồn kho" fill="#8B5CF6" radius={[4, 4, 0, 0]} barSize={60} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </Paper>
-                </Grid>
-            </Grid>
 
             {/* Charts Section */}
             <Grid container spacing={{ xs: 1, sm: 3 }} mb={{ xs: 2, sm: 4 }}>
@@ -172,7 +78,7 @@ const Dashboard = () => {
                     <Paper elevation={0} sx={{ p: 3, borderRadius: 4, height: 400, boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
                         <Typography variant="h6" fontWeight="700" mb={3}>Biến Động Nhập/Xuất (7 Ngày Qua)</Typography>
                         <ResponsiveContainer width="100%" height="90%">
-                            <AreaChart data={transactionHistory}>
+                            <AreaChart data={stats.weekly_stats}>
                                 <defs>
                                     <linearGradient id="colorIn" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#10B981" stopOpacity={0.8} />
@@ -221,7 +127,7 @@ const Dashboard = () => {
                                 position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
                                 textAlign: 'center'
                             }}>
-                                <Typography variant="h4" fontWeight="bold">{totalProducts}</Typography>
+                                <Typography variant="h4" fontWeight="bold">{stats.total_products}</Typography>
                                 <Typography variant="caption" color="text.secondary">Sản phẩm</Typography>
                             </Box>
                         </Box>
@@ -238,7 +144,7 @@ const Dashboard = () => {
                             <Chip label="Real-time" color="success" size="small" variant="outlined" />
                         </Box>
                         <List sx={{ p: 0 }}>
-                            {recentTransactions.map((t, idx) => (
+                            {stats.recent_transactions.map((t, idx) => (
                                 <ListItem key={t.id || idx} divider sx={{ '&:hover': { bgcolor: '#F8FAFC' }, transition: '0.2s' }}>
                                     <Box sx={{
                                         p: 1.5, borderRadius: 3, mr: 2,
@@ -248,7 +154,7 @@ const Dashboard = () => {
                                         {t.type === 'inbound' ? <TrendingUpIcon /> : <SwapHorizIcon />}
                                     </Box>
                                     <ListItemText
-                                        primary={<Typography fontWeight="600">{t.product?.name || `Product \#${t.product_id}`}</Typography>}
+                                        primary={<Typography fontWeight="600">{t.product?.name || (t as any).product_name || `Product #${t.product_id}`}</Typography>}
                                         secondary={t.date ? new Date(t.date).toLocaleString('vi-VN') : 'N/A'}
                                     />
                                     <Box textAlign="right">
@@ -267,39 +173,16 @@ const Dashboard = () => {
                 <Grid size={{ xs: 12, md: 4 }}>
                     <Paper elevation={0} sx={{ p: 0, borderRadius: 4, overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
                         <Box sx={{ p: 2.5, borderBottom: '1px solid #F1F5F9' }}>
-                            <Typography variant="h6" fontWeight="700" color="error">Cần Chú Ý ({inventoryStats.stats.lowStock + inventoryStats.stats.outOfStock})</Typography>
+                            <Typography variant="h6" fontWeight="700" color="error">Cần Chú Ý ({stats.low_stock_items + stats.out_of_stock_items})</Typography>
                         </Box>
-                        <List sx={{ p: 0, maxHeight: 400, overflow: 'auto' }}>
-                            {inventoryStats.lowDetails.map((item, idx) => {
-                                const prod = products.find(p => p.id === item.id);
-                                return (
-                                    <ListItem key={idx} divider>
-                                        <Box sx={{ mr: 2 }}>
-                                            <CircularProgress
-                                                variant="determinate"
-                                                value={100}
-                                                size={40}
-                                                thickness={4}
-                                                sx={{ color: item.qty === 0 ? '#EF4444' : '#F59E0B', opacity: 0.2 }}
-                                            />
-                                            <Box sx={{ position: 'absolute', mt: -4.5, ml: 1.6 }}>
-                                                <WarningIcon sx={{ fontSize: 16, color: item.qty === 0 ? '#EF4444' : '#F59E0B' }} />
-                                            </Box>
-                                        </Box>
-                                        <ListItemText
-                                            primary={<Typography fontWeight="600" noWrap>{prod?.name || 'Unknown'}</Typography>}
-                                            secondary={`Mã: ${prod?.item_code}`}
-                                        />
-                                        <Chip
-                                            label={item.qty === 0 ? 'Hết hàng' : `Còn ${item.qty}`}
-                                            color={item.qty === 0 ? 'error' : 'warning'}
-                                            size="small"
-                                            sx={{ fontWeight: 'bold' }}
-                                        />
-                                    </ListItem>
-                                )
-                            })}
-                        </List>
+                        <Box p={3} textAlign="center">
+                            <WarningIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 1, opacity: 0.5 }} />
+                            <Typography variant="body2" color="text.secondary">
+                                Hiện tại có {stats.out_of_stock_items} sản phẩm hết hàng và {stats.low_stock_items} sản phẩm sắp hết.
+                                <br />
+                                Vui lòng kiểm tra báo cáo tồn kho chi tiết.
+                            </Typography>
+                        </Box>
                     </Paper>
                 </Grid>
             </Grid>
