@@ -77,8 +77,8 @@ export const readMoney = (n: number) => {
 
     // Clean up
     result = result.trim();
-    if (result.startsWith("không trăm lẻ")) result = result.replace("không trăm lẻ ", "");
-    if (result.startsWith("lẻ")) result = result.replace("lẻ", "");
+    if (result.startsWith("không trăm")) result = result.replace("không trăm", "").trim();
+    if (result.startsWith("lẻ")) result = result.replace("lẻ", "").trim();
 
     return result.charAt(0).toUpperCase() + result.slice(1) + " đồng./.";
 };

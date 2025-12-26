@@ -58,6 +58,19 @@ const PERMISSION_GROUPS = [
             { code: 'employees.view', label: 'Xem danh sách' },
             { code: 'employees.manage', label: 'Quản lý nhân viên' },
         ]
+    },
+    {
+        title: 'Trả Hàng (Returns)',
+        permissions: [
+            { code: 'returns.view', label: 'Xem lịch sử trả' },
+            { code: 'returns.create', label: 'Tạo phiếu trả' },
+        ]
+    },
+    {
+        title: 'Cấu Hình (Configuration)',
+        permissions: [
+            { code: 'storekeepers.manage', label: 'Quản lý thủ kho khu vực' },
+        ]
     }
 ];
 

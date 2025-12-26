@@ -119,10 +119,11 @@ const ProductList = () => {
                     <Typography variant="h4" fontWeight="900" sx={{
                         fontSize: { xs: '1.5rem', sm: '2.125rem' },
                         textTransform: 'uppercase',
-                        background: 'linear-gradient(45deg, #2e7d32 30%, #66bb6a 90%)',
+                        background: 'linear-gradient(45deg, #3b82f6 30%, #2563eb 90%)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
-                        letterSpacing: '0.5px'
+                        letterSpacing: '0.5px',
+                        textShadow: '0 2px 10px rgba(37, 99, 235, 0.2)'
                     }}>
                         DANH SÁCH HÀNG HÓA
                     </Typography>

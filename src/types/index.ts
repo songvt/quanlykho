@@ -6,6 +6,8 @@ export type PermissionCode =
     | 'orders.create' | 'orders.view_own' | 'orders.view_all' | 'orders.approve' | 'orders.delete'
     | 'reports.view_all' | 'reports.handover'
     | 'employees.view' | 'employees.manage'
+    | 'returns.view' | 'returns.create'
+    | 'storekeepers.manage'
     | '*'; // Admin full access
 
 export interface Employee {

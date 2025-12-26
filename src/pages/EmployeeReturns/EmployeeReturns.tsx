@@ -20,6 +20,7 @@ import ProductSearchDialog from '../../components/ProductSearchDialog';
 import { exportStandardReport } from '../../utils/excelUtils';
 import DeleteIcon from '@mui/icons-material/Delete';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import { usePermission } from '../../hooks/usePermission';
 
 const REASONS = ['Hàng tồn lâu', 'Hàng mới hỏng', 'Hàng thu hồi khách hàng rời mạng'];
 
@@ -30,6 +31,7 @@ const EmployeeReturns = () => {
     const { items: returns } = useSelector((state: RootState) => state.returns);
     const { items: products } = useSelector((state: RootState) => state.products);
     const { profile } = useSelector((state: RootState) => state.auth);
+    const { hasPermission } = usePermission();
 
     // Local State
     const [openCreate, setOpenCreate] = useState(false);
@@ -267,13 +269,17 @@ const EmployeeReturns = () => {
                     >
                         In Biên Bản ({selectedIds.length})
                     </Button>
-                    <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={() => setOpenCreate(true)}
-                    >
-                        Tạo Phiếu Trả
-                    </Button>
+
+
+                    {hasPermission('returns.create') && (
+                        <Button
+                            variant="contained"
+                            startIcon={<AddIcon />}
+                            onClick={() => setOpenCreate(true)}
+                        >
+                            Tạo Phiếu Trả
+                        </Button>
+                    )}
                 </Stack>
             </Box>
 

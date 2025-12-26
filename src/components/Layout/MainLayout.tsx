@@ -92,7 +92,9 @@ const MainLayout: React.FC = () => {
         ...(hasPermission('outbound.view') ? [
             { text: 'Xuất kho', icon: <OutputIcon />, path: '/outbound' }
         ] : []),
-        { text: 'Trả hàng', icon: <ReturnIcon />, path: '/employee-returns' },
+        ...(hasAnyPermission(['returns.view', 'returns.create']) ? [
+            { text: 'Trả hàng', icon: <ReturnIcon />, path: '/employee-returns' }
+        ] : []),
         ...(hasAnyPermission(['reports.view_all', 'reports.handover']) ? [
             { text: 'Báo cáo', icon: <AssessmentIcon />, path: '/reports' }
         ] : []),
@@ -111,11 +113,11 @@ const MainLayout: React.FC = () => {
                 <Typography
                     variant="caption"
                     sx={{
-                        color: 'rgba(255, 255, 255, 0.7)',
+                        color: 'text.secondary',
                         letterSpacing: '2px',
                         textTransform: 'uppercase',
-                        fontWeight: 600,
-                        fontSize: '0.65rem'
+                        fontWeight: 700,
+                        fontSize: '0.7rem'
                     }}
                 >
                     Quản lý kho
@@ -124,10 +126,11 @@ const MainLayout: React.FC = () => {
                     variant="h4"
                     sx={{
                         fontWeight: 900,
-                        background: 'linear-gradient(45deg, #38bdf8 30%, #818cf8 90%)', // Gradient Cyan to Indigo
+                        background: 'linear-gradient(45deg, #3b82f6 30%, #2563eb 90%)', // Blue Gradient
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
-                        letterSpacing: '1px'
+                        letterSpacing: '2px',
+                        textShadow: '0 2px 10px rgba(37, 99, 235, 0.3)'
                     }}
                 >
                     CĐBR
@@ -147,21 +150,21 @@ const MainLayout: React.FC = () => {
                                     height: 48,
                                     borderRadius: '6px',
                                     '&.Mui-selected': {
-                                        backgroundColor: 'rgba(56, 189, 248, 0.15)', // Transparent Cyan Glow
-                                        color: '#38bdf8', // Neon text color
-                                        borderLeft: '3px solid #38bdf8',
+                                        backgroundColor: 'rgba(37, 99, 235, 0.12)', // Primary Tint
+                                        color: '#2563eb', // Primary Main
+                                        borderLeft: '4px solid #2563eb',
                                         '&:hover': {
-                                            backgroundColor: 'rgba(56, 189, 248, 0.25)',
+                                            backgroundColor: 'rgba(37, 99, 235, 0.18)',
                                         },
                                         '& .MuiListItemIcon-root': {
-                                            color: '#38bdf8', // Neon icon color
+                                            color: '#2563eb',
                                         },
                                     },
                                 }}
                             >
                                 <ListItemIcon sx={{
                                     minWidth: 40,
-                                    color: isActive ? 'white' : '#9ca3af'
+                                    color: isActive ? '#2563eb' : '#94a3b8' // Slate 400
                                 }}>
                                     {item.icon}
                                 </ListItemIcon>

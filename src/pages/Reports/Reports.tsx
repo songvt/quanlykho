@@ -239,11 +239,15 @@ const Reports = () => {
                 case 'rejected': statusText = 'Từ chối'; break;
                 default: statusText = o.status;
             }
+            const productObj = products.find(p => p.id === o.product_id);
+            const d = new Date(o.order_date);
+            const formattedDate = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+
             return {
                 id: o.id.substring(0, 8),
-                date: new Date(o.order_date).toLocaleString('vi-VN'),
+                date: formattedDate,
                 requester: o.requester_group,
-                product: o.product?.name || o.product_id,
+                product: productObj ? productObj.name : (o.product?.name || o.product_id),
                 quantity: o.quantity,
                 status: statusText
             };

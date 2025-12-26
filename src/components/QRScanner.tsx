@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
-import { Box, IconButton, Select, MenuItem, Typography, Button, CircularProgress, Alert } from '@mui/material';
+import { Box, IconButton, Select, MenuItem, Typography, Button, CircularProgress, Alert, Slider } from '@mui/material';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
 import FlashOffIcon from '@mui/icons-material/FlashOff';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -20,6 +20,8 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
     const [isScanning, setIsScanning] = useState(false);
     const [isTorchOn, setIsTorchOn] = useState(false);
     const [hasTorch, setHasTorch] = useState(false);
+    const [zoom, setZoom] = useState(1);
+    const [capabilities, setCapabilities] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -32,7 +34,6 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
         let isMounted = true;
 
         const initScanner = async () => {
-            // Cleanup any previous instance just in case (Strict Mode protection)
             if (scannerRef.current) {
                 try {
                     await scannerRef.current.stop();
@@ -41,7 +42,6 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                 scannerRef.current = null;
             }
 
-            // Create new instance
             const scanner = new Html5Qrcode(regionId, {
                 formatsToSupport: [
                     Html5QrcodeSupportedFormats.QR_CODE,
@@ -62,8 +62,10 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                     Html5QrcodeSupportedFormats.RSS_EXPANDED
                 ],
                 verbose: false,
-                useBarCodeDetectorIfSupported: true // Enable native barcode detector for speed
-            });
+                experimentalFeatures: {
+                    useBarCodeDetectorIfSupported: true
+                }
+            } as any);
             scannerRef.current = scanner;
 
             try {
@@ -86,7 +88,6 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
             } catch (err: any) {
                 console.error("Error getting cameras", err);
                 if (isMounted) {
-                    // Check for common permission errors
                     if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
                         setError("Không thể truy cập camera. Vui lòng cấp quyền truy cập trong cài đặt trình duyệt.");
                     } else if (err.name === "NotFoundError") {
@@ -101,14 +102,12 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
             }
         };
 
-        // Small delay to ensure DOM is ready
         const timer = setTimeout(initScanner, 100);
 
         return () => {
             isMounted = false;
             clearTimeout(timer);
             if (scannerRef.current) {
-                // We don't await here in cleanup, but we try to stop
                 scannerRef.current.stop().catch(() => { }).finally(() => {
                     scannerRef.current?.clear();
                 });
@@ -127,15 +126,13 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                 if (scannerRef.current.isScanning) {
                     await scannerRef.current.stop();
                     setIsScanning(false);
-                    setIsTorchOn(false); // Reset torch state
+                    setIsTorchOn(false);
                 }
 
                 await scannerRef.current.start(
                     selectedCameraId,
                     {
                         fps: 15,
-                        // qrbox removed for full-screen scanning
-                        // aspectRatio removed for full-screen scanning
                         videoConstraints: {
                             focusMode: "continuous",
                             facingMode: "environment",
@@ -144,7 +141,6 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                         } as any
                     },
                     (decodedText, _result) => {
-                        // Success
                         const now = Date.now();
                         if (decodedText === lastScanRef.current && (now - lastScanTimeRef.current < 1500)) {
                             return;
@@ -156,24 +152,28 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                         if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(200);
                         onScanSuccess(decodedText);
                     },
-                    () => { } // Ignore frame errors
+                    () => { }
                 );
 
                 if (isCurrent) {
                     setIsScanning(true);
                     setError(null);
 
-                    // Check torch
+                    // Check capabilities (Torch & Zoom)
                     try {
                         const caps = (scannerRef.current as any).getRunningTrackCameraCapabilities();
+                        setCapabilities(caps);
                         setHasTorch(!!caps?.torch);
+                        // Initialize zoom if available
+                        if (caps?.zoom) {
+                            setZoom(caps.zoom.min || 1);
+                        }
                     } catch { setHasTorch(false); }
                 }
 
             } catch (err: any) {
                 console.error("Failed to start scanner", err);
                 if (isCurrent) {
-                    // More specific error handling for start failures
                     if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
                         setError("Không thể khởi động camera. Vui lòng cấp quyền truy cập.");
                     } else if (err.name === "NotFoundError") {
@@ -197,10 +197,8 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
 
         return () => {
             isCurrent = false;
-            // No need to stop here, as the next effect will handle it if selectedCameraId changes
-            // or the main cleanup will handle it on unmount.
         };
-    }, [selectedCameraId, loading, error]); // Added loading and error to dependencies to re-evaluate start
+    }, [selectedCameraId, loading, error]);
 
     const handleRetry = () => {
         window.location.reload();
@@ -216,12 +214,22 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
         } catch (e) { console.error("Toggle torch failed", e); }
     };
 
+    const handleZoom = async (_event: Event, newValue: number | number[]) => {
+        const z = newValue as number;
+        setZoom(z);
+        if (scannerRef.current && (scannerRef.current as any).applyVideoConstraints) {
+            try {
+                await (scannerRef.current as any).applyVideoConstraints({
+                    advanced: [{ zoom: z }]
+                });
+            } catch (e) { console.error("Apply zoom failed", e); }
+        }
+    };
+
     return (
         <Box sx={{ width: '100%', position: 'relative', bgcolor: '#000', borderRadius: 2, overflow: 'hidden', minHeight: 300, height: height }}>
-            {/* The Container for Html5Qrcode */}
             <div id={regionId} style={{ width: '100%', height: '100%' }} />
 
-            {/* Loading / Error States */}
             {loading && (
                 <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#000', color: 'white', zIndex: 20 }}>
                     <CircularProgress color="inherit" />
@@ -238,7 +246,6 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                 </Box>
             )}
 
-            {/* Overlay Controls (Only show if running) */}
             {!loading && !error && (
                 <>
                     <Box sx={{
@@ -248,37 +255,82 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                         right: 0,
                         p: 2,
                         bgcolor: 'rgba(0,0,0,0.6)',
+                        zIndex: 10,
                         display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        zIndex: 10
+                        flexDirection: 'column',
+                        gap: 1
                     }}>
-                        <Box>
-                            {cameras.length > 1 && (
-                                <Select
-                                    value={selectedCameraId}
-                                    onChange={(e) => setSelectedCameraId(e.target.value)}
-                                    size="small"
-                                    sx={{ color: 'white', '.MuiSvgIcon-root': { color: 'white' }, borderColor: 'white', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 1 }}
-                                    variant="outlined"
-                                >
-                                    {cameras.map(cam => (
-                                        <MenuItem key={cam.id} value={cam.id}>{cam.label || `Camera ${cam.id.slice(0, 5)}...`}</MenuItem>
-                                    ))}
-                                </Select>
-                            )}
-                        </Box>
+                        {/* Zoom Slider */}
+                        {capabilities?.zoom && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', px: 1, width: '100%', mb: 1 }}>
+                                <Typography variant="caption" sx={{ color: 'white', mr: 2, minWidth: 30, fontWeight: 600 }}>x{zoom}</Typography>
+                                <Slider
+                                    value={zoom}
+                                    min={capabilities.zoom.min}
+                                    max={capabilities.zoom.max}
+                                    step={capabilities.zoom.step || 0.1}
+                                    onChange={handleZoom}
+                                    sx={{
+                                        color: '#38bdf8',
+                                        height: 4,
+                                        '& .MuiSlider-thumb': {
+                                            width: 16,
+                                            height: 16,
+                                            transition: '0.3s cubic-bezier(.47,1.64,.41,.8)',
+                                            '&:before': { boxShadow: '0 2px 12px 0 rgba(0,0,0,0.4)' },
+                                            '&:hover, &.Mui-focusVisible': { boxShadow: '0px 0px 0px 8px rgb(56 189 248 / 16%)' },
+                                            '&.Mui-active': { width: 24, height: 24 },
+                                        },
+                                        '& .MuiSlider-rail': { opacity: 0.28 },
+                                    }}
+                                />
+                            </Box>
+                        )}
 
-                        <Box>
-                            {hasTorch && (
-                                <IconButton onClick={toggleTorch} sx={{ color: isTorchOn ? '#ffeb3b' : 'white' }}>
-                                    {isTorchOn ? <FlashOnIcon /> : <FlashOffIcon />}
-                                </IconButton>
-                            )}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                            <Box sx={{ minWidth: 150 }}>
+                                {cameras.length > 1 && (
+                                    <Select
+                                        value={selectedCameraId}
+                                        onChange={(e) => setSelectedCameraId(e.target.value)}
+                                        size="small"
+                                        sx={{
+                                            color: 'white',
+                                            '.MuiSvgIcon-root': { color: 'white' },
+                                            borderColor: 'rgba(255,255,255,0.3)',
+                                            '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255,255,255,0.3)' },
+                                            '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'white' },
+                                            height: 40,
+                                            borderRadius: 2,
+                                            fontSize: '0.875rem'
+                                        }}
+                                        variant="outlined"
+                                    >
+                                        {cameras.map(cam => (
+                                            <MenuItem key={cam.id} value={cam.id}>{cam.label || `Camera ${cam.id.slice(0, 5)}...`}</MenuItem>
+                                        ))}
+                                    </Select>
+                                )}
+                            </Box>
+
+                            <Box>
+                                {hasTorch && (
+                                    <IconButton
+                                        onClick={toggleTorch}
+                                        sx={{
+                                            color: isTorchOn ? '#facc15' : 'white', // Yellow for ON
+                                            bgcolor: isTorchOn ? 'rgba(250, 204, 21, 0.2)' : 'rgba(255,255,255,0.1)',
+                                            '&:hover': { bgcolor: isTorchOn ? 'rgba(250, 204, 21, 0.3)' : 'rgba(255,255,255,0.2)' }
+                                        }}
+                                    >
+                                        {isTorchOn ? <FlashOnIcon /> : <FlashOffIcon />}
+                                    </IconButton>
+                                )}
+                            </Box>
                         </Box>
                     </Box>
 
-                    {/* Visual Guide - Full screen style */}
+                    {/* Visual Guide */}
                     {isScanning && (
                         <Box sx={{
                             position: 'absolute',
@@ -289,31 +341,28 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                             pointerEvents: 'none',
                             zIndex: 1
                         }}>
-                            {/* Central Focus Corner Markers (Visual Only) */}
                             <Box sx={{
                                 position: 'absolute',
                                 top: '50%',
                                 left: '50%',
                                 transform: 'translate(-50%, -50%)',
-                                width: '80%',
-                                height: '60%',
+                                width: '70%',
+                                height: '50%',
                                 border: '2px solid rgba(255, 255, 255, 0.3)',
                                 borderRadius: 4,
                             }}>
-                                {/* Corner markers */}
-                                <Box sx={{ position: 'absolute', top: -2, left: -2, width: 20, height: 20, borderColor: '#00e676', borderStyle: 'solid', borderWidth: '4px 0 0 4px', borderRadius: '4px 0 0 0' }} />
-                                <Box sx={{ position: 'absolute', top: -2, right: -2, width: 20, height: 20, borderColor: '#00e676', borderStyle: 'solid', borderWidth: '4px 4px 0 0', borderRadius: '0 4px 0 0' }} />
-                                <Box sx={{ position: 'absolute', bottom: -2, left: -2, width: 20, height: 20, borderColor: '#00e676', borderStyle: 'solid', borderWidth: '0 0 4px 4px', borderRadius: '0 0 0 4px' }} />
-                                <Box sx={{ position: 'absolute', bottom: -2, right: -2, width: 20, height: 20, borderColor: '#00e676', borderStyle: 'solid', borderWidth: '0 4px 4px 0', borderRadius: '0 0 4px 0' }} />
+                                <Box sx={{ position: 'absolute', top: -2, left: -2, width: 20, height: 20, borderColor: '#38bdf8', borderStyle: 'solid', borderWidth: '4px 0 0 4px', borderRadius: '4px 0 0 0' }} />
+                                <Box sx={{ position: 'absolute', top: -2, right: -2, width: 20, height: 20, borderColor: '#38bdf8', borderStyle: 'solid', borderWidth: '4px 4px 0 0', borderRadius: '0 4px 0 0' }} />
+                                <Box sx={{ position: 'absolute', bottom: -2, left: -2, width: 20, height: 20, borderColor: '#38bdf8', borderStyle: 'solid', borderWidth: '0 0 4px 4px', borderRadius: '0 0 0 4px' }} />
+                                <Box sx={{ position: 'absolute', bottom: -2, right: -2, width: 20, height: 20, borderColor: '#38bdf8', borderStyle: 'solid', borderWidth: '0 4px 4px 0', borderRadius: '0 0 4px 0' }} />
 
-                                {/* Scanning Line */}
                                 <Box sx={{
                                     width: '100%',
                                     height: '2px',
-                                    bgcolor: '#00e676',
+                                    bgcolor: '#38bdf8',
                                     position: 'absolute',
                                     top: '50%',
-                                    boxShadow: '0 0 4px #00e676',
+                                    boxShadow: '0 0 8px #38bdf8',
                                     animation: 'scan 2s infinite linear',
                                     '@keyframes scan': {
                                         '0%': { top: '5%', opacity: 0 },
