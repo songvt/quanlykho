@@ -511,7 +511,7 @@ const Reports = () => {
             const dateObj = new Date(selectedDate);
 
             // Use shared logic for consistency
-            SupabaseService.getReportNumber(dateObj, selectedEmployee).then(num => {
+            SupabaseService.getReportNumber(dateObj, selectedEmployee || '').then(num => {
                 setPreviewSenderName(resolvedSenderName);
                 setPreviewSenderPhone(senderPh);
                 setPreviewReceiverPhone(receiverPh);

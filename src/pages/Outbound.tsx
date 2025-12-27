@@ -55,7 +55,7 @@ export const Outbound = () => {
     const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
     const [selectedPrintIds, setSelectedPrintIds] = useState<string[]>([]);
     const [openPrintPreview, setOpenPrintPreview] = useState(false);
-    const [reportNumber, setReportNumber] = useState(1);
+
 
     // Staff Fulfillment State
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
