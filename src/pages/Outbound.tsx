@@ -55,6 +55,7 @@ export const Outbound = () => {
     const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
     const [selectedPrintIds, setSelectedPrintIds] = useState<string[]>([]);
     const [openPrintPreview, setOpenPrintPreview] = useState(false);
+    const [reportNumber, setReportNumber] = useState(1);
 
     // Staff Fulfillment State
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -688,7 +689,22 @@ export const Outbound = () => {
                                     return;
                                 }
                             }
-                            setOpenPrintPreview(true);
+
+                            // Fetch report number
+                            // Use date of first selected transaction
+                            const firstTx = recentTransactions.find(t => selectedPrintIds.includes(t.id));
+                            if (firstTx) {
+                                const dateVal = new Date(firstTx.date || new Date());
+                                // Determine receiver name from transaction
+                                const receiverVal = firstTx.group_name || firstTx.receiver_group || '';
+
+                                SupabaseService.getReportNumber(dateVal, receiverVal).then(num => {
+                                    setReportNumber(num);
+                                    setOpenPrintPreview(true);
+                                });
+                            } else {
+                                setOpenPrintPreview(true);
+                            }
                         }}
                         size="small"
                     >
@@ -1083,6 +1099,7 @@ export const Outbound = () => {
                                 };
                             })
                         }
+
                         delivererName={(((): string => {
                             // Find unique district in selected transactions
                             const selectedTrans = recentTransactions.filter(t => selectedPrintIds.includes(t.id));
@@ -1097,6 +1114,21 @@ export const Outbound = () => {
 
                             // Fallback
                             return profile?.full_name || 'System Admin';
+                        })())}
+                        senderPhone={(((): string => {
+                            // Re-calculate deliverer name (should extract to var but inline is safe for now)
+                            const selectedTrans = recentTransactions.filter(t => selectedPrintIds.includes(t.id));
+                            const districts = Array.from(new Set(selectedTrans.map(t => t.district).filter(Boolean)));
+                            let dName = profile?.full_name || 'System Admin';
+
+                            if (districts.length === 1) {
+                                const config = districtConfigs.find(c => c.district.trim().toLowerCase() === String(districts[0]).trim().toLowerCase());
+                                if (config) dName = config.storekeeper_name;
+                            }
+
+                            // Lookup phone
+                            const emp = employees.find(e => e.full_name?.toLowerCase().trim() === dName.toLowerCase().trim());
+                            return emp?.phone_number || profile?.phone_number || '';
                         })())}
                         receiverName={Array.from(new Set(recentTransactions.filter(t => selectedPrintIds.includes(t.id)).map(t => t.group_name || t.receiver_group))).join(', ')}
                         date={new Date().toISOString()}

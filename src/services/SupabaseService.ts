@@ -1,5 +1,76 @@
 import { supabase } from '../supabaseClient';
 import type { Product, Transaction } from '../types';
+import { CONFIG } from '../config';
+
+// Helper to send webhook
+const sendWebhook = async (type: 'inbound' | 'outbound', data: any) => {
+    // Only send webhook for Outbound transactions as per user request
+    if (type === 'inbound') return;
+
+    if (!CONFIG.N8N_WEBHOOK_URL) {
+        console.warn('Webhook URL not configured');
+        return;
+    }
+
+    try {
+        const payload = Array.isArray(data) ? data.map(formatPayload) : formatPayload(data);
+        console.log(`[Webhook] Preparing to send ${type} data:`, payload);
+
+        // Use text/plain to avoid CORS preflight (Simple Request)
+        // n8n usually can parse JSON body even if header is text/plain
+        fetch(CONFIG.N8N_WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+            body: JSON.stringify({
+                type,
+                timestamp: new Date().toISOString(),
+                data: payload
+            })
+        })
+            .then(() => console.log('[Webhook] Request sent successfully'))
+            .catch(err => console.error('[Webhook] Failed to send:', err));
+    } catch (e) {
+        console.error('[Webhook] Error constructing payload:', e);
+    }
+};
+
+const formatPayload = (item: any) => {
+    // Format date as dd/MM/yyyy HH:mm:ss
+    const formatDate = (dateString: string) => {
+        if (!dateString) return new Date().toLocaleString('vi-VN');
+        const d = new Date(dateString);
+
+        // Pad helper
+        const pad = (n: number) => n.toString().padStart(2, '0');
+
+        const day = pad(d.getDate());
+        const month = pad(d.getMonth() + 1);
+        const year = d.getFullYear();
+        const hours = pad(d.getHours());
+        const minutes = pad(d.getMinutes());
+        const seconds = pad(d.getSeconds());
+
+        return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+    };
+
+    const formattedDate = formatDate(item.created_at || item.inbound_date || item.outbound_date || new Date().toISOString());
+
+    return {
+        ...item,
+        // Overwrite core date fields with formatted versions if they exist
+        ...(item.created_at && { created_at: formatDate(item.created_at) }),
+        ...(item.inbound_date && { inbound_date: formatDate(item.inbound_date) }),
+        ...(item.outbound_date && { outbound_date: formatDate(item.outbound_date) }),
+
+        // Enrich with flattened human-readable fields
+        product_name: item.product?.name || item.product_name, // Handle joined or direct
+        receiver_name: item.receiver_group || item.employee?.full_name || item.user_name || 'N/A',
+        // Ensure core fields are present explicitely if needed (they are in item, but explicitly listing for clarity if needed, mostly redundant if spread)
+        quantity: item.quantity,
+        serial: item.serial_code,
+        date: formattedDate
+    };
+};
 
 // Helper to fetch all data with pagination (to bypass 1000 rows limit)
 const fetchAll = async (table: string, select: string = '*', orderCol: string = 'created_at', ascending: boolean = false) => {
@@ -142,20 +213,24 @@ export const SupabaseService = {
                 item_status: transaction.item_status, // Added item_status
                 // inbound_date defaults to NOW()
             }])
-            .select()
+            .select('*, product:products(name)')
             .single();
 
         if (error) throw error;
+        sendWebhook('inbound', data);
         return data;
     },
 
-    async bulkCreateInboundTransactions(transactions: any[]) {
+    async bulkCreateInboundTransactions(transactions: any[], options?: { skipWebhook?: boolean }) {
         const { data, error } = await supabase
             .from('inbound_transactions')
             .insert(transactions)
-            .select();
+            .select('*, product:products(name)');
 
         if (error) throw error;
+        if (!options?.skipWebhook) {
+            sendWebhook('inbound', data);
+        }
         return data;
     },
 
@@ -175,20 +250,24 @@ export const SupabaseService = {
                 item_status: transaction.item_status // Added item_status
                 // outbound_date defaults to NOW()
             }])
-            .select()
+            .select('*, product:products(name)')
             .single();
 
         if (error) throw error;
+        sendWebhook('outbound', data);
         return data;
     },
 
-    async bulkCreateOutboundTransactions(transactions: any[]) {
+    async bulkCreateOutboundTransactions(transactions: any[], options?: { skipWebhook?: boolean }) {
         const { data, error } = await supabase
             .from('outbound_transactions')
             .insert(transactions)
-            .select();
+            .select('*, product:products(name)');
 
         if (error) throw error;
+        if (!options?.skipWebhook) {
+            sendWebhook('outbound', data);
+        }
         return data;
     },
 
@@ -472,7 +551,7 @@ export const SupabaseService = {
         const { data: newReturn, error } = await supabase
             .from('employee_returns')
             .insert([data])
-            .select()
+            .select('*, product:products(name), employee:employees(full_name)')
             .single();
 
         if (error) throw error;
@@ -489,6 +568,7 @@ export const SupabaseService = {
         };
 
         await supabase.from('inbound_transactions').insert([inboundRecord]);
+        sendWebhook('inbound', inboundRecord);
 
         return newReturn;
     },
@@ -500,7 +580,7 @@ export const SupabaseService = {
         const { data, error } = await supabase
             .from('employee_returns')
             .insert(returns)
-            .select();
+            .select('*, product:products(name), employee:employees(full_name)');
 
         if (error) throw error;
 
@@ -516,9 +596,48 @@ export const SupabaseService = {
         }));
 
         await supabase.from('inbound_transactions').insert(inboundRecords);
+        sendWebhook('inbound', inboundRecords);
 
         return data;
     },
+
+    async getReportNumber(date: Date, receiverName: string) {
+        const month = date.getMonth();
+        const year = date.getFullYear();
+
+        const startDate = new Date(year, month, 1).toISOString();
+        const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
+
+        const { data, error } = await supabase
+            .from('outbound_transactions')
+            .select('date, group_name, receiver_group')
+            .gte('date', startDate)
+            .lte('date', endDate)
+            .order('date', { ascending: true });
+
+        if (error) {
+            console.error('Error fetching report number:', error);
+            return 1;
+        }
+
+        if (!data || data.length === 0) return 1;
+
+        const uniqueReports = new Set<string>();
+        data.forEach((item: any) => {
+            const d = new Date(item.date).toLocaleDateString('en-CA');
+            const r = (item.group_name || item.receiver_group || '').trim().toLowerCase();
+            if (r) {
+                uniqueReports.add(`${d}_${r}`);
+            }
+        });
+
+        const sortedUniqueReports = Array.from(uniqueReports);
+        const targetKey = `${date.toLocaleDateString('en-CA')}_${receiverName.trim().toLowerCase()}`;
+
+        const index = sortedUniqueReports.indexOf(targetKey);
+        return index !== -1 ? index + 1 : sortedUniqueReports.length + 1;
+    },
+
 
     async deleteEmployeeReturns(ids: string[]) {
         const { error } = await supabase

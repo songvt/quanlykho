@@ -38,7 +38,7 @@ export const addOutboundTransaction = createAsyncThunk(
 export const importInboundTransactions = createAsyncThunk(
     'transactions/importInbound',
     async (transactions: any[]) => {
-        const data = await SupabaseService.bulkCreateInboundTransactions(transactions);
+        const data = await SupabaseService.bulkCreateInboundTransactions(transactions, { skipWebhook: true });
         return data;
     }
 );
@@ -46,7 +46,7 @@ export const importInboundTransactions = createAsyncThunk(
 export const importOutboundTransactions = createAsyncThunk(
     'transactions/importOutbound',
     async (transactions: any[]) => {
-        const data = await SupabaseService.bulkCreateOutboundTransactions(transactions);
+        const data = await SupabaseService.bulkCreateOutboundTransactions(transactions, { skipWebhook: true });
         return data;
     }
 );

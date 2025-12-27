@@ -22,6 +22,7 @@ import { fetchTransactions, deleteTransaction } from '../../store/slices/transac
 import { fetchOrders } from '../../store/slices/ordersSlice';
 import { fetchEmployees } from '../../store/slices/employeesSlice';
 import type { RootState, AppDispatch } from '../../store';
+import { SupabaseService } from '../../services/SupabaseService';
 
 import { exportHandoverMinutesV2, exportStandardReport } from '../../utils/excelUtils';
 import type { ReportColumn } from '../../utils/excelUtils';
@@ -58,6 +59,9 @@ const Reports = () => {
     const [stockStartDate, setStockStartDate] = useState(new Date().toISOString().split('T')[0]);
     const [stockEndDate, setStockEndDate] = useState(new Date().toISOString().split('T')[0]);
 
+    // District Configs
+    const [districtConfigs, setDistrictConfigs] = useState<{ district: string; storekeeper_name: string }[]>([]);
+
     // State for Period Report
     const [openPeriodReport, setOpenPeriodReport] = useState(false);
     const [periodType, setPeriodType] = useState<'all' | 'inbound' | 'outbound'>('all');
@@ -87,6 +91,9 @@ const Reports = () => {
     useEffect(() => {
         if (status === 'idle') dispatch(fetchTransactions());
         if (productsStatus === 'idle') dispatch(fetchProducts());
+
+        // Load district configs
+        import('../../services/SupabaseService').then(m => m.SupabaseService.getDistrictStorekeepers().then(setDistrictConfigs).catch(console.error));
     }, [status, productsStatus, dispatch]);
 
     // Filter transactions for Management Tab
@@ -427,6 +434,17 @@ const Reports = () => {
             const receiverPhone = receiverObj?.phone_number || '';
             const senderPhone = profile?.phone_number || '';
 
+            // Resolve Sender (Reporter) Name based on District
+            // We assume most transactions in a handover belong to same district or logic picks the first valid one.
+            let resolvedSenderName = reporterName;
+            const firstItemWithDistrict = exportData.find(i => i.district);
+            if (firstItemWithDistrict) {
+                const config = districtConfigs.find(c => c.district.toLowerCase() === firstItemWithDistrict.district?.toLowerCase());
+                if (config) {
+                    resolvedSenderName = config.storekeeper_name;
+                }
+            }
+
             // Calculate Report Number Logic
             // Count distinct dates in the current month where transactions occurred
             const [year, month] = selectedDate.split('-');
@@ -450,7 +468,7 @@ const Reports = () => {
             }
 
             try {
-                await exportHandoverMinutesV2(exportData, selectedEmployee, selectedDate, reporterName, senderPhone, receiverPhone, reportNumber);
+                await exportHandoverMinutesV2(exportData, selectedEmployee, selectedDate, resolvedSenderName, senderPhone, receiverPhone, reportNumber);
             } catch (error: any) {
                 console.error(error);
                 alert("Lỗi xuất báo cáo: " + (error?.message || JSON.stringify(error)));
@@ -459,12 +477,50 @@ const Reports = () => {
         }
     };
 
+    // State for dynamic sender in preview
+    const [previewSenderName, setPreviewSenderName] = useState('');
+    const [previewSenderPhone, setPreviewSenderPhone] = useState('');
+    const [previewReceiverPhone, setPreviewReceiverPhone] = useState('');
+    const [previewReportNumber, setPreviewReportNumber] = useState(1);
+
     const handlePreviewHandover = () => {
         const handoverData = getHandoverData();
         if (handoverData) {
-            setPreviewData(handoverData);
-            setOpenHandoverPreview(true);
-            setOpenHandover(false);
+            // Resolve Sender (Reporter) Name & Phone based on District logic
+            let resolvedSenderName = reporterName;
+            // Default Profile Phones
+            let senderPh = profile?.phone_number || '';
+
+            // Find employee phone
+            const receiverObj = employees.find(e => e.full_name === selectedEmployee);
+            const receiverPh = receiverObj?.phone_number || '';
+
+            const firstItemWithDistrict = handoverData.find(i => i.district);
+            if (firstItemWithDistrict) {
+                const config = districtConfigs.find(c => c.district.toLowerCase() === firstItemWithDistrict.district?.toLowerCase());
+                if (config) {
+                    resolvedSenderName = config.storekeeper_name;
+                    // If we had storekeeper phone in config, we would use it here. 
+                    // Since we don't, we might keep default or need to add phone to config later.
+                    // For now, let's keep it as is or empty if unknown.
+                }
+            }
+
+            // Calculate Report Number
+            // Logic: Find all transactions in this month/year, group by date, sort dates, find index of current date
+            const dateObj = new Date(selectedDate);
+
+            // Use shared logic for consistency
+            SupabaseService.getReportNumber(dateObj, selectedEmployee).then(num => {
+                setPreviewSenderName(resolvedSenderName);
+                setPreviewSenderPhone(senderPh);
+                setPreviewReceiverPhone(receiverPh);
+                setPreviewReportNumber(num);
+
+                setPreviewData(handoverData);
+                setOpenHandoverPreview(true);
+                setOpenHandover(false);
+            });
         }
     };
 
@@ -1062,7 +1118,10 @@ const Reports = () => {
                         data={previewData}
                         employeeName={selectedEmployee || ''}
                         date={selectedDate}
-                        reporterName={reporterName}
+                        reporterName={previewSenderName}
+                        senderPhone={previewSenderPhone}
+                        receiverPhone={previewReceiverPhone}
+                        reportNumber={previewReportNumber}
                     />
                 </Box>
             </Dialog>

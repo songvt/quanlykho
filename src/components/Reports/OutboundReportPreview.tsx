@@ -1,5 +1,5 @@
 
-import { Box, Typography, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
+import { Box, Typography, Table, TableBody, TableCell, TableHead, TableRow, Paper } from '@mui/material';
 import { readMoney } from '../../utils/excelUtils';
 import { createPortal } from 'react-dom';
 
@@ -8,149 +8,118 @@ interface OutboundReportPreviewProps {
     delivererName: string;
     date: string;
     receiverName: string;
+    senderPhone?: string;
+    receiverPhone?: string;
+    reportNumber?: number;
 }
 
-const OutboundReportTemplate = ({ data, delivererName, date, receiverName }: OutboundReportPreviewProps) => {
+const OutboundReportTemplate = ({ data, delivererName, date, receiverName, senderPhone, receiverPhone, reportNumber = 1 }: OutboundReportPreviewProps) => {
     const totalAmount = data.reduce((sum, item) => sum + (item.unit_price * item.quantity), 0);
     const dateObj = new Date(date);
 
     return (
-        <Box sx={{
-            bgcolor: 'white',
-            color: 'black',
-            maxWidth: '210mm',
-            mx: 'auto',
-            p: 2,
-            fontFamily: "'Times New Roman', Times, serif"
-        }}>
+        <Paper elevation={0} sx={{ p: 4, bgcolor: 'white', color: 'black', minWidth: 800, fontFamily: "'Times New Roman', Times, serif" }}>
             {/* Header */}
-            <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
-                <Box sx={{ width: '45%' }}>
-                    <Typography fontWeight="bold" fontSize={11} sx={{ textTransform: 'uppercase', color: '#1976d2', fontFamily: 'inherit' }}>
-                        TRUNG TÂM ACT KHU VỰC BẮC SÀI GÒN
-                    </Typography>
-                    <Typography fontSize={11} fontWeight="bold" sx={{ color: '#1976d2', fontFamily: 'inherit' }}>
-                        455A TRẦN THỊ NĂM P.TMT QUẬN 12
-                    </Typography>
-                    <Typography fontSize={11} mt={0.5} sx={{ color: '#1976d2', fontFamily: 'inherit' }}>
-                        Số: ............/BBXK-ACT
-                    </Typography>
+            <Box display="flex" justifyContent="space-between" mb={3} alignItems="flex-start">
+                <Box textAlign="center">
+                    <Typography fontWeight="bold" sx={{ fontSize: '13pt', textTransform: 'uppercase', lineHeight: 1.2 }}>TRUNG TÂM ACT KHU VỰC BẮC SÀI GÒN</Typography>
+                    <Typography sx={{ fontSize: '11pt', fontWeight: 'bold', lineHeight: 1.2 }}>455A TRẦN THỊ NĂM P.TMT QUẬN 12</Typography>
                 </Box>
-                <Box textAlign="center" sx={{ width: '55%' }}>
-                    <Typography fontWeight="bold" fontSize={11} sx={{ textTransform: 'uppercase', color: '#d32f2f', fontFamily: 'inherit' }}>
-                        CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM
-                    </Typography>
-                    <Typography fontWeight="bold" fontSize={12} sx={{ borderBottom: '1px solid #d32f2f', display: 'inline-block', pb: 0.5, mb: 0.5, color: '#d32f2f', fontFamily: 'inherit' }}>
-                        Độc lập - Tự do - Hạnh phúc
-                    </Typography>
-                    <Typography fontSize={11} fontStyle="italic" sx={{ fontFamily: 'inherit' }}>
-                        ................, ngày {dateObj.getDate()} tháng {dateObj.getMonth() + 1} năm {dateObj.getFullYear()}
-                    </Typography>
+                <Box textAlign="center">
+                    <Typography fontWeight="bold" sx={{ fontSize: '13pt', textTransform: 'uppercase', lineHeight: 1.2 }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</Typography>
+                    <Typography fontWeight="bold" sx={{ fontSize: '12pt', textDecoration: 'underline', lineHeight: 1.2 }}>Độc lập - Tự do - Hạnh phúc</Typography>
+                    <Typography color="error" sx={{ fontSize: '12pt', fontStyle: 'italic', mt: 1, textAlign: 'right' }}>BBXK-BSG/ACT :PX-{reportNumber}</Typography>
                 </Box>
             </Box>
 
-            <Typography variant="h6" align="center" fontWeight="bold" sx={{ mb: 2, textTransform: 'uppercase', color: '#d32f2f', fontFamily: 'inherit' }}>
+            <Typography variant="h5" align="center" color="error" fontWeight="bold" sx={{ fontSize: '18pt', my: 2 }}>
                 BIÊN BẢN XUẤT KHO VẬT TƯ HÀNG HÓA
             </Typography>
-
-            {/* Parties */}
-            <Box sx={{ mb: 2, fontSize: '13px', fontFamily: 'inherit' }}>
-                <Typography fontWeight="bold" mb={0.5} sx={{ color: '#1976d2', fontFamily: 'inherit' }}>1. BÊN GIAO (BÊN XUẤT HÀNG):</Typography>
-                <Box ml={3}>
-                    <Typography gutterBottom sx={{ margin: 0, fontFamily: 'inherit' }}>- Đơn vị: <b style={{ color: '#000' }}>Kho ACT - Khu vực Bắc Sài Gòn</b></Typography>
-                    <Typography gutterBottom sx={{ margin: 0, fontFamily: 'inherit' }}>- Người giao: <b style={{ textTransform: 'uppercase', color: '#000' }}>{delivererName}</b></Typography>
-                </Box>
-
-                <Typography fontWeight="bold" mt={1} mb={0.5} sx={{ color: '#1976d2', fontFamily: 'inherit' }}>2. BÊN NHẬN (NHẬP HÀNG):</Typography>
-                <Box ml={3}>
-                    <Typography gutterBottom sx={{ margin: 0, fontFamily: 'inherit' }}>- Đơn vị / Người nhận: <b style={{ textTransform: 'uppercase', color: '#000' }}>{receiverName}</b></Typography>
-                </Box>
-            </Box>
-
-            <Typography mb={1} fontStyle="italic" fontSize={13} sx={{ fontFamily: 'inherit' }}>
-                Hai bên thống nhất tiến hành lập biên bản xuất kho với chi tiết như sau:
+            <Typography align="center" mb={3} sx={{ fontStyle: 'italic', fontSize: '12pt' }}>
+                Ngày {dateObj.getDate()} tháng {dateObj.getMonth() + 1} năm {dateObj.getFullYear()}
             </Typography>
 
+            {/* Info */}
+            <Box mb={2} sx={{ fontSize: '12pt' }}>
+                <Typography fontWeight="bold" mb={0.5}>BÊN GIAO :</Typography>
+                <Typography>Họ tên người giao hàng : <b>{delivererName}</b></Typography>
+                <Typography>Chức vụ: Nhân viên - QLTS(Kho) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Điện thoại : {senderPhone}</Typography>
+                <Typography>Địa chỉ(Bộ phận) : 455A Trần Thị Năm , P.Tân Chánh Hiệp , Quận 12</Typography>
+                <Typography>Lý do xuất: Xuất hàng hóa,vật tư phát triển và xử lý sự cố, UCTT.....</Typography>
+            </Box>
+
+            <Box mb={3} sx={{ fontSize: '12pt' }}>
+                <Typography fontWeight="bold" mb={0.5}>BÊN NHẬN :</Typography>
+                <Typography>Địa chỉ(Bộ phận) : 455A Trần Thị Năm , P.Tân Chánh Hiệp , Quận 12</Typography>
+                <Typography>Họ tên người nhận hàng : <b style={{ color: 'red' }}>{receiverName}</b></Typography>
+                <Typography>Chức vụ: Nhân viên Kỹ thuật CĐBR &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Điện thoại : {receiverPhone}</Typography>
+            </Box>
+
             {/* Table */}
-            <Table size="small" sx={{
-                borderCollapse: 'collapse',
-                border: '1px solid #1976d2',
-                tableLayout: 'fixed',
-                width: '100%',
-                '& td, & th': {
-                    border: '1px solid #1976d2',
-                    padding: '3px 4px',
-                    fontSize: '11px',
-                    verticalAlign: 'middle',
-                    color: '#000',
-                    fontFamily: "'Times New Roman', Times, serif"
-                }
-            }}>
+            <Table size="small" sx={{ borderCollapse: 'collapse', '& td, & th': { border: '1px solid black', fontSize: '11pt', padding: '4px' } }}>
                 <TableHead>
-                    <TableRow sx={{ bgcolor: '#4472C4' }}>
-                        <TableCell align="center" width="30" sx={{ color: 'white !important', fontWeight: 'bold' }}>STT</TableCell>
-                        <TableCell align="center" sx={{ color: 'white !important', fontWeight: 'bold' }}>Tên Hàng Hóa / Vật Tư</TableCell>
-                        <TableCell align="center" width="40" sx={{ color: 'white !important', fontWeight: 'bold' }}>ĐVT</TableCell>
-                        <TableCell align="center" width="35" sx={{ color: 'white !important', fontWeight: 'bold' }}>SL</TableCell>
-                        <TableCell align="center" width="70" sx={{ color: 'white !important', fontWeight: 'bold' }}>Đơn Giá</TableCell>
-                        <TableCell align="center" width="80" sx={{ color: 'white !important', fontWeight: 'bold' }}>Thành Tiền</TableCell>
-                        <TableCell align="center" width="100" sx={{ color: 'white !important', fontWeight: 'bold' }}>Serial</TableCell>
-                        <TableCell align="center" width="80" sx={{ color: 'white !important', fontWeight: 'bold' }}>Ghi Chú</TableCell>
+                    <TableRow sx={{ bgcolor: '#BDD7EE' }}> {/* Standard Excel-like blue */}
+                        <TableCell align="center" width="7%" sx={{ color: 'black', fontWeight: 'bold' }}>STT</TableCell>
+                        <TableCell align="center" width="35%" sx={{ color: 'black', fontWeight: 'bold' }}>TÊN HÀNG HÓA</TableCell>
+                        <TableCell align="center" width="7%" sx={{ color: 'black', fontWeight: 'bold' }}>ĐVT</TableCell>
+                        <TableCell align="center" width="7%" sx={{ color: 'black', fontWeight: 'bold' }}>SL</TableCell>
+                        <TableCell align="center" width="12%" sx={{ color: 'black', fontWeight: 'bold' }}>ĐƠN GIÁ</TableCell>
+                        <TableCell align="center" width="12%" sx={{ color: 'black', fontWeight: 'bold' }}>THÀNH TIỀN</TableCell>
+                        <TableCell align="center" width="20%" sx={{ color: 'black', fontWeight: 'bold' }}>SERIAL</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {data.map((item, index) => (
-                        <TableRow key={index} sx={{ '&:nth-of-type(odd)': { bgcolor: '#f5f9ff' } }}>
+                        <TableRow key={index}>
                             <TableCell align="center">{index + 1}</TableCell>
-                            <TableCell sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {item.product_name}
-                            </TableCell>
+                            <TableCell>{item.product_name}</TableCell>
                             <TableCell align="center">{item.unit}</TableCell>
                             <TableCell align="center">{item.quantity}</TableCell>
-                            <TableCell align="right">{new Intl.NumberFormat('vi-VN').format(item.unit_price)}</TableCell>
-                            <TableCell align="right">{new Intl.NumberFormat('vi-VN').format(item.unit_price * item.quantity)}</TableCell>
-                            <TableCell sx={{ fontSize: '10px', wordBreak: 'break-all', lineHeight: 1.1 }}>{item.serial_code}</TableCell>
-                            <TableCell sx={{ fontSize: '10px' }}>{item.item_status || ''}</TableCell>
+                            <TableCell align="right">
+                                {new Intl.NumberFormat('vi-VN').format(item.unit_price)}
+                            </TableCell>
+                            <TableCell align="right">
+                                {new Intl.NumberFormat('vi-VN').format(item.unit_price * item.quantity)}
+                            </TableCell>
+                            <TableCell sx={{ maxWidth: 200, wordBreak: 'break-all' }}>{item.serial_code}</TableCell>
                         </TableRow>
                     ))}
                     {/* Total Row */}
-                    <TableRow sx={{ bgcolor: '#e8f0fe' }}>
-                        <TableCell colSpan={3} align="center" sx={{ fontWeight: 'bold', color: '#1976d2' }}>TỔNG CỘNG</TableCell>
-                        <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1976d2' }}>{data.reduce((acc, i) => acc + i.quantity, 0)}</TableCell>
-                        <TableCell sx={{ bgcolor: '#e8f0fe' }}></TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 'bold', color: '#d32f2f' }}>
+                    <TableRow sx={{ bgcolor: '#FFF2CC' }}> {/* Light yellow for total */}
+                        <TableCell colSpan={3} align="center" sx={{ fontWeight: 'bold' }}>TỔNG CỘNG</TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 'bold' }}>{data.reduce((acc, i) => acc + i.quantity, 0)}</TableCell>
+                        <TableCell colSpan={2} align="right" sx={{ fontWeight: 'bold' }}>
                             {new Intl.NumberFormat('vi-VN').format(totalAmount)}
                         </TableCell>
-                        <TableCell colSpan={2} sx={{ bgcolor: '#e8f0fe' }}></TableCell>
+                        <TableCell colSpan={1}></TableCell>
                     </TableRow>
                 </TableBody>
             </Table>
 
-            <Box mt={1} mb={3}>
-                <Typography fontStyle="italic" fontSize={13} sx={{ mt: 1, fontFamily: 'inherit' }}>
-                    - Tổng số tiền (bằng chữ): <b>{readMoney(totalAmount)}</b>
-                </Typography>
-                <Typography fontStyle="italic" fontSize={13} sx={{ fontFamily: 'inherit' }}>
-                    - Hàng hóa đã được kiểm tra, giao nhận đầy đủ đúng chủng loại, số lượng và chất lượng theo danh sách trên.
-                </Typography>
-            </Box>
+            <Typography align="center" fontWeight="bold" fontStyle="italic" my={2} sx={{ border: '1px solid black', p: 1, fontSize: '12pt' }}>
+                Tổng số tiền (viết bằng chữ): {readMoney(totalAmount)}
+            </Typography>
+
+            <Typography fontSize={11} fontStyle="italic" align="center" mb={4}>
+                Lưu ý : Kiểm tra trước khi đi, mọi khiếu nại về sau không giải quyết. Trân trọng !
+            </Typography>
 
             {/* Signatures */}
-            <Box display="flex" justifyContent="space-between" mt={1} sx={{ fontFamily: 'inherit' }}>
-                <Box textAlign="center" width="45%">
-                    <Typography fontWeight="bold" fontSize={12} sx={{ color: '#1976d2', fontFamily: 'inherit' }}>THỦ KHO (XUẤT)</Typography>
-                    <Typography fontStyle="italic" fontSize={11} sx={{ fontFamily: 'inherit' }}>(Ký, ghi rõ họ tên)</Typography>
-                    <Box height={70} />
-                    <Typography fontWeight="bold" fontSize={12} sx={{ textTransform: 'uppercase', fontFamily: 'inherit' }}>{delivererName}</Typography>
+            <Box display="flex" justifyContent="space-around" px={2} mb={5}>
+                <Box textAlign="center">
+                    <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>BÊN GIAO</Typography>
+                    <Typography fontStyle="italic" sx={{ fontSize: '11pt' }}>(Ký, họ tên)</Typography>
+                    <Box height={100} />
+                    <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>{delivererName}</Typography>
                 </Box>
-                <Box textAlign="center" width="45%">
-                    <Typography fontWeight="bold" fontSize={12} sx={{ color: '#1976d2', fontFamily: 'inherit' }}>NGƯỜI NHẬN</Typography>
-                    <Typography fontStyle="italic" fontSize={11} sx={{ fontFamily: 'inherit' }}>(Ký, ghi rõ họ tên)</Typography>
-                    <Box height={70} />
-                    <Typography fontWeight="bold" fontSize={12} sx={{ textTransform: 'uppercase', fontFamily: 'inherit' }}>{receiverName}</Typography>
+                <Box textAlign="center">
+                    <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>BÊN NHẬN</Typography>
+                    <Typography fontStyle="italic" sx={{ fontSize: '11pt' }}>(Ký, họ tên)</Typography>
+                    <Box height={100} />
+                    <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>{receiverName}</Typography>
                 </Box>
             </Box>
-        </Box>
+        </Paper>
     );
 };
 
