@@ -55,7 +55,7 @@ export const Outbound = () => {
     const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
     const [selectedPrintIds, setSelectedPrintIds] = useState<string[]>([]);
     const [openPrintPreview, setOpenPrintPreview] = useState(false);
-
+    const [reportNumber, setReportNumber] = useState(1);
 
     // Staff Fulfillment State
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -1132,6 +1132,7 @@ export const Outbound = () => {
                         })())}
                         receiverName={Array.from(new Set(recentTransactions.filter(t => selectedPrintIds.includes(t.id)).map(t => t.group_name || t.receiver_group))).join(', ')}
                         date={new Date().toISOString()}
+                        reportNumber={reportNumber}
                     />
                 </DialogContent>
             </Dialog>
