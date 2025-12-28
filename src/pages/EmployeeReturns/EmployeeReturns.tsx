@@ -4,7 +4,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions,
-    TextField, Autocomplete, Chip, Alert, Checkbox, Stack, Grid
+    TextField, Autocomplete, Chip, Alert, Checkbox, Stack, Grid, useTheme, useMediaQuery,
+    Card, CardContent
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import PrintIcon from '@mui/icons-material/Print';
@@ -26,6 +27,8 @@ const REASONS = ['Hàng tồn lâu', 'Hàng mới hỏng', 'Hàng thu hồi khá
 
 const EmployeeReturns = () => {
     const dispatch = useDispatch<AppDispatch>();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     // Selectors
     const { items: returns } = useSelector((state: RootState) => state.returns);
@@ -50,8 +53,6 @@ const EmployeeReturns = () => {
 
     // Selection for Report
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
-
-
 
     useEffect(() => {
         dispatch(fetchReturns());
@@ -99,9 +100,7 @@ const EmployeeReturns = () => {
             if (serials.length === 0 && !manualSerial) {
                 // Try manual serial as last resort if user forgot to click Add
                 if (manualSerial) {
-                    setSerials([manualSerial]); // Proceed with this logic? Better explicitly ask.
-                    // But for UX, if simple input, let's just use it?
-                    // If manualSerial is there but serials empty, treat as 1 item.
+                    setSerials([manualSerial]); // Proceed with this logic
                 } else {
                     alert('Hàng hóa yêu cầu phải có Serial!');
                     return;
@@ -171,6 +170,12 @@ const EmployeeReturns = () => {
         }
     };
 
+    const handleSelectOne = (id: string) => {
+        setSelectedIds(prev =>
+            prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+        );
+    };
+
     const previewData = returns
         .filter(r => selectedIds.includes(r.id))
         .map(r => ({
@@ -234,12 +239,12 @@ const EmployeeReturns = () => {
     };
 
     return (
-        <Box p={3}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-                <Typography variant="h5" fontWeight="bold" color="primary">
+        <Box p={{ xs: 1, sm: 3 }}>
+            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} mb={3} gap={2}>
+                <Typography variant="h5" fontWeight="bold" color="primary" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
                     QUẢN LÝ TRẢ HÀNG (EMPLOYEE RETURNS)
                 </Typography>
-                <Stack direction="row" spacing={2}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} width={{ xs: '100%', sm: 'auto' }}>
                     {isAdmin && (
                         <>
                             <Button
@@ -247,6 +252,7 @@ const EmployeeReturns = () => {
                                 color="success" // Excel color
                                 startIcon={<FileDownloadIcon />}
                                 onClick={handleExportExcel}
+                                fullWidth={isMobile}
                             >
                                 Xuất Excel
                             </Button>
@@ -256,6 +262,7 @@ const EmployeeReturns = () => {
                                 startIcon={<DeleteIcon />}
                                 disabled={selectedIds.length === 0}
                                 onClick={handleDelete}
+                                fullWidth={isMobile}
                             >
                                 Xóa ({selectedIds.length})
                             </Button>
@@ -266,6 +273,7 @@ const EmployeeReturns = () => {
                         startIcon={<PrintIcon />}
                         disabled={selectedIds.length === 0}
                         onClick={() => setOpenPreview(true)}
+                        fullWidth={isMobile}
                     >
                         In Biên Bản ({selectedIds.length})
                     </Button>
@@ -276,6 +284,7 @@ const EmployeeReturns = () => {
                             variant="contained"
                             startIcon={<AddIcon />}
                             onClick={() => setOpenCreate(true)}
+                            fullWidth={isMobile}
                         >
                             Tạo Phiếu Trả
                         </Button>
@@ -283,69 +292,120 @@ const EmployeeReturns = () => {
                 </Stack>
             </Box>
 
-            <Paper elevation={0} sx={{ border: '1px solid #eee' }}>
-                <TableContainer>
-                    <Table>
-                        <TableHead sx={{ bgcolor: '#f5f5f5' }}>
-                            <TableRow>
-                                <TableCell padding="checkbox">
-                                    <Checkbox
-                                        checked={returns.length > 0 && selectedIds.length === returns.length}
-                                        onChange={handleSelectAll}
-                                    />
-                                </TableCell>
-                                <TableCell>Ngày Trả</TableCell>
-                                <TableCell>Nhân Viên</TableCell>
-                                <TableCell>Mã Hàng</TableCell>
-                                <TableCell>Tên Hàng</TableCell>
-                                <TableCell>Serial</TableCell>
-                                <TableCell>Lý Do</TableCell>
-                                <TableCell align="right">Số Lượng</TableCell>
-                                <TableCell align="right">Đơn Giá</TableCell>
-                                <TableCell align="right">Thành Tiền</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {returns.length === 0 ? (
+            {isMobile ? (
+                // Mobile View: Cards
+                <Stack spacing={2}>
+                    {returns.length === 0 ? (
+                        <Typography align="center" py={4} color="text.secondary">Chưa có dữ liệu trả hàng</Typography>
+                    ) : (
+                        returns.map((row) => (
+                            <Card key={row.id} variant="outlined" sx={{ position: 'relative', bgcolor: selectedIds.includes(row.id) ? 'action.selected' : 'background.paper' }}>
+                                <CardContent sx={{ pb: 1 }}>
+                                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                                        <Checkbox
+                                            checked={selectedIds.includes(row.id)}
+                                            onChange={() => handleSelectOne(row.id)}
+                                            sx={{ p: 0, mr: 1 }}
+                                        />
+                                        <Typography variant="caption" color="text.secondary">
+                                            {new Date(row.return_date).toLocaleDateString('vi-VN')}
+                                        </Typography>
+                                    </Box>
+                                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                                        {row.product?.name}
+                                    </Typography>
+                                    <Stack spacing={0.5} mt={1}>
+                                        <Typography variant="body2" color="text.secondary">
+                                            Mã: <Box component="span" color="text.primary">{row.product?.item_code}</Box>
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            NV: <Box component="span" color="text.primary">{row.employee?.full_name}</Box>
+                                        </Typography>
+                                        {row.serial_code && (
+                                            <Typography variant="body2" color="text.secondary">
+                                                Serial: <Box component="span" color="primary.main" fontWeight={500}>{row.serial_code}</Box>
+                                            </Typography>
+                                        )}
+                                        <Box display="flex" justifyContent="space-between" alignItems="center">
+                                            <Typography variant="body2" color="text.secondary">
+                                                SL: <Box component="span" fontWeight="bold">{row.quantity}</Box>
+                                            </Typography>
+                                            <Chip label={row.reason} size="small" color={row.reason === 'Hàng mới hỏng' ? 'error' : 'default'} sx={{ height: 24, fontSize: '0.75rem' }} />
+                                        </Box>
+                                    </Stack>
+                                </CardContent>
+                            </Card>
+                        ))
+                    )}
+                </Stack>
+            ) : (
+                // Desktop View: Table
+                <Paper elevation={0} sx={{ border: '1px solid #eee' }}>
+                    <TableContainer>
+                        <Table>
+                            <TableHead sx={{ bgcolor: '#f5f5f5' }}>
                                 <TableRow>
-                                    <TableCell colSpan={10} align="center" sx={{ py: 3 }}>
-                                        Chưa có dữ liệu trả hàng
+                                    <TableCell padding="checkbox">
+                                        <Checkbox
+                                            checked={returns.length > 0 && selectedIds.length === returns.length}
+                                            onChange={handleSelectAll}
+                                        />
                                     </TableCell>
+                                    <TableCell>Ngày Trả</TableCell>
+                                    <TableCell>Nhân Viên</TableCell>
+                                    <TableCell>Mã Hàng</TableCell>
+                                    <TableCell>Tên Hàng</TableCell>
+                                    <TableCell>Serial</TableCell>
+                                    <TableCell>Lý Do</TableCell>
+                                    <TableCell align="right">Số Lượng</TableCell>
+                                    <TableCell align="right">Đơn Giá</TableCell>
+                                    <TableCell align="right">Thành Tiền</TableCell>
                                 </TableRow>
-                            ) : (
-                                returns.map((row) => (
-                                    <TableRow key={row.id} hover selected={selectedIds.includes(row.id)}>
-                                        <TableCell padding="checkbox">
-                                            <Checkbox
-                                                checked={selectedIds.includes(row.id)}
-                                                onChange={() => {
-                                                    setSelectedIds(prev =>
-                                                        prev.includes(row.id) ? prev.filter(id => id !== row.id) : [...prev, row.id]
-                                                    );
-                                                }}
-                                            />
+                            </TableHead>
+                            <TableBody>
+                                {returns.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={10} align="center" sx={{ py: 3 }}>
+                                            Chưa có dữ liệu trả hàng
                                         </TableCell>
-                                        <TableCell>{new Date(row.return_date).toLocaleDateString('vi-VN')}</TableCell>
-                                        <TableCell>{row.employee?.full_name}</TableCell>
-                                        <TableCell>{row.product?.item_code}</TableCell>
-                                        <TableCell>{row.product?.name}</TableCell>
-                                        <TableCell>{row.serial_code}</TableCell>
-                                        <TableCell>
-                                            <Chip label={row.reason} size="small" color={row.reason === 'Hàng mới hỏng' ? 'error' : 'default'} />
-                                        </TableCell>
-                                        <TableCell align="right">{row.quantity}</TableCell>
-                                        <TableCell align="right">{new Intl.NumberFormat('vi-VN').format(row.unit_price)}</TableCell>
-                                        <TableCell align="right">{new Intl.NumberFormat('vi-VN').format(row.total_price)}</TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-            </Paper>
+                                ) : (
+                                    returns.map((row) => (
+                                        <TableRow key={row.id} hover selected={selectedIds.includes(row.id)}>
+                                            <TableCell padding="checkbox">
+                                                <Checkbox
+                                                    checked={selectedIds.includes(row.id)}
+                                                    onChange={() => handleSelectOne(row.id)}
+                                                />
+                                            </TableCell>
+                                            <TableCell>{new Date(row.return_date).toLocaleDateString('vi-VN')}</TableCell>
+                                            <TableCell>{row.employee?.full_name}</TableCell>
+                                            <TableCell>{row.product?.item_code}</TableCell>
+                                            <TableCell>{row.product?.name}</TableCell>
+                                            <TableCell>{row.serial_code}</TableCell>
+                                            <TableCell>
+                                                <Chip label={row.reason} size="small" color={row.reason === 'Hàng mới hỏng' ? 'error' : 'default'} />
+                                            </TableCell>
+                                            <TableCell align="right">{row.quantity}</TableCell>
+                                            <TableCell align="right">{new Intl.NumberFormat('vi-VN').format(row.unit_price)}</TableCell>
+                                            <TableCell align="right">{new Intl.NumberFormat('vi-VN').format(row.total_price)}</TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                </Paper>
+            )}
 
             {/* Create Dialog */}
-            <Dialog open={openCreate} onClose={() => setOpenCreate(false)} maxWidth="sm" fullWidth>
+            <Dialog
+                open={openCreate}
+                onClose={() => setOpenCreate(false)}
+                maxWidth="sm"
+                fullWidth
+                fullScreen={isMobile}
+            >
                 <DialogTitle>Tạo Phiếu Trả Hàng</DialogTitle>
                 <DialogContent>
                     <Stack spacing={2} pt={1}>
@@ -385,12 +445,12 @@ const EmployeeReturns = () => {
                                     />
                                 </Grid>
                                 <Grid size={{ xs: 2 }}>
-                                    <Button variant="contained" onClick={handleAddManualSerial} sx={{ height: 40, minWidth: 40 }}>
+                                    <Button variant="contained" onClick={handleAddManualSerial} sx={{ height: 40, minWidth: 40, p: 0 }}>
                                         <AddIcon />
                                     </Button>
                                 </Grid>
                                 <Grid size={{ xs: 2 }}>
-                                    <Button variant="outlined" color="primary" onClick={() => setOpenScanner(true)} sx={{ height: 40, minWidth: 40 }}>
+                                    <Button variant="outlined" color="primary" onClick={() => setOpenScanner(true)} sx={{ height: 40, minWidth: 40, p: 0 }}>
                                         <QrCodeScannerIcon />
                                     </Button>
                                 </Grid>
@@ -460,18 +520,11 @@ const EmployeeReturns = () => {
                                 setSerials(prev => {
                                     const uniqueNew = newCodes.filter(c => !prev.includes(c));
                                     if (uniqueNew.length > 0) {
-                                        // Optional: Toast message logic here?
-                                        // Since we don't have local notification state in this component visible in Dialog?
-                                        // Actually there is no notification state in EmployeeReturns.
-                                        // Maybe just alert? Or silent add?
-                                        // User asked for logic application "ap dung cho tat ca".
-                                        // It implies "auto close" too.
-                                        setTimeout(() => setOpenScanner(false), 200); // Small delay or immediate
+                                        setTimeout(() => setOpenScanner(false), 200);
                                         return [...prev, ...uniqueNew];
                                     }
                                     return prev;
                                 });
-                                // If duplications only? Close anyway?
                                 setOpenScanner(false);
                             }
                         }}
