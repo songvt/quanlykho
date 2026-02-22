@@ -502,7 +502,7 @@ const Reports = () => {
     const [previewReceiverPhone, setPreviewReceiverPhone] = useState('');
     const [previewReportNumber, setPreviewReportNumber] = useState(1);
 
-    const handlePreviewHandover = () => {
+    const handlePreviewHandover = (autoPrint = false) => {
         const handoverData = getHandoverData();
         if (handoverData) {
             // Resolve Sender (Reporter) Name & Phone based on District logic
@@ -539,6 +539,12 @@ const Reports = () => {
                 setPreviewData(handoverData);
                 setOpenHandoverPreview(true);
                 setOpenHandover(false);
+
+                if (autoPrint) {
+                    setTimeout(() => {
+                        window.print();
+                    }, 500); // 500ms allows the modal to finish animating in
+                }
             });
         }
     };
@@ -1199,7 +1205,19 @@ const Reports = () => {
                         Xuất File Excel
                     </Button>
                     <Button
-                        onClick={handlePreviewHandover}
+                        onClick={() => handlePreviewHandover(true)}
+                        variant="contained"
+                        color="success"
+                        startIcon={<PrintIcon />}
+                        sx={{
+                            borderRadius: 3, px: 3, py: 1, fontWeight: 700, ml: 2,
+                            boxShadow: '0 4px 12px rgba(46, 125, 50, 0.25)'
+                        }}
+                    >
+                        In Nhanh
+                    </Button>
+                    <Button
+                        onClick={() => handlePreviewHandover(false)}
                         variant="outlined"
                         color="primary"
                         sx={{
