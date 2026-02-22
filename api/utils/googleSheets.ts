@@ -8,8 +8,13 @@ export const getGoogleSheet = async () => {
         const sheetId = process.env.GOOGLE_SHEET_ID;
 
         if (!serviceAccountEmail || !privateKey || !sheetId) {
-            console.error('Missing Google Sheets credentials in environment variables.');
-            throw new Error('Server Configuration Error');
+            const missingInfo = [
+                !serviceAccountEmail ? 'Email' : '',
+                !privateKey ? 'PrivateKey' : '',
+                !sheetId ? 'SheetID' : ''
+            ].filter(Boolean).join(', ');
+            console.error(`Missing Google Sheets credentials: ${missingInfo}`);
+            throw new Error(`Server Configuration Error: Missing ${missingInfo}`);
         }
 
         // Handle private key format from env var (replace literal \n with actual newlines)
