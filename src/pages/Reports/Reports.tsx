@@ -1237,8 +1237,8 @@ const Reports = () => {
                 fullWidth
                 PaperProps={{ sx: { bgcolor: 'transparent', boxShadow: 'none' } }}
             >
-                <Box position="relative">
-                    <Stack direction="row" spacing={2} sx={{ position: 'absolute', right: 0, top: -50 }} className="no-print">
+                <Box>
+                    <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ mb: 2 }} className="no-print">
                         <Button
                             variant="contained"
                             color="info"
