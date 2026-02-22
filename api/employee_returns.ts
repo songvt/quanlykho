@@ -43,6 +43,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                 const returns = rows.map(r => {
                     const rowObj = r.toObject();
+                    if (rowObj.quantity !== undefined) rowObj.quantity = Number(rowObj.quantity);
+                    if (rowObj.unit_price !== undefined) rowObj.unit_price = Number(rowObj.unit_price);
+                    if (rowObj.total_price !== undefined) rowObj.total_price = Number(rowObj.total_price);
                     return {
                         ...rowObj,
                         product: productsMap[rowObj.product_id] || null,

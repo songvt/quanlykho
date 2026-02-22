@@ -70,6 +70,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const iRows = await inboundSheet.getRows();
                     allLinks = [...allLinks, ...iRows.map(r => {
                         const t = r.toObject();
+                        if (t.quantity !== undefined) t.quantity = Number(t.quantity);
+                        if (t.unit_price !== undefined) t.unit_price = Number(t.unit_price);
+                        if (t.total_price !== undefined) t.total_price = Number(t.total_price);
                         return {
                             ...t,
                             type: 'inbound',
@@ -84,6 +87,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const oRows = await outboundSheet.getRows();
                     allLinks = [...allLinks, ...oRows.map(r => {
                         const t = r.toObject();
+                        if (t.quantity !== undefined) t.quantity = Number(t.quantity);
+                        if (t.unit_price !== undefined) t.unit_price = Number(t.unit_price);
+                        if (t.total_price !== undefined) t.total_price = Number(t.total_price);
                         return {
                             ...t,
                             type: 'outbound',

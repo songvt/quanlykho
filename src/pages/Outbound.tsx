@@ -307,7 +307,7 @@ export const Outbound = () => {
                 if (uniqueNewCodes.length === 0) return;
 
                 // How many more do we need?
-                const needed = selectedOrder.quantity - scannedSerials.length;
+                const needed = Number(selectedOrder.quantity) - scannedSerials.length;
 
                 if (needed <= 0) {
                     setShowScanner(false);
@@ -319,11 +319,11 @@ export const Outbound = () => {
 
                 setScannedSerials(prev => {
                     const newer = [...prev, ...taking];
-                    if (newer.length >= selectedOrder.quantity) {
+                    if (newer.length >= Number(selectedOrder.quantity)) {
                         setShowScanner(false);
                         setNotification({ type: 'success', message: 'Đã quét đủ số lượng serial theo đơn hàng!' });
                     } else {
-                        setNotification({ type: 'success', message: `Đã thêm ${taking.length} serial. Còn thiếu: ${selectedOrder.quantity - newer.length}` });
+                        setNotification({ type: 'success', message: `Đã thêm ${taking.length} serial. Còn thiếu: ${Number(selectedOrder.quantity) - newer.length}` });
                     }
                     return newer;
                 });
@@ -390,7 +390,7 @@ export const Outbound = () => {
         }
 
         // Check limit only for Fulfillment
-        if (openFulfillDialog && selectedOrder && scannedSerials.length >= selectedOrder.quantity) {
+        if (openFulfillDialog && selectedOrder && scannedSerials.length >= Number(selectedOrder.quantity)) {
             alert('Đã đủ số lượng serial.');
             return;
         }
@@ -421,14 +421,14 @@ export const Outbound = () => {
 
         const isSerialized = product.category?.toLowerCase() === 'hàng hóa';
 
-        if (selectedOrder.quantity > fulfillmentStock) {
+        if (Number(selectedOrder.quantity) > fulfillmentStock) {
             alert(`Tồn kho không đủ! Yêu cầu: ${selectedOrder.quantity}, Tồn: ${fulfillmentStock}`);
             return;
         }
 
         // Validate Serial count
         if (isSerialized) {
-            if (scannedSerials.length !== selectedOrder.quantity) {
+            if (scannedSerials.length !== Number(selectedOrder.quantity)) {
                 if (!window.confirm(`Bạn mới quét ${scannedSerials.length}/${selectedOrder.quantity} serial. Bạn có muốn hoàn thành với số lượng này không? (Lưu ý: Logic hiện tại yêu cầu đủ số lượng)`)) {
                     return;
                 }
@@ -447,7 +447,7 @@ export const Outbound = () => {
         try {
             await executeOutbound(
                 selectedOrder.product_id,
-                selectedOrder.quantity,
+                Number(selectedOrder.quantity),
                 scannedSerials, // Pass the array 
                 selectedOrder.requester_group,
                 product.unit_price || 0,
@@ -678,8 +678,8 @@ export const Outbound = () => {
                             onClick={handleFulfillOrder}
                             variant="contained"
                             color="secondary"
-                            disabled={!selectedOrder || fulfillmentStock < selectedOrder.quantity || (
-                                products.find(p => p.id === selectedOrder.product_id)?.category?.toLowerCase() === 'hàng hóa' && scannedSerials.length !== selectedOrder.quantity
+                            disabled={!selectedOrder || fulfillmentStock < Number(selectedOrder.quantity) || (
+                                products.find(p => p.id === selectedOrder.product_id)?.category?.toLowerCase() === 'hàng hóa' && scannedSerials.length !== Number(selectedOrder.quantity)
                             )}
                         >
                             Hoàn tất Xuất Kho

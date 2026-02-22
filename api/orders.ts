@@ -21,7 +21,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         switch (req.method) {
             case 'GET': {
                 const rows = await sheet.getRows();
-                const orders = rows.map(row => row.toObject());
+                const orders = rows.map(row => {
+                    const obj = row.toObject();
+                    if (obj.quantity !== undefined) obj.quantity = Number(obj.quantity);
+                    return obj;
+                });
                 return res.status(200).json(orders);
             }
 
