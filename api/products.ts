@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets';
+import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Only allow specific methods

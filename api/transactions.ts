@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets';
-import { CONFIG } from '../src/config';
+import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets.js';
+import { CONFIG } from '../src/config.js';
 
 // Helper to send webhook
 const sendWebhook = async (type: 'inbound' | 'outbound', data: any) => {
