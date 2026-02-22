@@ -446,6 +446,13 @@ export const Outbound = () => {
         }
 
         try {
+            // Find the requester's district from the employee list
+            const requesterEmployee = employees.find(e =>
+                e.full_name === selectedOrder.requester_group ||
+                e.username === selectedOrder.requester_group
+            );
+            const requesterDistrict = requesterEmployee?.district || undefined;
+
             await executeOutbound(
                 selectedOrder.product_id,
                 Number(selectedOrder.quantity),
@@ -453,7 +460,7 @@ export const Outbound = () => {
                 selectedOrder.requester_group,
                 product.unit_price || 0,
                 isSerialized,
-                undefined, // District undefined for fulfillment for now
+                requesterDistrict, // District inferred from requester
                 undefined // Item Status undefined for fulfillment for now
             );
 
