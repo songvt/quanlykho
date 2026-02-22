@@ -15,6 +15,7 @@ import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import { fetchReturns, addReturns, deleteReturns } from '../../store/slices/returnsSlice';
 import { fetchProducts } from '../../store/slices/productsSlice';
 import { fetchInventory } from '../../store/slices/inventorySlice';
+import { fetchTransactions } from '../../store/slices/transactionsSlice';
 import type { RootState, AppDispatch } from '../../store';
 import QRScanner from '../../components/QRScanner';
 import ReturnsReportPreview from '../../components/Reports/ReturnsReportPreview';
@@ -161,6 +162,8 @@ const EmployeeReturns = () => {
             setQuantity(1);
             setReason(REASONS[0]);
             dispatch(fetchReturns()); // Refresh
+            dispatch(fetchTransactions()); // Sync inbound transactions
+            dispatch(fetchInventory()); // Sync stock levels
         } catch (error: any) {
             setNotification({ type: 'error', message: 'Lỗi: ' + error.message });
         }

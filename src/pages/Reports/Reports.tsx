@@ -27,7 +27,7 @@ import { GoogleSheetService as SupabaseService } from '../../services/GoogleShee
 import { exportHandoverMinutesV2, exportStandardReport } from '../../utils/excelUtils';
 import type { ReportColumn } from '../../utils/excelUtils';
 import HandoverPreview from '../../components/Reports/HandoverPreview';
-import { formatCurrency } from '../../utils/format';
+import { formatCurrency, getLocalYYYYMMDD } from '../../utils/format';
 
 const Reports = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -48,7 +48,7 @@ const Reports = () => {
     const [selectedEmployee, setSelectedEmployee] = useState<string | null>(
         isAdmin ? null : (profile?.full_name || profile?.username || profile?.email || '')
     );
-    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState<string>(getLocalYYYYMMDD());
 
     // State for Preview
     const [openHandoverPreview, setOpenHandoverPreview] = useState(false);
@@ -56,8 +56,8 @@ const Reports = () => {
 
     // State for Stock Card Report
     const [openStockCard, setOpenStockCard] = useState(false);
-    const [stockStartDate, setStockStartDate] = useState(new Date().toISOString().split('T')[0]);
-    const [stockEndDate, setStockEndDate] = useState(new Date().toISOString().split('T')[0]);
+    const [stockStartDate, setStockStartDate] = useState(getLocalYYYYMMDD());
+    const [stockEndDate, setStockEndDate] = useState(getLocalYYYYMMDD());
 
     // District Configs
     const [districtConfigs, setDistrictConfigs] = useState<{ district: string; storekeeper_name: string }[]>([]);
@@ -66,22 +66,22 @@ const Reports = () => {
     const [openPeriodReport, setOpenPeriodReport] = useState(false);
     const [periodType, setPeriodType] = useState<'all' | 'inbound' | 'outbound'>('all');
     const [timeRange, setTimeRange] = useState<'today' | 'week' | 'month' | 'custom'>('today');
-    const [cStart, setCStart] = useState(new Date().toISOString().split('T')[0]);
-    const [cEnd, setCEnd] = useState(new Date().toISOString().split('T')[0]);
+    const [cStart, setCStart] = useState(getLocalYYYYMMDD());
+    const [cEnd, setCEnd] = useState(getLocalYYYYMMDD());
 
     // State for Employee Report
     const [openEmployeeReport, setOpenEmployeeReport] = useState(false);
     const [employeeReportType, setEmployeeReportType] = useState<'all' | 'inbound' | 'outbound'>('all');
     const [employeeReportTimeRange, setEmployeeReportTimeRange] = useState<'today' | 'week' | 'month' | 'custom'>('today');
-    const [employeeReportStart, setEmployeeReportStart] = useState(new Date().toISOString().split('T')[0]);
-    const [employeeReportEnd, setEmployeeReportEnd] = useState(new Date().toISOString().split('T')[0]);
+    const [employeeReportStart, setEmployeeReportStart] = useState(getLocalYYYYMMDD());
+    const [employeeReportEnd, setEmployeeReportEnd] = useState(getLocalYYYYMMDD());
     const [reportEmployeeId, setReportEmployeeId] = useState<string | null>(null);
 
     const [selectedTab, setSelectedTab] = useState(0);
 
     // Data Management State
-    const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-    const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+    const [startDate, setStartDate] = useState(getLocalYYYYMMDD());
+    const [endDate, setEndDate] = useState(getLocalYYYYMMDD());
     const [filterType, setFilterType] = useState<'all' | 'inbound' | 'outbound'>('all');
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
@@ -108,7 +108,7 @@ const Reports = () => {
     const managementTransactions = useMemo(() => {
         return transactions.filter(t => {
             if (!startDate && !endDate) return false; // Only show if filtered
-            const tDate = new Date(t.date).toISOString().split('T')[0];
+            const tDate = getLocalYYYYMMDD(t.date);
             if (startDate && tDate < startDate) return false;
             if (endDate && tDate > endDate) return false;
             if (filterType !== 'all' && t.type !== filterType) return false;
@@ -401,13 +401,6 @@ const Reports = () => {
             columns,
             reporterName
         );
-    };
-
-    const getLocalYYYYMMDD = (isoString?: string) => {
-        if (!isoString) return '';
-        const d = new Date(isoString);
-        if (isNaN(d.getTime())) return '';
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     };
 
     const getHandoverData = () => {

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts } from '../store/slices/productsSlice';
 import { fetchInventory, selectProductStock } from '../store/slices/inventorySlice';
-import { addInboundTransaction } from '../store/slices/transactionsSlice';
+import { addInboundTransaction, fetchTransactions } from '../store/slices/transactionsSlice';
 import type { RootState, AppDispatch } from '../store';
 import {
     Button, TextField, FormControl, FormHelperText,
@@ -113,6 +113,10 @@ export const Inbound = () => {
             setQuantity(1);
             setDistrict(''); // Reset district
             setItemStatus('');
+
+            // Sync Global Redux State
+            dispatch(fetchTransactions());
+            dispatch(fetchInventory());
             // Keep price? Maybe.
         } catch (err: any) {
             setNotification({ type: 'error', message: err.message || 'Có lỗi xảy ra' });
@@ -236,6 +240,11 @@ export const Inbound = () => {
 
                                         if (mappedData.length > 0) {
                                             await dispatch(importInboundTransactions(mappedData)).unwrap();
+
+                                            // Sync Global Redux State
+                                            dispatch(fetchTransactions());
+                                            dispatch(fetchInventory());
+
                                             alert(`Đã nhập thành công ${mappedData.length} giao dịch!`);
                                             setNotification({ type: 'success', message: `Đã nhập ${mappedData.length} giao dịch từ Excel!` });
                                         }
