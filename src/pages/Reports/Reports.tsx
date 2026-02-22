@@ -403,6 +403,13 @@ const Reports = () => {
         );
     };
 
+    const getLocalYYYYMMDD = (isoString?: string) => {
+        if (!isoString) return '';
+        const d = new Date(isoString);
+        if (isNaN(d.getTime())) return '';
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
     const getHandoverData = () => {
         if (!selectedEmployee) { alert('Vui lòng chọn nhân viên nhận bàn giao'); return null; }
         if (!selectedDate) { alert('Vui lòng chọn ngày xuất kho'); return null; }
@@ -412,7 +419,7 @@ const Reports = () => {
             if (t.type !== 'outbound') return false;
 
             // Check Date (Compare YYYY-MM-DD)
-            const tDate = new Date(t.date).toISOString().split('T')[0];
+            const tDate = getLocalYYYYMMDD(t.date);
             if (tDate !== selectedDate) return false;
 
             // Check Employee (fuzzy match name or exact match depending on data)
@@ -464,8 +471,8 @@ const Reports = () => {
 
             // Get all outbound transaction dates in this month
             const datesInMonth = Array.from(new Set(transactions
-                .filter(t => t.type === 'outbound' && t.date.startsWith(currentMonthPrefix))
-                .map(t => new Date(t.date).toISOString().split('T')[0])
+                .filter(t => t.type === 'outbound' && getLocalYYYYMMDD(t.date).startsWith(currentMonthPrefix))
+                .map(t => getLocalYYYYMMDD(t.date))
             )).sort();
 
             // Find index + 1

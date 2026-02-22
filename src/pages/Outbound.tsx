@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts } from '../store/slices/productsSlice';
-import { addOutboundTransaction } from '../store/slices/transactionsSlice';
+import { addOutboundTransaction, fetchTransactions } from '../store/slices/transactionsSlice';
 import { fetchInventory, selectProductStock, selectDetailedStock } from '../store/slices/inventorySlice';
 import { fetchEmployees } from '../store/slices/employeesSlice';
 import { fetchOrders, updateOrderStatus } from '../store/slices/ordersSlice';
@@ -284,6 +284,7 @@ export const Outbound = () => {
 
         dispatch(fetchInventory());
         dispatch(fetchOrders()); // Update orders if any affected
+        dispatch(fetchTransactions()); // Added to sync Reports cache
     };
 
     const handleScanSuccess = (decodedText: string) => {
