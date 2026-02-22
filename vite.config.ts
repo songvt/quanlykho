@@ -5,6 +5,15 @@ import basicSsl from '@vitejs/plugin-basic-ssl'
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
   plugins: [react(), mode === 'development' && basicSsl()].filter(Boolean),
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
+  },
   build: {
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
@@ -14,8 +23,7 @@ export default defineConfig(({ mode }) => ({
           'ui': ['@mui/material', '@mui/icons-material', '@emotion/react', '@emotion/styled'],
           'xlsx': ['xlsx'],
           'exceljs': ['exceljs'],
-          'common-utils': ['file-saver', 'html5-qrcode'],
-          'db': ['@supabase/supabase-js']
+          'common-utils': ['file-saver', 'html5-qrcode']
         }
       }
     }

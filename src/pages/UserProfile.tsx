@@ -18,7 +18,7 @@ import type { RootState } from '../store';
 import PersonIcon from '@mui/icons-material/Person';
 import LockResetIcon from '@mui/icons-material/LockReset';
 import SaveIcon from '@mui/icons-material/Save';
-import { SupabaseService } from '../services/SupabaseService';
+import { GoogleSheetService as SupabaseService } from '../services/GoogleSheetService';
 import { logoutUser } from '../store/slices/authSlice';
 import { useNavigate } from 'react-router-dom';
 

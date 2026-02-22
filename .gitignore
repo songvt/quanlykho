@@ -22,3 +22,17 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Migration and testing scripts
+orders_dump.json
+test_*.ts
+test_*.js
+migrate_*.js
+res.text*

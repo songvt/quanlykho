@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { SupabaseService } from '../../services/SupabaseService';
+import { GoogleSheetService as SupabaseService } from '../../services/GoogleSheetService';
 import type { Transaction } from '../../types';
 
 interface TransactionsState {
@@ -38,7 +38,7 @@ export const addOutboundTransaction = createAsyncThunk(
 export const importInboundTransactions = createAsyncThunk(
     'transactions/importInbound',
     async (transactions: any[]) => {
-        const data = await SupabaseService.bulkCreateInboundTransactions(transactions, { skipWebhook: true });
+        const data = await SupabaseService.bulkCreateInboundTransactions(transactions);
         return data;
     }
 );
@@ -46,7 +46,7 @@ export const importInboundTransactions = createAsyncThunk(
 export const importOutboundTransactions = createAsyncThunk(
     'transactions/importOutbound',
     async (transactions: any[]) => {
-        const data = await SupabaseService.bulkCreateOutboundTransactions(transactions, { skipWebhook: true });
+        const data = await SupabaseService.bulkCreateOutboundTransactions(transactions);
         return data;
     }
 );

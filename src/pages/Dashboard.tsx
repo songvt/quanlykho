@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import {
     Box, Paper, Typography, List, ListItem, ListItemText, CircularProgress, Chip, Grid,
 } from '@mui/material';
@@ -9,36 +10,94 @@ import {
     XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
     PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
+import type { RootState, AppDispatch } from '../store';
+import { fetchProducts } from '../store/slices/productsSlice';
+import { fetchTransactions } from '../store/slices/transactionsSlice';
+import { fetchInventory } from '../store/slices/inventorySlice';
+import type { DashboardStats } from '../types';
 
 const Dashboard = () => {
-    const [stats, setStats] = useState<import('../types').DashboardStats | null>(null);
-    const [loading, setLoading] = useState(true);
+    const dispatch = useDispatch<AppDispatch>();
+    const { items: products, status: productStatus } = useSelector((state: RootState) => state.products);
+    const { items: transactions, status: transactionStatus } = useSelector((state: RootState) => state.transactions);
+    const { stockMap, status: inventoryStatus } = useSelector((state: RootState) => state.inventory);
+
+    const isLoading = productStatus === 'loading' || transactionStatus === 'loading' || inventoryStatus === 'loading';
 
     useEffect(() => {
-        const loadStats = async () => {
-            try {
-                const data = await import('../services/SupabaseService').then(m => m.SupabaseService.getDashboardStats());
-                setStats(data);
-            } catch (error) {
-                console.error('Failed to load dashboard stats', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        loadStats();
-    }, []);
+        if (productStatus === 'idle') dispatch(fetchProducts());
+        if (transactionStatus === 'idle') dispatch(fetchTransactions());
+        if (inventoryStatus === 'idle') dispatch(fetchInventory());
+    }, [productStatus, transactionStatus, inventoryStatus, dispatch]);
 
-    if (loading) return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
+    const stats = useMemo(() => {
+        if (!products.length && !transactions.length) return null;
+
+        let total_inventory = 0;
+        let low_stock_items = 0;
+        let out_of_stock_items = 0;
+
+        products.forEach(p => {
+            const qty = stockMap[p.id] || 0;
+            total_inventory += qty;
+            if (qty <= 0) out_of_stock_items++;
+            else if (qty < 10) low_stock_items++; // Assuming < 10 is low stock
+        });
+
+        const recent_transactions = [...transactions]
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .slice(0, 5);
+
+        // Weekly Stats
+        const weekly_stats: { date: string, inbound: number, outbound: number }[] = [];
+        const today = new Date();
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(d.getDate() - i);
+            const dateStr = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+            weekly_stats.push({ date: dateStr, inbound: 0, outbound: 0 });
+        }
+
+        transactions.forEach(t => {
+            const tDate = new Date(t.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+            const dayStat = weekly_stats.find(w => w.date === tDate);
+            if (dayStat) {
+                if (t.type === 'inbound') dayStat.inbound += t.quantity;
+                else dayStat.outbound += t.quantity;
+            }
+        });
+
+        // Category Stats
+        const catMap: Record<string, number> = {};
+        products.forEach(p => {
+            const cat = p.category || 'Khác';
+            catMap[cat] = (catMap[cat] || 0) + 1;
+        });
+        const category_stats = Object.entries(catMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 5);
+
+        return {
+            total_products: products.length,
+            total_inventory,
+            low_stock_items,
+            out_of_stock_items,
+            recent_transactions,
+            weekly_stats,
+            category_stats
+        } as DashboardStats;
+
+    }, [products, transactions, stockMap]);
+
+    if (isLoading && !stats) return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
 
     if (!stats) {
         return (
             <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" p={4} minHeight="50vh">
                 <WarningIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
                 <Typography variant="h6" color="text.secondary" gutterBottom>
-                    Không thể tải dữ liệu Dashboard.
+                    Không có dữ liệu
                 </Typography>
                 <Typography variant="body2" color="text.secondary" align="center" sx={{ maxWidth: 400 }}>
-                    Có thể bạn chưa cập nhật Cơ sở dữ liệu (SQL). Vui lòng chạy file migration để tạo hàm <code>get_dashboard_stats</code>.
+                    Chưa có sản phẩm hoặc giao dịch nào trong hệ thống.
                 </Typography>
             </Box>
         );
@@ -48,7 +107,7 @@ const Dashboard = () => {
         ? stats.category_stats.map((c, i) => ({
             name: c.name || 'Khác',
             value: Number(c.value),
-            color: ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6'][i % 5]
+            color: ['#059669', '#1e4b9b', '#F59E0B', '#e11d48', '#8B5CF6'][i % 5]
         }))
         : [{ name: 'Chưa có dữ liệu', value: 1, color: '#E2E8F0' }];
 
@@ -58,11 +117,11 @@ const Dashboard = () => {
                 <Typography variant="h4" fontWeight="900" sx={{
                     fontSize: { xs: '1.5rem', sm: '2.125rem' },
                     textTransform: 'uppercase',
-                    background: 'linear-gradient(45deg, #3b82f6 30%, #2563eb 90%)',
+                    background: 'linear-gradient(45deg, #1e4b9b 30%, #0f2b5b 90%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
-                    letterSpacing: '1px',
-                    textShadow: '0 2px 10px rgba(37, 99, 235, 0.2)'
+                    letterSpacing: '0.5px',
+                    textShadow: '0 2px 10px rgba(15, 43, 91, 0.2)'
                 }}>
                     TỔNG QUAN KHO HÀNG
                 </Typography>
@@ -86,8 +145,8 @@ const Dashboard = () => {
                                         <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
                                     </linearGradient>
                                     <linearGradient id="colorOut" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8} />
-                                        <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                                        <stop offset="5%" stopColor="#1e4b9b" stopOpacity={0.8} />
+                                        <stop offset="95%" stopColor="#1e4b9b" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
@@ -95,8 +154,8 @@ const Dashboard = () => {
                                 <YAxis axisLine={false} tickLine={false} />
                                 <Tooltip contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }} />
                                 <Legend />
-                                <Area type="monotone" dataKey="inbound" name="Nhập kho" stroke="#10B981" fillOpacity={1} fill="url(#colorIn)" strokeWidth={2} />
-                                <Area type="monotone" dataKey="outbound" name="Xuất kho" stroke="#3B82F6" fillOpacity={1} fill="url(#colorOut)" strokeWidth={2} />
+                                <Area type="monotone" dataKey="inbound" name="Nhập kho" stroke="#059669" fillOpacity={1} fill="url(#colorIn)" strokeWidth={2} />
+                                <Area type="monotone" dataKey="outbound" name="Xuất kho" stroke="#1e4b9b" fillOpacity={1} fill="url(#colorOut)" strokeWidth={2} />
                             </AreaChart>
                         </ResponsiveContainer>
                     </Paper>
@@ -150,7 +209,7 @@ const Dashboard = () => {
                                     <Box sx={{
                                         p: 1.5, borderRadius: 3, mr: 2,
                                         bgcolor: t.type === 'inbound' ? '#ECFDF5' : '#EFF6FF',
-                                        color: t.type === 'inbound' ? '#10B981' : '#3B82F6'
+                                        color: t.type === 'inbound' ? '#059669' : '#1e4b9b'
                                     }}>
                                         {t.type === 'inbound' ? <TrendingUpIcon /> : <SwapHorizIcon />}
                                     </Box>

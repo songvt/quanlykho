@@ -14,6 +14,7 @@ import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 
 import { fetchReturns, addReturns, deleteReturns } from '../../store/slices/returnsSlice';
 import { fetchProducts } from '../../store/slices/productsSlice';
+import { fetchInventory } from '../../store/slices/inventorySlice';
 import type { RootState, AppDispatch } from '../../store';
 import QRScanner from '../../components/QRScanner';
 import ReturnsReportPreview from '../../components/Reports/ReturnsReportPreview';
@@ -34,6 +35,7 @@ const EmployeeReturns = () => {
     const { items: returns } = useSelector((state: RootState) => state.returns);
     const { items: products } = useSelector((state: RootState) => state.products);
     const { profile } = useSelector((state: RootState) => state.auth);
+    const { stockMap, status: inventoryStatus } = useSelector((state: RootState) => state.inventory);
     const { hasPermission } = usePermission();
 
     // Local State
@@ -41,6 +43,7 @@ const EmployeeReturns = () => {
     const [openPreview, setOpenPreview] = useState(false);
     const [openScanner, setOpenScanner] = useState(false);
     const [openProductSearch, setOpenProductSearch] = useState(false);
+    const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
     // Form State
     const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
@@ -57,7 +60,8 @@ const EmployeeReturns = () => {
     useEffect(() => {
         dispatch(fetchReturns());
         dispatch(fetchProducts());
-    }, [dispatch]);
+        if (inventoryStatus === 'idle') dispatch(fetchInventory());
+    }, [inventoryStatus, dispatch]);
 
     // Derived Data
     const product = products.find(p => p.id === selectedProduct);
@@ -148,7 +152,7 @@ const EmployeeReturns = () => {
 
         try {
             await dispatch(addReturns(returnsData)).unwrap();
-            alert(`Đã tạo ${returnsData.length} phiếu trả hàng thành công!`);
+            setNotification({ type: 'success', message: `Đã tạo ${returnsData.length} phiếu trả hàng thành công!` });
             setOpenCreate(false);
             // Reset form
             setSelectedProduct(null);
@@ -158,7 +162,7 @@ const EmployeeReturns = () => {
             setReason(REASONS[0]);
             dispatch(fetchReturns()); // Refresh
         } catch (error: any) {
-            alert('Lỗi: ' + error.message);
+            setNotification({ type: 'error', message: 'Lỗi: ' + error.message });
         }
     };
 
@@ -197,10 +201,10 @@ const EmployeeReturns = () => {
 
         try {
             await dispatch(deleteReturns(selectedIds)).unwrap();
-            alert('Đã xóa thành công!');
+            setNotification({ type: 'success', message: 'Đã xóa thành công!' });
             setSelectedIds([]); // Clear selection
         } catch (error: any) {
-            alert('Lỗi xóa: ' + error.message);
+            setNotification({ type: 'error', message: 'Lỗi xóa: ' + error.message });
         }
     };
 
@@ -291,6 +295,12 @@ const EmployeeReturns = () => {
                     )}
                 </Stack>
             </Box>
+
+            {notification && (
+                <Alert severity={notification.type} onClose={() => setNotification(null)} sx={{ mb: 2, borderRadius: 2 }}>
+                    {notification.message}
+                </Alert>
+            )}
 
             {isMobile ? (
                 // Mobile View: Cards
@@ -413,7 +423,7 @@ const EmployeeReturns = () => {
                             <Autocomplete
                                 fullWidth
                                 options={products}
-                                getOptionLabel={(option) => `${option.name} - ${option.item_code}`}
+                                getOptionLabel={(option) => `${option.name} (${option.item_code}) - Tồn: ${stockMap[option.id] || 0}`}
                                 value={products.find(p => p.id === selectedProduct) || null}
                                 onChange={(_, newValue) => setSelectedProduct(newValue?.id || null)}
                                 renderInput={(params) => <TextField {...params} label="Chọn Vật Tư / Hàng Hóa" />}

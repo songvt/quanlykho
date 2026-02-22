@@ -23,6 +23,7 @@ export const Inbound = () => {
     const dispatch = useDispatch<AppDispatch>();
     const { items: products, status } = useSelector((state: RootState) => state.products);
     const { profile } = useSelector((state: RootState) => state.auth);
+    const { stockMap } = useSelector((state: RootState) => state.inventory);
     const isAdmin = profile?.role === 'admin';
 
     // Form state
@@ -261,7 +262,7 @@ export const Inbound = () => {
                     <FormControl fullWidth size="small">
                         <Autocomplete
                             options={products}
-                            getOptionLabel={(option) => `${option.name} - ${option.item_code}`}
+                            getOptionLabel={(option) => `${option.name} (${option.item_code}) - Tồn: ${stockMap[option.id] || 0}`}
                             value={products.find(p => p.id === selectedProduct) || null}
                             onChange={(_, newValue) => {
                                 if (newValue) {

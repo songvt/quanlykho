@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
-import { supabase } from '../../supabaseClient';
-import { SupabaseService } from '../../services/SupabaseService';
+
+import { GoogleSheetService as SupabaseService } from '../../services/GoogleSheetService';
 import type { Order } from '../../types';
 
 interface OrdersState {
@@ -21,44 +21,20 @@ export const fetchOrders = createAsyncThunk('orders/fetchOrders', async () => {
 });
 
 export const addOrder = createAsyncThunk('orders/addOrder', async (newOrder: Omit<Order, 'id' | 'order_date' | 'product'>) => {
-    const { data, error } = await supabase
-        .from('orders')
-        .insert([newOrder])
-        .select('*')
-        .single();
-
-    if (error) {
-        throw error;
-    }
+    const data = await SupabaseService.addOrder(newOrder);
     return data as Order;
 });
 
 export const updateOrderStatus = createAsyncThunk(
     'orders/updateStatus',
-    async ({ id, status }: { id: string; status: Order['status'] }) => {
-        const { data, error } = await supabase
-            .from('orders')
-            .update({ status })
-            .eq('id', id)
-            .select('*')
-            .single();
-
-        if (error) {
-            throw error;
-        }
-        return data as Order;
+    async ({ id, status, approver }: { id: string; status: Order['status'], approver?: string }) => {
+        const data = await SupabaseService.updateOrderStatus(id, status, approver);
+        return data as unknown as Order;
     }
 );
 
 export const deleteOrder = createAsyncThunk('orders/deleteOrder', async (id: string) => {
-    const { error } = await supabase
-        .from('orders')
-        .delete()
-        .eq('id', id);
-
-    if (error) {
-        throw error;
-    }
+    await SupabaseService.deleteOrder(id);
     return id;
 });
 

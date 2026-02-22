@@ -7,7 +7,7 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import { SupabaseService } from '../services/SupabaseService';
+import { GoogleSheetService as SupabaseService } from '../services/GoogleSheetService';
 
 interface DistrictConfig {
     district: string;

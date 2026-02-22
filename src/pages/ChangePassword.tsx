@@ -11,7 +11,7 @@ import {
 } from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { SupabaseService } from '../services/SupabaseService';
+import { GoogleSheetService as SupabaseService } from '../services/GoogleSheetService';
 import type { RootState } from '../store';
 import { logoutUser } from '../store/slices/authSlice';
 

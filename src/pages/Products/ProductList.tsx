@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
     Box, Paper, Typography, Button, Table, TableBody, TableCell,
@@ -104,10 +104,13 @@ const ProductList = () => {
         setOpenDialog(false);
     };
 
-    const filteredProducts = products.filter(p =>
-        (p.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (p.item_code?.toLowerCase() || '').includes(searchTerm.toLowerCase())
-    );
+    const filteredProducts = useMemo(() => {
+        const lowerTerm = searchTerm.toLowerCase();
+        return products.filter(p =>
+            (p.name?.toLowerCase() || '').includes(lowerTerm) ||
+            (p.item_code?.toLowerCase() || '').includes(lowerTerm)
+        );
+    }, [products, searchTerm]);
 
     if (status === 'loading') return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
     if (status === 'failed') return <Alert severity="error">{error}</Alert>;
@@ -119,11 +122,11 @@ const ProductList = () => {
                     <Typography variant="h4" fontWeight="900" sx={{
                         fontSize: { xs: '1.5rem', sm: '2.125rem' },
                         textTransform: 'uppercase',
-                        background: 'linear-gradient(45deg, #3b82f6 30%, #2563eb 90%)',
+                        background: 'linear-gradient(45deg, #1e4b9b 30%, #0f2b5b 90%)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         letterSpacing: '0.5px',
-                        textShadow: '0 2px 10px rgba(37, 99, 235, 0.2)'
+                        textShadow: '0 2px 10px rgba(15, 43, 91, 0.2)'
                     }}>
                         DANH SÁCH HÀNG HÓA
                     </Typography>

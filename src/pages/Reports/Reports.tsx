@@ -22,7 +22,7 @@ import { fetchTransactions, deleteTransaction } from '../../store/slices/transac
 import { fetchOrders } from '../../store/slices/ordersSlice';
 import { fetchEmployees } from '../../store/slices/employeesSlice';
 import type { RootState, AppDispatch } from '../../store';
-import { SupabaseService } from '../../services/SupabaseService';
+import { GoogleSheetService as SupabaseService } from '../../services/GoogleSheetService';
 
 import { exportHandoverMinutesV2, exportStandardReport } from '../../utils/excelUtils';
 import type { ReportColumn } from '../../utils/excelUtils';
@@ -69,6 +69,14 @@ const Reports = () => {
     const [cStart, setCStart] = useState(new Date().toISOString().split('T')[0]);
     const [cEnd, setCEnd] = useState(new Date().toISOString().split('T')[0]);
 
+    // State for Employee Report
+    const [openEmployeeReport, setOpenEmployeeReport] = useState(false);
+    const [employeeReportType, setEmployeeReportType] = useState<'all' | 'inbound' | 'outbound'>('all');
+    const [employeeReportTimeRange, setEmployeeReportTimeRange] = useState<'today' | 'week' | 'month' | 'custom'>('today');
+    const [employeeReportStart, setEmployeeReportStart] = useState(new Date().toISOString().split('T')[0]);
+    const [employeeReportEnd, setEmployeeReportEnd] = useState(new Date().toISOString().split('T')[0]);
+    const [reportEmployeeId, setReportEmployeeId] = useState<string | null>(null);
+
     const [selectedTab, setSelectedTab] = useState(0);
 
     // Data Management State
@@ -93,7 +101,7 @@ const Reports = () => {
         if (productsStatus === 'idle') dispatch(fetchProducts());
 
         // Load district configs
-        import('../../services/SupabaseService').then(m => m.SupabaseService.getDistrictStorekeepers().then(setDistrictConfigs).catch(console.error));
+        import('../../services/GoogleSheetService').then(m => m.GoogleSheetService.getDistrictStorekeepers().then(setDistrictConfigs).catch(console.error));
     }, [status, productsStatus, dispatch]);
 
     // Filter transactions for Management Tab
@@ -194,7 +202,9 @@ const Reports = () => {
             { header: 'LOẠI', key: 'type', width: 12, align: 'center' },
             { header: 'NGÀY', key: 'date', width: 20, align: 'center' },
             { header: 'SẢN PHẨM', key: 'product', width: 25 },
+            { header: 'ĐƠN GIÁ', key: 'price', width: 15, align: 'right' },
             { header: 'SỐ LƯỢNG', key: 'quantity', width: 10, align: 'center' },
+            { header: 'THÀNH TIỀN', key: 'total', width: 15, align: 'right' },
             { header: 'TRẠNG THÁI', key: 'item_status', width: 15, align: 'center' },
             { header: 'QUẬN/HUYỆN', key: 'district', width: 15, align: 'center' },
             { header: 'NGƯỜI NHẬN', key: 'partner', width: 20 },
@@ -207,7 +217,9 @@ const Reports = () => {
             type: t.type === 'inbound' ? 'Nhập kho' : 'Xuất kho',
             date: new Date(t.date).toLocaleString('vi-VN'),
             product: t.product?.name || t.product_id,
+            price: formatCurrency(t.unit_price || 0),
             quantity: t.quantity,
+            total: formatCurrency((t.quantity || 0) * (t.unit_price || 0)),
             item_status: t.item_status || '',
             district: t.district || '',
             partner: t.group_name || 'N/A',
@@ -588,7 +600,9 @@ const Reports = () => {
             { header: 'MÃ HÀNG', key: 'item_code', width: 15 },
             { header: 'TÊN HÀNG', key: 'name', width: 30 },
             { header: 'ĐVT', key: 'unit', width: 8, align: 'center' },
+            { header: 'ĐƠN GIÁ', key: 'price', width: 15, align: 'right' },
             { header: 'SỐ LƯỢNG', key: 'quantity', width: 10, align: 'center' },
+            { header: 'THÀNH TIỀN', key: 'total', width: 15, align: 'right' },
             { header: 'TRẠNG THÁI', key: 'item_status', width: 15, align: 'center' },
             { header: 'QUẬN/HUYỆN', key: 'district', width: 15, align: 'center' },
             { header: 'SERIAL', key: 'serial', width: 20 },
@@ -605,9 +619,104 @@ const Reports = () => {
         setOpenPeriodReport(false);
     };
 
+    const handleExportEmployeeReport = () => {
+        let start = new Date();
+        let end = new Date();
+
+        if (employeeReportTimeRange === 'today') {
+            start.setHours(0, 0, 0, 0);
+            end.setHours(23, 59, 59, 999);
+        } else if (employeeReportTimeRange === 'week') {
+            const day = start.getDay();
+            const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+            start.setDate(diff);
+            start.setHours(0, 0, 0, 0);
+            end.setDate(start.getDate() + 6);
+            end.setHours(23, 59, 59, 999);
+        } else if (employeeReportTimeRange === 'month') {
+            start.setDate(1);
+            start.setHours(0, 0, 0, 0);
+            end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+            end.setHours(23, 59, 59, 999);
+        } else {
+            start = new Date(employeeReportStart);
+            start.setHours(0, 0, 0, 0);
+            end = new Date(employeeReportEnd);
+            end.setHours(23, 59, 59, 999);
+        }
+
+        const filtered = transactions.filter(t => {
+            const d = new Date(t.date);
+            const matchDate = d >= start && d <= end;
+            const matchType = employeeReportType === 'all' ? true : t.type === employeeReportType;
+
+            // Check employee ID
+            let matchEmployee = true;
+            if (reportEmployeeId) {
+                // Assuming 'employees' has the ID. If not perfectly linked, filter by Name
+                const selectedEmp = employees.find(e => e.id === reportEmployeeId);
+                const empName = selectedEmp?.full_name || '';
+
+                matchEmployee = ((t as any).created_by === reportEmployeeId) ||
+                    Boolean(t.user_name && t.user_name.includes(empName)) ||
+                    Boolean(t.group_name && t.group_name.includes(empName));
+            }
+
+            return matchDate && matchType && matchEmployee;
+        });
+
+        if (filtered.length === 0) {
+            alert('Không có dữ liệu giao dịch cho nhân viên này trong khoảng thời gian đã chọn.');
+            return;
+        }
+
+        const reportData = filtered.map((t, index) => {
+            const product = products.find(p => p.id === t.product_id);
+            return {
+                stt: index + 1,
+                date: new Date(t.date).toLocaleDateString('vi-VN'),
+                type: t.type === 'inbound' ? 'Nhập' : 'Xuất',
+                emp_name: t.user_name || (t as any).created_by || '',
+                item_code: product?.item_code || '',
+                name: product?.name || '',
+                quantity: t.quantity,
+                unit: product?.unit || '',
+                price: t.unit_price || 0,
+                total: (t.quantity * (t.unit_price || 0)),
+                serial: t.serial_code || '',
+                receiver: t.group_name || ''
+            };
+        });
+
+        const columns: ReportColumn[] = [
+            { header: 'STT', key: 'stt', width: 6, align: 'center' },
+            { header: 'NGÀY', key: 'date', width: 12, align: 'center' },
+            { header: 'LOẠI', key: 'type', width: 10, align: 'center' },
+            { header: 'NHÂN VIÊN', key: 'emp_name', width: 25 },
+            { header: 'MÃ HÀNG', key: 'item_code', width: 15 },
+            { header: 'TÊN HÀNG', key: 'name', width: 30 },
+            { header: 'ĐVT', key: 'unit', width: 8, align: 'center' },
+            { header: 'SỐ LƯỢNG', key: 'quantity', width: 10, align: 'center' },
+            { header: 'ĐƠN GIÁ', key: 'price', width: 15, align: 'right' },
+            { header: 'THÀNH TIỀN', key: 'total', width: 15, align: 'right' },
+            { header: 'SERIAL', key: 'serial', width: 20 },
+            { header: 'BÊN NHẬN/GIAO', key: 'receiver', width: 25 },
+        ];
+
+        const empName = reportEmployeeId ? employees.find(e => e.id === reportEmployeeId)?.full_name || 'NV' : 'TAT_CA';
+        exportStandardReport(
+            reportData,
+            `Bao_cao_NV_${empName}_${employeeReportType}_${new Date().getTime()}`,
+            `BÁO CÁO GIAO DỊCH NHÂN VIÊN: ${reportEmployeeId ? empName.toUpperCase() : 'TẤT CẢ'}`,
+            columns,
+            reporterName
+        );
+        setOpenEmployeeReport(false);
+    };
+
     const handleExportFifoAging = async () => {
         try {
-            const data = await import('../../services/SupabaseService').then(m => m.SupabaseService.getFifoInventoryAging());
+            const data = await import('../../services/GoogleSheetService').then(m => m.GoogleSheetService.getFifoInventoryAging());
             if (!data || data.length === 0) {
                 alert('Không có dữ liệu hàng tồn kho quá hạn (theo FIFO).');
                 return;
@@ -774,6 +883,15 @@ const Reports = () => {
 
                     {isAdmin && (
                         <>
+                            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                                <ReportCard
+                                    title="Theo Nhân Viên"
+                                    desc="Thống kê nhập/xuất theo nhân viên."
+                                    icon={<AssignmentIndIcon />}
+                                    color="info"
+                                    onClick={() => setOpenEmployeeReport(true)}
+                                />
+                            </Grid>
                             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                                 <ReportCard
                                     title="Thẻ Kho"
@@ -1266,6 +1384,94 @@ const Reports = () => {
                         }}
                     >
                         Xuất Report
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Employee Report Dialog */}
+            <Dialog
+                open={openEmployeeReport}
+                onClose={() => setOpenEmployeeReport(false)}
+                PaperProps={{ sx: { borderRadius: 4, width: '100%', maxWidth: 450 } }}
+            >
+                <DialogTitle sx={{ textAlign: 'center', fontWeight: 900, pt: 4, textTransform: 'uppercase', color: 'info.main' }}>
+                    BÁO CÁO NHẬP XUẤT THEO NHÂN VIÊN
+                </DialogTitle>
+                <DialogContent sx={{ pt: 3 }}>
+                    <Stack spacing={3} mt={1}>
+                        <Autocomplete
+                            options={employees}
+                            getOptionLabel={(option) => option.full_name || ''}
+                            value={employees.find(e => e.id === reportEmployeeId) || null}
+                            onChange={(_, newValue) => setReportEmployeeId(newValue ? newValue.id : null)}
+                            renderInput={(params) => <TextField {...params} label="Chọn Nhân Viên (Để trống = Tất cả)" variant="outlined" InputProps={{ ...params.InputProps, sx: { borderRadius: 2 } }} />}
+                            fullWidth
+                        />
+                        <FormControl>
+                            <InputLabel>Loại Giao Dịch</InputLabel>
+                            <Select
+                                value={employeeReportType}
+                                label="Loại Giao Dịch"
+                                onChange={(e) => setEmployeeReportType(e.target.value as any)}
+                                sx={{ borderRadius: 2 }}
+                            >
+                                <MenuItem value="all">Tất cả Nhập / Xuất</MenuItem>
+                                <MenuItem value="inbound">Chỉ Nhập Kho</MenuItem>
+                                <MenuItem value="outbound">Chỉ Xuất Kho</MenuItem>
+                            </Select>
+                        </FormControl>
+
+                        <FormControl>
+                            <InputLabel>Thời Gian</InputLabel>
+                            <Select
+                                value={employeeReportTimeRange}
+                                label="Thời Gian"
+                                onChange={(e) => setEmployeeReportTimeRange(e.target.value as any)}
+                                sx={{ borderRadius: 2 }}
+                            >
+                                <MenuItem value="today">Hôm nay</MenuItem>
+                                <MenuItem value="week">Tuần này</MenuItem>
+                                <MenuItem value="month">Tháng này</MenuItem>
+                                <MenuItem value="custom">Tùy chỉnh</MenuItem>
+                            </Select>
+                        </FormControl>
+
+                        {employeeReportTimeRange === 'custom' && (
+                            <Stack direction="row" spacing={2}>
+                                <TextField
+                                    label="Từ ngày"
+                                    type="date"
+                                    value={employeeReportStart}
+                                    onChange={(e) => setEmployeeReportStart(e.target.value)}
+                                    fullWidth
+                                    InputLabelProps={{ shrink: true }}
+                                    InputProps={{ sx: { borderRadius: 2 } }}
+                                />
+                                <TextField
+                                    label="Đến ngày"
+                                    type="date"
+                                    value={employeeReportEnd}
+                                    onChange={(e) => setEmployeeReportEnd(e.target.value)}
+                                    fullWidth
+                                    InputLabelProps={{ shrink: true }}
+                                    InputProps={{ sx: { borderRadius: 2 } }}
+                                />
+                            </Stack>
+                        )}
+                    </Stack>
+                </DialogContent>
+                <DialogActions sx={{ p: 4, pt: 0, justifyContent: 'center' }}>
+                    <Button onClick={() => setOpenEmployeeReport(false)} sx={{ color: 'text.secondary', fontWeight: 600, mr: 2 }}>
+                        Hủy
+                    </Button>
+                    <Button
+                        onClick={handleExportEmployeeReport}
+                        variant="contained"
+                        color="info"
+                        startIcon={<DownloadIcon />}
+                        sx={{ borderRadius: 3, px: 4, py: 1, fontWeight: 700, boxShadow: '0 4px 12px rgba(2, 136, 209, 0.25)' }}
+                    >
+                        Tải Excel
                     </Button>
                 </DialogActions>
             </Dialog>

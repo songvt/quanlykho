@@ -65,7 +65,8 @@ const MainLayout: React.FC = () => {
 
     // Force Change Password Check
     React.useEffect(() => {
-        if (profile?.must_change_password) {
+        const needsChange = profile?.must_change_password === true || (profile?.must_change_password as any) === 'TRUE';
+        if (needsChange) {
             navigate('/change-password');
         }
     }, [profile, navigate]);
@@ -126,11 +127,11 @@ const MainLayout: React.FC = () => {
                     variant="h4"
                     sx={{
                         fontWeight: 900,
-                        background: 'linear-gradient(45deg, #3b82f6 30%, #2563eb 90%)', // Blue Gradient
+                        background: 'linear-gradient(45deg, #1e4b9b 30%, #0f2b5b 90%)', // Blue Gradient
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         letterSpacing: '2px',
-                        textShadow: '0 2px 10px rgba(37, 99, 235, 0.3)'
+                        textShadow: '0 2px 10px rgba(15, 43, 91, 0.3)'
                     }}
                 >
                     CĐBR
@@ -144,27 +145,30 @@ const MainLayout: React.FC = () => {
                     return (
                         <ListItem key={item.text} disablePadding sx={{ mb: 1 }}>
                             <ListItemButton
-                                onClick={() => navigate(item.path)}
+                                onClick={() => {
+                                    navigate(item.path);
+                                    if (mobileOpen) setMobileOpen(false);
+                                }}
                                 selected={isActive}
                                 sx={{
                                     height: 48,
                                     borderRadius: '6px',
                                     '&.Mui-selected': {
                                         backgroundColor: 'rgba(37, 99, 235, 0.12)', // Primary Tint
-                                        color: '#2563eb', // Primary Main
-                                        borderLeft: '4px solid #2563eb',
+                                        color: '#0f2b5b', // Primary Main
+                                        borderLeft: '4px solid #0f2b5b',
                                         '&:hover': {
                                             backgroundColor: 'rgba(37, 99, 235, 0.18)',
                                         },
                                         '& .MuiListItemIcon-root': {
-                                            color: '#2563eb',
+                                            color: '#0f2b5b',
                                         },
                                     },
                                 }}
                             >
                                 <ListItemIcon sx={{
                                     minWidth: 40,
-                                    color: isActive ? '#2563eb' : '#94a3b8' // Slate 400
+                                    color: isActive ? '#0f2b5b' : '#94a3b8' // Slate 400
                                 }}>
                                     {item.icon}
                                 </ListItemIcon>

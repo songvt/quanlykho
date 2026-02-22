@@ -41,7 +41,11 @@ export interface Order {
     quantity: number;
     status: 'pending' | 'approved' | 'rejected' | 'completed';
     order_date: string;
+    created_at?: string;
+    updated_at?: string;
     created_by?: string;
+    approved_by?: string;
+    approved_at?: string;
     // Join fields
     product?: Product;
 }

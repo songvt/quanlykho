@@ -36,35 +36,42 @@ function App() {
 
       {/* Protected Routes */}
       <Route element={<ProtectedRoute />}>
-        {/* Change Password Route - No Layout (or nested if desired, but standalone prevents menu clicks) */}
-        {/* If we want Layout but no navigation, we'd need a Layout variant. 
-             But keeping it inside MainLayout allows Logout. 
-             MainLayout forces redirect if not changed. 
-             So we need to exclude MainLayout if we want to Isolate it? 
-             But header is useful. 
-             If MainLayout redirects / -> /change-password, then /change-password works.
-             So /change-password can use MainLayout! 
-             BUT I put it parallel. Let's make it parallel for simplicity to be safe from loop. 
-         */}
         <Route path="/change-password" element={<ChangePassword />} />
 
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Dashboard />} />
-          <Route path="orders" element={<OrderList />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="outbound" element={<Outbound />} />
 
-          {/* Admin only routes */}
-          <Route element={<ProtectedRoute allowedRoles={['admin', 'manager']} />}>
+          <Route element={<ProtectedRoute allowedPermissions={['orders.create', 'orders.view_own', 'orders.view_all']} />}>
+            <Route path="orders" element={<OrderList />} />
+          </Route>
+
+          <Route element={<ProtectedRoute allowedPermissions={['reports.view_all', 'reports.handover']} />}>
+            <Route path="reports" element={<Reports />} />
+          </Route>
+
+          <Route element={<ProtectedRoute allowedPermissions={['outbound.view', 'outbound.create']} />}>
+            <Route path="outbound" element={<Outbound />} />
+          </Route>
+
+          <Route element={<ProtectedRoute allowedPermissions={['inventory.view', 'inventory.manage']} />}>
             <Route path="products" element={<ProductList />} />
+          </Route>
+
+          <Route element={<ProtectedRoute allowedPermissions={['inbound.view', 'inbound.create']} />}>
             <Route path="inbound" element={<Inbound />} />
+          </Route>
+
+          <Route element={<ProtectedRoute allowedPermissions={['employees.view', 'employees.manage']} />}>
             <Route path="employees" element={<EmployeeList />} />
           </Route>
 
           <Route path="profile" element={<UserProfile />} />
-          <Route path="employee-returns" element={<EmployeeReturns />} />
 
-          <Route element={<ProtectedRoute allowedRoles={['admin', 'manager']} />}>
+          <Route element={<ProtectedRoute allowedPermissions={['returns.view', 'returns.create']} />}>
+            <Route path="employee-returns" element={<EmployeeReturns />} />
+          </Route>
+
+          <Route element={<ProtectedRoute allowedPermissions={['*']} />}>
             <Route path="settings" element={<Settings />} />
           </Route>
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
     Box, Paper, Typography, Button, Table, TableBody, TableCell,
@@ -18,8 +18,9 @@ import ProductSearchDialog from '../../components/ProductSearchDialog';
 
 
 import { fetchOrders, addOrder, updateOrderStatus, deleteOrders } from '../../store/slices/ordersSlice';
-import { fetchProducts } from '../../store/slices/productsSlice'; // Need products for the dropdown
 import { fetchEmployees } from '../../store/slices/employeesSlice';
+import { fetchProducts } from '../../store/slices/productsSlice';
+import { fetchInventory } from '../../store/slices/inventorySlice';
 import type { RootState, AppDispatch } from '../../store';
 import type { Order } from '../../types';
 import { usePermission } from '../../hooks/usePermission';
@@ -29,6 +30,7 @@ const OrderList = () => {
     const { items: orders, status: orderStatus, error } = useSelector((state: RootState) => state.orders);
     const { items: products, status: productStatus } = useSelector((state: RootState) => state.products);
     const { items: employees, status: employeeStatus } = useSelector((state: RootState) => state.employees);
+    const { stockMap: inventory, status: inventoryStatus } = useSelector((state: RootState) => state.inventory);
     const { profile } = useSelector((state: RootState) => state.auth);
     const { hasPermission } = usePermission();
 
@@ -49,9 +51,8 @@ const OrderList = () => {
         requester_group: '',
     });
     const [showProductSearch, setShowProductSearch] = useState(false);
+    const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
-
-    const [inventory, setInventory] = useState<Record<string, number>>({});
     const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
 
     // Date Filter State
@@ -69,18 +70,8 @@ const OrderList = () => {
         if (orderStatus === 'idle') dispatch(fetchOrders());
         if (productStatus === 'idle') dispatch(fetchProducts());
         if (isAdmin && employeeStatus === 'idle') dispatch(fetchEmployees());
-
-        // Fetch inventory snapshot
-        const loadInventory = async () => {
-            try {
-                const stock = await import('../../services/SupabaseService').then(m => m.SupabaseService.getInventorySnapshot());
-                setInventory(stock.total);
-            } catch (error) {
-                console.error("Failed to load inventory for orders dropdown", error);
-            }
-        };
-        loadInventory();
-    }, [orderStatus, productStatus, employeeStatus, dispatch, isAdmin]);
+        if (inventoryStatus === 'idle') dispatch(fetchInventory());
+    }, [orderStatus, productStatus, employeeStatus, inventoryStatus, dispatch, isAdmin]);
 
     const handleOpenAdd = () => {
         setNewOrder({
@@ -104,15 +95,22 @@ const OrderList = () => {
                 created_by: profile?.id
             })).unwrap();
             setOpenDialog(false);
+            setNotification({ type: 'success', message: 'Tạo đơn đặt hàng thành công!' });
         } catch (err) {
             console.error('Failed to add order:', err);
-            // Optionally set validation error state here
+            setNotification({ type: 'error', message: 'Lỗi khi tạo đơn hàng.' });
         }
     };
 
     const handleUpdateStatus = async (id: string, status: Order['status']) => {
         if (window.confirm(`Bạn có chắc chắn muốn chuyển trạng thái đơn hàng này thành "${status}"?`)) {
-            await dispatch(updateOrderStatus({ id, status }));
+            try {
+                const approver = (status === 'approved' || status === 'rejected') ? (profile?.full_name || profile?.username || profile?.email) : undefined;
+                await dispatch(updateOrderStatus({ id, status, approver })).unwrap();
+                setNotification({ type: 'success', message: `Cập nhật trạng thái thành công!` });
+            } catch (err) {
+                setNotification({ type: 'error', message: 'Lỗi khi cập nhật trạng thái.' });
+            }
         }
     };
 
@@ -121,13 +119,14 @@ const OrderList = () => {
             try {
                 // Execute sequentially or Promise.all. Promise.all is faster but risky if one fails.
                 // Considering SupabaseService might not support bulk update yet, we loop.
-                await Promise.all(selectedOrderIds.map(id => dispatch(updateOrderStatus({ id, status: 'approved' })).unwrap()));
+                const approver = profile?.full_name || profile?.username || profile?.email;
+                await Promise.all(selectedOrderIds.map(id => dispatch(updateOrderStatus({ id, status: 'approved', approver })).unwrap()));
 
                 setSelectedOrderIds([]); // Clear selection
-                alert('Đã duyệt thành công!');
+                setNotification({ type: 'success', message: 'Đã duyệt thành công hàng loạt!' });
             } catch (err) {
                 console.error("Bulk approve failed", err);
-                alert('Có lỗi xảy ra khi duyệt hàng loạt.');
+                setNotification({ type: 'error', message: 'Có lỗi xảy ra khi duyệt hàng loạt.' });
             }
         }
     };
@@ -148,22 +147,31 @@ const OrderList = () => {
         return isCreator || isRequester;
     });
 
-    const filteredOrders = visibleOrders.filter(order => {
-        const product = products.find(p => p.id === order.product_id);
+    const filteredOrders = useMemo(() => {
+        // Create an O(1) lookup map for products to massively improve filter performance
+        const productMap = products.reduce((acc, p) => {
+            acc[p.id] = p;
+            return acc;
+        }, {} as Record<string, typeof products[0]>);
+
         const term = searchTerm.toLowerCase();
 
-        // Date Filter
-        const d = new Date(order.order_date);
-        const orderDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        if (startDate && orderDate < startDate) return false;
-        if (endDate && orderDate > endDate) return false;
+        return visibleOrders.filter(order => {
+            const product = productMap[order.product_id];
 
-        return (
-            (order.requester_group || '').toLowerCase().includes(term) ||
-            (product?.name || '').toLowerCase().includes(term) ||
-            order.id.toLowerCase().includes(term)
-        );
-    });
+            // Date Filter
+            const d = new Date(order.order_date);
+            const orderDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            if (startDate && orderDate < startDate) return false;
+            if (endDate && orderDate > endDate) return false;
+
+            return (
+                (order.requester_group || '').toLowerCase().includes(term) ||
+                (product?.name || '').toLowerCase().includes(term) ||
+                order.id.toLowerCase().includes(term)
+            );
+        });
+    }, [visibleOrders, products, searchTerm, startDate, endDate]);
 
     const handleSelectAll = (checked: boolean) => {
         if (checked) {
@@ -192,10 +200,10 @@ const OrderList = () => {
                 // @ts-ignore
                 await dispatch(deleteOrders(selectedOrderIds)).unwrap();
                 setSelectedOrderIds([]);
-                alert('Đã xóa thành công!');
+                setNotification({ type: 'success', message: 'Đã xóa thành công!' });
             } catch (err) {
                 console.error('Bulk delete failed:', err);
-                alert('Lỗi khi xóa đơn hàng.');
+                setNotification({ type: 'error', message: 'Lỗi khi xóa đơn hàng.' });
             }
         }
     }
@@ -210,11 +218,11 @@ const OrderList = () => {
                     <Typography variant="h4" fontWeight="900" sx={{
                         fontSize: { xs: '1.5rem', sm: '2.125rem' },
                         textTransform: 'uppercase',
-                        background: 'linear-gradient(45deg, #3b82f6 30%, #2563eb 90%)',
+                        background: 'linear-gradient(45deg, #1e4b9b 30%, #0f2b5b 90%)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
                         letterSpacing: '0.5px',
-                        textShadow: '0 2px 10px rgba(37, 99, 235, 0.2)'
+                        textShadow: '0 2px 10px rgba(15, 43, 91, 0.2)'
                     }}>
                         QUẢN LÝ ĐẶT HÀNG
                     </Typography>
@@ -296,6 +304,12 @@ const OrderList = () => {
                 </Stack>
             </Stack>
 
+            {notification && (
+                <Alert severity={notification.type} onClose={() => setNotification(null)} sx={{ mb: 2, borderRadius: 2 }}>
+                    {notification.message}
+                </Alert>
+            )}
+
             <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 2px 4px -1px rgb(0 0 0 / 0.1)', overflowX: 'auto' }}>
                 <Table size="small" sx={{ minWidth: 800 }}>
                     <TableHead>
@@ -316,6 +330,7 @@ const OrderList = () => {
                             <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Vật tư hàng hóa</TableCell>
                             <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Tồn kho</TableCell>
                             <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Số lượng</TableCell>
+                            <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Người duyệt</TableCell>
                             <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Trạng thái</TableCell>
                             {(canApprove) && (
                                 <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Thao tác</TableCell>
@@ -368,6 +383,16 @@ const OrderList = () => {
                                         </TableCell>
                                         <TableCell align="right" sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>
                                             <Typography variant="body2" fontWeight="bold" sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>{order.quantity}</Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>
+                                            <Typography variant="body2" sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' }, fontStyle: order.approved_by ? 'normal' : 'italic', color: order.approved_by ? 'text.primary' : 'text.secondary' }}>
+                                                {order.approved_by || 'Chưa duyệt'}
+                                            </Typography>
+                                            {order.approved_at && (
+                                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', display: 'block' }}>
+                                                    {new Date(order.approved_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                                </Typography>
+                                            )}
                                         </TableCell>
                                         <TableCell sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>{getStatusChip(order.status)}</TableCell>
 

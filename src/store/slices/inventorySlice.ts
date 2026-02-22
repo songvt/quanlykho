@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { SupabaseService } from '../../services/SupabaseService';
+import { GoogleSheetService as SupabaseService } from '../../services/GoogleSheetService';
 import type { RootState } from '../index';
 
 interface InventoryState {
