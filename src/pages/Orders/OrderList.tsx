@@ -88,12 +88,19 @@ const OrderList = () => {
             return;
         }
 
+        const maxQty = inventory[newOrder.product_id] || 0;
+        if (newOrder.quantity > maxQty) {
+            alert(`Sản phẩm này chỉ còn ${maxQty} tồn kho (khoả dụng). Không thể đặt vượt quá số lượng!`);
+            return;
+        }
+
         try {
             await dispatch(addOrder({
                 ...newOrder,
                 status: 'pending',
                 created_by: profile?.id
             })).unwrap();
+            dispatch(fetchInventory());
             setOpenDialog(false);
             setNotification({ type: 'success', message: 'Tạo đơn đặt hàng thành công!' });
         } catch (err) {
@@ -107,6 +114,7 @@ const OrderList = () => {
             try {
                 const approver = (status === 'approved' || status === 'rejected') ? (profile?.full_name || profile?.username || profile?.email) : undefined;
                 await dispatch(updateOrderStatus({ id, status, approver })).unwrap();
+                dispatch(fetchInventory());
                 setNotification({ type: 'success', message: `Cập nhật trạng thái thành công!` });
             } catch (err) {
                 setNotification({ type: 'error', message: 'Lỗi khi cập nhật trạng thái.' });
@@ -122,6 +130,7 @@ const OrderList = () => {
                 const approver = profile?.full_name || profile?.username || profile?.email;
                 await Promise.all(selectedOrderIds.map(id => dispatch(updateOrderStatus({ id, status: 'approved', approver })).unwrap()));
 
+                dispatch(fetchInventory());
                 setSelectedOrderIds([]); // Clear selection
                 setNotification({ type: 'success', message: 'Đã duyệt thành công hàng loạt!' });
             } catch (err) {
@@ -173,6 +182,10 @@ const OrderList = () => {
         });
     }, [visibleOrders, products, searchTerm, startDate, endDate]);
 
+    const availableProducts = useMemo(() => {
+        return isAdmin ? products : products.filter(p => (inventory[p.id] || 0) > 0);
+    }, [isAdmin, products, inventory]);
+
     const handleSelectAll = (checked: boolean) => {
         if (checked) {
             // For deletion, we might want to select all visible orders.
@@ -199,6 +212,7 @@ const OrderList = () => {
             try {
                 // @ts-ignore
                 await dispatch(deleteOrders(selectedOrderIds)).unwrap();
+                dispatch(fetchInventory());
                 setSelectedOrderIds([]);
                 setNotification({ type: 'success', message: 'Đã xóa thành công!' });
             } catch (err) {
@@ -488,7 +502,7 @@ const OrderList = () => {
                                     label="Vật tư hàng hóa"
                                     onChange={(e) => setNewOrder({ ...newOrder, product_id: e.target.value })}
                                 >
-                                    {products
+                                    {availableProducts
                                         .map((p) => (
                                             <MenuItem key={p.id} value={p.id}>
                                                 {p.name} ({p.item_code}) - Tồn: {inventory[p.id] || 0}
@@ -510,8 +524,16 @@ const OrderList = () => {
                             type="number"
                             fullWidth
                             value={newOrder.quantity}
-                            onChange={(e) => setNewOrder({ ...newOrder, quantity: Number(e.target.value) })}
-                            inputProps={{ min: 1 }}
+                            onChange={(e) => {
+                                const val = Number(e.target.value);
+                                const maxQty = inventory[newOrder.product_id] || 0;
+                                if (val > maxQty) {
+                                    setNewOrder({ ...newOrder, quantity: maxQty });
+                                } else {
+                                    setNewOrder({ ...newOrder, quantity: val });
+                                }
+                            }}
+                            inputProps={{ min: 1, max: newOrder.product_id ? (inventory[newOrder.product_id] || 1) : 1 }}
                         />
                     </Stack>
                 </DialogContent>
@@ -525,7 +547,7 @@ const OrderList = () => {
             <ProductSearchDialog
                 open={showProductSearch}
                 onClose={() => setShowProductSearch(false)}
-                products={products}
+                products={availableProducts}
                 onSelect={(product) => {
                     setNewOrder(prev => ({ ...prev, product_id: product.id }));
                     setShowProductSearch(false);

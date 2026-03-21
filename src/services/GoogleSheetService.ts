@@ -297,7 +297,8 @@ export const GoogleSheetService = {
     // For now we will implement simple frontend-side calc based on raw data
     async getInventorySnapshot() {
         const p1 = this.fetchTransactions();
-        const [transactions] = await Promise.all([p1]);
+        const p2 = this.fetchOrders();
+        const [transactions, orders] = await Promise.all([p1, p2]);
 
         const stockMap: Record<string, number> = {};
         const detailedStockMap: Record<string, number> = {};
@@ -318,6 +319,19 @@ export const GoogleSheetService = {
             const districtAggKey = `${pId}|${dist}|*ALL*`;
             detailedStockMap[districtAggKey] = (detailedStockMap[districtAggKey] || 0) + qty;
         });
+
+        // Deduct pending and approved orders from available stock
+        if (orders && Array.isArray(orders)) {
+            orders.forEach((o: any) => {
+                if (o.status === 'pending' || o.status === 'approved') {
+                    const qty = Number(o.quantity) || 0;
+                    const pId = o.product_id;
+                    if (pId) {
+                        stockMap[pId] = (stockMap[pId] || 0) - qty;
+                    }
+                }
+            });
+        }
 
         return { total: stockMap, detailed: detailedStockMap };
     },
