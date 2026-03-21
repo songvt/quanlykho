@@ -2,17 +2,21 @@ import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts } from '../store/slices/productsSlice';
 import { fetchInventory, selectProductStock } from '../store/slices/inventorySlice';
-import { addInboundTransaction, fetchTransactions } from '../store/slices/transactionsSlice';
+import { addInboundTransaction, fetchTransactions, updateTransaction, deleteTransaction } from '../store/slices/transactionsSlice';
 import type { RootState, AppDispatch } from '../store';
+import type { Transaction } from '../types';
 import {
     Button, TextField, FormControl, FormHelperText,
     Typography, Box, Alert, CircularProgress, Paper, Stack, Dialog, DialogContent, DialogTitle, Autocomplete,
-    List, ListItem, ListItemText, ListItemSecondaryAction, IconButton
+    List, ListItem, ListItemText, ListItemSecondaryAction, IconButton,
+    Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Tooltip, DialogActions, InputAdornment
 } from '@mui/material';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import SearchIcon from '@mui/icons-material/Search';
 import QRScanner from '../components/QRScanner';
 import { readExcelFile, generateInboundTemplate } from '../utils/excelUtils';
 import { useScanDetection } from '../hooks/useScanDetection';
@@ -24,6 +28,7 @@ export const Inbound = () => {
     const { items: products, status } = useSelector((state: RootState) => state.products);
     const { profile } = useSelector((state: RootState) => state.auth);
     const { stockMap } = useSelector((state: RootState) => state.inventory);
+    const { items: transactions, status: txStatus } = useSelector((state: RootState) => state.transactions);
     const isAdmin = profile?.role === 'admin';
 
     // Form state
@@ -40,12 +45,29 @@ export const Inbound = () => {
     // Scanner state
     const [showScanner, setShowScanner] = useState(false);
 
+    // List State
+    const [searchTerm, setSearchTerm] = useState('');
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+
+    // Edit Dialog State
+    const [editDialog, setEditDialog] = useState(false);
+    const [editItem, setEditItem] = useState<Transaction | null>(null);
+    const [editData, setEditData] = useState<any>({});
+
+    // Delete Dialog State
+    const [deleteDialog, setDeleteDialog] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<Transaction | null>(null);
+
     useEffect(() => {
         if (status === 'idle') {
             dispatch(fetchProducts());
         }
+        if (txStatus === 'idle') {
+            dispatch(fetchTransactions());
+        }
         dispatch(fetchInventory());
-    }, [status, dispatch]);
+    }, [status, txStatus, dispatch]);
 
     // Physical Scanners (Keyboard Mode)
     useScanDetection((code) => {
@@ -180,6 +202,74 @@ export const Inbound = () => {
             setQuantity(newer.length > 0 ? newer.length : 1);
             return newer;
         });
+    };
+
+    // List Handlers
+    const filteredTransactions = transactions
+        .filter(t => t.type === 'inbound')
+        .filter(t => {
+            const searchStr = searchTerm.toLowerCase();
+            return (
+                t.product?.name?.toLowerCase().includes(searchStr) ||
+                t.product?.item_code?.toLowerCase().includes(searchStr) ||
+                (t.serial_code && t.serial_code.toLowerCase().includes(searchStr)) ||
+                (t.district && t.district.toLowerCase().includes(searchStr))
+            );
+        });
+
+    const paginatedTransactions = filteredTransactions.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
+    const handleEditClick = (item: Transaction) => {
+        setEditItem(item);
+        setEditData({
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            serial_code: item.serial_code || '',
+            district: item.district || '',
+            item_status: item.item_status || ''
+        });
+        setEditDialog(true);
+    };
+
+    const handleEditSave = async () => {
+        if (!editItem) return;
+        try {
+            await dispatch(updateTransaction({
+                id: editItem.id,
+                type: 'inbound',
+                payload: {
+                    quantity: Number(editData.quantity),
+                    unit_price: Number(editData.unit_price),
+                    serial_code: editData.serial_code,
+                    district: editData.district,
+                    item_status: editData.item_status,
+                }
+            })).unwrap();
+            setNotification({ type: 'success', message: 'Cập nhật thành công!' });
+            setEditDialog(false);
+            dispatch(fetchTransactions());
+            dispatch(fetchInventory());
+        } catch (error: any) {
+            setNotification({ type: 'error', message: error.message || 'Lỗi cập nhật' });
+        }
+    };
+
+    const handleDeleteClick = (item: Transaction) => {
+        setItemToDelete(item);
+        setDeleteDialog(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!itemToDelete) return;
+        try {
+            await dispatch(deleteTransaction({ id: itemToDelete.id, type: 'inbound' })).unwrap();
+            setNotification({ type: 'success', message: 'Xóa thành công!' });
+            setDeleteDialog(false);
+            dispatch(fetchTransactions());
+            dispatch(fetchInventory());
+        } catch (error: any) {
+            setNotification({ type: 'error', message: error.message || 'Lỗi khi xóa' });
+        }
     };
 
     if (status === 'loading' as string) return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
@@ -404,12 +494,11 @@ export const Inbound = () => {
                         </Box>
                     )}
 
-                    <Stack direction="row" spacing={2}>
+                    <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
                         <Button
                             variant="outlined"
                             color="inherit"
                             size="large"
-                            fullWidth
                             onClick={() => {
                                 setSelectedProduct('');
                                 setQuantity(1);
@@ -419,7 +508,7 @@ export const Inbound = () => {
                                 setDistrict('');
                                 setItemStatus('');
                             }}
-                            sx={{ py: { xs: 1.5, md: 2 }, borderRadius: 3, fontSize: { xs: '1rem', md: '1.1rem' }, fontWeight: 700, textTransform: 'none' }}
+                            sx={{ minWidth: 120, py: { xs: 1, md: 1.5 }, borderRadius: 3, fontSize: { xs: '0.9rem', md: '1rem' }, fontWeight: 700, textTransform: 'none' }}
                         >
                             Hủy
                         </Button>
@@ -427,18 +516,16 @@ export const Inbound = () => {
                             variant="contained"
                             color="primary"
                             size="large"
-                            fullWidth
                             onClick={handleSave}
                             disabled={status === 'loading'}
-                            sx={{ py: { xs: 1.5, md: 2 }, borderRadius: 3, fontSize: { xs: '1rem', md: '1.1rem' }, fontWeight: 700, textTransform: 'none', boxShadow: 'none' }}
+                            sx={{ minWidth: 150, py: { xs: 1, md: 1.5 }, borderRadius: 3, fontSize: { xs: '0.9rem', md: '1rem' }, fontWeight: 700, textTransform: 'none', boxShadow: 'none' }}
                         >
                             Nhập Kho
                         </Button>
-                    </Stack>
+                    </Box>
                 </Stack>
 
 
-                {/* Scanner Dialog */}
                 <Dialog open={showScanner} onClose={() => setShowScanner(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
                     <DialogTitle sx={{ fontWeight: 900, textTransform: 'uppercase', color: 'primary.main', textAlign: 'center' }}>
                         QUÉT MÃ QR/MÃ VẠCH
@@ -455,6 +542,150 @@ export const Inbound = () => {
                     </DialogContent>
                 </Dialog>
             </Paper>
+
+            {/* List of Inbound Transactions */}
+            <Box mt={6}>
+                <Typography variant="h5" fontWeight="bold" mb={3}>Danh sách hàng hóa đã nhập</Typography>
+                <Paper elevation={0} sx={{ borderRadius: 2, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
+                    <Box p={2} borderBottom="1px solid" borderColor="divider" display="flex" justifyContent="space-between" alignItems="center">
+                        <TextField
+                            placeholder="Tìm kiếm theo Tên SP, Serial, Quận/Huyện..."
+                            size="small"
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            sx={{ width: { xs: '100%', sm: 350 } }}
+                            InputProps={{
+                                startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
+                                sx: { borderRadius: 2 }
+                            }}
+                        />
+                    </Box>
+                    <TableContainer>
+                        <Table sx={{ minWidth: 800 }}>
+                            <TableHead sx={{ bgcolor: 'grey.50' }}>
+                                <TableRow>
+                                    <TableCell sx={{ fontWeight: 600 }}>Thời gian</TableCell>
+                                    <TableCell sx={{ fontWeight: 600 }}>Tên vật tư</TableCell>
+                                    <TableCell sx={{ fontWeight: 600 }}>Serial</TableCell>
+                                    <TableCell sx={{ fontWeight: 600, align: 'right' }}>SL</TableCell>
+                                    <TableCell sx={{ fontWeight: 600, align: 'right' }}>Đơn giá</TableCell>
+                                    <TableCell sx={{ fontWeight: 600 }}>Quận/Huyện</TableCell>
+                                    <TableCell sx={{ fontWeight: 600 }}>Trạng thái</TableCell>
+                                    <TableCell sx={{ fontWeight: 600, align: 'center' }}>Thao tác</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {paginatedTransactions.length > 0 ? (
+                                    paginatedTransactions.map((row) => (
+                                        <TableRow key={row.id} hover>
+                                            <TableCell>{new Date(row.date || (row as any).inbound_date || '').toLocaleString('vi-VN')}</TableCell>
+                                            <TableCell>{row.product?.name || 'Unknown'}</TableCell>
+                                            <TableCell>{row.serial_code || '-'}</TableCell>
+                                            <TableCell align="right">{row.quantity}</TableCell>
+                                            <TableCell align="right">{Number(row.unit_price || 0).toLocaleString('vi-VN')} đ</TableCell>
+                                            <TableCell>{row.district || '-'}</TableCell>
+                                            <TableCell>{row.item_status || '-'}</TableCell>
+                                            <TableCell align="center">
+                                                <Tooltip title="Sửa">
+                                                    <IconButton color="primary" onClick={() => handleEditClick(row)} size="small">
+                                                        <EditIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                                <Tooltip title="Xóa">
+                                                    <IconButton color="error" onClick={() => handleDeleteClick(row)} size="small">
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={8} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                                            Không có dữ liệu
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                    <TablePagination
+                        component="div"
+                        count={filteredTransactions.length}
+                        page={page}
+                        onPageChange={(_, newPage) => setPage(newPage)}
+                        rowsPerPage={rowsPerPage}
+                        onRowsPerPageChange={(e) => {
+                            setRowsPerPage(parseInt(e.target.value, 10));
+                            setPage(0);
+                        }}
+                        labelRowsPerPage="Số dòng / trang:"
+                        labelDisplayedRows={({ from, to, count }) => `${from}-${to} trên ${count}`}
+                    />
+                </Paper>
+            </Box>
+
+            {/* Edit Dialog */}
+            <Dialog open={editDialog} onClose={() => setEditDialog(false)} maxWidth="sm" fullWidth>
+                <DialogTitle sx={{ fontWeight: 'bold' }}>Sửa Giao Dịch Nhập</DialogTitle>
+                <DialogContent dividers>
+                    <Stack spacing={2} pt={1}>
+                        <TextField
+                            label="Số lượng"
+                            type="number"
+                            fullWidth
+                            size="small"
+                            value={editData.quantity || ''}
+                            onChange={(e) => setEditData({ ...editData, quantity: e.target.value })}
+                        />
+                        <TextField
+                            label="Đơn giá"
+                            type="number"
+                            fullWidth
+                            size="small"
+                            value={editData.unit_price || ''}
+                            onChange={(e) => setEditData({ ...editData, unit_price: e.target.value })}
+                        />
+                        <TextField
+                            label="Serial Code"
+                            fullWidth
+                            size="small"
+                            value={editData.serial_code || ''}
+                            onChange={(e) => setEditData({ ...editData, serial_code: e.target.value })}
+                        />
+                        <TextField
+                            label="Quận/Huyện"
+                            fullWidth
+                            size="small"
+                            value={editData.district || ''}
+                            onChange={(e) => setEditData({ ...editData, district: e.target.value })}
+                        />
+                        <TextField
+                            label="Trạng thái hàng"
+                            fullWidth
+                            size="small"
+                            value={editData.item_status || ''}
+                            onChange={(e) => setEditData({ ...editData, item_status: e.target.value })}
+                        />
+                    </Stack>
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={() => setEditDialog(false)} color="inherit" variant="outlined">Hủy</Button>
+                    <Button onClick={handleEditSave} color="primary" variant="contained">Cập nhật</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)}>
+                <DialogTitle sx={{ fontWeight: 'bold', color: 'error.main' }}>Xác nhận xóa</DialogTitle>
+                <DialogContent>
+                    <Typography>Bạn có chắc chắn muốn xóa giao dịch này? Hành động này không thể hoàn tác và sẽ ảnh hưởng đến tồn kho.</Typography>
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={() => setDeleteDialog(false)} color="inherit">Hủy</Button>
+                    <Button onClick={handleDeleteConfirm} color="error" variant="contained">Xóa</Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }

@@ -25,7 +25,7 @@ const sendWebhook = async (type: 'inbound' | 'outbound', data: any) => {
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    const allowedMethods = ['GET', 'POST', 'DELETE'];
+    const allowedMethods = ['GET', 'POST', 'PUT', 'DELETE'];
     if (!allowedMethods.includes(req.method || '')) {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
@@ -151,6 +151,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                     if (type === 'outbound') sendWebhook(type, toInsert);
                     return res.status(201).json(newRow.toObject());
+                }
+            }
+
+            case 'PUT': {
+                const { id, type, payload } = req.body;
+                if (!id || !['inbound', 'outbound'].includes(type)) {
+                    return res.status(400).json({ error: 'Invalid ID or transaction type' });
+                }
+
+                const sheetToUse = type === 'inbound' ? inboundSheet : outboundSheet;
+                const rows = await sheetToUse.getRows();
+                const rowToUpdate = rows.find(row => row.get('id') === id);
+
+                if (rowToUpdate) {
+                    const updatedData = {
+                        ...payload,
+                        updated_at: new Date().toISOString(),
+                        total_price: payload.total_price || (Number(payload.quantity || 0) * Number(payload.unit_price || 0)),
+                    };
+                    
+                    if (type === 'outbound' && payload.group_name) {
+                         updatedData.receiver_group = payload.group_name;
+                    }
+
+                    Object.keys(updatedData).forEach(key => {
+                        if (updatedData[key] !== undefined) {
+                            rowToUpdate.set(key, updatedData[key]);
+                        }
+                    });
+
+                    await rowToUpdate.save();
+                    return res.status(200).json(rowToUpdate.toObject());
+                } else {
+                    return res.status(404).json({ error: 'Transaction not found' });
                 }
             }
 

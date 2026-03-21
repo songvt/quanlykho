@@ -21,28 +21,32 @@ import {
     Menu,
     MenuItem,
     Divider,
-    Stack
+    InputBase,
+    Badge,
+    Breadcrumbs
 } from '@mui/material';
 import {
     Menu as MenuIcon,
-    Dashboard as DashboardIcon,
-    Inventory as InventoryIcon,
-    ShoppingCart as OrderIcon,
-    Input as InputIcon,
-    Output as OutputIcon,
-    People as PeopleIcon,
+    DashboardOutlined as DashboardIcon,
+    Inventory2Outlined as InventoryIcon,
+    ShoppingCartOutlined as OrderIcon,
+    KeyboardReturnOutlined as InputIcon,
+    LocalShippingOutlined as OutputIcon,
+    PeopleOutline as PeopleIcon,
     Logout as LogoutIcon,
-    Person as PersonIcon,
-    Settings as SettingsIcon,
-    Assessment as AssessmentIcon,
-    AssignmentReturn as ReturnIcon,
+    PersonOutline as PersonIcon,
+    SettingsOutlined as SettingsIcon,
+    AssessmentOutlined as AssessmentIcon,
+    AssignmentReturnOutlined as ReturnIcon,
+    Search as SearchIcon,
+    NotificationsNoneOutlined as NotificationsIcon,
+    ExpandMore as ExpandMoreIcon,
+    Business as BusinessIcon,
 } from '@mui/icons-material';
 
-const drawerWidth = 260; // Slightly wider for better look
+const drawerWidth = 260; 
 
 const MainLayout: React.FC = () => {
-    // const theme = useTheme();
-    // const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [mobileOpen, setMobileOpen] = useState(false);
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -102,48 +106,54 @@ const MainLayout: React.FC = () => {
         ...(hasPermission('employees.view') ? [
             { text: 'Nhân viên', icon: <PeopleIcon />, path: '/employees' }
         ] : []),
-        ...(hasPermission('*') ? [ // Or specific settings permission. Using '*' (Admin) for now.
+        ...(hasPermission('*') ? [
             { text: 'Thiết lập', icon: <SettingsIcon />, path: '/settings' }
         ] : []),
     ];
 
+    const currentMenuItem = menuItems.find(item => item.path === location.pathname);
+
     const drawer = (
-        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            {/* Logo Area */}
-            <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', gap: 0.5 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: '#0b3d2b', borderRight: 'none' }}>
+            {/* Standard SaaS Logo Area */}
+            <Box sx={{ 
+                p: 2.5, 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1.5,
+                mb: 2,
+                borderBottom: '1px solid rgba(255,255,255,0.1)'
+            }}>
+                <Box sx={{ 
+                    width: 32, 
+                    height: 32, 
+                    borderRadius: 2, 
+                    bgcolor: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.3)',
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                }}>
+                    <DashboardIcon sx={{ color: 'white', fontSize: 20 }} />
+                </Box>
                 <Typography
-                    variant="caption"
+                    variant="h6"
                     sx={{
-                        color: 'text.secondary',
-                        letterSpacing: '2px',
-                        textTransform: 'uppercase',
                         fontWeight: 700,
-                        fontSize: '0.7rem'
+                        color: 'white',
+                        letterSpacing: '-0.5px',
+                        fontSize: '1.0rem'
                     }}
                 >
-                    Quản lý kho
-                </Typography>
-                <Typography
-                    variant="h4"
-                    sx={{
-                        fontWeight: 900,
-                        background: 'linear-gradient(45deg, #1e4b9b 30%, #0f2b5b 90%)', // Blue Gradient
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        letterSpacing: '2px',
-                        textShadow: '0 2px 10px rgba(15, 43, 91, 0.3)'
-                    }}
-                >
-                    CĐBR
+                    Inventory Management System
                 </Typography>
             </Box>
 
-            {/* Menu Items */}
             <List sx={{ px: 2, flexGrow: 1 }}>
                 {menuItems.map((item) => {
                     const isActive = location.pathname === item.path;
                     return (
-                        <ListItem key={item.text} disablePadding sx={{ mb: 1 }}>
+                        <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
                             <ListItemButton
                                 onClick={() => {
                                     navigate(item.path);
@@ -152,31 +162,43 @@ const MainLayout: React.FC = () => {
                                 selected={isActive}
                                 sx={{
                                     height: 48,
-                                    borderRadius: '6px',
+                                    borderRadius: '8px',
+                                    color: 'white',
+                                    transition: 'all 0.2s',
                                     '&.Mui-selected': {
-                                        backgroundColor: 'rgba(37, 99, 235, 0.12)', // Primary Tint
-                                        color: '#0f2b5b', // Primary Main
-                                        borderLeft: '4px solid #0f2b5b',
+                                        backgroundColor: 'rgba(255,255,255,0.1)',
+                                        color: 'white',
+                                        boxShadow: 'none',
+                                        border: '1px solid rgba(255,255,255,0.15)',
                                         '&:hover': {
-                                            backgroundColor: 'rgba(37, 99, 235, 0.18)',
+                                            backgroundColor: 'rgba(255,255,255,0.15)',
                                         },
                                         '& .MuiListItemIcon-root': {
-                                            color: '#0f2b5b',
+                                            color: 'white',
                                         },
                                     },
+                                    '&:hover': {
+                                        backgroundColor: 'rgba(255,255,255,0.05)',
+                                        color: 'white',
+                                        '& .MuiListItemIcon-root': {
+                                            color: 'white',
+                                        },
+                                    }
                                 }}
                             >
                                 <ListItemIcon sx={{
-                                    minWidth: 40,
-                                    color: isActive ? '#0f2b5b' : '#94a3b8' // Slate 400
+                                    minWidth: 36,
+                                    color: 'white',
+                                    transition: 'color 0.2s'
                                 }}>
-                                    {item.icon}
+                                    {React.cloneElement(item.icon as React.ReactElement<any>, { fontSize: 'small' })}
                                 </ListItemIcon>
                                 <ListItemText
                                     primary={item.text}
                                     primaryTypographyProps={{
                                         fontWeight: isActive ? 600 : 400,
-                                        fontSize: '0.95rem'
+                                        fontSize: '0.9rem',
+                                        color: 'white'
                                     }}
                                 />
                             </ListItemButton>
@@ -185,20 +207,28 @@ const MainLayout: React.FC = () => {
                 })}
             </List>
 
-            {/* User Profile at Bottom */}
-            <Box sx={{ p: 2, bgcolor: 'rgba(0,0,0,0.2)' }}>
+            {/* User Profile at Bottom (Sidebar style) */}
+            <Box sx={{ p: 2, borderTop: '1px solid rgba(255,255,255,0.1)', bgcolor: 'transparent' }}>
                 <ListItemButton
-                    onClick={handleLogout}
+                    onClick={handleMenuOpen}
                     sx={{
                         borderRadius: '8px',
-                        color: '#faa5a5',
-                        '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }
+                        py: 1,
+                        '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' }
                     }}
                 >
-                    <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>
-                        <LogoutIcon />
-                    </ListItemIcon>
-                    <ListItemText primary="Đăng xuất" />
+                    <Avatar sx={{ width: 32, height: 32, bgcolor: 'rgba(255,255,255,0.2)', color: 'white', fontSize: '0.875rem', fontWeight: 600, mr: 1.5 }}>
+                        {profile?.full_name?.charAt(0) || 'A'}
+                    </Avatar>
+                    <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
+                         <Typography variant="body2" sx={{ fontWeight: 600, color: 'white', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                              {profile?.full_name || 'Administrator'}
+                         </Typography>
+                         <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', display: 'block' }}>
+                             {profile?.role === 'admin' || profile?.role === 'manager' ? 'Admin' : 'Staff'}
+                         </Typography>
+                    </Box>
+                    <ExpandMoreIcon sx={{ color: 'rgba(255,255,255,0.7)', fontSize: 18 }} />
                 </ListItemButton>
             </Box>
         </Box>
@@ -214,80 +244,138 @@ const MainLayout: React.FC = () => {
                 sx={{
                     width: { sm: `calc(100% - ${drawerWidth}px)` },
                     ml: { sm: `${drawerWidth}px` },
+                    bgcolor: 'white',
+                    color: '#0f172a',
+                    borderBottom: '1px solid #e2e8f0',
                     zIndex: (theme) => theme.zIndex.drawer + 1
                 }}
                 elevation={0}
             >
-                <Toolbar sx={{ justifyContent: 'space-between' }}>
-                    <Box display="flex" alignItems="center">
+                <Toolbar sx={{ justifyContent: 'space-between', minHeight: '64px !important', px: { xs: 2, sm: 4 } }}>
+                    <Box display="flex" alignItems="center" gap={2}>
                         <IconButton
                             color="inherit"
                             aria-label="open drawer"
                             edge="start"
                             onClick={handleDrawerToggle}
-                            sx={{ mr: 2, display: { sm: 'none' } }}
+                            sx={{ display: { sm: 'none' }, color: '#64748b' }}
                         >
                             <MenuIcon />
                         </IconButton>
-                        <Stack direction="column">
-                            <Typography variant="h6" noWrap component="div" sx={{ color: 'text.primary', fontWeight: 700 }}>
-                                {menuItems.find(item => item.path === location.pathname)?.text || 'Dashboard'}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
-                                {new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                            </Typography>
-                        </Stack>
+                        
+                        {/* Breadcrumbs / Page Title */}
+                        <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+                             <Breadcrumbs aria-label="breadcrumb" sx={{ '& .MuiBreadcrumbs-separator': { margin: '0 4px' } }}>
+                                 <Typography color="inherit" sx={{ fontSize: '0.875rem', color: '#64748b' }}>
+                                    Inventory Management System
+                                 </Typography>
+                                 <Typography sx={{ color: '#0f172a', fontWeight: 600, fontSize: '0.875rem' }}>
+                                     {currentMenuItem?.text || 'Dashboard'}
+                                 </Typography>
+                             </Breadcrumbs>
+                        </Box>
                     </Box>
 
-                    <Box display="flex" alignItems="center" gap={2}>
-                        <Box sx={{ textAlign: 'right', display: { xs: 'none', md: 'block' } }}>
-                            <Typography variant="subtitle2" color="text.primary" fontWeight="600">
-                                {profile?.full_name || 'Administrator'}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                                {profile?.role === 'admin' || profile?.role === 'manager' ? 'Quản trị viên' : 'Nhân viên'}
-                            </Typography>
+                    <Box display="flex" alignItems="center" gap={3}>
+                        {/* Global Search */}
+                        <Box sx={{ 
+                            display: { xs: 'none', md: 'flex' }, 
+                            alignItems: 'center',
+                            bgcolor: '#f1f5f9',
+                            borderRadius: 2,
+                            px: 1.5,
+                            py: 0.5,
+                            width: 250,
+                            border: '1px solid transparent',
+                            transition: 'all 0.2s',
+                            '&:focus-within': {
+                                bgcolor: 'white',
+                                border: '1px solid #cbd5e1',
+                                boxShadow: '0 0 0 2px rgba(37,99,235,0.1)'
+                            }
+                        }}>
+                            <SearchIcon sx={{ color: '#94a3b8', fontSize: 20, mr: 1 }} />
+                            <InputBase 
+                                placeholder="Search everything..." 
+                                sx={{ fontSize: '0.875rem', width: '100%', color: '#0f172a' }} 
+                            />
+                            <Typography sx={{ fontSize: '0.7rem', color: '#94a3b8', bgcolor: 'white', px: 0.5, borderRadius: 1, border: '1px solid #e2e8f0' }}>⌘K</Typography>
                         </Box>
-                        <IconButton onClick={handleMenuOpen} sx={{ p: 0 }}>
-                            <Avatar sx={{ bgcolor: 'primary.main' }}>
-                                {profile?.full_name?.charAt(0) || 'A'}
-                            </Avatar>
+
+                        {/* Org Switcher (Mocked visually) */}
+                        <Box sx={{ display: { xs: 'none', lg: 'flex' }, alignItems: 'center', gap: 1, cursor: 'pointer', '&:hover': { opacity: 0.8 } }}>
+                            <BusinessIcon sx={{ color: '#64748b', fontSize: 20 }} />
+                            <Typography sx={{ fontSize: '0.875rem', fontWeight: 500, color: '#475569' }}>Main HQ</Typography>
+                            <ExpandMoreIcon sx={{ color: '#94a3b8', fontSize: 16 }} />
+                        </Box>
+
+                        <Divider orientation="vertical" flexItem sx={{ my: 1.5 }} />
+
+                        {/* Notifications */}
+                        <IconButton sx={{ color: '#64748b' }}>
+                            <Badge badgeContent={3} color="error" sx={{ '& .MuiBadge-badge': { height: 16, minWidth: 16, fontSize: '0.65rem' } }}>
+                                <NotificationsIcon sx={{ fontSize: 22 }} />
+                            </Badge>
                         </IconButton>
-                        <Menu
-                            sx={{ mt: '45px' }}
-                            anchorEl={anchorEl}
-                            anchorOrigin={{
-                                vertical: 'top',
-                                horizontal: 'right',
-                            }}
-                            keepMounted
-                            transformOrigin={{
-                                vertical: 'top',
-                                horizontal: 'right',
-                            }}
-                            open={Boolean(anchorEl)}
-                            onClose={handleMenuClose}
-                        >
-                            <MenuItem onClick={() => {
-                                handleMenuClose();
-                                navigate('/profile');
-                            }}>
-                                <ListItemIcon><PersonIcon fontSize="small" /></ListItemIcon>
-                                Hồ sơ
-                            </MenuItem>
-                            <MenuItem disabled>
-                                <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
-                                Cài đặt
-                            </MenuItem>
-                            <Divider />
-                            <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
-                                <ListItemIcon><LogoutIcon fontSize="small" color="error" /></ListItemIcon>
-                                Đăng xuất
-                            </MenuItem>
-                        </Menu>
                     </Box>
                 </Toolbar>
             </AppBar>
+            
+            {/* User Dropdown Menu */}
+            <Menu
+                sx={{ mt: '10px' }}
+                anchorEl={anchorEl}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                keepMounted
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                open={Boolean(anchorEl)}
+                onClose={handleMenuClose}
+                PaperProps={{
+                    elevation: 0,
+                    sx: {
+                        overflow: 'visible',
+                        filter: 'drop-shadow(0px 4px 12px rgba(0,0,0,0.1))',
+                        mt: 1.5,
+                        width: 200,
+                        borderRadius: 2,
+                        border: '1px solid #e2e8f0',
+                        '& .MuiAvatar-root': {
+                            width: 32,
+                            height: 32,
+                            ml: -0.5,
+                            mr: 1,
+                        },
+                        '&:before': {
+                            content: '""',
+                            display: 'block',
+                            position: 'absolute',
+                            top: 0,
+                            right: 14,
+                            width: 10,
+                            height: 10,
+                            bgcolor: 'background.paper',
+                            transform: 'translateY(-50%) rotate(45deg)',
+                            zIndex: 0,
+                            borderTop: '1px solid #e2e8f0',
+                            borderLeft: '1px solid #e2e8f0',
+                        },
+                    },
+                }}
+            >
+                <MenuItem onClick={() => { handleMenuClose(); navigate('/profile'); }} sx={{ fontSize: '0.875rem', py: 1 }}>
+                    <ListItemIcon><PersonIcon fontSize="small" sx={{ color: '#64748b' }} /></ListItemIcon>
+                    My Profile
+                </MenuItem>
+                <MenuItem disabled sx={{ fontSize: '0.875rem', py: 1 }}>
+                    <ListItemIcon><SettingsIcon fontSize="small" sx={{ color: '#64748b' }} /></ListItemIcon>
+                    Account Settings
+                </MenuItem>
+                <Divider sx={{ my: 1 }} />
+                <MenuItem onClick={handleLogout} sx={{ color: '#ef4444', fontSize: '0.875rem', py: 1 }}>
+                    <ListItemIcon><LogoutIcon fontSize="small" sx={{ color: '#ef4444' }} /></ListItemIcon>
+                    Sign out
+                </MenuItem>
+            </Menu>
 
             {/* Sidebar */}
             <Box
@@ -300,12 +388,10 @@ const MainLayout: React.FC = () => {
                     variant="temporary"
                     open={mobileOpen}
                     onClose={handleDrawerToggle}
-                    ModalProps={{
-                        keepMounted: true,
-                    }}
+                    ModalProps={{ keepMounted: true }}
                     sx={{
                         display: { xs: 'block', sm: 'none' },
-                        '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+                        '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth, borderRight: 'none' },
                     }}
                 >
                     {drawer}
@@ -316,7 +402,7 @@ const MainLayout: React.FC = () => {
                     variant="permanent"
                     sx={{
                         display: { xs: 'none', sm: 'block' },
-                        '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
+                        '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth, borderRight: 'none' },
                     }}
                     open
                 >
@@ -329,14 +415,14 @@ const MainLayout: React.FC = () => {
                 component="main"
                 sx={{
                     flexGrow: 1,
-                    p: { xs: 1, sm: 3 }, // Reduced padding on mobile
+                    p: { xs: 2, sm: 4 }, 
                     width: { sm: `calc(100% - ${drawerWidth}px)` },
                     minHeight: '100vh',
-                    bgcolor: 'background.default',
-                    overflowX: 'hidden' // Prevent horizontal scroll on body
+                    bgcolor: '#f1f5f9', // Very light grey bg for SaaS look
+                    overflowX: 'hidden'
                 }}
             >
-                <Toolbar /> {/* Spacer for fixed AppBar */}
+                <Toolbar sx={{ minHeight: '64px !important' }} /> {/* Spacer */}
                 <Outlet />
             </Box>
         </Box>

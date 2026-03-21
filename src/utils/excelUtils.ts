@@ -1,6 +1,4 @@
 import ExcelJS from 'exceljs';
-import { saveAs } from 'file-saver';
-
 // Helper to remove Vietnamese tones
 export const removeVietnameseTones = (str: string) => {
     str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
@@ -23,6 +21,15 @@ export const removeVietnameseTones = (str: string) => {
     str = str.trim();
     return str;
 };
+
+// Helper: Download ArrayBuffer using FileSaver
+import { saveAs } from 'file-saver';
+
+export const downloadAsDataUri = (buffer: ArrayBuffer | Uint8Array, fileName: string) => {
+    const blob = new Blob([buffer as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(blob, fileName);
+};
+
 import * as XLSX from 'xlsx';
 
 // --- Utility: Read Number to Text (Vietnamese) ---
@@ -238,23 +245,35 @@ export const exportStandardReport = async (
 
     // --- FOOTER ---
     const lastRow = sheet.rowCount + 1;
-    sheet.mergeCells(lastRow, 1, lastRow, 3); // Left Signature (Optional)
-    sheet.mergeCells(lastRow, totalCols - 2, lastRow, totalCols); // Right Signature (Reporter)
+    if (totalCols >= 6) {
+        sheet.mergeCells(lastRow, 1, lastRow, 3); // Left Signature (Optional)
+        sheet.mergeCells(lastRow, totalCols - 2, lastRow, totalCols); // Right Signature (Reporter)
+    } else if (totalCols >= 4) {
+        sheet.mergeCells(lastRow, 1, lastRow, 2); 
+        sheet.mergeCells(lastRow, totalCols - 1, lastRow, totalCols);
+    } else {
+        // Very few columns, avoid merging multiple cells
+        // Fallback to single cells if needed, or don't merge
+    }
 
-    const cSigRight = sheet.getCell(lastRow, totalCols - 2);
+    const cSigRight = sheet.getCell(lastRow, totalCols >= 4 ? (totalCols >= 6 ? totalCols - 2 : totalCols - 1) : totalCols);
     cSigRight.value = 'NGƯỜI LẬP BIỂU';
     cSigRight.font = { ...fontNormal, bold: true };
     cSigRight.alignment = { horizontal: 'center' };
 
     const nameRow = lastRow + 4;
-    sheet.mergeCells(nameRow, totalCols - 2, nameRow, totalCols);
-    const cNameRight = sheet.getCell(nameRow, totalCols - 2);
+    if (totalCols >= 6) {
+        sheet.mergeCells(nameRow, totalCols - 2, nameRow, totalCols);
+    } else if (totalCols >= 4) {
+        sheet.mergeCells(nameRow, totalCols - 1, nameRow, totalCols);
+    }
+    const cNameRight = sheet.getCell(nameRow, totalCols >= 4 ? (totalCols >= 6 ? totalCols - 2 : totalCols - 1) : totalCols);
     cNameRight.value = reporterName;
     cNameRight.font = { ...fontNormal, bold: true };
     cNameRight.alignment = { horizontal: 'center' };
 
     const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `${fileName}.xlsx`);
+    downloadAsDataUri(buffer, `${fileName}.xlsx`);
 };
 
 // --- LEGACY EXPORTS (XLSX) ---
@@ -279,7 +298,8 @@ export const exportToExcel = (data: any[], fileName: string, sheetName: string =
     ws['!cols'] = colWidths;
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    XLSX.writeFile(wb, `${fileName}.xlsx`);
+    const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    downloadAsDataUri(buffer, `${fileName}.xlsx`);
 };
 
 export const generateProductTemplate = () => {
@@ -288,7 +308,8 @@ export const generateProductTemplate = () => {
     ws['!cols'] = [{ wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 15 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "ProductTemplate");
-    XLSX.writeFile(wb, "ProductImportTemplate.xlsx");
+    const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    downloadAsDataUri(buffer, "ProductImportTemplate.xlsx");
 };
 export const generateEmployeeTemplate = () => {
     const headers = [{ HO_TEN: "Nguyễn Văn A", EMAIL: "nguyenvan.a@example.com", SO_DIEN_THOAI: "0901234567", VAI_TRO: "staff", TEN_DANG_NHAP: "nguyenvana", QUAN_HUYEN: "Quận 1" }];
@@ -296,7 +317,8 @@ export const generateEmployeeTemplate = () => {
     ws['!cols'] = [{ wch: 25 }, { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 15 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "EmployeeTemplate");
-    XLSX.writeFile(wb, "EmployeeImportTemplate.xlsx");
+    const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    downloadAsDataUri(buffer, "EmployeeImportTemplate.xlsx");
 };
 export const generateInboundTemplate = () => {
     const headers = [{ MA_HANG: "SP001", SO_LUONG: 10, DON_GIA: 150000, SERIAL: "SN123456", GHI_CHU: "Nhập hàng đợt 1", QUAN_HUYEN: "Quận 1", TRANG_THAI_HANG: "Mới 100%" }];
@@ -304,7 +326,8 @@ export const generateInboundTemplate = () => {
     ws['!cols'] = [{ wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 20 }, { wch: 30 }, { wch: 15 }, { wch: 20 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "InboundTemplate");
-    XLSX.writeFile(wb, "InboundImportTemplate.xlsx");
+    const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    downloadAsDataUri(buffer, "InboundImportTemplate.xlsx");
 };
 export const generateOutboundTemplate = () => {
     const headers = [{ MA_HANG: "SP001", SO_LUONG: 5, EMAIL_NGUOI_NHAN: "nguyenvan.a@example.com", SERIAL: "SN123", GHI_CHU: "Xuất cho dự án A", QUAN_HUYEN: "Quận 3", TRANG_THAI_HANG: "Đã qua sử dụng" }];
@@ -312,7 +335,8 @@ export const generateOutboundTemplate = () => {
     ws['!cols'] = [{ wch: 15 }, { wch: 10 }, { wch: 30 }, { wch: 20 }, { wch: 30 }, { wch: 15 }, { wch: 20 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "OutboundTemplate");
-    XLSX.writeFile(wb, "OutboundImportTemplate.xlsx");
+    const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    downloadAsDataUri(buffer, "OutboundImportTemplate.xlsx");
 };
 export const readExcelFile = (file: File): Promise<any[]> => {
     return new Promise((resolve, reject) => {
@@ -320,7 +344,7 @@ export const readExcelFile = (file: File): Promise<any[]> => {
         reader.onload = (e) => {
             try {
                 const data = e.target?.result;
-                const workbook = XLSX.read(data, { type: 'binary' });
+                const workbook = XLSX.read(data, { type: 'array' });
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
                 const json = XLSX.utils.sheet_to_json(worksheet);
@@ -328,7 +352,7 @@ export const readExcelFile = (file: File): Promise<any[]> => {
             } catch (error) { reject(error); }
         };
         reader.onerror = (error) => reject(error);
-        reader.readAsBinaryString(file);
+        reader.readAsArrayBuffer(file);
     });
 };
 
@@ -357,8 +381,21 @@ export const exportHandoverMinutesV2 = async (
         }
     });
 
+    const originalMerge = sheet.mergeCells.bind(sheet);
+    (sheet as any).mergeCells = function() {
+        try {
+            return originalMerge.apply(sheet, arguments as any);
+        } catch (e: any) {
+            const range = Array.from(arguments).join(', ');
+            console.error(`ERROR MERGING CELLS: ${range}`, e);
+            if (e && e.message) {
+                e.message = `[Overlap tại ${range}] ` + e.message;
+            }
+            throw e;
+        }
+    };
+
     // --- STYLES ---
-    const fontTitle = { name: 'Times New Roman', size: 12, bold: true };
     const fontHeader = { name: 'Times New Roman', size: 16, bold: true, color: { argb: 'FFFF0000' } }; // RED Header
     const fontTableHead = { name: 'Times New Roman', size: 12, bold: true, wrapText: true };
     const fontTableBody = { name: 'Times New Roman', size: 12, wrapText: true };
@@ -391,49 +428,66 @@ export const exportHandoverMinutesV2 = async (
 
     // --- HEADER SECTION ---
     // Row 1: Center Name (Left)
-    sheet.mergeCells('A1:C1');
-    sheet.getCell('A1').value = "TRUNG TÂM ACT KHU VỰC BẮC SÀI GÒN";
+    sheet.mergeCells('A1:D1');
+    sheet.getCell('A1').value = "CÔNG TY CỔ PHẦN VIỄN THÔNG ACT";
     sheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
     sheet.getCell('A1').font = fontBoldBlue; // Blue
 
-    sheet.mergeCells('A2:C2');
-    sheet.getCell('A2').value = "455A TRẦN THỊ NĂM P.TMT QUẬN 12";
+    sheet.mergeCells('A2:D2');
+    sheet.getCell('A2').value = "TRUNG TÂM ACT BẮC SÀI GÒN";
     sheet.getCell('A2').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-    sheet.getCell('A2').font = { ...fontBoldBlue, size: 9 };
+    sheet.getCell('A2').font = fontBoldBlue;
 
-    // Row 1: Motto (Right)
-    sheet.mergeCells('E1:H1');
-    sheet.getCell('E1').value = "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM";
-    sheet.getCell('E1').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-    sheet.getCell('E1').font = fontTitle;
+    // Row 1: Right Side (Mẫu số...)
+    sheet.mergeCells('G1:H1');
+    sheet.getCell('G1').value = "Mẫu số: 01 - VT";
+    sheet.getCell('G1').alignment = { vertical: 'middle', horizontal: 'center' };
+    sheet.getCell('G1').font = { name: 'Times New Roman', size: 10, bold: true };
 
-    sheet.mergeCells('E2:H2');
-    sheet.getCell('E2').value = "Độc lập - Tự do - Hạnh phúc";
-    sheet.getCell('E2').alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-    sheet.getCell('E2').font = { ...fontTitle, size: 10 };
+    sheet.mergeCells('G2:H2');
+    sheet.getCell('G2').value = "Ban hành theo QĐ số";
+    sheet.getCell('G2').alignment = { vertical: 'middle', horizontal: 'center' };
+    sheet.getCell('G2').font = { name: 'Times New Roman', size: 9 };
 
-    // Row 3: Report Number (Right)
-    // Format: "BBBG-BSG/ACT :PX-[Number]"
-    sheet.mergeCells('E3:H3');
-    sheet.getCell('E3').value = `BBBG-BSG/ACT :PX-${reportNumber}`;
-    sheet.getCell('E3').alignment = { vertical: 'middle', horizontal: 'right' };
-    sheet.getCell('E3').font = { name: 'Times New Roman', size: 11, color: { argb: 'FFFF0000' } }; // Red text? Or standard? Image shows red.
+    sheet.mergeCells('G3:H3');
+    sheet.getCell('G3').value = "1141-TC/QĐ/CĐKT";
+    sheet.getCell('G3').alignment = { vertical: 'middle', horizontal: 'center' };
+    sheet.getCell('G3').font = { name: 'Times New Roman', size: 9 };
 
-    // Row 4 Title
-    sheet.mergeCells('A4:H4');
-    sheet.getCell('A4').value = "BIÊN BẢN BÀN GIAO VẬT TƯ HÀNG HÓA"; // Removed (MỚI)
-    sheet.getCell('A4').alignment = { horizontal: 'center', vertical: 'middle' };
-    sheet.getCell('A4').font = fontHeader; // Red, Bold, 16
+    sheet.mergeCells('G4:H4');
+    sheet.getCell('G4').value = "Ngày 01 tháng 11 năm 1995";
+    sheet.getCell('G4').alignment = { vertical: 'middle', horizontal: 'center' };
+    sheet.getCell('G4').font = { name: 'Times New Roman', size: 9 };
 
-    // Row 5: Date
+    sheet.mergeCells('G5:H5');
+    sheet.getCell('G5').value = "của bộ tài chính";
+    sheet.getCell('G5').alignment = { vertical: 'middle', horizontal: 'center' };
+    sheet.getCell('G5').font = { name: 'Times New Roman', size: 9 };
+
+    // Title
+    sheet.mergeCells('A6:H6');
+    sheet.getCell('A6').value = "PHIẾU XUẤT KHO";
+    sheet.getCell('A6').alignment = { horizontal: 'center', vertical: 'middle' };
+    sheet.getCell('A6').font = { ...fontHeader, size: 20 }; // Red, Bold, 20
+
+    // Date
     const [y, m, d] = dateStr.split('-');
-    sheet.mergeCells('A5:H5');
-    sheet.getCell('A5').value = `Ngày ${d} tháng ${m} năm ${y}`;
-    sheet.getCell('A5').alignment = { horizontal: 'center', vertical: 'middle' };
-    sheet.getCell('A5').font = { name: 'Times New Roman', size: 11, italic: true };
+    sheet.mergeCells('A7:H7');
+    sheet.getCell('A7').value = `Ngày ${d} tháng ${m} năm ${y}`;
+    sheet.getCell('A7').alignment = { horizontal: 'center', vertical: 'middle' };
+    sheet.getCell('A7').font = { name: 'Times New Roman', size: 11, color: { argb: 'FF0000FF' } }; // Blue
+
+    // Report Number
+    sheet.mergeCells('A8:H8');
+    sheet.getCell('A8').value = `Số phiếu : PXK-ACT-BSG-${String(reportNumber).padStart(6, '0')}/${m}-${y}`;
+    sheet.getCell('A8').alignment = { horizontal: 'center', vertical: 'middle' };
+    sheet.getCell('A8').font = { name: 'Times New Roman', size: 12, bold: true, color: { argb: 'FF1e4b9b' } };
+
+    // Spacer
+    sheet.addRow([]);
 
     // --- INFO SECTION ---
-    let currentRow = 7;
+    let currentRow = 11;
     // ... (Existing Info Logic) ... Left as is for now, just ensure layout spans A-H correctly.
     const addInfoRow = (label1: string, val1: string, label2?: string, val2?: string) => {
         sheet.mergeCells(`A${currentRow}:B${currentRow}`);
@@ -577,30 +631,43 @@ export const exportHandoverMinutesV2 = async (
     sheet.addRow([]);
 
     // Signatures
-    // User requested: Ben Giao (A-B), Ben Nhan (G-H)
-    const sigHeader = sheet.addRow(['BÊN GIAO', '', '', '', '', '', 'BÊN NHẬN', '']);
-    sheet.mergeCells(`A${sigHeader.number}:B${sigHeader.number}`);
-    sheet.mergeCells(`G${sigHeader.number}:H${sigHeader.number}`);
+    const sigHeader = sheet.addRow(['Người nhận', '', '', 'Thủ kho', '', 'Thủ trưởng đơn vị', '', '']);
+    sheet.mergeCells(`A${sigHeader.number}:C${sigHeader.number}`);
+    sheet.mergeCells(`D${sigHeader.number}:E${sigHeader.number}`);
+    sheet.mergeCells(`F${sigHeader.number}:H${sigHeader.number}`);
+    
     sheet.getCell(`A${sigHeader.number}`).font = { ...fontNormal, bold: true };
     sheet.getCell(`A${sigHeader.number}`).alignment = { horizontal: 'center' };
-    sheet.getCell(`G${sigHeader.number}`).font = { ...fontNormal, bold: true };
-    sheet.getCell(`G${sigHeader.number}`).alignment = { horizontal: 'center' };
+    sheet.getCell(`D${sigHeader.number}`).font = { ...fontNormal, bold: true };
+    sheet.getCell(`D${sigHeader.number}`).alignment = { horizontal: 'center' };
+    sheet.getCell(`F${sigHeader.number}`).font = { ...fontNormal, bold: true };
+    sheet.getCell(`F${sigHeader.number}`).alignment = { horizontal: 'center' };
 
-    const sigTitle = sheet.addRow(['(Ký, họ tên)', '', '', '', '', '', '(Ký, họ tên)', '']);
-    sheet.mergeCells(`A${sigTitle.number}:B${sigTitle.number}`);
-    sheet.mergeCells(`G${sigTitle.number}:H${sigTitle.number}`);
+    const sigTitle = sheet.addRow(['(Ký, họ tên)', '', '', '(Ký, họ tên)', '', '(Ký, họ tên)', '', '']);
+    sheet.mergeCells(`A${sigTitle.number}:C${sigTitle.number}`);
+    sheet.mergeCells(`D${sigTitle.number}:E${sigTitle.number}`);
+    sheet.mergeCells(`F${sigTitle.number}:H${sigTitle.number}`);
+    
+    sheet.getCell(`A${sigTitle.number}`).font = { ...fontNormal, italic: true };
     sheet.getCell(`A${sigTitle.number}`).alignment = { horizontal: 'center' };
-    sheet.getCell(`G${sigTitle.number}`).alignment = { horizontal: 'center' };
+    sheet.getCell(`D${sigTitle.number}`).font = { ...fontNormal, italic: true };
+    sheet.getCell(`D${sigTitle.number}`).alignment = { horizontal: 'center' };
+    sheet.getCell(`F${sigTitle.number}`).font = { ...fontNormal, italic: true };
+    sheet.getCell(`F${sigTitle.number}`).alignment = { horizontal: 'center' };
 
-    sheet.addRow([]); sheet.addRow([]); sheet.addRow([]);
+    sheet.addRow([]); sheet.addRow([]); sheet.addRow([]); sheet.addRow([]);
 
-    const sigName = sheet.addRow([reporterName, '', '', '', '', '', receiverName, '']);
-    sheet.mergeCells(`A${sigName.number}:B${sigName.number}`);
-    sheet.mergeCells(`G${sigName.number}:H${sigName.number}`);
+    const sigName = sheet.addRow([receiverName, '', '', reporterName, '', 'TRẦN KIM HÙNG', '', '']);
+    sheet.mergeCells(`A${sigName.number}:C${sigName.number}`);
+    sheet.mergeCells(`D${sigName.number}:E${sigName.number}`);
+    sheet.mergeCells(`F${sigName.number}:H${sigName.number}`);
+    
     sheet.getCell(`A${sigName.number}`).font = { ...fontNormal, bold: true };
     sheet.getCell(`A${sigName.number}`).alignment = { horizontal: 'center' };
-    sheet.getCell(`G${sigName.number}`).font = { ...fontNormal, bold: true };
-    sheet.getCell(`G${sigName.number}`).alignment = { horizontal: 'center' };
+    sheet.getCell(`D${sigName.number}`).font = { ...fontNormal, bold: true };
+    sheet.getCell(`D${sigName.number}`).alignment = { horizontal: 'center' };
+    sheet.getCell(`F${sigName.number}`).font = { ...fontNormal, bold: true };
+    sheet.getCell(`F${sigName.number}`).alignment = { horizontal: 'center' };
 
 
 
@@ -611,7 +678,7 @@ export const exportHandoverMinutesV2 = async (
         .replace(/[^a-z0-9]/g, '_')
         .replace(/_+/g, '_'); // Collapse multiple underscores
 
-    saveAs(new Blob([buffer]), `BBBG_${safeName}_${dateStr}.xlsx`);
+    downloadAsDataUri(buffer, `BBBG_${safeName}_${dateStr}.xlsx`);
 };
 
 export const formatCurrency = (amount: number) => {

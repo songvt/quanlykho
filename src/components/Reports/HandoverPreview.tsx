@@ -1,5 +1,6 @@
 
 import { Box, Typography, Table, TableBody, TableCell, TableHead, TableRow, Paper } from '@mui/material';
+import QrCode2Icon from '@mui/icons-material/QrCode2';
 import { readMoney } from '../../utils/excelUtils';
 
 interface HandoverPreviewProps {
@@ -47,39 +48,61 @@ const HandoverPreview = ({ data, employeeName, date, reporterName, senderPhone, 
             <div id="handover-preview-content">
                 <Paper elevation={0} sx={{ p: 4, bgcolor: 'white', color: 'black', minWidth: 800, fontFamily: "'Times New Roman', Times, serif" }}>
                     {/* Header */}
-                    <Box display="flex" justifyContent="space-between" mb={3} alignItems="flex-start">
-                        <Box textAlign="center">
-                            <Typography fontWeight="bold" sx={{ fontSize: '13pt', textTransform: 'uppercase', lineHeight: 1.2 }}>TRUNG TÂM ACT KHU VỰC BẮC SÀI GÒN</Typography>
-                            <Typography sx={{ fontSize: '11pt', fontWeight: 'bold', lineHeight: 1.2 }}>455A TRẦN THỊ NĂM P.TMT QUẬN 12</Typography>
+                    <Box display="flex" justifyContent="space-between" mb={2} alignItems="flex-start">
+                        <Box textAlign="left" sx={{ flexShrink: 0 }}>
+                            <Typography fontWeight="bold" sx={{ fontSize: '11pt', color: 'blue', lineHeight: 1.2, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>CÔNG TY CỔ PHẦN VIỄN THÔNG ACT</Typography>
+                            <Typography fontWeight="bold" sx={{ fontSize: '11pt', color: 'blue', lineHeight: 1.2, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>TRUNG TÂM ACT BẮC SÀI GÒN</Typography>
                         </Box>
-                        <Box textAlign="center">
-                            <Typography fontWeight="bold" sx={{ fontSize: '13pt', textTransform: 'uppercase', lineHeight: 1.2 }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</Typography>
-                            <Typography fontWeight="bold" sx={{ fontSize: '12pt', textDecoration: 'underline', lineHeight: 1.2 }}>Độc lập - Tự do - Hạnh phúc</Typography>
-                            <Typography color="error" sx={{ fontSize: '12pt', fontStyle: 'italic', mt: 1, textAlign: 'right' }}>BBBG-BSG/ACT :PX-{reportNumber}</Typography>
+
+                        <Box textAlign="center" sx={{ flexGrow: 1, mt: 4, px: 2 }}>
+                            <Typography fontWeight="bold" sx={{ fontSize: '24pt', color: 'red', textTransform: 'uppercase' }}>
+                                PHIẾU XUẤT KHO
+                            </Typography>
+                            <Typography sx={{ fontSize: '11pt', color: 'blue', mt: 2 }}>
+                                Ngày {String(dateObj.getDate()).padStart(2, '0')} tháng {String(dateObj.getMonth() + 1).padStart(2, '0')} năm {dateObj.getFullYear()}
+                            </Typography>
+                        </Box>
+
+                        <Box textAlign="center" sx={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                            <Box textAlign="center">
+                                <Typography fontWeight="bold" sx={{ fontSize: '10pt', lineHeight: 1.2 }}>Mẫu số: 01 - VT</Typography>
+                                <Typography sx={{ fontSize: '9pt', lineHeight: 1.2 }}>Ban hành theo QĐ số</Typography>
+                                <Typography sx={{ fontSize: '9pt', lineHeight: 1.2 }}>1141-TC/QĐ/CĐKT</Typography>
+                                <Typography sx={{ fontSize: '9pt', lineHeight: 1.2 }}>Ngày 01 tháng 11 năm 1995</Typography>
+                                <Typography sx={{ fontSize: '9pt', lineHeight: 1.2 }}>của bộ tài chính</Typography>
+                            </Box>
+                            <Box sx={{ mt: 1, mr: 2 }}>
+                                <QrCode2Icon sx={{ fontSize: 80 }} />
+                            </Box>
                         </Box>
                     </Box>
 
-                    <Typography variant="h5" align="center" color="error" fontWeight="bold" sx={{ fontSize: '18pt', my: 2 }}>
-                        BIÊN BẢN BÀN GIAO VẬT TƯ HÀNG HÓA
-                    </Typography>
-                    <Typography align="center" mb={3} sx={{ fontStyle: 'italic', fontSize: '12pt' }}>
-                        Ngày {dateObj.getDate()} tháng {dateObj.getMonth() + 1} năm {dateObj.getFullYear()}
-                    </Typography>
+                    <Box borderBottom="2px solid black" borderTop="2px solid black" py={0.5} mb={2}>
+                        <Typography align="center" fontWeight="bold" sx={{ fontSize: '12pt', color: '#1e4b9b' }}>
+                            Số phiếu : PXK-ACT-BSG-{String(reportNumber).padStart(6, '0')}/{dateObj.getMonth() + 1}-{dateObj.getFullYear()}
+                        </Typography>
+                    </Box>
 
                     {/* Info */}
-                    <Box mb={2} sx={{ fontSize: '12pt' }}>
+                    <Box mb={1} sx={{ fontSize: '11pt', color: 'blue' }}>
                         <Typography fontWeight="bold" mb={0.5}>BÊN GIAO :</Typography>
-                        <Typography>Họ tên người giao hàng : <b>{reporterName}</b></Typography>
-                        <Typography>Chức vụ: Nhân viên - QLTS(Kho) &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Điện thoại : {senderPhone}</Typography>
-                        <Typography>Địa chỉ(Bộ phận) : 455A Trần Thị Năm , P.Tân Chánh Hiệp , Quận 12</Typography>
+                        <Box display="flex" justifyContent="space-between">
+                            <Typography>Họ tên người giao hàng : <b>{reporterName}</b></Typography>
+                            <Typography>Chức vụ: Nhân viên - QLTS(Kho)</Typography>
+                            <Typography>Điện thoại : {senderPhone}</Typography>
+                        </Box>
+                        <Typography>Địa chỉ(Bộ phận) : 455A Trần Thị Năm , P.Trung Mỹ Tây , Tp.Hồ Chí Minh</Typography>
                         <Typography>Lý do xuất: Xuất hàng hóa,vật tư phát triển và xử lý sự cố, UCTT.....</Typography>
                     </Box>
 
-                    <Box mb={3} sx={{ fontSize: '12pt' }}>
+                    <Box mb={2} sx={{ fontSize: '11pt', color: 'blue' }}>
                         <Typography fontWeight="bold" mb={0.5}>BÊN NHẬN :</Typography>
-                        <Typography>Địa chỉ(Bộ phận) : 455A Trần Thị Năm , P.Tân Chánh Hiệp , Quận 12</Typography>
-                        <Typography>Họ tên người nhận hàng : <b style={{ color: 'red' }}>{employeeName}</b></Typography>
-                        <Typography>Chức vụ: Nhân viên Kỹ thuật CĐBR &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Điện thoại : {receiverPhone}</Typography>
+                        <Typography>Địa chỉ(Bộ phận) : 455A Trần Thị Năm , P.Trung Mỹ Tây , Tp.Hồ Chí Minh</Typography>
+                        <Box display="flex" justifyContent="space-between">
+                            <Typography>Họ tên người nhận hàng : <b style={{ color: 'red' }}>{employeeName}</b></Typography>
+                            <Typography>Chức vụ: Nhân viên Kỹ thuật CĐBR</Typography>
+                            <Typography>Điện thoại : {receiverPhone}</Typography>
+                        </Box>
                     </Box>
 
                     {/* Table */}
@@ -132,18 +155,24 @@ const HandoverPreview = ({ data, employeeName, date, reporterName, senderPhone, 
                     </Typography>
 
                     {/* Signatures */}
-                    <Box display="flex" justifyContent="space-around" px={2} mb={5}>
+                    <Box display="flex" justifyContent="space-between" px={6} mt={4} mb={6}>
                         <Box textAlign="center">
-                            <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>BÊN GIAO</Typography>
+                            <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>Người nhận</Typography>
                             <Typography fontStyle="italic" sx={{ fontSize: '11pt' }}>(Ký, họ tên)</Typography>
                             <Box height={100} />
-                            <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>{reporterName}</Typography>
+                            <Typography fontWeight="bold" sx={{ fontSize: '12pt', textTransform: 'uppercase' }}>{employeeName}</Typography>
                         </Box>
                         <Box textAlign="center">
-                            <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>BÊN NHẬN</Typography>
+                            <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>Thủ kho</Typography>
                             <Typography fontStyle="italic" sx={{ fontSize: '11pt' }}>(Ký, họ tên)</Typography>
                             <Box height={100} />
-                            <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>{employeeName}</Typography>
+                            <Typography fontWeight="bold" sx={{ fontSize: '12pt', textTransform: 'uppercase' }}>{reporterName}</Typography>
+                        </Box>
+                        <Box textAlign="center">
+                            <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>Thủ trưởng đơn vị</Typography>
+                            <Typography fontStyle="italic" sx={{ fontSize: '11pt' }}>(Ký, họ tên)</Typography>
+                            <Box height={100} />
+                            <Typography fontWeight="bold" sx={{ fontSize: '12pt', textTransform: 'uppercase' }}>TRẦN KIM HÙNG</Typography>
                         </Box>
                     </Box>
                 </Paper>

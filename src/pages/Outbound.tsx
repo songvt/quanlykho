@@ -1004,10 +1004,11 @@ export const Outbound = () => {
 
                     {/* Row 4: Actions */}
                     <Grid size={{ xs: 12 }}>
-                        <Box display="flex" justifyContent="flex-end" gap={2} mt={1}>
+                        <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
                             <Button
-                                variant="text"
+                                variant="outlined"
                                 color="inherit"
+                                size="large"
                                 onClick={() => {
                                     setSelectedProduct('');
                                     setQuantity(1);
@@ -1017,15 +1018,17 @@ export const Outbound = () => {
                                     setDistrict('');
                                     setItemStatus('');
                                 }}
+                                sx={{ minWidth: 120, py: { xs: 1, md: 1.5 }, borderRadius: 3, fontSize: { xs: '0.9rem', md: '1rem' }, fontWeight: 700, textTransform: 'none' }}
                             >
                                 Hủy bỏ
                             </Button>
                             <Button
                                 variant="contained"
                                 color="primary"
+                                size="large"
                                 onClick={handleAdminSave}
                                 disabled={(status as string) === 'loading'}
-                                sx={{ minWidth: 120 }}
+                                sx={{ minWidth: 150, py: { xs: 1, md: 1.5 }, borderRadius: 3, fontSize: { xs: '0.9rem', md: '1rem' }, fontWeight: 700, textTransform: 'none', boxShadow: 'none' }}
                             >
                                 Xuất Kho
                             </Button>

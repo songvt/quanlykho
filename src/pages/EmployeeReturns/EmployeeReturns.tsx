@@ -25,7 +25,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { usePermission } from '../../hooks/usePermission';
 
-const REASONS = ['Hàng tồn lâu', 'Hàng mới hỏng', 'Hàng thu hồi khách hàng rời mạng'];
+const REASONS = ['Hàng tồn lâu', 'Hàng mới hỏng', 'Hàng thu hồi khách hàng rời mạng', 'Trả hàng KH nâng cấp Mesh'];
 
 const EmployeeReturns = () => {
     const dispatch = useDispatch<AppDispatch>();

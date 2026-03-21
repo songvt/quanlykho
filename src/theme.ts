@@ -3,15 +3,15 @@ import { createTheme } from '@mui/material/styles';
 const theme = createTheme({
     palette: {
         primary: {
-            main: '#0f2b5b', // Deep Blue Enterprise
-            light: '#1e4b9b',
-            dark: '#081734',
+            main: '#0b3d2b', // Dark Green ERP Primary
+            light: '#145c42',
+            dark: '#06291d',
             contrastText: '#ffffff',
         },
         secondary: {
-            main: '#e11d48', // Vibrant Crimson Accent
-            light: '#fb7185',
-            dark: '#be123c',
+            main: '#0f766e', // Teal accent
+            light: '#14b8a6',
+            dark: '#0f766e',
             contrastText: '#ffffff',
         },
         background: {
@@ -80,10 +80,10 @@ const theme = createTheme({
                     }
                 },
                 containedPrimary: {
-                    background: 'linear-gradient(135deg, #1e4b9b 0%, #0f2b5b 100%)',
+                    background: 'linear-gradient(135deg, #145c42 0%, #0b3d2b 100%)',
                     '&:hover': {
-                        background: 'linear-gradient(135deg, #255bb8 0%, #153a7a 100%)',
-                        boxShadow: '0 6px 14px rgba(15, 43, 91, 0.3)',
+                        background: 'linear-gradient(135deg, #1b7a58 0%, #0e4c36 100%)',
+                        boxShadow: '0 6px 14px rgba(11, 61, 43, 0.3)',
                     },
                 },
                 containedError: {

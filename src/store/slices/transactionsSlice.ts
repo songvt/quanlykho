@@ -59,6 +59,14 @@ export const deleteTransaction = createAsyncThunk(
     }
 );
 
+export const updateTransaction = createAsyncThunk(
+    'transactions/updateTransaction',
+    async ({ id, type, payload }: { id: string, type: 'inbound' | 'outbound', payload: any }) => {
+        const data = await SupabaseService.updateTransaction(id, type, payload);
+        return data; // returns the updated transaction
+    }
+);
+
 const transactionsSlice = createSlice({
     name: 'transactions',
     initialState,
@@ -88,6 +96,13 @@ const transactionsSlice = createSlice({
             // Delete
             .addCase(deleteTransaction.fulfilled, (state, action) => {
                 state.items = state.items.filter(item => item.id !== action.payload);
+            })
+            // Update
+            .addCase(updateTransaction.fulfilled, (state, action) => {
+                const index = state.items.findIndex(item => item.id === action.payload.id);
+                if (index !== -1) {
+                    state.items[index] = action.payload;
+                }
             });
     },
 });

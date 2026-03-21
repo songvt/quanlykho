@@ -100,6 +100,14 @@ export const GoogleSheetService = {
         });
     },
 
+    async updateTransaction(id: string, type: 'inbound' | 'outbound', payload: any) {
+        return apiRequest('transactions', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, type, payload })
+        });
+    },
+
     async deleteTransaction(id: string, type: 'inbound' | 'outbound') {
         await apiRequest('transactions', {
             method: 'DELETE',

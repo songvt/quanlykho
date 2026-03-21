@@ -92,7 +92,7 @@ export interface EmployeeReturn {
     product_id: string;
     serial_code?: string;
     quantity: number;
-    reason: 'Hàng tồn lâu' | 'Hàng mới hỏng' | 'Hàng thu hồi khách hàng rời mạng';
+    reason: 'Hàng tồn lâu' | 'Hàng mới hỏng' | 'Hàng thu hồi khách hàng rời mạng' | 'Trả hàng KH nâng cấp Mesh';
     unit_price: number;
     total_price: number;
     return_date: string;
