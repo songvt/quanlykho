@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
     Box, Paper, Typography, Button, Table, TableBody, TableCell,
@@ -10,6 +11,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import { fetchProducts, addNewProduct, updateProduct, deleteProduct, deleteProducts, importProducts } from '../../store/slices/productsSlice';
+import { fetchInventory } from '../../store/slices/inventorySlice';
 import { generateProductTemplate, readExcelFile } from '../../utils/excelUtils';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -20,6 +22,7 @@ import { usePermission } from '../../hooks/usePermission';
 const ProductList = () => {
     const dispatch = useDispatch<AppDispatch>();
     const { items: products, status, error } = useSelector((state: RootState) => state.products);
+    const { stockMap, status: inventoryStatus } = useSelector((state: RootState) => state.inventory);
     const { hasPermission } = usePermission();
     const canManage = hasPermission('inventory.manage');
 
@@ -27,6 +30,8 @@ const ProductList = () => {
     const [currentProduct, setCurrentProduct] = useState<Partial<Product>>({});
     const [isEditMode, setIsEditMode] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const filterParam = searchParams.get('filter');
 
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -34,7 +39,10 @@ const ProductList = () => {
         if (status === 'idle') {
             dispatch(fetchProducts());
         }
-    }, [status, dispatch]);
+        if (inventoryStatus === 'idle') {
+            dispatch(fetchInventory());
+        }
+    }, [status, inventoryStatus, dispatch]);
 
     const handleOpenAdd = () => {
         setCurrentProduct({
@@ -106,11 +114,25 @@ const ProductList = () => {
 
     const filteredProducts = useMemo(() => {
         const lowerTerm = searchTerm.toLowerCase();
-        return products.filter(p =>
+        let result = products.filter(p =>
             (p.name?.toLowerCase() || '').includes(lowerTerm) ||
             (p.item_code?.toLowerCase() || '').includes(lowerTerm)
         );
-    }, [products, searchTerm]);
+
+        if (filterParam === 'low_stock') {
+            result = result.filter(p => {
+                const qty = stockMap[p.id] || 0;
+                return qty > 0 && qty < 10;
+            });
+        } else if (filterParam === 'out_of_stock') {
+            result = result.filter(p => {
+                const qty = stockMap[p.id] || 0;
+                return qty <= 0;
+            });
+        }
+
+        return result;
+    }, [products, searchTerm, filterParam, stockMap]);
 
     if (status === 'loading') return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
     if (status === 'failed') return <Alert severity="error">{error}</Alert>;
@@ -220,9 +242,9 @@ const ProductList = () => {
                 </Stack>
             </Stack>
 
-            <Paper sx={{ mb: 2, p: 1.5, borderRadius: 3 }}>
+            <Paper sx={{ mb: 2, p: 1.5, borderRadius: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
                 <TextField
-                    fullWidth
+                    sx={{ flexGrow: 1, '& .MuiOutlinedInput-root': { backgroundColor: '#f8fafc', '& fieldset': { borderColor: '#e2e8f0' }, '&:hover fieldset': { borderColor: '#cbd5e1' } } }}
                     placeholder="Tìm kiếm sản phẩm..."
                     variant="outlined"
                     value={searchTerm}
@@ -231,14 +253,26 @@ const ProductList = () => {
                     InputProps={{
                         startAdornment: <Box component="span" sx={{ color: 'text.secondary', mr: 1, display: 'flex' }}><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></Box>
                     }}
-                    sx={{
-                        '& .MuiOutlinedInput-root': {
-                            backgroundColor: '#f8fafc',
-                            '& fieldset': { borderColor: '#e2e8f0' },
-                            '&:hover fieldset': { borderColor: '#cbd5e1' },
-                        }
-                    }}
                 />
+                <FormControl size="small" sx={{ minWidth: 200, bgcolor: '#f8fafc' }}>
+                    <Select
+                        value={filterParam || 'all'}
+                        onChange={(e) => {
+                            if (e.target.value === 'all') {
+                                searchParams.delete('filter');
+                            } else {
+                                searchParams.set('filter', e.target.value as string);
+                            }
+                            setSearchParams(searchParams);
+                        }}
+                        displayEmpty
+                        sx={{ '& fieldset': { borderColor: '#e2e8f0' } }}
+                    >
+                        <MenuItem value="all">Tất cả sản phẩm</MenuItem>
+                        <MenuItem value="low_stock">Sắp hết hàng</MenuItem>
+                        <MenuItem value="out_of_stock">Hết hàng</MenuItem>
+                    </Select>
+                </FormControl>
             </Paper>
 
             <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 2px 4px -1px rgb(0 0 0 / 0.1)', overflowX: 'auto' }}>
@@ -260,6 +294,7 @@ const ProductList = () => {
                             <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 600, color: 'text.secondary', py: 1.5 }}>Danh Mục</TableCell>
                             <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 600, color: 'text.secondary', py: 1.5 }}>Đơn Giá</TableCell>
                             <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 600, color: 'text.secondary', py: 1.5 }}>ĐVT</TableCell>
+                            <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 600, color: 'text.secondary', py: 1.5 }}>Tồn Kho</TableCell>
                             {canManage && (
                                 <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 600, color: 'text.secondary', py: 1.5 }}>Hành động</TableCell>
                             )}
@@ -300,6 +335,9 @@ const ProductList = () => {
                                         </Typography>
                                     </TableCell>
                                     <TableCell sx={{ py: 1, fontSize: '14px' }}>{product.unit}</TableCell>
+                                    <TableCell align="right" sx={{ py: 1, fontSize: '14px', fontWeight: 700, color: (stockMap[product.id] || 0) <= 0 ? 'error.main' : ((stockMap[product.id] || 0) < 10 ? 'warning.main' : 'success.main') }}>
+                                        {stockMap[product.id] || 0}
+                                    </TableCell>
                                     {canManage && (
                                         <TableCell align="center" sx={{ py: 1 }}>
                                             <Stack direction="row" spacing={0.5} justifyContent="center">
@@ -329,7 +367,7 @@ const ProductList = () => {
                         })}
                         {filteredProducts.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={canManage ? 7 : 6} align="center" sx={{ py: 4 }}>
+                                <TableCell colSpan={canManage ? 8 : 7} align="center" sx={{ py: 4 }}>
                                     <Typography color="text.secondary" variant="body2">Không tìm thấy sản phẩm nào.</Typography>
                                 </TableCell>
                             </TableRow>

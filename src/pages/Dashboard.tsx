@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import {
     Box, Paper, Typography, List, ListItem, ListItemText, CircularProgress, Chip, Grid
 } from '@mui/material';
@@ -24,9 +25,10 @@ import type { DashboardStats } from '../types';
 
 // Custom metric card component matching ERP image
 import React from 'react';
-const MetricCard = ({ title, value, subtitle, icon, color, trend }: any) => (
+const MetricCard = ({ title, value, subtitle, icon, color, trend, onClick }: any) => (
     <Paper 
         elevation={0} 
+        onClick={onClick}
         sx={{ 
             p: { xs: 2, sm: 2.5 }, 
             borderRadius: 2, 
@@ -37,6 +39,13 @@ const MetricCard = ({ title, value, subtitle, icon, color, trend }: any) => (
             justifyContent: 'flex-start',
             height: '100%',
             position: 'relative',
+            cursor: onClick ? 'pointer' : 'default',
+            transition: 'transform 0.2s, box-shadow 0.2s',
+            '&:hover': onClick ? {
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                borderColor: color
+            } : {}
         }}
     >
         <Box display="flex" alignItems="center" gap={1} mb={1}>
@@ -62,6 +71,7 @@ const MetricCard = ({ title, value, subtitle, icon, color, trend }: any) => (
 
 const Dashboard = () => {
     const dispatch = useDispatch<AppDispatch>();
+    const navigate = useNavigate();
     const { items: products, status: productStatus } = useSelector((state: RootState) => state.products);
     const { items: transactions, status: transactionStatus } = useSelector((state: RootState) => state.transactions);
     const { stockMap, status: inventoryStatus } = useSelector((state: RootState) => state.inventory);
@@ -177,6 +187,7 @@ const Dashboard = () => {
                         icon={<InventoryIcon />} 
                         color="#0f766e" // Teal
                         subtitle="Tất cả danh mục hệ thống"
+                        onClick={() => navigate('/products')}
                     />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -187,6 +198,7 @@ const Dashboard = () => {
                         color="#10b981" // emerald-500
                         subtitle="Tổng số lượng hiện có"
                         trend="up"
+                        onClick={() => navigate('/products')}
                     />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -196,6 +208,7 @@ const Dashboard = () => {
                         icon={<WarningIcon />} 
                         color="#f59e0b" // amber-500
                         subtitle="Cần nhập thêm sản phẩm"
+                        onClick={() => navigate('/products?filter=low_stock')}
                     />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -205,6 +218,7 @@ const Dashboard = () => {
                         icon={<ErrorIcon />} 
                         color="#ef4444" // red-500
                         subtitle="Kho đã cạn kiệt"
+                        onClick={() => navigate('/products?filter=out_of_stock')}
                     />
                 </Grid>
             </Grid>
