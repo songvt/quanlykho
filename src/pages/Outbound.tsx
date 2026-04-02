@@ -385,19 +385,34 @@ export const Outbound = () => {
 
     const handleManualAddSerial = () => {
         if (!serial.trim()) return;
-        if (scannedSerials.includes(serial.trim())) {
-            alert('Serial này đã được thêm.');
-            return;
-        }
 
-        // Check limit only for Fulfillment
-        if (openFulfillDialog && selectedOrder && scannedSerials.length >= Number(selectedOrder.quantity)) {
-            alert('Đã đủ số lượng serial.');
-            return;
-        }
+        const newCodes = serial.split(/[\s,;\n]+/).map(s => s.trim()).filter(s => s !== '');
+        if (newCodes.length === 0) return;
 
         setScannedSerials(prev => {
-            const newer = [...prev, serial.trim()];
+            const uniqueNewCodes = newCodes.filter(code => !prev.includes(code));
+            
+            if (uniqueNewCodes.length === 0) {
+                alert('Tất cả serial này đã được thêm.');
+                return prev;
+            }
+
+            let taking = uniqueNewCodes;
+
+            // Check limit only for Fulfillment
+            if (openFulfillDialog && selectedOrder) {
+                const needed = Number(selectedOrder.quantity) - prev.length;
+                if (needed <= 0) {
+                    alert('Đã đủ số lượng serial.');
+                    return prev;
+                }
+                if (taking.length > needed) {
+                    taking = taking.slice(0, needed);
+                    alert(`Sẽ chỉ thêm ${needed} serial để đủ số lượng đơn hàng.`);
+                }
+            }
+
+            const newer = [...prev, ...taking];
             if (!openFulfillDialog) setQuantity(newer.length); // Admin mode update qty
             return newer;
         });

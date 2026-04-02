@@ -77,14 +77,20 @@ const EmployeeReturns = () => {
     }, [serials, hasSerials]);
 
     const handleAddManualSerial = () => {
-        if (manualSerial.trim()) {
-            if (!serials.includes(manualSerial.trim())) {
-                setSerials([...serials, manualSerial.trim()]);
-                setManualSerial('');
-            } else {
-                alert('Serial này đã có trong danh sách!');
+        if (!manualSerial.trim()) return;
+
+        const newCodes = manualSerial.split(/[\s,;\n]+/).map(s => s.trim()).filter(s => s !== '');
+        if (newCodes.length === 0) return;
+
+        setSerials(prev => {
+            const uniqueNew = newCodes.filter(c => !prev.includes(c));
+            if (uniqueNew.length === 0) {
+                alert('Tất cả serial này đã có trong danh sách!');
+                return prev;
             }
-        }
+            return [...prev, ...uniqueNew];
+        });
+        setManualSerial('');
     };
 
     const handleRemoveSerial = (code: string) => {

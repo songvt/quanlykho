@@ -1,5 +1,5 @@
 
-import { Box, Typography, Table, TableBody, TableCell, TableHead, TableRow, Paper } from '@mui/material';
+import { Box, Typography, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
 import { readMoney } from '../../utils/excelUtils';
 import { createPortal } from 'react-dom';
 
@@ -18,17 +18,17 @@ const OutboundReportTemplate = ({ data, delivererName, date, receiverName, sende
     const dateObj = new Date(date);
 
     return (
-        <Paper elevation={0} sx={{ p: 4, bgcolor: 'white', color: 'black', minWidth: 800, fontFamily: "'Times New Roman', Times, serif" }}>
+        <Box sx={{ p: 4, bgcolor: 'white', color: 'black', minWidth: 800, fontFamily: "'Times New Roman', Times, serif" }}>
             {/* Header */}
-            <Box display="flex" justifyContent="space-between" mb={3} alignItems="flex-start">
-                <Box textAlign="center">
+            <Box display="flex" mb={3} alignItems="flex-start">
+                <Box flex={1} textAlign="center">
                     <Typography fontWeight="bold" sx={{ fontSize: '13pt', textTransform: 'uppercase', lineHeight: 1.2 }}>TRUNG TÂM ACT KHU VỰC BẮC SÀI GÒN</Typography>
-                    <Typography sx={{ fontSize: '11pt', fontWeight: 'bold', lineHeight: 1.2 }}>455A TRẦN THỊ NĂM P.TMT QUẬN 12</Typography>
+                    <Typography sx={{ fontSize: '12pt', fontWeight: 'bold', lineHeight: 1.2 }}>455A TRẦN THỊ NĂM P.TMT QUẬN 12</Typography>
                 </Box>
-                <Box textAlign="center">
+                <Box flex={1} textAlign="center">
                     <Typography fontWeight="bold" sx={{ fontSize: '13pt', textTransform: 'uppercase', lineHeight: 1.2 }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</Typography>
                     <Typography fontWeight="bold" sx={{ fontSize: '12pt', textDecoration: 'underline', lineHeight: 1.2 }}>Độc lập - Tự do - Hạnh phúc</Typography>
-                    <Typography color="error" sx={{ fontSize: '12pt', fontStyle: 'italic', mt: 1, textAlign: 'right' }}>BBXK-BSG/ACT :PX-{reportNumber}</Typography>
+                    <Typography color="error" sx={{ fontSize: '12pt', fontStyle: 'italic', mt: 1 }}>BBXK-BSG/ACT :PX-{reportNumber}</Typography>
                 </Box>
             </Box>
 
@@ -36,7 +36,7 @@ const OutboundReportTemplate = ({ data, delivererName, date, receiverName, sende
                 BIÊN BẢN XUẤT KHO VẬT TƯ HÀNG HÓA
             </Typography>
             <Typography align="center" mb={3} sx={{ fontStyle: 'italic', fontSize: '12pt' }}>
-                Ngày {dateObj.getDate()} tháng {dateObj.getMonth() + 1} năm {dateObj.getFullYear()}
+                Ngày {dateObj.getDate().toString().padStart(2, '0')} tháng {(dateObj.getMonth() + 1).toString().padStart(2, '0')} năm {dateObj.getFullYear()}
             </Typography>
 
             {/* Info */}
@@ -56,7 +56,7 @@ const OutboundReportTemplate = ({ data, delivererName, date, receiverName, sende
             </Box>
 
             {/* Table */}
-            <Table size="small" sx={{ borderCollapse: 'collapse', '& td, & th': { border: '1px solid black', fontSize: '11pt', padding: '4px' } }}>
+            <Table size="small" sx={{ borderCollapse: 'collapse', '& td, & th': { border: '1px solid black', fontSize: '12pt', padding: '4px' } }}>
                 <TableHead>
                     <TableRow sx={{ bgcolor: '#BDD7EE' }}> {/* Standard Excel-like blue */}
                         <TableCell align="center" width="7%" sx={{ color: 'black', fontWeight: 'bold' }}>STT</TableCell>
@@ -100,7 +100,7 @@ const OutboundReportTemplate = ({ data, delivererName, date, receiverName, sende
                 Tổng số tiền (viết bằng chữ): {readMoney(totalAmount)}
             </Typography>
 
-            <Typography fontSize={11} fontStyle="italic" align="center" mb={4}>
+            <Typography sx={{ fontSize: '12pt' }} fontStyle="italic" align="center" mb={4}>
                 Lưu ý : Kiểm tra trước khi đi, mọi khiếu nại về sau không giải quyết. Trân trọng !
             </Typography>
 
@@ -108,18 +108,18 @@ const OutboundReportTemplate = ({ data, delivererName, date, receiverName, sende
             <Box display="flex" justifyContent="space-around" px={2} mb={5}>
                 <Box textAlign="center">
                     <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>BÊN GIAO</Typography>
-                    <Typography fontStyle="italic" sx={{ fontSize: '11pt' }}>(Ký, họ tên)</Typography>
+                    <Typography fontStyle="italic" sx={{ fontSize: '12pt' }}>(Ký, họ tên)</Typography>
                     <Box height={100} />
                     <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>{delivererName}</Typography>
                 </Box>
                 <Box textAlign="center">
                     <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>BÊN NHẬN</Typography>
-                    <Typography fontStyle="italic" sx={{ fontSize: '11pt' }}>(Ký, họ tên)</Typography>
+                    <Typography fontStyle="italic" sx={{ fontSize: '12pt' }}>(Ký, họ tên)</Typography>
                     <Box height={100} />
                     <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>{receiverName}</Typography>
                 </Box>
             </Box>
-        </Paper>
+        </Box>
     );
 };
 

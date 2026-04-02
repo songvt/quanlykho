@@ -9,7 +9,7 @@ import {
     Button, TextField, FormControl, FormHelperText,
     Typography, Box, Alert, CircularProgress, Paper, Stack, Dialog, DialogContent, DialogTitle, Autocomplete,
     List, ListItem, ListItemText, ListItemSecondaryAction, IconButton,
-    Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Tooltip, DialogActions, InputAdornment
+    Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Tooltip, DialogActions, InputAdornment, MenuItem
 } from '@mui/material';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
@@ -184,13 +184,23 @@ export const Inbound = () => {
 
     const handleManualAddSerial = () => {
         if (!serial.trim()) return;
-        if (scannedSerials.includes(serial.trim())) {
-            setNotification({ type: 'error', message: 'Serial này đã được thêm.' });
-            return;
-        }
+
+        const newCodes = serial.split(/[\s,;\n]+/).map(s => s.trim()).filter(s => s !== '');
+        if (newCodes.length === 0) return;
+
         setScannedSerials(prev => {
-            const newer = [...prev, serial.trim()];
+            const uniqueNewCodes = newCodes.filter(code => !prev.includes(code));
+            if (uniqueNewCodes.length === 0) {
+                setNotification({ type: 'error', message: 'Tất cả serial này đã được thêm rồi.' });
+                return prev;
+            }
+            const newer = [...prev, ...uniqueNewCodes];
             setQuantity(newer.length);
+            if (uniqueNewCodes.length < newCodes.length) {
+                setNotification({ type: 'success', message: `Đã thêm ${uniqueNewCodes.length} serial mới. Bỏ qua ${newCodes.length - uniqueNewCodes.length} trùng lặp.` });
+            } else {
+                setNotification({ type: 'success', message: `Đã thêm ${uniqueNewCodes.length} serial.` });
+            }
             return newer;
         });
         setSerial('');
@@ -422,25 +432,35 @@ export const Inbound = () => {
                     <Box display="grid" gridTemplateColumns={{ xs: '1fr', md: '1fr 1fr' }} gap={{ xs: 2, md: 4 }}>
                         <TextField
                             fullWidth
+                            select
                             label="Trạng thái hàng"
                             value={itemStatus}
                             onChange={e => setItemStatus(e.target.value)}
                             InputProps={{ sx: { borderRadius: 2, height: { xs: 40, sm: 56 }, fontSize: { xs: '0.875rem', md: '1rem' } } }}
                             InputLabelProps={{ sx: { fontSize: { xs: '0.875rem', md: '1rem' }, top: { xs: -5, sm: 0 } } }}
                             size="small"
-                            placeholder="Nhập trạng thái hàng (ví dụ: Mới, Cũ)..."
-                        />
+                        >
+                            <MenuItem value=""><em>-- Chọn trạng thái --</em></MenuItem>
+                            <MenuItem value="Hàng mới">Hàng mới</MenuItem>
+                            <MenuItem value="Hàng thu hồi bảo hành">Hàng thu hồi bảo hành</MenuItem>
+                            <MenuItem value="Hàng thu hồi">Hàng thu hồi</MenuItem>
+                        </TextField>
 
                         <TextField
                             fullWidth
+                            select
                             label="Quận/Huyện"
                             value={district}
                             onChange={e => setDistrict(e.target.value)}
                             InputProps={{ sx: { borderRadius: 2, height: { xs: 40, sm: 56 }, fontSize: { xs: '0.875rem', md: '1rem' } } }}
                             InputLabelProps={{ sx: { fontSize: { xs: '0.875rem', md: '1rem' }, top: { xs: -5, sm: 0 } } }}
                             size="small"
-                            placeholder="Nhập Quận/Huyện (nếu có)"
-                        />
+                        >
+                            <MenuItem value=""><em>-- Chọn quận/huyện --</em></MenuItem>
+                            <MenuItem value="Q12">Q12</MenuItem>
+                            <MenuItem value="HMN">HMN</MenuItem>
+                            <MenuItem value="CCI">CCI</MenuItem>
+                        </TextField>
                     </Box>
                     {products.find(p => p.id === selectedProduct)?.category?.toLowerCase() === 'hàng hóa' && (
                         <Box>
@@ -654,19 +674,31 @@ export const Inbound = () => {
                             onChange={(e) => setEditData({ ...editData, serial_code: e.target.value })}
                         />
                         <TextField
+                            select
                             label="Quận/Huyện"
                             fullWidth
                             size="small"
                             value={editData.district || ''}
                             onChange={(e) => setEditData({ ...editData, district: e.target.value })}
-                        />
+                        >
+                            <MenuItem value=""><em>-- Chọn quận/huyện --</em></MenuItem>
+                            <MenuItem value="Q12">Q12</MenuItem>
+                            <MenuItem value="HMN">HMN</MenuItem>
+                            <MenuItem value="CCI">CCI</MenuItem>
+                        </TextField>
                         <TextField
+                            select
                             label="Trạng thái hàng"
                             fullWidth
                             size="small"
                             value={editData.item_status || ''}
                             onChange={(e) => setEditData({ ...editData, item_status: e.target.value })}
-                        />
+                        >
+                            <MenuItem value=""><em>-- Chọn trạng thái --</em></MenuItem>
+                            <MenuItem value="Hàng mới">Hàng mới</MenuItem>
+                            <MenuItem value="Hàng thu hồi bảo hành">Hàng thu hồi bảo hành</MenuItem>
+                            <MenuItem value="Hàng thu hồi">Hàng thu hồi</MenuItem>
+                        </TextField>
                     </Stack>
                 </DialogContent>
                 <DialogActions sx={{ p: 2 }}>

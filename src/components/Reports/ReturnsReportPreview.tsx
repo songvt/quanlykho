@@ -23,17 +23,17 @@ const ReturnsReportTemplate = ({ data, employeeName, date, receiverName }: Retur
             fontFamily: "'Times New Roman', Times, serif"
         }}>
             {/* Header */}
-            <Box display="flex" justifyContent="space-between" mb={3} alignItems="flex-start">
-                <Box textAlign="center">
+            <Box display="flex" mb={3} alignItems="flex-start">
+                <Box flex={1} textAlign="center">
                     <Typography fontWeight="bold" sx={{ fontSize: '13pt', textTransform: 'uppercase', lineHeight: 1.2 }}>TRUNG TÂM ACT KHU VỰC BẮC SÀI GÒN</Typography>
-                    <Typography sx={{ fontSize: '11pt', fontWeight: 'bold', lineHeight: 1.2 }}>455A TRẦN THỊ NĂM P.TMT QUẬN 12</Typography>
-                    <Typography sx={{ fontSize: '11pt', mt: 0.5, lineHeight: 1.2 }}>Số: ............/BBNK-ACT</Typography>
+                    <Typography sx={{ fontSize: '12pt', fontWeight: 'bold', lineHeight: 1.2 }}>455A TRẦN THỊ NĂM P.TMT QUẬN 12</Typography>
+                    <Typography sx={{ fontSize: '12pt', mt: 0.5, lineHeight: 1.2 }}>Số: ............/BBNK-ACT</Typography>
                 </Box>
-                <Box textAlign="center">
+                <Box flex={1} textAlign="center">
                     <Typography fontWeight="bold" sx={{ fontSize: '13pt', textTransform: 'uppercase', lineHeight: 1.2 }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</Typography>
                     <Typography fontWeight="bold" sx={{ fontSize: '12pt', textDecoration: 'underline', lineHeight: 1.2 }}>Độc lập - Tự do - Hạnh phúc</Typography>
-                    <Typography fontStyle="italic" sx={{ fontSize: '12pt', mt: 1, textAlign: 'right' }}>
-                        ................, ngày {dateObj.getDate()} tháng {dateObj.getMonth() + 1} năm {dateObj.getFullYear()}
+                    <Typography fontStyle="italic" sx={{ fontSize: '12pt', mt: 1 }}>
+                        ................, ngày {dateObj.getDate().toString().padStart(2, '0')} tháng {(dateObj.getMonth() + 1).toString().padStart(2, '0')} năm {dateObj.getFullYear()}
                     </Typography>
                 </Box>
             </Box>
@@ -62,7 +62,7 @@ const ReturnsReportTemplate = ({ data, employeeName, date, receiverName }: Retur
             </Typography>
 
             {/* Table */}
-            <Table size="small" sx={{ borderCollapse: 'collapse', '& td, & th': { border: '1px solid black', fontSize: '11pt', padding: '4px' } }}>
+            <Table size="small" sx={{ borderCollapse: 'collapse', '& td, & th': { border: '1px solid black', fontSize: '12pt', padding: '4px' } }}>
                 <TableHead>
                     <TableRow sx={{ bgcolor: '#BDD7EE' }}>
                         <TableCell align="center" width="5%" sx={{ color: 'black', fontWeight: 'bold' }}>STT</TableCell>
@@ -114,13 +114,13 @@ const ReturnsReportTemplate = ({ data, employeeName, date, receiverName }: Retur
             <Box display="flex" justifyContent="space-around" mt={2}>
                 <Box textAlign="center">
                     <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>NGƯỜI GIAO HÀNG</Typography>
-                    <Typography fontStyle="italic" sx={{ fontSize: '11pt' }}>(Ký, ghi rõ họ tên)</Typography>
+                    <Typography fontStyle="italic" sx={{ fontSize: '12pt' }}>(Ký, ghi rõ họ tên)</Typography>
                     <Box height={100} />
                     <Typography fontWeight="bold" sx={{ fontSize: '12pt', textTransform: 'uppercase' }}>{employeeName}</Typography>
                 </Box>
                 <Box textAlign="center">
                     <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>THỦ KHO</Typography>
-                    <Typography fontStyle="italic" sx={{ fontSize: '11pt' }}>(Ký, ghi rõ họ tên)</Typography>
+                    <Typography fontStyle="italic" sx={{ fontSize: '12pt' }}>(Ký, ghi rõ họ tên)</Typography>
                     <Box height={100} />
                     <Typography fontWeight="bold" sx={{ fontSize: '12pt', textTransform: 'uppercase' }}>{receiverName}</Typography>
                 </Box>
