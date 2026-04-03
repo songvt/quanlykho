@@ -16,7 +16,11 @@ import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CreateIcon from '@mui/icons-material/Create';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import QRScanner from '../components/QRScanner';
 import { readExcelFile, generateOutboundTemplate } from '../utils/excelUtils';
 import { useScanDetection } from '../hooks/useScanDetection';
@@ -116,6 +120,49 @@ export const Outbound = () => {
     const [selectedPrintIds, setSelectedPrintIds] = useState<string[]>([]);
     const [openPrintPreview, setOpenPrintPreview] = useState(false);
     const [reportNumber, setReportNumber] = useState(1);
+    const [isUploadingDrive, setIsUploadingDrive] = useState(false);
+
+    const handleUploadDrive = async () => {
+        const element = document.getElementById('outbound-report-content');
+        if (!element) return;
+        setIsUploadingDrive(true);
+        try {
+            const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+
+            const pdfBlob = pdf.output('blob');
+            
+            const dateObj = new Date();
+            const dateStr = `${String(dateObj.getDate()).padStart(2, '0')}${String(dateObj.getMonth() + 1).padStart(2, '0')}${dateObj.getFullYear()}`;
+            const receiverNameStr = Array.from(new Set(recentTransactions.filter(t => selectedPrintIds.includes(t.id)).map(t => t.group_name || t.receiver_group))).join('_');
+            const fileName = `BBXK_${receiverNameStr}_${dateStr}.pdf`;
+
+            const formData = new FormData();
+            formData.append('file', pdfBlob, fileName);
+            formData.append('fileName', fileName);
+
+            const response = await fetch('/api/drive_upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+            if (response.ok && result.success) {
+                setNotification({ type: 'success', message: `Lưu Drive thành công: ${fileName}` });
+            } else {
+                setNotification({ type: 'error', message: `Lỗi lưu Drive: ${result.error}` });
+            }
+        } catch (error: any) {
+            console.error('Drive upload failed', error);
+            setNotification({ type: 'error', message: `Lỗi tạo PDF: ${error.message}` });
+        } finally {
+            setIsUploadingDrive(false);
+        }
+    };
 
     // Staff Fulfillment State
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
@@ -1219,6 +1266,16 @@ export const Outbound = () => {
                 <DialogTitle className="no-print" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     Xem Trước Biên Bản Xuất Kho
                     <Box>
+                        <Button
+                            variant="contained"
+                            color="success"
+                            startIcon={isUploadingDrive ? <CircularProgress size={20} color="inherit" /> : <CloudUploadIcon />}
+                            onClick={handleUploadDrive}
+                            disabled={isUploadingDrive}
+                            sx={{ mr: 1 }}
+                        >
+                            {isUploadingDrive ? 'Đang lưu...' : 'Lưu Drive (PDF)'}
+                        </Button>
                         <Button variant="contained" color="info" startIcon={<PrintIcon />} onClick={() => window.print()} sx={{ mr: 1 }}>
                             In Ngay
                         </Button>
@@ -1226,7 +1283,8 @@ export const Outbound = () => {
                     </Box>
                 </DialogTitle>
                 <DialogContent>
-                    <OutboundReportPreview
+                    <Box id="outbound-report-content" sx={{ p: 1, bgcolor: 'white' }}>
+                        <OutboundReportPreview
                         data={recentTransactions
                             .filter(t => selectedPrintIds.includes(t.id))
                             .map(t => {
@@ -1276,6 +1334,7 @@ export const Outbound = () => {
                         date={new Date().toISOString()}
                         reportNumber={reportNumber}
                     />
+                    </Box>
                 </DialogContent>
             </Dialog>
         </Box >

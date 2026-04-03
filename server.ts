@@ -30,6 +30,12 @@ const createVercelHandler = (handler: any) => {
     };
 };
 
+import multer from 'multer';
+import { uploadToGoogleDrive } from './api/utils/googleDrive.js';
+
+// Setup basic memory storage for multer
+const upload = multer({ storage: multer.memoryStorage() });
+
 // Mount the API endpoints explicitly
 app.all('/api/products', createVercelHandler(productsHandler));
 app.all('/api/employees', createVercelHandler(employeesHandler));
@@ -37,6 +43,28 @@ app.all('/api/transactions', createVercelHandler(transactionsHandler));
 app.all('/api/employee_returns', createVercelHandler(returnsHandler));
 app.all('/api/orders', createVercelHandler(ordersHandler));
 app.all('/api/district_storekeepers', createVercelHandler(districtStorekeepersHandler));
+
+// Setup Drive Upload endpoint
+app.post('/api/drive_upload', upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+        
+        const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID || '1eAusIt6z7bcunlAPFe99ipMh1ZB2zCWE';
+        
+        const result = await uploadToGoogleDrive(
+            req.file.buffer,
+            req.body.fileName || req.file.originalname,
+            req.file.mimetype,
+            folderId
+        );
+        res.status(200).json({ success: true, result });
+    } catch (error: any) {
+        console.error('Drive Upload Error:', error);
+        res.status(500).json({ error: 'Failed to upload to Google Drive', details: error?.message });
+    }
+});
 
 app.listen(PORT, () => {
     console.log(`[Local API Server] Running on http://localhost:${PORT}`);

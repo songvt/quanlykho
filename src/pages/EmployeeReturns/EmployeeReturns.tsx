@@ -23,6 +23,10 @@ import ProductSearchDialog from '../../components/ProductSearchDialog';
 import { exportStandardReport } from '../../utils/excelUtils';
 import DeleteIcon from '@mui/icons-material/Delete';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+import CircularProgress from '@mui/material/CircularProgress';
 import { usePermission } from '../../hooks/usePermission';
 
 const REASONS = ['Hàng tồn lâu', 'Hàng mới hỏng', 'Hàng thu hồi khách hàng rời mạng', 'Trả hàng KH nâng cấp Mesh'];
@@ -108,6 +112,51 @@ const EmployeeReturns = () => {
     const [openScanner, setOpenScanner] = useState(false);
     const [openProductSearch, setOpenProductSearch] = useState(false);
     const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+    const [isUploadingDrive, setIsUploadingDrive] = useState(false);
+
+    const handleUploadDrive = async () => {
+        const element = document.getElementById('returns-report-content');
+        if (!element) return;
+        setIsUploadingDrive(true);
+        try {
+            const canvas = await html2canvas(element, { scale: 2, useCORS: true });
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+
+            const pdfBlob = pdf.output('blob');
+            
+            const dateObj = new Date();
+            const dateStr = `${String(dateObj.getDate()).padStart(2, '0')}${String(dateObj.getMonth() + 1).padStart(2, '0')}${dateObj.getFullYear()}`;
+            
+            // Employee name for naming
+            const empName = previewEmployeeName.replace(/\s+/g, '_');
+            const fileName = `BBNK_${empName}_${dateStr}.pdf`;
+
+            const formData = new FormData();
+            formData.append('file', pdfBlob, fileName);
+            formData.append('fileName', fileName);
+
+            const response = await fetch('/api/drive_upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+            if (response.ok && result.success) {
+                setNotification({ type: 'success', message: `Lưu Drive thành công: ${fileName}` });
+            } else {
+                setNotification({ type: 'error', message: `Lỗi lưu Drive: ${result.error}` });
+            }
+        } catch (error: any) {
+            console.error('Drive upload failed', error);
+            setNotification({ type: 'error', message: `Lỗi tạo PDF: ${error.message}` });
+        } finally {
+            setIsUploadingDrive(false);
+        }
+    };
 
     // Form State
     const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
@@ -640,7 +689,7 @@ const EmployeeReturns = () => {
                     Xem Trước Biên Bản
                 </DialogTitle>
                 <DialogContent>
-                    <Box id="print-area">
+                    <Box id="returns-report-content" sx={{ p: 1, bgcolor: 'white' }}>
                         <ReturnsReportPreview
                             data={previewData}
                             employeeName={previewEmployeeName}
@@ -650,8 +699,18 @@ const EmployeeReturns = () => {
                     </Box>
                 </DialogContent>
                 <DialogActions className="no-print">
+                    <Button
+                        variant="contained"
+                        color="success"
+                        startIcon={isUploadingDrive ? <CircularProgress size={20} color="inherit" /> : <CloudUploadIcon />}
+                        onClick={handleUploadDrive}
+                        disabled={isUploadingDrive}
+                        sx={{ mr: 1 }}
+                    >
+                        {isUploadingDrive ? 'Đang lưu...' : 'Lưu Drive (PDF)'}
+                    </Button>
                     <Button variant="contained" color="info" startIcon={<PrintIcon />} onClick={() => window.print()}>
-                        In / Lưu PDF
+                        In Ngay
                     </Button>
                     <Button onClick={() => setOpenPreview(false)}>
                         Đóng
