@@ -1,8 +1,17 @@
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
 
+let cachedDoc: GoogleSpreadsheet | null = null;
+let lastLoadTime = 0;
+const CACHE_DURATION_MS = 60 * 1000; // 60 seconds cache for doc info
+
 export const getGoogleSheet = async () => {
     try {
+        const now = Date.now();
+        if (cachedDoc && (now - lastLoadTime) < CACHE_DURATION_MS) {
+            return cachedDoc;
+        }
+
         const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
         let privateKey = process.env.GOOGLE_PRIVATE_KEY;
         const sheetId = process.env.GOOGLE_SHEET_ID;
@@ -30,6 +39,9 @@ export const getGoogleSheet = async () => {
 
         const doc = new GoogleSpreadsheet(sheetId, serviceAccountAuth);
         await doc.loadInfo();
+        
+        cachedDoc = doc;
+        lastLoadTime = now;
         return doc;
     } catch (error) {
         console.error('Error initializing Google Sheets:', error);

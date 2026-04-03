@@ -1,5 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets.js';
+import { randomUUID } from 'crypto';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const allowedMethods = ['GET', 'POST', 'PUT', 'DELETE'];
@@ -38,7 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     }
                     const toInsert = payload.map(p => ({
                         ...p,
-                        id: p.id || crypto.randomUUID(),
+                        id: p.id || randomUUID(),
                         order_date: p.order_date || new Date().toISOString(),
                         created_at: p.created_at || new Date().toISOString(),
                         updated_at: p.updated_at || new Date().toISOString()
@@ -48,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 } else {
                     const toInsert = {
                         ...payload,
-                        id: payload.id || crypto.randomUUID(),
+                        id: payload.id || randomUUID(),
                         order_date: payload.order_date || new Date().toISOString(),
                         created_at: payload.created_at || new Date().toISOString(),
                         updated_at: payload.updated_at || new Date().toISOString()

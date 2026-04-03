@@ -1,6 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets.js';
 import { CONFIG } from '../src/config.js';
+import { randomUUID } from 'crypto';
 
 // Helper to send webhook
 const sendWebhook = async (type: 'inbound' | 'outbound', data: any) => {
@@ -120,7 +121,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                     const toInsert = payload.map(p => ({
                         ...p,
-                        id: p.id || crypto.randomUUID(),
+                        id: p.id || randomUUID(),
                         type: type,
                         [dateField]: p[dateField] || new Date().toISOString(),
                         created_at: p.created_at || new Date().toISOString(),
@@ -137,7 +138,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 } else {
                     const toInsert = {
                         ...payload,
-                        id: payload.id || crypto.randomUUID(),
+                        id: payload.id || randomUUID(),
                         type: type,
                         [dateField]: payload[dateField] || new Date().toISOString(),
                         created_at: payload.created_at || new Date().toISOString(),

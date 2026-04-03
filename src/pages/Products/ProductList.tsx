@@ -5,7 +5,7 @@ import {
     Box, Paper, Typography, Button, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, IconButton, Dialog,
     DialogTitle, DialogContent, DialogActions, TextField, Stack,
-    CircularProgress, Alert, Tooltip, Checkbox, FormControl, InputLabel, Select, MenuItem
+    CircularProgress, Alert, Tooltip, Checkbox, FormControl, InputLabel, Select, MenuItem, TablePagination
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -34,6 +34,24 @@ const ProductList = () => {
     const filterParam = searchParams.get('filter');
 
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    
+    // Pagination states
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(25);
+
+    const handleChangePage = (event: unknown, newPage: number) => {
+        setPage(newPage);
+    };
+
+    const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
+
+    // Reset page when filter/search changes
+    useEffect(() => {
+        setPage(0);
+    }, [searchTerm, filterParam]);
 
     useEffect(() => {
         if (status === 'idle') {
@@ -301,7 +319,7 @@ const ProductList = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {filteredProducts.map((product) => {
+                        {filteredProducts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((product) => {
                             const isSelected = selectedIds.includes(product.id);
                             return (
                                 <TableRow key={product.id} hover sx={{ transition: 'all 0.2s', bgcolor: isSelected ? 'action.selected' : 'inherit' }}>
@@ -375,6 +393,18 @@ const ProductList = () => {
                     </TableBody>
                 </Table>
             </TableContainer>
+
+            <TablePagination
+                rowsPerPageOptions={[10, 25, 50, 100]}
+                component="div"
+                count={filteredProducts.length}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={handleChangePage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+                labelRowsPerPage="Số dòng mỗi trang:"
+                labelDisplayedRows={({ from, to, count }) => `${from}–${to} của ${count !== -1 ? count : `hơn ${to}`}`}
+            />
 
             {/* Add/Edit Dialog */}
             <Dialog

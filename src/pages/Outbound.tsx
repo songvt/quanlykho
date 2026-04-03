@@ -28,6 +28,66 @@ import SearchIcon from '@mui/icons-material/Search';
 import type { Order } from '../types';
 import { GoogleSheetService as SupabaseService } from '../services/GoogleSheetService';
 
+const sendTelegramNotification = async (
+    title: string,
+    transactions: any[],
+    productsMap: Record<string, string>,
+    receiverOverride?: string
+) => {
+    if (!transactions || transactions.length === 0) return;
+
+    try {
+        const groups: Record<string, any> = {};
+        transactions.forEach(t => {
+            const pId = t.product_id;
+            const pName = productsMap[pId] || 'Unknown';
+            const receiver = receiverOverride || t.group_name || t.receiver_group || 'Unknown';
+            const key = `${pId}_${receiver}`;
+            if (!groups[key]) {
+                groups[key] = { pName, receiver, qty: 0, serials: [] };
+            }
+            groups[key].qty += Number(t.quantity || 1);
+            if (t.serial_code) groups[key].serials.push(t.serial_code);
+        });
+
+        const escapeHtml = (text: string) => {
+            return String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        };
+
+        let msg = `✅ <b>${escapeHtml(title)}</b>\n`;
+        msg += `📅 Ngày: ${new Date().toLocaleString('vi-VN')}\n\n`;
+
+        Object.values(groups).forEach(g => {
+            msg += `👤 Người nhận: <b>${escapeHtml(g.receiver)}</b>\n`;
+            msg += `📦 Sản phẩm: <b>${escapeHtml(g.pName)}</b>\n`;
+            msg += `🔢 Số lượng: <b>${g.qty}</b>\n`;
+            if (g.serials.length > 0) {
+                msg += `🔤 Serial: ${escapeHtml(g.serials.slice(0, 10).join(', '))}${g.serials.length > 10 ? `... (+${g.serials.length - 10} nữa)` : ''}\n`;
+            }
+            msg += `---------------------\n`;
+        });
+
+        const txIds = transactions.map(t => t.id).filter(id => id && !id.startsWith('temp-')).slice(0, 3).join(', ');
+        if (txIds) msg += `🆔 Mã GD: <code>${escapeHtml(txIds)}${transactions.length > 3 ? '...' : ''}</code>`;
+
+        const response = await fetch('https://api.telegram.org/bot6446138704:AAG7eFdMA7cWOubGcbard0zsM-fD2_wlsTk/sendMessage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: '-4080685922', text: msg, parse_mode: 'HTML' })
+        });
+        
+        if (!response.ok) {
+            const err = await response.text();
+            console.error('Telegram API Error:', err);
+        }
+    } catch (error) {
+        console.error('Failed to send telegram message:', error);
+    }
+};
+
 export const Outbound = () => {
     const dispatch = useDispatch<AppDispatch>();
     const { items: products, status } = useSelector((state: RootState) => state.products);
@@ -280,6 +340,11 @@ export const Outbound = () => {
 
         if (newTransactions.length > 0) {
             setRecentTransactions(prev => [...newTransactions, ...prev]);
+            
+            // Send telegram
+            const productsMap: Record<string, string> = {};
+            products.forEach(p => productsMap[p.id] = p.name);
+            sendTelegramNotification('XUẤT KHO THÀNH CÔNG', newTransactions, productsMap, receiverName);
         }
 
         dispatch(fetchInventory());
@@ -816,6 +881,11 @@ export const Outbound = () => {
                                                 const importedItems = resultAction.payload;
                                                 if (Array.isArray(importedItems)) {
                                                     setRecentTransactions(prev => [...importedItems, ...prev]);
+                                                    
+                                                    // Send Telegram
+                                                    const productsMap: Record<string, string> = {};
+                                                    products.forEach(p => productsMap[p.id] = p.name);
+                                                    sendTelegramNotification('NHẬP EXCEL XUẤT KHO', importedItems, productsMap);
                                                 }
                                                 // If payload is not array (e.g. supa returns null or count), we might miss them.
                                                 // But usually bulk insert returns rows.
