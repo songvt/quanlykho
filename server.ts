@@ -7,6 +7,7 @@ import transactionsHandler from './api/transactions.js';
 import returnsHandler from './api/employee_returns.js';
 import ordersHandler from './api/orders.js';
 import districtStorekeepersHandler from './api/district_storekeepers.js';
+import telegramHandler from './api/telegram.js';
 
 dotenv.config();
 
@@ -43,6 +44,7 @@ app.all('/api/transactions', createVercelHandler(transactionsHandler));
 app.all('/api/employee_returns', createVercelHandler(returnsHandler));
 app.all('/api/orders', createVercelHandler(ordersHandler));
 app.all('/api/district_storekeepers', createVercelHandler(districtStorekeepersHandler));
+app.all('/api/telegram', createVercelHandler(telegramHandler));
 
 // Setup Drive Upload endpoint
 app.post('/api/drive_upload', upload.single('file'), async (req, res) => {

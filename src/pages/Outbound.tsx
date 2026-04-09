@@ -1,45 +1,46 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts } from '../store/slices/productsSlice';
-import { addOutboundTransaction, fetchTransactions } from '../store/slices/transactionsSlice';
+import { addOutboundTransaction, fetchTransactions, importOutboundTransactions } from '../store/slices/transactionsSlice';
 import { fetchInventory, selectProductStock, selectDetailedStock } from '../store/slices/inventorySlice';
 import { fetchEmployees } from '../store/slices/employeesSlice';
 import { fetchOrders, updateOrderStatus } from '../store/slices/ordersSlice';
 import type { RootState, AppDispatch } from '../store';
 import {
-    Button, TextField,
-    Typography, Box, Alert, CircularProgress, Paper, Stack, Dialog, DialogContent, DialogTitle, Autocomplete,
-    Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, IconButton, DialogActions, List, ListItem, ListItemText, ListItemSecondaryAction, Grid, Checkbox
+    Button, TextField, Checkbox, Chip,
+    Typography, Box, Alert, Paper, Stack, Dialog, DialogContent, DialogTitle, Autocomplete,
+    IconButton, CircularProgress, InputAdornment, DialogActions,
+    Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Grid
 } from '@mui/material';
+import type { Order, Transaction } from '../types';
+import SerialChips from '../components/Common/SerialChips';
+import { useNotification } from '../contexts/NotificationContext';
 import PrintIcon from '@mui/icons-material/Print';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CreateIcon from '@mui/icons-material/Create';
-import DeleteIcon from '@mui/icons-material/Delete';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import html2canvas from 'html2canvas';
-import { jsPDF } from 'jspdf';
 import QRScanner from '../components/QRScanner';
 import { readExcelFile, generateOutboundTemplate } from '../utils/excelUtils';
+import { parseSerialInput, filterNewSerials } from '../utils/serialParser';
 import { useScanDetection } from '../hooks/useScanDetection';
 import { playBeep } from '../utils/audio';
-import { importOutboundTransactions } from '../store/slices/transactionsSlice';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+
 import ProductSearchDialog from '../components/ProductSearchDialog';
 import OutboundReportPreview from '../components/Reports/OutboundReportPreview';
 import SearchIcon from '@mui/icons-material/Search';
-import type { Order } from '../types';
 import { GoogleSheetService as SupabaseService } from '../services/GoogleSheetService';
 
 const sendTelegramNotification = async (
     title: string,
-    transactions: any[],
+    transactions: Transaction[],
     productsMap: Record<string, string>,
     receiverOverride?: string
 ) => {
     if (!transactions || transactions.length === 0) return;
-
     try {
         const groups: Record<string, any> = {};
         transactions.forEach(t => {
@@ -47,49 +48,33 @@ const sendTelegramNotification = async (
             const pName = productsMap[pId] || 'Unknown';
             const receiver = receiverOverride || t.group_name || t.receiver_group || 'Unknown';
             const key = `${pId}_${receiver}`;
-            if (!groups[key]) {
-                groups[key] = { pName, receiver, qty: 0, serials: [] };
-            }
+            if (!groups[key]) groups[key] = { pName, receiver, qty: 0, serials: [] };
             groups[key].qty += Number(t.quantity || 1);
             if (t.serial_code) groups[key].serials.push(t.serial_code);
         });
 
-        const escapeHtml = (text: string) => {
-            return String(text)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;');
-        };
-
-        let msg = `✅ <b>${escapeHtml(title)}</b>\n`;
-        msg += `📅 Ngày: ${new Date().toLocaleString('vi-VN')}\n\n`;
-
+        const escapeHtml = (text: string) => String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        let msg = `✅ <b>${escapeHtml(title)}</b>\n📅 Ngày: ${new Date().toLocaleString('vi-VN')}\n\n`;
         Object.values(groups).forEach(g => {
-            msg += `👤 Người nhận: <b>${escapeHtml(g.receiver)}</b>\n`;
-            msg += `📦 Sản phẩm: <b>${escapeHtml(g.pName)}</b>\n`;
-            msg += `🔢 Số lượng: <b>${g.qty}</b>\n`;
-            if (g.serials.length > 0) {
-                msg += `🔤 Serial: ${escapeHtml(g.serials.slice(0, 10).join(', '))}${g.serials.length > 10 ? `... (+${g.serials.length - 10} nữa)` : ''}\n`;
-            }
+            msg += `👤 Người nhận: <b>${escapeHtml(g.receiver)}</b>\n📦 Sản phẩm: <b>${escapeHtml(g.pName)}</b>\n🔢 Số lượng: <b>${g.qty}</b>\n`;
+            if (g.serials.length > 0) msg += `🔤 Serial: ${escapeHtml(g.serials.slice(0, 10).join(', '))}${g.serials.length > 10 ? `... (+${g.serials.length - 10} nữa)` : ''}\n`;
             msg += `---------------------\n`;
         });
+        await fetch('/api/telegram', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: msg }) });
+    } catch (e) { console.error('Telegram message failed:', e); }
+};
 
-        const txIds = transactions.map(t => t.id).filter(id => id && !id.startsWith('temp-')).slice(0, 3).join(', ');
-        if (txIds) msg += `🆔 Mã GD: <code>${escapeHtml(txIds)}${transactions.length > 3 ? '...' : ''}</code>`;
-
-        const response = await fetch('https://api.telegram.org/bot6446138704:AAG7eFdMA7cWOubGcbard0zsM-fD2_wlsTk/sendMessage', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: '-4080685922', text: msg, parse_mode: 'HTML' })
-        });
-        
-        if (!response.ok) {
-            const err = await response.text();
-            console.error('Telegram API Error:', err);
-        }
-    } catch (error) {
-        console.error('Failed to send telegram message:', error);
-    }
+const StockDisplay = ({ productId }: { productId: string }) => {
+    const totalStock = useSelector((state: RootState) => selectProductStock(state, productId));
+    return (
+        <Chip
+            label={`Tồn: ${totalStock}`}
+            size="small"
+            color={totalStock > 0 ? 'success' : 'error'}
+            variant="outlined"
+            sx={{ height: 20, fontSize: '0.75rem', fontWeight: 'bold' }}
+        />
+    );
 };
 
 export const Outbound = () => {
@@ -98,29 +83,32 @@ export const Outbound = () => {
     const { items: employees, status: employeeStatus } = useSelector((state: RootState) => state.employees);
     const { items: orders, status: orderStatus } = useSelector((state: RootState) => state.orders);
     const { profile } = useSelector((state: RootState) => state.auth);
-    const { status: inventoryStatus, stockMap } = useSelector((state: RootState) => state.inventory);
+    const { status: inventoryStatus } = useSelector((state: RootState) => state.inventory);
+    const { items: allTransactions } = useSelector((state: RootState) => state.transactions);
     const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';
 
-    // Form state (Admin)
     const [selectedProduct, setSelectedProduct] = useState('');
     const [quantity, setQuantity] = useState(1);
     const [serial, setSerial] = useState('');
     const [receiver, setReceiver] = useState(isAdmin ? '' : (profile?.full_name || profile?.username || profile?.email || ''));
 
-    const [district, setDistrict] = useState(''); // Added District
-    const [itemStatus, setItemStatus] = useState(''); // Added Item Status
-    const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+    const [district, setDistrict] = useState('');
+    const [itemStatus, setItemStatus] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+    const { success, error: notifyError } = useNotification();
 
-    // Scanner state
     const [showScanner, setShowScanner] = useState(false);
     const [showProductSearch, setShowProductSearch] = useState(false);
 
-    // Print State
     const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
     const [selectedPrintIds, setSelectedPrintIds] = useState<string[]>([]);
     const [openPrintPreview, setOpenPrintPreview] = useState(false);
     const [reportNumber, setReportNumber] = useState(1);
     const [isUploadingDrive, setIsUploadingDrive] = useState(false);
+
+    const [outboundSearch, setOutboundSearch] = useState('');
+    const [outboundPage, setOutboundPage] = useState(0);
+    const [outboundRowsPerPage, setOutboundRowsPerPage] = useState(10);
 
     const handleUploadDrive = async () => {
         const element = document.getElementById('outbound-report-content');
@@ -152,71 +140,52 @@ export const Outbound = () => {
 
             const result = await response.json();
             if (response.ok && result.success) {
-                setNotification({ type: 'success', message: `Lưu Drive thành công: ${fileName}` });
+            success(`Lưu Drive thành công: ${fileName}`);
             } else {
-                setNotification({ type: 'error', message: `Lỗi lưu Drive: ${result.error}` });
+                notifyError(`Lỗi lưu Drive: ${result.error}`);
             }
         } catch (error: any) {
             console.error('Drive upload failed', error);
-            setNotification({ type: 'error', message: `Lỗi tạo PDF: ${error.message}` });
+            notifyError(`Lỗi tạo PDF: ${error.message}`);
         } finally {
             setIsUploadingDrive(false);
         }
     };
 
-    // Staff Fulfillment State
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [openFulfillDialog, setOpenFulfillDialog] = useState(false);
-    const [scannedSerials, setScannedSerials] = useState<string[]>([]); // For multi-scan
-    const [isProductVerified, setIsProductVerified] = useState(false); // For non-serialized
+    const [scannedSerials, setScannedSerials] = useState<string[]>([]);
+    const [isProductVerified, setIsProductVerified] = useState(false);
 
-    // Get current stock
-    // Total Stock (Global)
     const currentTotalStock = useSelector((state: RootState) => selectProductStock(state, selectedProduct));
 
-    // Detailed Stock (Specific to District/Status) - Use 'items' status by default for now if generic
-    // Note: If no district/status selected, detailedStock == totalStock (based on selector logic, check inventorySlice)
-    // Actually inventorySlice.ts: `if (!district && !itemStatus) return total`
-    // So if district is empty, it returns Total. That matches "General" check.
     const currentDetailedStock = useSelector((state: RootState) =>
         selectDetailedStock(state, selectedProduct, district, itemStatus)
     );
-
-    // District Configs
-    const [districtConfigs, setDistrictConfigs] = useState<{ district: string; storekeeper_name: string }[]>([]);
 
     useEffect(() => {
         if (status === 'idle') dispatch(fetchProducts());
         if (inventoryStatus === 'idle') dispatch(fetchInventory());
         if (orderStatus === 'idle') dispatch(fetchOrders());
         if (isAdmin && employeeStatus === 'idle') dispatch(fetchEmployees());
+        dispatch(fetchTransactions());
 
-        // Fetch district configs
-        const loadConfigs = async () => {
-            try {
-                const data = await SupabaseService.getDistrictStorekeepers();
-                setDistrictConfigs(data);
-            } catch (e) {
-                console.error('Failed to load district configs', e);
-            }
-        };
-        loadConfigs();
+        // District configs logic removed as it was producing unused variables. 
+        // Logic for loading storekeepers should be re-added only if used.
     }, [status, inventoryStatus, employeeStatus, orderStatus, dispatch, isAdmin]);
 
-    // Physical Scanner Listener
     useScanDetection((code) => {
-        playBeep(); // Beep for physical scanner
+        playBeep();
         handleScanSuccess(code);
     });
 
-    // Admin Direct Save
     const handleAdminSave = async () => {
         if (!selectedProduct) {
-            setNotification({ type: 'error', message: 'Vui lòng chọn sản phẩm' });
+            notifyError('Vui lòng chọn sản phẩm');
             return;
         }
         if (!receiver) {
-            setNotification({ type: 'error', message: 'Vui lòng nhập người/đơn vị nhận' });
+            notifyError('Vui lòng nhập người/đơn vị nhận');
             return;
         }
 
@@ -225,42 +194,33 @@ export const Outbound = () => {
 
         let serialList: string[] = [];
         if (isSerialized) {
-            // Priority: scannedSerials (multi-scan) > serial (manual text input)
             if (scannedSerials.length > 0) {
                 serialList = [...scannedSerials];
             } else if (serial.trim()) {
-                serialList = serial.split(/[\s,;\n]+/).map(s => s.trim()).filter(s => s !== '');
+                serialList = parseSerialInput(serial);
             }
 
             if (serialList.length === 0) {
-                setNotification({ type: 'error', message: 'Vui lòng nhập hoặc quét số Serial cho Hàng hóa' });
+                notifyError('Vui lòng nhập hoặc quét số Serial cho Hàng hóa');
                 return;
             }
         }
 
         const totalQuantity = isSerialized ? serialList.length : Number(quantity);
 
-        // Validation Logic
         if (!isAdmin) {
-            // Staff: Strict Total Check
             if (totalQuantity > currentTotalStock) {
-                setNotification({ type: 'error', message: `Số lượng xuất (${totalQuantity}) vượt quá tổng tồn kho (${currentTotalStock})` });
+                notifyError(`Số lượng xuất (${totalQuantity}) vượt quá tổng tồn kho (${currentTotalStock})`);
                 return;
             }
         } else {
-            // Admin: Warning/Errror based on Context
-            // If District is selected, we MUST check if that district has stock.
-            // If stock is 0 in that district, it's physically impossible to pick from there (unless data error).
             if (district && totalQuantity > currentDetailedStock) {
-                // Warning only for Admin
                 const msg = `Kho Quận/Huyện "${district}" không đủ tồn! (Có: ${currentDetailedStock}, Cần: ${totalQuantity}). Bạn có chắc chắn muốn xuất âm không?`;
                 if (!window.confirm(msg)) {
                     return;
                 }
             }
 
-            // If no district, user is picking from "General" pile? Or we just warn about total?
-            // Existing logic: warn if total exceeded.
             if (totalQuantity > currentTotalStock) {
                 if (!window.confirm(`CẢNH BÁO: Số lượng xuất (${totalQuantity}) lớn hơn TỔNG tồn kho hệ thống (${currentTotalStock}). Bạn có chắc chắn muốn xuất âm không?`)) {
                     return;
@@ -268,55 +228,35 @@ export const Outbound = () => {
             }
         }
 
-        // For non-serialized, ensure quantity is valid
         if (!isSerialized && totalQuantity <= 0) {
-            setNotification({ type: 'error', message: 'Số lượng phải lớn hơn 0' });
+            notifyError('Số lượng phải lớn hơn 0');
             return;
         }
 
         try {
+            setIsSaving(true);
             await executeOutbound(selectedProduct, totalQuantity, serialList, receiver, product?.unit_price || 0, isSerialized, district, itemStatus);
 
-            // Reset form
             setSerial('');
-            setScannedSerials([]); // Reset scanned list
+            setScannedSerials([]);
             setQuantity(1);
             if (isAdmin) setReceiver('');
-            setDistrict(''); // Reset district
+            setDistrict('');
             setItemStatus('');
-            setNotification({ type: 'success', message: 'Xuất kho thành công!' });
+            success('Xuất kho thành công!');
         } catch (err: any) {
-            setNotification({ type: 'error', message: err.message || 'Có lỗi xảy ra' });
+            notifyError(err.message || 'Có lỗi xảy ra');
+        } finally {
+            setIsSaving(false);
         }
     };
 
-    // We need store access for validation logic inside handleAdminSave? 
-    // Actually currentDetailedStock is from selector, so we can use it directly in handleAdminSave scope.
-    // But we need to make sure we imported `store` to use `selectDetailedStock(store.getState()...)` if we want fresh state, 
-    // or rely on component re-render. Relying on `currentDetailedStock` variable is safer in React logic IF dependencies are correct.
-    // The `handleAdminSave` function closes over `currentDetailedStock`.
-    // Let's add `import { store } from '../store';` to the top imports block if not there to be super safe? 
-    // No, standard react `useSelector` value is fine.
-
-    const StockDisplay = ({ productId }: { productId: string }) => {
-        const stock = useSelector((state: RootState) => selectProductStock(state, productId));
-        return (
-            <Chip
-                label={stock}
-                size="small"
-                color={stock > 0 ? 'default' : 'error'}
-                variant="outlined"
-            />
-        );
-    }
-
-    // Shared Outbound Logic
     const executeOutbound = async (prodId: string, qty: number, serials: string[], receiverName: string, price: number, isSerialized: boolean, districtVal?: string, itemStatusVal?: string) => {
         const newTransactions: any[] = [];
         const timenow = new Date().toISOString();
+        const productName = products.find(p => p.id === prodId)?.name || prodId;
 
         if (isSerialized && serials.length > 0) {
-            // Create one transaction per serial
             for (const code of serials) {
                 const actionResult = await dispatch(addOutboundTransaction({
                     product_id: prodId,
@@ -329,31 +269,25 @@ export const Outbound = () => {
                     user_id: profile?.id
                 }));
 
-                // Unwrapping or checking result to add to newTransactions
                 if (addOutboundTransaction.fulfilled.match(actionResult)) {
                     const data = actionResult.payload;
-                    // Supabase returns array if select() is used, or object. 
-                    // Assuming SupabaseService returns data (array or object)
-                    const item = Array.isArray(data) ? data[0] : data;
-                    if (item) newTransactions.push(item);
-                    else {
-                        // Fallback if return is null
-                        newTransactions.push({
-                            id: 'temp-' + Math.random(),
-                            product_id: prodId,
-                            quantity: 1,
-                            serial_code: code,
-                            group_name: receiverName,
-                            unit_price: price,
-                            total_price: price, // q=1
-                            date: timenow,
-                            item_status: itemStatusVal
-                        });
-                    }
+                    const apiItem = Array.isArray(data) ? data[0] : data;
+                    newTransactions.push({
+                        id: apiItem?.id || apiItem?.['id'] || ('temp-' + Math.random()),
+                        product_id: prodId,
+                        product_name: productName,
+                        quantity: 1,
+                        serial_code: code,
+                        group_name: receiverName,
+                        unit_price: price,
+                        total_price: price,
+                        date: timenow,
+                        district: districtVal,
+                        item_status: itemStatusVal
+                    });
                 }
             }
         } else {
-            // Non-serialized
             const actionResult = await dispatch(addOutboundTransaction({
                 product_id: prodId,
                 quantity: qty,
@@ -367,76 +301,63 @@ export const Outbound = () => {
 
             if (addOutboundTransaction.fulfilled.match(actionResult)) {
                 const data = actionResult.payload;
-                const item = Array.isArray(data) ? data[0] : data;
-                if (item) newTransactions.push(item);
-                else {
-                    newTransactions.push({
-                        id: 'temp-' + Math.random(),
-                        product_id: prodId,
-                        quantity: qty,
-                        serial_code: undefined,
-                        group_name: receiverName,
-                        unit_price: price,
-                        total_price: price * qty,
-                        date: timenow,
-                        item_status: itemStatusVal
-                    });
-                }
+                const apiItem = Array.isArray(data) ? data[0] : data;
+                newTransactions.push({
+                    id: apiItem?.id || apiItem?.['id'] || ('temp-' + Math.random()),
+                    product_id: prodId,
+                    product_name: productName,
+                    quantity: qty,
+                    serial_code: undefined,
+                    group_name: receiverName,
+                    unit_price: price,
+                    total_price: price * qty,
+                    date: timenow,
+                    district: districtVal,
+                    item_status: itemStatusVal
+                });
+            } else {
+                throw new Error('Xuất kho thất bại, vui lòng thử lại');
             }
         }
 
         if (newTransactions.length > 0) {
             setRecentTransactions(prev => [...newTransactions, ...prev]);
-            
-            // Send telegram
+
             const productsMap: Record<string, string> = {};
-            products.forEach(p => productsMap[p.id] = p.name);
+            products.forEach(p => { productsMap[p.id] = p.name; });
+            productsMap[prodId] = productName;
+
             sendTelegramNotification('XUẤT KHO THÀNH CÔNG', newTransactions, productsMap, receiverName);
         }
 
         dispatch(fetchInventory());
-        dispatch(fetchOrders()); // Update orders if any affected
-        dispatch(fetchTransactions()); // Added to sync Reports cache
+        dispatch(fetchOrders());
+        dispatch(fetchTransactions());
     };
 
     const handleScanSuccess = (decodedText: string) => {
-        // playBeep(); // Removed to avoid double-beep (Handled in QRScanner and useScanDetection)
-
-        // If in fulfillment dialog (Staff)
         if (openFulfillDialog && selectedOrder) {
             const product = products.find(p => p.id === selectedOrder.product_id);
             const isSerialized = product?.category?.toLowerCase() === 'hàng hóa';
 
             if (isSerialized) {
-                // Split logic
-                const newCodes = decodedText.split(/[\s,;\n]+/).map(s => s.trim()).filter(s => s !== '');
-
-                // We need to check if adding these exceeds requirement or duplicates
+                const newCodes = parseSerialInput(decodedText);
                 if (newCodes.length === 0) return;
-
-                // Find valid new codes (not already scanned, and fits within quantity)
-                const uniqueNewCodes = newCodes.filter(code => !scannedSerials.includes(code));
-
+                const uniqueNewCodes = filterNewSerials(newCodes, scannedSerials);
                 if (uniqueNewCodes.length === 0) return;
-
-                // How many more do we need?
                 const needed = Number(selectedOrder.quantity) - scannedSerials.length;
-
                 if (needed <= 0) {
                     setShowScanner(false);
                     return;
                 }
-
-                // If scanned more than needed? Take first N
                 const taking = uniqueNewCodes.slice(0, needed);
-
                 setScannedSerials(prev => {
                     const newer = [...prev, ...taking];
                     if (newer.length >= Number(selectedOrder.quantity)) {
                         setShowScanner(false);
-                        setNotification({ type: 'success', message: 'Đã quét đủ số lượng serial theo đơn hàng!' });
+                        success('Đã quét đủ số lượng serial theo đơn hàng!');
                     } else {
-                        setNotification({ type: 'success', message: `Đã thêm ${taking.length} serial. Còn thiếu: ${Number(selectedOrder.quantity) - newer.length}` });
+                        success(`Đã thêm ${taking.length} serial. Còn thiếu: ${Number(selectedOrder.quantity) - newer.length}`);
                     }
                     return newer;
                 });
@@ -444,52 +365,42 @@ export const Outbound = () => {
                 if (decodedText === product?.item_code || decodedText === product?.id) {
                     setIsProductVerified(true);
                     setShowScanner(false);
-                    setNotification({ type: 'success', message: 'Đã xác thực sản phẩm!' });
+                    success('Đã xác thực sản phẩm!');
                 }
             }
         } else if (isAdmin) {
-            // Admin Direct Form
-            // If a product is selected, check if it is Serialized
             const product = products.find(p => p.id === selectedProduct);
             const isSerialized = product?.category?.toLowerCase() === 'hàng hóa';
 
             if (isSerialized) {
-                // allow continuous scanning
-                // Allow splitting multiple serials
-                const newCodes = decodedText.split(/[\s,;\n]+/).map(s => s.trim()).filter(s => s !== '');
+                const newCodes = parseSerialInput(decodedText);
                 let addedCount = 0;
-
                 setScannedSerials(prev => {
-                    const uniqueNewCodes = newCodes.filter(code => !prev.includes(code));
+                    const uniqueNewCodes = filterNewSerials(newCodes, prev);
                     if (uniqueNewCodes.length === 0) return prev;
                     addedCount = uniqueNewCodes.length;
                     const newer = [...prev, ...uniqueNewCodes];
                     setQuantity(newer.length);
                     return newer;
                 });
-
                 if (addedCount > 0) {
-                    setNotification({ type: 'success', message: `Đã thêm ${addedCount} serial: ${newCodes.join(', ')}` });
+                    success(`Đã thêm ${addedCount} serial`);
                     setShowScanner(false);
                 } else {
-                    setNotification({ type: 'error', message: `Các serial này đã quét rồi: ${decodedText}` });
+                    notifyError(`Các serial này đã quét rồi`);
                     setShowScanner(false);
                 }
             } else {
-                // Non-serialized or no product selected yet -> just fill the text field?
-                // Or if no product selected, maybe we try to find product by code?
-                // Current logic: simple fill
                 setSerial(decodedText);
                 setShowScanner(false);
-                setNotification({ type: 'success', message: 'Đã quét mã thành công!' });
+                success('Đã quét mã thành công!');
             }
         }
     };
 
-    // Staff Fulfillment Logic
     const handleOpenFulfill = (order: Order) => {
         setSelectedOrder(order);
-        setSerial(''); // Reset manual input
+        setSerial('');
         setScannedSerials([]);
         setIsProductVerified(false);
         setOpenFulfillDialog(true);
@@ -497,35 +408,28 @@ export const Outbound = () => {
 
     const handleManualAddSerial = () => {
         if (!serial.trim()) return;
-
-        const newCodes = serial.split(/[\s,;\n]+/).map(s => s.trim()).filter(s => s !== '');
+        const newCodes = parseSerialInput(serial);
         if (newCodes.length === 0) return;
-
         setScannedSerials(prev => {
-            const uniqueNewCodes = newCodes.filter(code => !prev.includes(code));
-            
+            const uniqueNewCodes = filterNewSerials(newCodes, prev);
             if (uniqueNewCodes.length === 0) {
-                alert('Tất cả serial này đã được thêm.');
+                notifyError('Tất cả serial này đã được thêm.');
                 return prev;
             }
-
             let taking = uniqueNewCodes;
-
-            // Check limit only for Fulfillment
             if (openFulfillDialog && selectedOrder) {
                 const needed = Number(selectedOrder.quantity) - prev.length;
                 if (needed <= 0) {
-                    alert('Đã đủ số lượng serial.');
+                    notifyError('Đã đủ số lượng serial.');
                     return prev;
                 }
                 if (taking.length > needed) {
                     taking = taking.slice(0, needed);
-                    alert(`Sẽ chỉ thêm ${needed} serial để đủ số lượng đơn hàng.`);
+                    notifyError(`Sẽ chỉ thêm ${needed} serial để đủ số lượng đơn hàng.`);
                 }
             }
-
             const newer = [...prev, ...taking];
-            if (!openFulfillDialog) setQuantity(newer.length); // Admin mode update qty
+            if (!openFulfillDialog) setQuantity(newer.length);
             return newer;
         });
         setSerial('');
@@ -539,75 +443,58 @@ export const Outbound = () => {
         });
     };
 
-    // Correct way to get stock for the fulfill dialog
     const fulfillmentStock = useSelector((state: RootState) => selectedOrder ? selectProductStock(state, selectedOrder.product_id) : 0);
 
     const handleFulfillOrder = async () => {
         if (!selectedOrder) return;
         const product = products.find(p => p.id === selectedOrder.product_id);
         if (!product) return;
-
         const isSerialized = product.category?.toLowerCase() === 'hàng hóa';
-
         if (Number(selectedOrder.quantity) > fulfillmentStock) {
-            alert(`Tồn kho không đủ! Yêu cầu: ${selectedOrder.quantity}, Tồn: ${fulfillmentStock}`);
+            notifyError(`Tồn kho không đủ! Yêu cầu: ${selectedOrder.quantity}, Tồn: ${fulfillmentStock}`);
             return;
         }
-
-        // Validate Serial count
         if (isSerialized) {
             if (scannedSerials.length !== Number(selectedOrder.quantity)) {
-                if (!window.confirm(`Bạn mới quét ${scannedSerials.length}/${selectedOrder.quantity} serial. Bạn có muốn hoàn thành với số lượng này không? (Lưu ý: Logic hiện tại yêu cầu đủ số lượng)`)) {
-                    return;
-                }
-                // Currently enforce full fulfillment based on user request "scan max 4 times" -> implies aiming for 4.
-                // If we want partial, we'd need to update order quantity or split order. 
-                // For now, let's strictly require matching count for simplicity unless user insists otherwise.
-                alert(`Vui lòng quét đủ ${selectedOrder.quantity} serial.`);
+                notifyError(`Vui lòng quét đủ ${selectedOrder.quantity} serial.`);
                 return;
             }
-        } else {
-            // Non-serialized: Maybe require verification?
-            // "Vật tư thì chỉ cần quét 1 lần" -> We can assume verification is implicit if they hit 'Confirm',
-            // or we can enforce isProductVerified. Let's not be too strict unless requested.
         }
-
         try {
-            // Find the requester's district from the employee list
             const requesterEmployee = employees.find(e =>
                 e.full_name === selectedOrder.requester_group ||
                 e.username === selectedOrder.requester_group
             );
             const requesterDistrict = requesterEmployee?.district || undefined;
-
             await executeOutbound(
                 selectedOrder.product_id,
                 Number(selectedOrder.quantity),
-                scannedSerials, // Pass the array 
+                scannedSerials,
                 selectedOrder.requester_group,
                 product.unit_price || 0,
                 isSerialized,
-                requesterDistrict, // District inferred from requester
-                undefined // Item Status undefined for fulfillment for now
+                requesterDistrict,
+                undefined
             );
-
-            // Update Order Status
             await dispatch(updateOrderStatus({ id: selectedOrder.id, status: 'completed' })).unwrap();
-
             setOpenFulfillDialog(false);
-            setNotification({ type: 'success', message: 'Đã xuất kho và hoàn tất đơn hàng!' });
+            success('Đã xuất kho và hoàn tất đơn hàng!');
             setSelectedOrder(null);
-            dispatch(fetchOrders()); // Refresh list
+            dispatch(fetchOrders());
         } catch (err: any) {
-            setNotification({ type: 'error', message: err.message || 'Lỗi khi xuất kho' });
+            notifyError(err.message || 'Lỗi cập nhật');
         }
     };
 
-    if (status === 'loading' || inventoryStatus === 'loading') return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
+    if (status === 'loading' || inventoryStatus === 'loading') return (
+        <Box display="flex" justifyContent="center" alignItems="center" p={8} gap={2}>
+            <CircularProgress />
+            <Box component="span" sx={{ fontSize: '1.2rem', color: 'text.secondary', fontWeight: 500 }}>
+                Đang tải dữ liệu...
+            </Box>
+        </Box>
+    );
 
-    // ----------------------
-    // STAFF VIEW: APPROVED ORDERS
-    // ----------------------
     if (!isAdmin) {
         const staffName = profile?.full_name || profile?.username || '';
         const myApprovedOrders = orders.filter(o =>
@@ -625,12 +512,6 @@ export const Outbound = () => {
                     <Typography variant="h3" fontWeight="bold" color="text.primary" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' } }}>Xuất Kho (Đơn Hàng)</Typography>
                     <Typography variant="h6" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem', md: '1.25rem' } }}>Danh sách các đơn hàng đã được duyệt chờ xuất kho</Typography>
                 </Box>
-
-                {notification && (
-                    <Alert severity={notification.type} onClose={() => setNotification(null)} sx={{ mb: 3, maxWidth: 800, mx: 'auto' }}>
-                        {notification.message}
-                    </Alert>
-                )}
 
                 <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', maxWidth: 1200, mx: 'auto', borderRadius: 3, overflowX: 'auto' }}>
                     <Table size="small" sx={{ minWidth: 800 }}>
@@ -662,13 +543,6 @@ export const Outbound = () => {
                                                 <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>{product?.item_code}</Typography>
                                             </TableCell>
                                             <TableCell align="center">
-                                                {/* Use selector dynamically? No, hooks in loop is bad. Use a component or store variable passed down? 
-                                                    Actually we can just use `useSelector` inside a small sub-component for the row, OR use `inventory` state if available.
-                                                    Outbound doesn't have `inventory` state. It has `fetchInventory` which updates redux.
-                                                    We cannot call `useSelector` in a loop.
-                                                    Refactor to `OutboundRequestRow` component? Or just accept we need to access state differently?
-                                                    Accessing store state directly is hacky. Creating a StockCell component is better.
-                                                */}
                                                 <StockDisplay productId={order.product_id} />
                                             </TableCell>
                                             <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{order.quantity}</TableCell>
@@ -736,7 +610,6 @@ export const Outbound = () => {
                     </Table>
                 </TableContainer>
 
-                {/* Fulfillment Dialog */}
                 <Dialog open={openFulfillDialog} onClose={() => setOpenFulfillDialog(false)} fullWidth maxWidth="sm">
                     <DialogTitle>Xác nhận Xuất Kho</DialogTitle>
                     <DialogContent>
@@ -761,34 +634,23 @@ export const Outbound = () => {
                                                     }
                                                 }}
                                                 placeholder="Quét mã hoặc nhập tay rồi Enter"
-                                                helperText={`Đã quét: ${scannedSerials.length} / ${selectedOrder.quantity}`}
                                             />
                                             <IconButton onClick={() => setShowScanner(true)} color="secondary" sx={{ border: '1px solid', borderColor: 'divider', p: 2 }}>
                                                 <QrCodeScannerIcon fontSize="large" />
                                             </IconButton>
                                         </Stack>
-
-                                        {/* List of scanned serials */}
-                                        <Paper variant="outlined" sx={{ maxHeight: 200, overflow: 'auto', bgcolor: 'grey.50' }}>
-                                            <List dense>
-                                                {scannedSerials.map((code, index) => (
-                                                    <ListItem key={index} divider>
-                                                        <ListItemText primary={`#${index + 1}: ${code}`} />
-                                                        <ListItemSecondaryAction>
-                                                            <IconButton edge="end" size="small" onClick={() => handleRemoveSerial(code)}>
-                                                                <DeleteIcon fontSize="small" />
-                                                            </IconButton>
-                                                        </ListItemSecondaryAction>
-                                                    </ListItem>
-                                                ))}
-                                                {scannedSerials.length === 0 && (
-                                                    <Typography variant="body2" color="text.secondary" p={2} textAlign="center">Chưa có serial nào được quét.</Typography>
-                                                )}
-                                            </List>
-                                        </Paper>
+                                        
+                                        <SerialChips 
+                                            serials={scannedSerials} 
+                                            onRemove={handleRemoveSerial} 
+                                            maxVisible={10} 
+                                        />
+                                        
+                                        {scannedSerials.length === 0 && (
+                                            <Typography variant="body2" color="text.secondary" p={2} textAlign="center">Chưa có serial nào được quét.</Typography>
+                                        )}
                                     </Box>
                                 ) : (
-                                    // Non-serialized: Verification Mode
                                     <Box textAlign="center" py={2}>
                                         <Typography gutterBottom>Sản phẩm này không yêu cầu Serial.</Typography>
                                         {isProductVerified ? (
@@ -822,7 +684,6 @@ export const Outbound = () => {
                     </DialogActions>
                 </Dialog>
 
-                {/* Shared Scanner Dialog */}
                 <Dialog open={showScanner} onClose={() => setShowScanner(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3, m: 2 } }}>
                     <DialogTitle sx={{ fontWeight: 900, textTransform: 'uppercase', color: 'primary.main', textAlign: 'center' }}>
                         QUÉT MÃ QR/MÃ VẠCH
@@ -842,9 +703,6 @@ export const Outbound = () => {
         );
     }
 
-    // ----------------------
-    // ADMIN VIEW: DIRECT FORM
-    // ----------------------
     return (
         <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: 1200, mx: 'auto' }}>
             <Box mb={3} display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'start', sm: 'center' }} gap={2}>
@@ -863,21 +721,17 @@ export const Outbound = () => {
                         startIcon={<PrintIcon />}
                         disabled={selectedPrintIds.length === 0}
                         onClick={() => {
-                            // Check for multiple receivers
-                            const receivers = new Set(recentTransactions.filter(t => selectedPrintIds.includes(t.id)).map(t => t.group_name || t.receiver_group));
+                            const receivers = new Set(recentTransactions.filter(t => selectedPrintIds.includes(t.id)).map(t => t.group_name || (t as any).receiver_group));
                             if (receivers.size > 1) {
                                 if (!window.confirm(`Bạn đang chọn in biên bản cho ${receivers.size} người nhận khác nhau. Bạn có chắc chắn không?`)) {
                                     return;
                                 }
                             }
 
-                            // Fetch report number
-                            // Use date of first selected transaction
                             const firstTx = recentTransactions.find(t => selectedPrintIds.includes(t.id));
                             if (firstTx) {
                                 const dateVal = new Date(firstTx.date || new Date());
-                                // Determine receiver name from transaction
-                                const receiverVal = firstTx.group_name || firstTx.receiver_group || '';
+                                const receiverVal = firstTx.group_name || (firstTx as any).receiver_group || '';
 
                                 SupabaseService.getReportNumber(dateVal, receiverVal).then(num => {
                                     setReportNumber(num);
@@ -901,24 +755,23 @@ export const Outbound = () => {
                             hidden
                             accept=".xlsx, .xls"
                             onChange={async (e) => {
-                                if (e.target.files && e.target.files[0]) {
-                                    try {
-                                        const json = await readExcelFile(e.target.files[0]);
+                                setIsSaving(true);
+                                try {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        const json = await readExcelFile(file);
                                         const mappedData = json.map((row: any) => {
                                             const product = products.find(p => p.item_code === row['MA_HANG']);
                                             if (!product) throw new Error(`Không tìm thấy sản phẩm có mã: ${row['MA_HANG']}`);
-                                            if (product?.category?.toLowerCase() === 'hàng hóa' && !row['SERIAL']) {
-                                                throw new Error(`Sản phẩm ${row['MA_HANG']} (${product.name}) là Hàng hóa nên bắt buộc phải có Serial.`);
-                                            }
-                                            let groupName = row['EMAIL_NGUOI_NHAN'] || row['GHI_CHU'] || 'Unknown';
                                             return {
                                                 product_id: product.id,
-                                                quantity: Number(row['SO_LUONG'] || 0),
-                                                receiver_group: groupName,
-                                                serial_code: row['SERIAL'] ? String(row['SERIAL']) : undefined,
-                                                district: row['QUAN_HUYEN'] ? String(row['QUAN_HUYEN']) : undefined,
-                                                item_status: row['TRANG_THAI_HANG'] ? String(row['TRANG_THAI_HANG']) : undefined,
-                                                unit_price: product.unit_price || 0
+                                                quantity: Number(row['SO_LUONG'] || 1),
+                                                serial_code: row['SERIAL'],
+                                                group_name: row['NGUOI_NHAN'] || '',
+                                                unit_price: product.unit_price || 0,
+                                                district: row['QUAN_HUYEN'] || '',
+                                                item_status: row['TRANG_THAI'] || '',
+                                                user_id: profile?.id
                                             };
                                         });
 
@@ -928,24 +781,21 @@ export const Outbound = () => {
                                                 const importedItems = resultAction.payload;
                                                 if (Array.isArray(importedItems)) {
                                                     setRecentTransactions(prev => [...importedItems, ...prev]);
-                                                    
-                                                    // Send Telegram
                                                     const productsMap: Record<string, string> = {};
                                                     products.forEach(p => productsMap[p.id] = p.name);
                                                     sendTelegramNotification('NHẬP EXCEL XUẤT KHO', importedItems, productsMap);
                                                 }
-                                                // If payload is not array (e.g. supa returns null or count), we might miss them.
-                                                // But usually bulk insert returns rows.
                                                 dispatch(fetchInventory());
-                                                alert(`Đã xuất thành công ${mappedData.length} giao dịch!`);
-                                                setNotification({ type: 'success', message: `Đã xuất ${mappedData.length} giao dịch từ Excel!` });
+                                                success(`Đã xuất thành công ${mappedData.length} giao dịch!`);
                                             }
                                         }
-                                    } catch (error: any) {
-                                        console.error('Import failed:', error);
-                                        alert(`Lỗi: ${error.message}`);
                                     }
-                                    e.target.value = '';
+                                } catch (error: any) {
+                                    console.error('Import failed:', error);
+                                    notifyError(`Lỗi: ${error.message}`);
+                                } finally {
+                                    setIsSaving(false);
+                                    if (e.target) e.target.value = '';
                                 }
                             }}
                         />
@@ -954,23 +804,16 @@ export const Outbound = () => {
             </Box>
 
             <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
-                {notification && (
-                    <Alert severity={notification.type} onClose={() => setNotification(null)} sx={{ mb: 3 }}>
-                        {notification.message}
-                    </Alert>
-                )}
-
                 <Grid container spacing={2}>
-                    {/* Row 1: Product Selection */}
-                    <Grid size={{ xs: 12 }}>
+                    <Grid size={12}>
                         <Box display="flex" gap={1}>
                             <Autocomplete
                                 fullWidth
                                 options={products}
-                                getOptionLabel={(option) => `${option.name} (${option.item_code}) - Tồn: ${stockMap[option.id] || 0}`}
+                                getOptionLabel={(option) => typeof option === 'string' ? option : `${option.name} (${option.item_code})`}
                                 value={products.find(p => p.id === selectedProduct) || null}
                                 onChange={(_, newValue) => {
-                                    setSelectedProduct(newValue ? newValue.id : '');
+                                    setSelectedProduct(newValue?.id || '');
                                     setScannedSerials([]);
                                     setSerial('');
                                     setQuantity(1);
@@ -978,48 +821,31 @@ export const Outbound = () => {
                                 renderInput={(params) => (
                                     <TextField
                                         {...params}
-                                        label="Tên vật tư hàng hóa"
-                                        placeholder="Tìm kiếm vật tư..."
-                                        error={quantity > (district ? currentDetailedStock : currentTotalStock)}
+                                        label="Chọn sản phẩm"
+                                        placeholder="Gõ tên hoặc mã sản phẩm..."
                                         size="small"
                                     />
                                 )}
                             />
-                            <Button
-                                variant="outlined"
-                                sx={{ minWidth: 50, px: 0 }}
-                                onClick={() => setShowProductSearch(true)}
-                            >
+                            <IconButton onClick={() => setShowProductSearch(true)} color="primary" sx={{ border: '1px solid', borderColor: 'divider' }}>
                                 <SearchIcon />
-                            </Button>
+                            </IconButton>
                         </Box>
                         {selectedProduct && (
-                            <Box mt={1} display="flex" alignItems="center" gap={2}>
-                                <Typography variant="caption" color="text.secondary">
-                                    Mã: <b>{products.find(p => p.id === selectedProduct)?.item_code}</b>
-                                </Typography>
-                                <Chip
-                                    label={`Tồn kho: ${currentDetailedStock}`}
-                                    size="small"
-                                    color={currentDetailedStock > 0 ? 'success' : 'error'}
-                                    variant="outlined"
-                                    sx={{ height: 20, fontSize: '0.75rem' }}
-                                />
-                                {district && <Typography variant="caption" color="text.secondary">(Tổng: {currentTotalStock})</Typography>}
+                            <Box mt={1}>
+                                <StockDisplay productId={selectedProduct} />
                             </Box>
                         )}
                     </Grid>
 
-                    {/* Row 2: Quantity, Receiver, District */}
                     <Grid size={{ xs: 12, md: 2 }}>
                         <TextField
                             fullWidth
                             label="Số lượng"
                             type="number"
                             value={quantity}
-                            onChange={e => setQuantity(Number(e.target.value))}
-                            inputProps={{ min: 1 }}
-                            error={quantity > (district ? currentDetailedStock : currentTotalStock)}
+                            onChange={(e) => setQuantity(Number(e.target.value))}
+                            disabled={products.find(p => p.id === selectedProduct)?.category?.toLowerCase() === 'hàng hóa'}
                             size="small"
                         />
                     </Grid>
@@ -1028,38 +854,25 @@ export const Outbound = () => {
                             <Autocomplete
                                 fullWidth
                                 options={employees}
-                                getOptionLabel={(option) => {
-                                    const name = typeof option === 'string' ? option : option.full_name;
-                                    return name.replace(/\(\s*\)/g, '').trim();
+                                getOptionLabel={(option: any) => typeof option === 'string' ? option : `${option.full_name || ''} (${option.username || option.email || ''})`.trim()}
+                                onChange={(_, newValue: any) => {
+                                    setReceiver(typeof newValue === 'string' ? newValue : (newValue?.full_name || newValue?.username || ''));
                                 }}
-                                value={employees.find(e => e.full_name === receiver) || null}
-                                onChange={(_, newValue) => {
-                                    if (newValue) {
-                                        const val = typeof newValue === 'string' ? newValue : newValue.full_name;
-                                        setReceiver(val);
-                                        if (typeof newValue !== 'string' && newValue.district) {
-                                            setDistrict(newValue.district);
-                                        }
-                                    } else {
-                                        setReceiver('');
-                                        setDistrict('');
-                                    }
-                                }}
-                                freeSolo
                                 renderInput={(params) => (
                                     <TextField
                                         {...params}
-                                        label="Nhân viên nhận"
-                                        placeholder="Tìm nhân viên..."
-                                        onChange={(e) => setReceiver(e.target.value)}
+                                        label="Người/Đơn vị nhận (Nhân viên)"
+                                        placeholder="Chọn hoặc nhập tên..."
                                         size="small"
+                                        onChange={e => setReceiver(e.target.value)}
                                     />
                                 )}
+                                freeSolo
                             />
                         ) : (
                             <TextField
                                 fullWidth
-                                label="Nhân viên nhận"
+                                label="Người nhận"
                                 value={receiver}
                                 disabled
                                 size="small"
@@ -1073,20 +886,17 @@ export const Outbound = () => {
                             value={district}
                             onChange={e => setDistrict(e.target.value)}
                             size="small"
-                            placeholder="Nhập Quận/Huyện"
                         />
                     </Grid>
 
-                    {/* Row 3: Serial (Conditional) */}
                     {products.find(p => p.id === selectedProduct)?.category?.toLowerCase() === 'hàng hóa' && (
-                        <Grid size={{ xs: 12 }}>
+                        <Grid size={12}>
                             <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
                                 <Grid container spacing={2} alignItems="center">
                                     <Grid size={{ xs: 12, md: 8 }}>
                                         <TextField
                                             fullWidth
                                             label="Serial / QR Code"
-                                            required
                                             value={serial}
                                             onChange={e => setSerial(e.target.value)}
                                             onKeyDown={e => {
@@ -1104,38 +914,31 @@ export const Outbound = () => {
                                         <Button
                                             fullWidth
                                             variant="outlined"
-                                            color="primary"
-                                            onClick={() => setShowScanner(true)}
                                             startIcon={<QrCodeScannerIcon />}
+                                            onClick={() => setShowScanner(true)}
+                                            size="large"
                                         >
-                                            Mở máy quét
+                                            Mở Camera Quét
                                         </Button>
                                     </Grid>
                                 </Grid>
 
-                                {scannedSerials.length > 0 && (
-                                    <Box mt={2}>
-                                        <Typography variant="caption" color="text.secondary" gutterBottom>Danh sách Serial:</Typography>
-                                        <Box display="flex" flexWrap="wrap" gap={1}>
-                                            {scannedSerials.map((code, index) => (
-                                                <Chip
-                                                    key={index}
-                                                    label={code}
-                                                    onDelete={() => handleRemoveSerial(code)}
-                                                    size="small"
-                                                    color="primary"
-                                                    variant="outlined"
-                                                />
-                                            ))}
-                                        </Box>
+                                <SerialChips 
+                                    serials={scannedSerials} 
+                                    onRemove={handleRemoveSerial} 
+                                    maxVisible={15} 
+                                />
+
+                                {scannedSerials.length === 0 && (
+                                    <Box textAlign="center" py={2}>
+                                        <Typography variant="body2" color="text.secondary">Chưa có serial nào được quét.</Typography>
                                     </Box>
                                 )}
                             </Paper>
                         </Grid>
                     )}
 
-                    {/* Row 4: Actions */}
-                    <Grid size={{ xs: 12 }}>
+                    <Grid size={12}>
                         <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
                             <Button
                                 variant="outlined"
@@ -1159,17 +962,16 @@ export const Outbound = () => {
                                 color="primary"
                                 size="large"
                                 onClick={handleAdminSave}
-                                disabled={(status as string) === 'loading'}
+                                disabled={isSaving || (status as string) === 'loading'}
                                 sx={{ minWidth: 150, py: { xs: 1, md: 1.5 }, borderRadius: 3, fontSize: { xs: '0.9rem', md: '1rem' }, fontWeight: 700, textTransform: 'none', boxShadow: 'none' }}
                             >
-                                Xuất Kho
+                                {isSaving ? 'Đang xử lý...' : 'Xuất Kho'}
                             </Button>
                         </Box>
                     </Grid>
                 </Grid>
             </Paper>
 
-            {/* Dialogs */}
             <Dialog open={showScanner} onClose={() => setShowScanner(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3, m: 2 } }}>
                 <DialogTitle sx={{ fontWeight: 700, textAlign: 'center' }}>
                     QUÉT MÃ QR/MÃ VẠCH
@@ -1191,7 +993,7 @@ export const Outbound = () => {
                 onClose={() => setShowProductSearch(false)}
                 products={products}
                 onSelect={(product) => {
-                    setSelectedProduct(product.id);
+                    setSelectedProduct(product.id || (product as any).ID || '');
                     setScannedSerials([]);
                     setSerial('');
                     setQuantity(1);
@@ -1199,7 +1001,6 @@ export const Outbound = () => {
                 }}
             />
 
-            {/* Recently Exported Table */}
             {recentTransactions.length > 0 && (
                 <Box mt={4}>
                     <Typography variant="h6" gutterBottom fontWeight="bold">
@@ -1242,8 +1043,8 @@ export const Outbound = () => {
                                                     }}
                                                 />
                                             </TableCell>
-                                            <TableCell>{tx.created_at ? new Date(tx.created_at).toLocaleTimeString('vi-VN') : (tx.date ? new Date(tx.date).toLocaleTimeString('vi-VN') : (tx.outbound_date ? new Date(tx.outbound_date).toLocaleTimeString('vi-VN') : 'N/A'))}</TableCell>
-                                            <TableCell>{tx.group_name || tx.receiver_group}</TableCell>
+                                            <TableCell>{tx.created_at ? new Date(tx.created_at).toLocaleTimeString('vi-VN') : (tx.date ? new Date(tx.date).toLocaleTimeString('vi-VN') : (tx.outbound_date ? new Date(tx.outbound_date).toLocaleTimeString('vi-VN') : '—'))}</TableCell>
+                                            <TableCell>{tx.group_name || (tx as any).receiver_group}</TableCell>
                                             <TableCell>
                                                 <Box>
                                                     <Typography variant="body2">{p?.name || 'Unknown'}</Typography>
@@ -1261,7 +1062,130 @@ export const Outbound = () => {
                 </Box>
             )}
 
-            {/* Print Preview Dialog */}
+            {(() => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const outboundTxs = allTransactions.filter(t => {
+                    const isOutbound = (t as any).type === 'outbound' || (t as any).outbound_date;
+                    if (!isOutbound) return false;
+                    const dateVal = (t as any).outbound_date || t.date || (t as any).created_at;
+                    if (!dateVal) return false;
+                    const txDate = new Date(dateVal);
+                    txDate.setHours(0, 0, 0, 0);
+                    return txDate.getTime() === today.getTime();
+                });
+
+                const filteredOutbound = outboundTxs.filter(t => {
+                    const p = products.find(prod => prod.id === t.product_id);
+                    const searchLower = outboundSearch.toLowerCase();
+                    return (
+                        !outboundSearch ||
+                        p?.name?.toLowerCase().includes(searchLower) ||
+                        (t.serial_code || '').toLowerCase().includes(searchLower) ||
+                        (t.group_name || (t as any).receiver_group || '').toLowerCase().includes(searchLower) ||
+                        (t.district || '').toLowerCase().includes(searchLower)
+                    );
+                });
+                const paginatedOutbound = filteredOutbound.slice(
+                    outboundPage * outboundRowsPerPage,
+                    outboundPage * outboundRowsPerPage + outboundRowsPerPage
+                );
+                return (
+                    <Box mt={6}>
+                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+                            <Typography variant="h5" fontWeight="bold">
+                                Danh sách hàng hóa đã xuất kho (Hôm nay)
+                                {filteredOutbound.length > 0 && (
+                                    <Chip label={filteredOutbound.length} size="small" color="primary" sx={{ ml: 1.5, fontWeight: 700, fontSize: '0.8rem' }} />
+                                )}
+                            </Typography>
+                        </Box>
+                        <Paper elevation={0} sx={{ borderRadius: 2, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
+                            <Box p={2} borderBottom="1px solid" borderColor="divider">
+                                <TextField
+                                    placeholder="Tìm kiếm theo Tên SP, Serial, Người nhận, Quận/Huyện..."
+                                    size="small"
+                                    value={outboundSearch}
+                                    onChange={e => { setOutboundSearch(e.target.value); setOutboundPage(0); }}
+                                    sx={{ width: { xs: '100%', sm: 380 } }}
+                                    InputProps={{
+                                        startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
+                                        sx: { borderRadius: 2 }
+                                    }}
+                                />
+                            </Box>
+                            <TableContainer>
+                                <Table sx={{ minWidth: 800 }}>
+                                    <TableHead sx={{ bgcolor: 'grey.50' }}>
+                                        <TableRow>
+                                            <TableCell sx={{ fontWeight: 600 }}>Thời gian</TableCell>
+                                            <TableCell sx={{ fontWeight: 600 }}>Tên vật tư</TableCell>
+                                            <TableCell sx={{ fontWeight: 600 }}>Serial</TableCell>
+                                            <TableCell sx={{ fontWeight: 600 }}>Người nhận</TableCell>
+                                            <TableCell sx={{ fontWeight: 600 }}>Quận/Huyện</TableCell>
+                                            <TableCell sx={{ fontWeight: 600 }} align="right">SL</TableCell>
+                                            <TableCell sx={{ fontWeight: 600 }} align="right">Đơn giá</TableCell>
+                                            <TableCell sx={{ fontWeight: 600 }}>Trạng thái</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {paginatedOutbound.length > 0 ? (
+                                            paginatedOutbound.map((row, idx) => {
+                                                const p = products.find(prod => prod.id === row.product_id);
+                                                const isSerialized = p?.category?.toLowerCase() === 'hàng hóa';
+                                                const dateVal = (row as any).outbound_date || row.date || (row as any).created_at;
+                                                return (
+                                                    <TableRow key={(row as any).id || idx} hover>
+                                                        <TableCell>{dateVal ? new Date(dateVal).toLocaleString('vi-VN') : '—'}</TableCell>
+                                                        <TableCell>
+                                                            <Box>
+                                                                <Typography variant="body2" fontWeight={500}>{p?.name || 'Unknown'}</Typography>
+                                                                <Typography variant="caption" color="text.secondary">{p?.item_code}</Typography>
+                                                                {!isSerialized && (
+                                                                    <Chip label="Vật tư" size="small" color="default" sx={{ ml: 0.5, height: 16, fontSize: '0.65rem' }} />
+                                                                )}
+                                                            </Box>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            {row.serial_code
+                                                                ? <Chip label={row.serial_code} size="small" variant="outlined" color="primary" sx={{ fontSize: '0.75rem', height: 22 }} />
+                                                                : <Typography variant="caption" color="text.disabled">—</Typography>
+                                                            }
+                                                        </TableCell>
+                                                        <TableCell>{(row as any).group_name || (row as any).receiver_group || '—'}</TableCell>
+                                                        <TableCell>{(row as any).district || '—'}</TableCell>
+                                                        <TableCell align="right"><b>{row.quantity}</b></TableCell>
+                                                        <TableCell align="right">{Number(row.unit_price || 0).toLocaleString('vi-VN')} đ</TableCell>
+                                                        <TableCell>{(row as any).item_status || '—'}</TableCell>
+                                                    </TableRow>
+                                                );
+                                            })
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={8} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                                                    {outboundSearch ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có dữ liệu xuất kho'}
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                            <TablePagination
+                                component="div"
+                                count={filteredOutbound.length}
+                                page={outboundPage}
+                                onPageChange={(_, newPage) => setOutboundPage(newPage)}
+                                rowsPerPage={outboundRowsPerPage}
+                                onRowsPerPageChange={e => { setOutboundRowsPerPage(Number(e.target.value)); setOutboundPage(0); }}
+                                rowsPerPageOptions={[10, 25, 50]}
+                                labelRowsPerPage="Hiển thị:"
+                                labelDisplayedRows={({ from, to, count }) => `${from}-${to} / ${count}`}
+                            />
+                        </Paper>
+                    </Box>
+                );
+            })()}
+
             <Dialog open={openPrintPreview} onClose={() => setOpenPrintPreview(false)} maxWidth="lg" fullWidth scroll="body">
                 <DialogTitle className="no-print" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     Xem Trước Biên Bản Xuất Kho
@@ -1285,55 +1209,26 @@ export const Outbound = () => {
                 <DialogContent>
                     <Box id="outbound-report-content" sx={{ p: 1, bgcolor: 'white' }}>
                         <OutboundReportPreview
-                        data={recentTransactions
-                            .filter(t => selectedPrintIds.includes(t.id))
-                            .map(t => {
-                                const p = products.find(prod => prod.id === t.product_id);
-                                return {
-                                    product_name: p ? p.name : 'Unknown',
-                                    unit: p ? p.unit : '',
-                                    quantity: t.quantity,
-                                    unit_price: t.unit_price,
-                                    serial_code: t.serial_code || '',
-                                    item_status: t.item_status || ''
-                                };
-                            })
-                        }
-
-                        delivererName={(((): string => {
-                            // Find unique district in selected transactions
-                            const selectedTrans = recentTransactions.filter(t => selectedPrintIds.includes(t.id));
-                            // Get unique districts, filter out undefined/null
-                            const districts = Array.from(new Set(selectedTrans.map(t => t.district).filter(Boolean)));
-
-                            // If exactly one district found, check config
-                            if (districts.length === 1) {
-                                const config = districtConfigs.find(c => c.district.trim().toLowerCase() === String(districts[0]).trim().toLowerCase());
-                                if (config) return config.storekeeper_name;
+                            data={recentTransactions
+                                .filter(t => selectedPrintIds.includes(t.id))
+                                .map(t => {
+                                    const p = products.find(prod => prod.id === t.product_id);
+                                    return {
+                                        product_name: p ? p.name : 'Unknown',
+                                        unit: p ? p.unit : '',
+                                        quantity: t.quantity,
+                                        unit_price: t.unit_price,
+                                        serial_code: t.serial_code || '',
+                                        item_status: t.item_status || ''
+                                    };
+                                })
                             }
-
-                            // Fallback
-                            return profile?.full_name || 'System Admin';
-                        })())}
-                        senderPhone={(((): string => {
-                            // Re-calculate deliverer name (should extract to var but inline is safe for now)
-                            const selectedTrans = recentTransactions.filter(t => selectedPrintIds.includes(t.id));
-                            const districts = Array.from(new Set(selectedTrans.map(t => t.district).filter(Boolean)));
-                            let dName = profile?.full_name || 'System Admin';
-
-                            if (districts.length === 1) {
-                                const config = districtConfigs.find(c => c.district.trim().toLowerCase() === String(districts[0]).trim().toLowerCase());
-                                if (config) dName = config.storekeeper_name;
-                            }
-
-                            // Lookup phone
-                            const emp = employees.find(e => e.full_name?.toLowerCase().trim() === dName.toLowerCase().trim());
-                            return emp?.phone_number || profile?.phone_number || '';
-                        })())}
-                        receiverName={Array.from(new Set(recentTransactions.filter(t => selectedPrintIds.includes(t.id)).map(t => t.group_name || t.receiver_group))).join(', ')}
-                        date={new Date().toISOString()}
-                        reportNumber={reportNumber}
-                    />
+                            delivererName={profile?.full_name || 'Admin'}
+                            senderPhone={profile?.phone_number || ''}
+                            date={new Date().toISOString()}
+                            receiverName={Array.from(new Set(recentTransactions.filter(t => selectedPrintIds.includes(t.id)).map(t => t.group_name || t.receiver_group))).join(', ')}
+                            reportNumber={reportNumber}
+                        />
                     </Box>
                 </DialogContent>
             </Dialog>

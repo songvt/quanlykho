@@ -6,12 +6,14 @@ interface ProductsState {
     items: Product[];
     status: 'idle' | 'loading' | 'succeeded' | 'failed';
     error: string | null;
+    lastFetched: number | null;
 }
 
 const initialState: ProductsState = {
     items: [],
     status: 'idle',
     error: null,
+    lastFetched: null,
 };
 
 export const fetchProducts = createAsyncThunk('products/fetchProducts', async () => {
@@ -52,17 +54,30 @@ const productsSlice = createSlice({
             .addCase(fetchProducts.fulfilled, (state, action) => {
                 state.status = 'succeeded';
                 state.items = action.payload;
+                state.lastFetched = Date.now();
             })
             .addCase(fetchProducts.rejected, (state, action) => {
                 state.status = 'failed';
                 state.error = action.error.message || 'Failed to fetch products';
             })
             // Add
+            .addCase(addNewProduct.pending, (state) => {
+                state.status = 'loading';
+            })
             .addCase(addNewProduct.fulfilled, (state, action) => {
+                state.status = 'succeeded';
                 state.items.push(action.payload);
             })
+            .addCase(addNewProduct.rejected, (state) => {
+                state.status = 'failed';
+                state.lastFetched = null;
+            })
             // Update
+            .addCase(updateProduct.pending, (state) => {
+                state.status = 'loading';
+            })
             .addCase(updateProduct.fulfilled, (state, action) => {
+                state.status = 'succeeded';
                 const index = state.items.findIndex(p => p.id === action.payload.id);
                 if (index !== -1) {
                     state.items[index] = action.payload;
@@ -72,14 +87,26 @@ const productsSlice = createSlice({
             .addCase(importProducts.fulfilled, (state, action) => {
                 if (action.payload) {
                     state.items.push(...action.payload);
+                    state.lastFetched = null;
                 }
             })
-            // Delete
-            .addCase(deleteProduct.fulfilled, (state, action) => {
-                state.items = state.items.filter(p => p.id !== action.payload);
+            // Delete (Optimistic)
+            .addCase(deleteProduct.pending, (state, action) => {
+                const id = action.meta.arg;
+                state.items = state.items.filter(p => p.id !== id);
             })
-            .addCase(deleteProducts.fulfilled, (state, action) => {
-                state.items = state.items.filter(p => !action.payload.includes(p.id));
+            .addCase(deleteProduct.rejected, (state) => {
+                state.lastFetched = null;
+                state.status = 'failed';
+            })
+            // Bulk Delete (Optimistic)
+            .addCase(deleteProducts.pending, (state, action) => {
+                const ids = action.meta.arg;
+                state.items = state.items.filter(p => !ids.includes(p.id));
+            })
+            .addCase(deleteProducts.rejected, (state) => {
+                state.lastFetched = null;
+                state.status = 'failed';
             });
     },
 });

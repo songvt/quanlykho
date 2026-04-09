@@ -1,15 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts } from '../store/slices/productsSlice';
 import { fetchInventory, selectProductStock } from '../store/slices/inventorySlice';
-import { addInboundTransaction, fetchTransactions, updateTransaction, deleteTransaction } from '../store/slices/transactionsSlice';
+import { addInboundTransaction, fetchTransactions, updateTransaction, deleteTransaction, bulkDeleteTransactions, importInboundTransactions } from '../store/slices/transactionsSlice';
 import type { RootState, AppDispatch } from '../store';
 import type { Transaction } from '../types';
 import {
-    Button, TextField, FormControl, FormHelperText,
-    Typography, Box, Alert, CircularProgress, Paper, Stack, Dialog, DialogContent, DialogTitle, Autocomplete,
-    List, ListItem, ListItemText, ListItemSecondaryAction, IconButton,
-    Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Tooltip, DialogActions, InputAdornment, MenuItem
+    Button, TextField, FormControl, FormHelperText, Checkbox, Chip,
+    Typography, Box, CircularProgress, Paper, Stack, Dialog, DialogContent, DialogTitle, Autocomplete,
+    IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Tooltip, DialogActions, InputAdornment, MenuItem, Grid
 } from '@mui/material';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
@@ -21,7 +20,11 @@ import QRScanner from '../components/QRScanner';
 import { readExcelFile, generateInboundTemplate } from '../utils/excelUtils';
 import { useScanDetection } from '../hooks/useScanDetection';
 import { playBeep } from '../utils/audio';
-import { importInboundTransactions } from '../store/slices/transactionsSlice';
+import { parseSerialInput, filterNewSerials } from '../utils/serialParser';
+import SerialChips from '../components/Common/SerialChips';
+import { useNotification } from '../contexts/NotificationContext';
+import TableSkeleton from '../components/Common/TableSkeleton';
+
 
 export const Inbound = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -31,16 +34,26 @@ export const Inbound = () => {
     const { items: transactions, status: txStatus } = useSelector((state: RootState) => state.transactions);
     const isAdmin = profile?.role === 'admin';
 
+    const { success, error: notifyError } = useNotification();
+
     // Form state
     const [selectedProduct, setSelectedProduct] = useState('');
     const currentStock = useSelector((state: RootState) => selectProductStock(state, selectedProduct));
     const [quantity, setQuantity] = useState(1);
     const [serial, setSerial] = useState('');
     const [price, setPrice] = useState(0);
-    const [district, setDistrict] = useState(''); // Added District
-    const [itemStatus, setItemStatus] = useState(''); // Added Item Status
+    const [district, setDistrict] = useState('');
+    const [itemStatus, setItemStatus] = useState('');
     const [scannedSerials, setScannedSerials] = useState<string[]>([]);
-    const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
+
+    // Refs để tránh stale closure khi quét nhanh liên tiếp
+    const scannedSerialsRef = useRef<string[]>([]);
+    const notifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const pendingCountRef = useRef(0);
+
+    // Sync ref khi state thay đổi
+    useEffect(() => { scannedSerialsRef.current = scannedSerials; }, [scannedSerials]);
 
     // Scanner state
     const [showScanner, setShowScanner] = useState(false);
@@ -59,147 +72,154 @@ export const Inbound = () => {
     const [deleteDialog, setDeleteDialog] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<Transaction | null>(null);
 
+    // Bulk selection state
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [bulkDeleteDialog, setBulkDeleteDialog] = useState(false);
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
     useEffect(() => {
-        if (status === 'idle') {
-            dispatch(fetchProducts());
-        }
-        if (txStatus === 'idle') {
-            dispatch(fetchTransactions());
-        }
+        if (status === 'idle') dispatch(fetchProducts());
+        if (txStatus === 'idle') dispatch(fetchTransactions());
         dispatch(fetchInventory());
     }, [status, txStatus, dispatch]);
 
-    // Physical Scanners (Keyboard Mode)
-    useScanDetection((code) => {
-        playBeep(); // Beep for physical scanner
+    const handlePhysicalScan = useCallback((code: string) => {
+        playBeep();
         handleScanSuccess(code);
-    });
+    }, [selectedProduct, products]);
+    useScanDetection(handlePhysicalScan);
 
     const handleSave = async () => {
         if (!selectedProduct) {
-            setNotification({ type: 'error', message: 'Vui lòng chọn sản phẩm' });
+            notifyError('Vui lòng chọn sản phẩm');
             return;
         }
+        if (isSaving) return;
 
         const product = products.find(p => p.id === selectedProduct);
         const isSerialized = product?.category?.toLowerCase() === 'hàng hóa';
 
-        // Parse serials
         let serialList: string[] = [];
         if (isSerialized) {
-            // Priority: scannedSerials (multi-scan) > serial (manual text input)
             if (scannedSerials.length > 0) {
                 serialList = [...scannedSerials];
-            } else if (false) { // Original logic used `serial.trim()`, but `serial` state is removed. This branch will now effectively be dead.
-                // serialList = serial.split(/[\s,;\n]+/).map(s => s.trim()).filter(s => s !== '');
+            } else if (serial.trim()) {
+                serialList = parseSerialInput(serial);
             }
 
             if (serialList.length === 0) {
-                setNotification({ type: 'error', message: 'Vui lòng nhập hoặc quét số Serial cho Hàng hóa' });
+                notifyError('Vui lòng nhập hoặc quét số Serial cho Hàng hóa');
                 return;
             }
         }
 
+        setIsSaving(true);
         try {
             if (isSerialized) {
-                // Multi-serial Mode
-                let successCount = 0;
-                for (const code of serialList) {
-                    await dispatch(addInboundTransaction({
-                        product_id: selectedProduct,
-                        quantity: 1, // Force quantity to 1 for each serial
-                        serial_code: code,
-                        unit_price: Number(price),
-                        district: district.trim() || undefined,
-                        item_status: itemStatus.trim() || undefined // Added item_status
-                    })).unwrap();
-                    successCount++;
-                }
-                setNotification({ type: 'success', message: `Đã nhập kho thành công ${successCount} serial!` });
+                const bulkData = serialList.map(code => ({
+                    product_id: selectedProduct,
+                    quantity: 1,
+                    serial_code: code,
+                    unit_price: Number(price),
+                    district: district.trim() || undefined,
+                    item_status: itemStatus.trim() || undefined
+                }));
+                await dispatch(importInboundTransactions(bulkData)).unwrap();
+                success(`Đã nhập kho thành công ${bulkData.length} serial!`);
             } else {
-                // Single Item / Non-serialized Mode
                 await dispatch(addInboundTransaction({
                     product_id: selectedProduct,
                     quantity: Number(quantity),
                     serial_code: serial.trim() || undefined,
                     unit_price: Number(price),
                     district: district.trim() || undefined,
-                    item_status: itemStatus.trim() || undefined // Added item_status
+                    item_status: itemStatus.trim() || undefined
                 })).unwrap();
-                setNotification({ type: 'success', message: 'Nhập kho thành công!' });
+                success('Nhập kho thành công!');
             }
 
-            // Reset form
             setSerial('');
             setScannedSerials([]);
             setQuantity(1);
-            setDistrict(''); // Reset district
+            setDistrict('');
             setItemStatus('');
-
-            // Sync Global Redux State
             dispatch(fetchTransactions());
             dispatch(fetchInventory());
-            // Keep price? Maybe.
         } catch (err: any) {
-            setNotification({ type: 'error', message: err.message || 'Có lỗi xảy ra' });
+            notifyError(err.message || 'Có lỗi xảy ra');
+        } finally {
+            setIsSaving(false);
         }
     };
+
+    // parseSerialInput và tryDetectMultipleSerials đã được chuyển sang utils/serialParser.ts
+    // Import trực tiếp từ module để tái sử dụng cho cả Outbound và EmployeeReturns
+
 
     const handleScanSuccess = (decodedText: string) => {
         const product = products.find(p => p.id === selectedProduct);
         const isSerialized = product?.category?.toLowerCase() === 'hàng hóa';
 
-        // Note: QRScanner plays beep internally. useScanDetection plays beep in its callback.
-        // So we don't play beep here to avoid double-beep for camera.
-
         if (isSerialized) {
-            // Split scannned text by space, newline, comma, semicolon
-            const newCodes = decodedText.split(/[\s,;\n]+/).map(s => s.trim()).filter(s => s !== '');
-            let addedCount = 0;
+            // Parse 2D barcode - hỗ trợ GS1/DataMatrix/QR và tự tách serial ghép
+            const newCodes = parseSerialInput(decodedText);
 
-            setScannedSerials(prev => {
-                const uniqueNewCodes = newCodes.filter(code => !prev.includes(code));
-                if (uniqueNewCodes.length === 0) return prev;
-                addedCount = uniqueNewCodes.length;
-                const newer = [...prev, ...uniqueNewCodes];
-                setQuantity(newer.length);
-                return newer;
-            });
+            // Đọc từ ref để tránh stale closure khi quét nhanh liên tiếp
+            const currentSerials = scannedSerialsRef.current;
+            const uniqueNewCodes = filterNewSerials(newCodes, currentSerials);
 
-            if (addedCount > 0) {
-                setNotification({ type: 'success', message: `Đã thêm ${addedCount} serial: ${newCodes.join(', ')}` });
-                setShowScanner(false); // Close scanner after success (batch scan complete)
+            if (uniqueNewCodes.length > 0) {
+                // Cập nhật ref ngay lập tức (không chờ re-render)
+                scannedSerialsRef.current = [...currentSerials, ...uniqueNewCodes];
+
+                // Gom batch update cho state
+                pendingCountRef.current += uniqueNewCodes.length;
+                setScannedSerials(scannedSerialsRef.current);
+                setQuantity(scannedSerialsRef.current.length);
+
+                // Debounce notification 400ms sau lần quét cuối
+                if (notifyTimerRef.current) clearTimeout(notifyTimerRef.current);
+                notifyTimerRef.current = setTimeout(() => {
+                    const count = pendingCountRef.current;
+                    const total = scannedSerialsRef.current.length;
+                    success(`✅ Đã thêm ${count} serial — Tổng: ${total}`);
+                    pendingCountRef.current = 0;
+                }, 400);
+
+                if (showScanner) setShowScanner(false);
             } else {
-                setNotification({ type: 'error', message: `Các serial này đã tồn tại: ${decodedText}` });
-                // Optional: Close scanner even if duplicate? User said "scan done then close".
-                // Let's close it to be consistent with "scan done".
-                setShowScanner(false);
+                // Tất cả serial đã tồn tại
+                const msg = newCodes.length === 1
+                    ? `⚠️ Serial đã tồn tại: ${newCodes[0]}`
+                    : `⚠️ ${newCodes.length} serial đã tồn tại`;
+                notifyError(msg);
+                if (showScanner) setShowScanner(false);
             }
         } else {
             setSerial(decodedText);
             setShowScanner(false);
-            setNotification({ type: 'success', message: 'Đã quét mã thành công!' });
+            success('Đã quét mã thành công!');
         }
     };
 
     const handleManualAddSerial = () => {
         if (!serial.trim()) return;
 
-        const newCodes = serial.split(/[\s,;\n]+/).map(s => s.trim()).filter(s => s !== '');
+        const newCodes = parseSerialInput(serial);
         if (newCodes.length === 0) return;
 
         setScannedSerials(prev => {
             const uniqueNewCodes = newCodes.filter(code => !prev.includes(code));
             if (uniqueNewCodes.length === 0) {
-                setNotification({ type: 'error', message: 'Tất cả serial này đã được thêm rồi.' });
+                notifyError('Tất cả serial này đã được thêm rồi.');
                 return prev;
             }
             const newer = [...prev, ...uniqueNewCodes];
             setQuantity(newer.length);
             if (uniqueNewCodes.length < newCodes.length) {
-                setNotification({ type: 'success', message: `Đã thêm ${uniqueNewCodes.length} serial mới. Bỏ qua ${newCodes.length - uniqueNewCodes.length} trùng lặp.` });
+                success(`Đã thêm ${uniqueNewCodes.length} serial mới. Bỏ qua ${newCodes.length - uniqueNewCodes.length} trùng lặp.`);
             } else {
-                setNotification({ type: 'success', message: `Đã thêm ${uniqueNewCodes.length} serial.` });
+                success(`Đã thêm ${uniqueNewCodes.length} serial.`);
             }
             return newer;
         });
@@ -255,12 +275,12 @@ export const Inbound = () => {
                     item_status: editData.item_status,
                 }
             })).unwrap();
-            setNotification({ type: 'success', message: 'Cập nhật thành công!' });
+            success('Cập nhật thành công!');
             setEditDialog(false);
             dispatch(fetchTransactions());
             dispatch(fetchInventory());
         } catch (error: any) {
-            setNotification({ type: 'error', message: error.message || 'Lỗi cập nhật' });
+            notifyError(error.message || 'Lỗi cập nhật');
         }
     };
 
@@ -273,12 +293,43 @@ export const Inbound = () => {
         if (!itemToDelete) return;
         try {
             await dispatch(deleteTransaction({ id: itemToDelete.id, type: 'inbound' })).unwrap();
-            setNotification({ type: 'success', message: 'Xóa thành công!' });
+            success('Xóa thành công!');
             setDeleteDialog(false);
             dispatch(fetchTransactions());
             dispatch(fetchInventory());
         } catch (error: any) {
-            setNotification({ type: 'error', message: error.message || 'Lỗi khi xóa' });
+            notifyError(error.message || 'Lỗi khi xóa');
+        }
+    };
+
+    const handleSelectAll = (checked: boolean) => {
+        if (checked) {
+            setSelectedIds(paginatedTransactions.map(t => t.id));
+        } else {
+            setSelectedIds([]);
+        }
+    };
+
+    const handleSelectOne = (id: string, checked: boolean) => {
+        setSelectedIds(prev =>
+            checked ? [...prev, id] : prev.filter(i => i !== id)
+        );
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedIds.length === 0) return;
+        setIsBulkDeleting(true);
+        try {
+            await dispatch(bulkDeleteTransactions({ ids: selectedIds, type: 'inbound' })).unwrap();
+            success(`Đã xóa ${selectedIds.length} giao dịch thành công!`);
+            setSelectedIds([]);
+            setBulkDeleteDialog(false);
+            dispatch(fetchTransactions());
+            dispatch(fetchInventory());
+        } catch (error: any) {
+            notifyError(error.message || 'Lỗi khi xóa hàng loạt');
+        } finally {
+            setIsBulkDeleting(false);
         }
     };
 
@@ -341,16 +392,14 @@ export const Inbound = () => {
                                         if (mappedData.length > 0) {
                                             await dispatch(importInboundTransactions(mappedData)).unwrap();
 
-                                            // Sync Global Redux State
                                             dispatch(fetchTransactions());
                                             dispatch(fetchInventory());
 
-                                            alert(`Đã nhập thành công ${mappedData.length} giao dịch!`);
-                                            setNotification({ type: 'success', message: `Đã nhập ${mappedData.length} giao dịch từ Excel!` });
+                                            success(`Đã nhập thành công ${mappedData.length} giao dịch!`);
                                         }
                                     } catch (error: any) {
                                         console.error('Import failed:', error);
-                                        alert(`Lỗi: ${error.message}`);
+                                        notifyError(`Lỗi: ${error.message}`);
                                     }
                                     e.target.value = '';
                                 }
@@ -361,52 +410,45 @@ export const Inbound = () => {
             )}
 
             <Paper elevation={0} sx={{ p: { xs: 2, sm: 4, md: 6 }, maxWidth: 1000, mx: 'auto', borderRadius: { xs: 2, sm: 5 }, border: '1px solid', borderColor: 'divider', boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
-                {notification && (
-                    <Alert severity={notification.type} onClose={() => setNotification(null)} sx={{ mb: 3, borderRadius: 2 }}>
-                        {notification.message}
-                    </Alert>
-                )}
-
-                <Stack spacing={{ xs: 3, md: 4 }}>
-                    <FormControl fullWidth size="small">
-                        <Autocomplete
-                            options={products}
-                            getOptionLabel={(option) => `${option.name} (${option.item_code}) - Tồn: ${stockMap[option.id] || 0}`}
-                            value={products.find(p => p.id === selectedProduct) || null}
-                            onChange={(_, newValue) => {
-                                if (newValue) {
-                                    setSelectedProduct(newValue.id);
-                                    setPrice(newValue.unit_price || 0);
-                                    setScannedSerials([]);
-                                    setSerial('');
-                                    setQuantity(1);
-                                } else {
-                                    setSelectedProduct('');
-                                    setPrice(0);
-                                    setScannedSerials([]);
-                                }
-                            }}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label="Tên vật tư hàng hóa"
-                                    placeholder="Tìm kiếm vật tư..."
-                                    InputLabelProps={{ style: { fontSize: '0.9rem' } }}
-                                    size="small"
-                                />
+                <Grid container spacing={3}>
+                    <Grid size={12}>
+                        <FormControl fullWidth size="small">
+                            <Autocomplete
+                                options={products}
+                                getOptionLabel={(option) => `${option.name} (${option.item_code}) - Tồn: ${stockMap[option.id] || 0}`}
+                                value={products.find(p => p.id === selectedProduct) || null}
+                                onChange={(_, newValue) => {
+                                    if (newValue) {
+                                        setSelectedProduct(newValue.id);
+                                        setPrice(newValue.unit_price || 0);
+                                        setScannedSerials([]);
+                                        setSerial('');
+                                        setQuantity(1);
+                                    } else {
+                                        setSelectedProduct('');
+                                        setPrice(0);
+                                        setScannedSerials([]);
+                                    }
+                                }}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Tên vật tư hàng hóa"
+                                        placeholder="Tìm kiếm vật tư..."
+                                        InputLabelProps={{ style: { fontSize: '0.9rem' } }}
+                                        size="small"
+                                    />
+                                )}
+                            />
+                            {selectedProduct && (
+                                <FormHelperText sx={{ mt: 1, fontSize: '0.9rem', color: 'primary.main', fontWeight: 600 }}>
+                                    Tồn kho hiện tại: {currentStock}
+                                </FormHelperText>
                             )}
-                            PaperComponent={({ children }) => (
-                                <Paper elevation={8} sx={{ borderRadius: 2 }}>{children}</Paper>
-                            )}
-                        />
-                        {selectedProduct && (
-                            <FormHelperText sx={{ mt: 1, fontSize: '0.9rem', color: 'primary.main', fontWeight: 600 }}>
-                                Tồn kho hiện tại: {currentStock}
-                            </FormHelperText>
-                        )}
-                    </FormControl>
+                        </FormControl>
+                    </Grid>
 
-                    <Box display="grid" gridTemplateColumns={{ xs: '1fr', md: '1fr 1fr' }} gap={{ xs: 2, md: 4 }}>
+                    <Grid size={{ xs: 12, md: 6 }}>
                         <TextField
                             fullWidth
                             label="Số lượng"
@@ -414,30 +456,27 @@ export const Inbound = () => {
                             value={quantity}
                             onChange={e => setQuantity(Number(e.target.value))}
                             inputProps={{ min: 1 }}
-                            InputProps={{ sx: { borderRadius: 2, height: { xs: 40, sm: 56 }, fontSize: { xs: '0.875rem', md: '1rem' } } }}
-                            InputLabelProps={{ sx: { fontSize: { xs: '0.875rem', md: '1rem' }, top: { xs: -5, sm: 0 } } }}
                             size="small"
+                            disabled={products.find(p => p.id === selectedProduct)?.category?.toLowerCase() === 'hàng hóa'}
                         />
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
                         <TextField
                             fullWidth
                             label="Đơn giá nhập"
                             type="number"
                             value={price}
                             onChange={e => setPrice(Number(e.target.value))}
-                            InputProps={{ sx: { borderRadius: 2, height: { xs: 40, sm: 56 }, fontSize: { xs: '0.875rem', md: '1rem' } } }}
-                            InputLabelProps={{ sx: { fontSize: { xs: '0.875rem', md: '1rem' }, top: { xs: -5, sm: 0 } } }}
                             size="small"
                         />
-                    </Box>
-                    <Box display="grid" gridTemplateColumns={{ xs: '1fr', md: '1fr 1fr' }} gap={{ xs: 2, md: 4 }}>
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
                         <TextField
                             fullWidth
                             select
                             label="Trạng thái hàng"
                             value={itemStatus}
                             onChange={e => setItemStatus(e.target.value)}
-                            InputProps={{ sx: { borderRadius: 2, height: { xs: 40, sm: 56 }, fontSize: { xs: '0.875rem', md: '1rem' } } }}
-                            InputLabelProps={{ sx: { fontSize: { xs: '0.875rem', md: '1rem' }, top: { xs: -5, sm: 0 } } }}
                             size="small"
                         >
                             <MenuItem value=""><em>-- Chọn trạng thái --</em></MenuItem>
@@ -445,15 +484,14 @@ export const Inbound = () => {
                             <MenuItem value="Hàng thu hồi bảo hành">Hàng thu hồi bảo hành</MenuItem>
                             <MenuItem value="Hàng thu hồi">Hàng thu hồi</MenuItem>
                         </TextField>
-
+                    </Grid>
+                    <Grid size={{ xs: 12, md: 6 }}>
                         <TextField
                             fullWidth
                             select
                             label="Quận/Huyện"
                             value={district}
                             onChange={e => setDistrict(e.target.value)}
-                            InputProps={{ sx: { borderRadius: 2, height: { xs: 40, sm: 56 }, fontSize: { xs: '0.875rem', md: '1rem' } } }}
-                            InputLabelProps={{ sx: { fontSize: { xs: '0.875rem', md: '1rem' }, top: { xs: -5, sm: 0 } } }}
                             size="small"
                         >
                             <MenuItem value=""><em>-- Chọn quận/huyện --</em></MenuItem>
@@ -461,89 +499,86 @@ export const Inbound = () => {
                             <MenuItem value="HMN">HMN</MenuItem>
                             <MenuItem value="CCI">CCI</MenuItem>
                         </TextField>
-                    </Box>
+                    </Grid>
                     {products.find(p => p.id === selectedProduct)?.category?.toLowerCase() === 'hàng hóa' && (
-                        <Box>
-                            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-                                <TextField
-                                    fullWidth
-                                    label="Serial / QR Code (Bắt buộc)"
-                                    required
-                                    value={serial}
-                                    onChange={e => setSerial(e.target.value)}
-                                    onKeyDown={e => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            handleManualAddSerial();
-                                        }
-                                    }}
-                                    placeholder="Quét mã hoặc nhập tay rồi Enter"
-                                    InputProps={{ sx: { borderRadius: 2, height: { xs: 40, sm: 56 }, fontSize: { xs: '0.875rem', md: '1rem' } } }}
-                                    InputLabelProps={{ sx: { fontSize: { xs: '0.875rem', md: '1rem' }, top: { xs: -5, sm: 0 } } }}
-                                    size="small"
-                                />
-                                <Button
-                                    variant="outlined"
-                                    color="primary"
-                                    onClick={() => setShowScanner(true)}
-                                    startIcon={<QrCodeScannerIcon />}
-                                    sx={{ height: { xs: 40, sm: 56 }, px: { xs: 2, md: 3 }, borderRadius: 2, whiteSpace: 'nowrap', fontSize: { xs: '0.875rem', md: '1rem' }, width: { xs: '100%', sm: 'auto' } }}
-                                >
-                                    Quét QR
-                                </Button>
-                            </Stack>
+                        <Grid size={12}>
+                            <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+                                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center" mb={2}>
+                                    <TextField
+                                        fullWidth
+                                        label="Serial / QR Code (Bắt buộc)"
+                                        required
+                                        value={serial}
+                                        onChange={e => setSerial(e.target.value)}
+                                        onKeyDown={e => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleManualAddSerial();
+                                            }
+                                        }}
+                                        placeholder="Quét mã hoặc nhập tay rồi Enter"
+                                        size="small"
+                                    />
+                                    <Button
+                                        variant="outlined"
+                                        color="primary"
+                                        onClick={() => setShowScanner(true)}
+                                        startIcon={<QrCodeScannerIcon />}
+                                        sx={{ height: 40, px: 3, borderRadius: 2, whiteSpace: 'nowrap' }}
+                                    >
+                                        Quét QR
+                                    </Button>
+                                </Stack>
 
-                            {/* List of scanned serials */}
-                            {scannedSerials.length > 0 && (
-                                <Paper variant="outlined" sx={{ mt: 2, maxHeight: 200, overflow: 'auto', bgcolor: 'grey.50' }}>
-                                    <List dense>
-                                        {scannedSerials.map((code, index) => (
-                                            <ListItem key={index} divider>
-                                                <ListItemText primary={`#${index + 1}: ${code}`} />
-                                                <ListItemSecondaryAction>
-                                                    <IconButton edge="end" size="small" onClick={() => handleRemoveSerial(code)}>
-                                                        <DeleteIcon fontSize="small" />
-                                                    </IconButton>
-                                                </ListItemSecondaryAction>
-                                            </ListItem>
-                                        ))}
-                                    </List>
-                                </Paper>
-                            )}
-                            <FormHelperText sx={{ mt: 1 }}>* Số lượng sẽ tự động cập nhật theo số serial đã quét ({scannedSerials.length})</FormHelperText>
-                        </Box>
+                                <SerialChips 
+                                    serials={scannedSerials} 
+                                    onRemove={handleRemoveSerial} 
+                                    maxVisible={12} 
+                                />
+                                
+                                {scannedSerials.length === 0 && (
+                                    <Typography variant="caption" color="text.secondary" display="block" textAlign="center" py={1}>
+                                        Chưa có serial nào được quét. Số lượng sẽ tự động cập nhật theo số serial.
+                                    </Typography>
+                                )}
+                            </Paper>
+                        </Grid>
                     )}
 
-                    <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
-                        <Button
-                            variant="outlined"
-                            color="inherit"
-                            size="large"
-                            onClick={() => {
-                                setSelectedProduct('');
-                                setQuantity(1);
-                                setSerial('');
-                                setScannedSerials([]);
-                                setPrice(0);
-                                setDistrict('');
-                                setItemStatus('');
-                            }}
-                            sx={{ minWidth: 120, py: { xs: 1, md: 1.5 }, borderRadius: 3, fontSize: { xs: '0.9rem', md: '1rem' }, fontWeight: 700, textTransform: 'none' }}
-                        >
-                            Hủy
-                        </Button>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            size="large"
-                            onClick={handleSave}
-                            disabled={status === 'loading'}
-                            sx={{ minWidth: 150, py: { xs: 1, md: 1.5 }, borderRadius: 3, fontSize: { xs: '0.9rem', md: '1rem' }, fontWeight: 700, textTransform: 'none', boxShadow: 'none' }}
-                        >
-                            Nhập Kho
-                        </Button>
-                    </Box>
-                </Stack>
+                    <Grid size={12}>
+                        <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
+                            <Button
+                                variant="outlined"
+                                color="inherit"
+                                size="large"
+                                onClick={() => {
+                                    setSelectedProduct('');
+                                    setQuantity(1);
+                                    setSerial('');
+                                    setScannedSerials([]);
+                                    setPrice(0);
+                                    setDistrict('');
+                                    setItemStatus('');
+                                }}
+                                sx={{ minWidth: 120, py: 1.2, borderRadius: 3, fontWeight: 700, textTransform: 'none' }}
+                            >
+                                Hủy
+                            </Button>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                size="large"
+                                onClick={handleSave}
+                                disabled={status === 'loading' || isSaving}
+                                startIcon={isSaving ? <CircularProgress size={18} color="inherit" /> : undefined}
+                                sx={{ minWidth: 150, py: 1.2, borderRadius: 3, fontWeight: 700, textTransform: 'none', boxShadow: 'none' }}
+                            >
+                                {isSaving ? 'Đang lưu...' : 'Nhập Kho'}
+                            </Button>
+                        </Box>
+                    </Grid>
+                </Grid>
+            </Paper>
 
 
                 <Dialog open={showScanner} onClose={() => setShowScanner(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
@@ -561,13 +596,30 @@ export const Inbound = () => {
                         </Box>
                     </DialogContent>
                 </Dialog>
-            </Paper>
 
             {/* List of Inbound Transactions */}
             <Box mt={6}>
-                <Typography variant="h5" fontWeight="bold" mb={3}>Danh sách hàng hóa đã nhập</Typography>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
+                    <Typography variant="h5" fontWeight="bold">
+                        Danh sách hàng hóa đã nhập
+                        {filteredTransactions.length > 0 && (
+                            <Chip label={filteredTransactions.length} size="small" color="primary" sx={{ ml: 1.5, fontWeight: 700, fontSize: '0.8rem' }} />
+                        )}
+                    </Typography>
+                    {selectedIds.length > 0 && (
+                        <Button
+                            variant="contained"
+                            color="error"
+                            startIcon={<DeleteIcon />}
+                            onClick={() => setBulkDeleteDialog(true)}
+                            sx={{ fontWeight: 700, borderRadius: 2 }}
+                        >
+                            Xóa {selectedIds.length} mục đã chọn
+                        </Button>
+                    )}
+                </Box>
                 <Paper elevation={0} sx={{ borderRadius: 2, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
-                    <Box p={2} borderBottom="1px solid" borderColor="divider" display="flex" justifyContent="space-between" alignItems="center">
+                    <Box p={2} borderBottom="1px solid" borderColor="divider" display="flex" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap">
                         <TextField
                             placeholder="Tìm kiếm theo Tên SP, Serial, Quận/Huyện..."
                             size="small"
@@ -579,11 +631,25 @@ export const Inbound = () => {
                                 sx: { borderRadius: 2 }
                             }}
                         />
+                        {selectedIds.length > 0 && (
+                            <Box display="flex" alignItems="center" gap={1}>
+                                <Typography variant="body2" color="text.secondary">Đã chọn: <b>{selectedIds.length}</b></Typography>
+                                <Button size="small" color="inherit" onClick={() => setSelectedIds([])}>Đỏ chọn</Button>
+                            </Box>
+                        )}
                     </Box>
                     <TableContainer>
                         <Table sx={{ minWidth: 800 }}>
                             <TableHead sx={{ bgcolor: 'grey.50' }}>
                                 <TableRow>
+                                    <TableCell padding="checkbox" sx={{ pl: 1.5 }}>
+                                        <Checkbox
+                                            size="small"
+                                            indeterminate={selectedIds.length > 0 && selectedIds.length < paginatedTransactions.length}
+                                            checked={paginatedTransactions.length > 0 && paginatedTransactions.every(t => selectedIds.includes(t.id))}
+                                            onChange={e => handleSelectAll(e.target.checked)}
+                                        />
+                                    </TableCell>
                                     <TableCell sx={{ fontWeight: 600 }}>Thời gian</TableCell>
                                     <TableCell sx={{ fontWeight: 600 }}>Tên vật tư</TableCell>
                                     <TableCell sx={{ fontWeight: 600 }}>Serial</TableCell>
@@ -595,10 +661,24 @@ export const Inbound = () => {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {paginatedTransactions.length > 0 ? (
+                                {txStatus === 'loading' ? (
+                                    <TableSkeleton columns={9} rows={rowsPerPage} />
+                                ) : paginatedTransactions.length > 0 ? (
                                     paginatedTransactions.map((row) => (
-                                        <TableRow key={row.id} hover>
-                                            <TableCell>{new Date(row.date || (row as any).inbound_date || '').toLocaleString('vi-VN')}</TableCell>
+                                        <TableRow
+                                            key={row.id}
+                                            hover
+                                            selected={selectedIds.includes(row.id)}
+                                            sx={{ '&.Mui-selected': { bgcolor: 'primary.50' } }}
+                                        >
+                                            <TableCell padding="checkbox" sx={{ pl: 1.5 }}>
+                                                <Checkbox
+                                                    size="small"
+                                                    checked={selectedIds.includes(row.id)}
+                                                    onChange={e => handleSelectOne(row.id, e.target.checked)}
+                                                />
+                                            </TableCell>
+                                            <TableCell>{new Date(row.date || row.inbound_date || '').toLocaleString('vi-VN')}</TableCell>
                                             <TableCell>{row.product?.name || 'Unknown'}</TableCell>
                                             <TableCell>{row.serial_code || '-'}</TableCell>
                                             <TableCell align="right">{row.quantity}</TableCell>
@@ -621,7 +701,7 @@ export const Inbound = () => {
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={8} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                                        <TableCell colSpan={9} align="center" sx={{ py: 3, color: 'text.secondary' }}>
                                             Không có dữ liệu
                                         </TableCell>
                                     </TableRow>
@@ -718,7 +798,42 @@ export const Inbound = () => {
                     <Button onClick={handleDeleteConfirm} color="error" variant="contained">Xóa</Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Bulk Delete Confirmation Dialog */}
+            <Dialog open={bulkDeleteDialog} onClose={() => !isBulkDeleting && setBulkDeleteDialog(false)} maxWidth="xs" fullWidth>
+                <DialogTitle sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                    ⚠️ Xác nhận xóa hàng loạt
+                </DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        Bạn sắp xóa <b>{selectedIds.length} giao dịch</b>. Hành động này <b>không thể hoàn tác</b> và sẽ ảnh hưởng đến số lượng tồn kho.
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" mt={1}>
+                        Chắc chắn muốn tiếp tục?
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ p: 2, gap: 1 }}>
+                    <Button
+                        onClick={() => setBulkDeleteDialog(false)}
+                        color="inherit"
+                        variant="outlined"
+                        disabled={isBulkDeleting}
+                    >
+                        Hủy
+                    </Button>
+                    <Button
+                        onClick={handleBulkDelete}
+                        color="error"
+                        variant="contained"
+                        disabled={isBulkDeleting}
+                        startIcon={isBulkDeleting ? <CircularProgress size={16} color="inherit" /> : <DeleteIcon />}
+                    >
+                        {isBulkDeleting ? 'Đang xóa...' : `Xóa ${selectedIds.length} mục`}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
+
     );
 }
 

@@ -190,15 +190,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
 
             case 'DELETE': {
-                const { id, type } = req.body;
-                if (!id || !['inbound', 'outbound'].includes(type)) {
-                    return res.status(400).json({ error: 'Invalid ID or transaction type' });
+                const { id, ids, type } = req.body;
+                if (!['inbound', 'outbound'].includes(type)) {
+                    return res.status(400).json({ error: 'Invalid transaction type' });
                 }
 
                 const sheetToUse = type === 'inbound' ? inboundSheet : outboundSheet;
                 const rows = await sheetToUse.getRows();
-                const rowToDelete = rows.find(row => row.get('id') === id);
 
+                // Bulk delete
+                if (Array.isArray(ids) && ids.length > 0) {
+                    const rowsToDelete = rows.filter(row => ids.includes(row.get('id')));
+                    if (rowsToDelete.length === 0) {
+                        return res.status(404).json({ error: 'No transactions found' });
+                    }
+                    await Promise.all(rowsToDelete.map(row => row.delete()));
+                    return res.status(200).json({ message: `Deleted ${rowsToDelete.length} transactions`, ids });
+                }
+
+                // Single delete
+                if (!id) {
+                    return res.status(400).json({ error: 'Missing id or ids' });
+                }
+                const rowToDelete = rows.find(row => row.get('id') === id);
                 if (rowToDelete) {
                     await rowToDelete.delete();
                     return res.status(200).json({ message: 'Deleted successfully', id });

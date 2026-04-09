@@ -1,16 +1,17 @@
 
-import { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
 import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions,
     TextField, Autocomplete, Chip, Alert, Checkbox, Stack, Grid, useTheme, useMediaQuery,
-    Card, CardContent
+    Card, CardContent, Tooltip, CircularProgress
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import PrintIcon from '@mui/icons-material/Print';
 import SearchIcon from '@mui/icons-material/Search';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
+import DeleteIcon from '@mui/icons-material/Delete';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 
 import { fetchReturns, addReturns, deleteReturns } from '../../store/slices/returnsSlice';
 import { fetchProducts } from '../../store/slices/productsSlice';
@@ -21,13 +22,17 @@ import QRScanner from '../../components/QRScanner';
 import ReturnsReportPreview from '../../components/Reports/ReturnsReportPreview';
 import ProductSearchDialog from '../../components/ProductSearchDialog';
 import { exportStandardReport } from '../../utils/excelUtils';
-import DeleteIcon from '@mui/icons-material/Delete';
-import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import { parseSerialInput, filterNewSerials } from '../../utils/serialParser';
+import { useNotification } from '../../contexts/NotificationContext';
+import SerialChips from '../../components/Common/SerialChips';
+import TableSkeleton from '../../components/Common/TableSkeleton';
+import { playBeep } from '../../utils/audio';
+import { useScanDetection } from '../../hooks/useScanDetection';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import CircularProgress from '@mui/material/CircularProgress';
 import { usePermission } from '../../hooks/usePermission';
+import { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 
 const REASONS = ['Hàng tồn lâu', 'Hàng mới hỏng', 'Hàng thu hồi khách hàng rời mạng', 'Trả hàng KH nâng cấp Mesh'];
 
@@ -79,10 +84,10 @@ const sendTelegramNotification = async (
         const txIds = transactions.map(t => t.id).filter(id => id && !id.startsWith('temp-')).slice(0, 3).join(', ');
         if (txIds) msg += `🆔 Mã GD: <code>${escapeHtml(txIds)}${transactions.length > 3 ? '...' : ''}</code>`;
 
-        const response = await fetch('https://api.telegram.org/bot6446138704:AAG7eFdMA7cWOubGcbard0zsM-fD2_wlsTk/sendMessage', {
+        const response = await fetch('/api/telegram', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: '-4080685922', text: msg, parse_mode: 'HTML' })
+            body: JSON.stringify({ text: msg })
         });
 
         if (!response.ok) {
@@ -100,18 +105,33 @@ const EmployeeReturns = () => {
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     // Selectors
-    const { items: returns } = useSelector((state: RootState) => state.returns);
+    const { items: returns, status: returnsStatus } = useSelector((state: RootState) => state.returns);
     const { items: products } = useSelector((state: RootState) => state.products);
     const { profile } = useSelector((state: RootState) => state.auth);
     const { stockMap, status: inventoryStatus } = useSelector((state: RootState) => state.inventory);
     const { hasPermission } = usePermission();
+    const { success, error: notifyError } = useNotification();
+
+    // Scan Detection
+    useScanDetection((code: string) => {
+        const p = products.find(prod => prod.id === selectedProduct);
+        if (p?.category?.toLowerCase() === 'hàng hóa') {
+            const scannedSerials = parseSerialInput(code);
+            if (scannedSerials.length > 0) {
+                playBeep(800);
+                setSerials(prev => {
+                    const uniqueNew = filterNewSerials(scannedSerials, prev);
+                    return [...prev, ...uniqueNew];
+                });
+            }
+        }
+    }, { minLength: 3 });
 
     // Local State
     const [openCreate, setOpenCreate] = useState(false);
     const [openPreview, setOpenPreview] = useState(false);
     const [openScanner, setOpenScanner] = useState(false);
     const [openProductSearch, setOpenProductSearch] = useState(false);
-    const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
     const [isUploadingDrive, setIsUploadingDrive] = useState(false);
 
     const handleUploadDrive = async () => {
@@ -146,13 +166,13 @@ const EmployeeReturns = () => {
 
             const result = await response.json();
             if (response.ok && result.success) {
-                setNotification({ type: 'success', message: `Lưu Drive thành công: ${fileName}` });
+                success(`Lưu Drive thành công: ${fileName}`);
             } else {
-                setNotification({ type: 'error', message: `Lỗi lưu Drive: ${result.error}` });
+                notifyError(`Lỗi lưu Drive: ${result.error}`);
             }
         } catch (error: any) {
             console.error('Drive upload failed', error);
-            setNotification({ type: 'error', message: `Lỗi tạo PDF: ${error.message}` });
+            notifyError(`Lỗi tạo PDF: ${error.message}`);
         } finally {
             setIsUploadingDrive(false);
         }
@@ -191,14 +211,17 @@ const EmployeeReturns = () => {
     const handleAddManualSerial = () => {
         if (!manualSerial.trim()) return;
 
-        const newCodes = manualSerial.split(/[\s,;\n]+/).map(s => s.trim()).filter(s => s !== '');
+        const newCodes = parseSerialInput(manualSerial);
         if (newCodes.length === 0) return;
 
         setSerials(prev => {
-            const uniqueNew = newCodes.filter(c => !prev.includes(c));
+            const uniqueNew = filterNewSerials(newCodes, prev);
             if (uniqueNew.length === 0) {
-                alert('Tất cả serial này đã có trong danh sách!');
+                notifyError('Tất cả serial này đã được thêm rồi.');
                 return prev;
+            }
+            if (uniqueNew.length < newCodes.length) {
+                success(`Đã thêm ${uniqueNew.length} serial mới. Bỏ qua ${newCodes.length - uniqueNew.length} trùng lặp.`);
             }
             return [...prev, ...uniqueNew];
         });
@@ -211,23 +234,18 @@ const EmployeeReturns = () => {
 
     const handleSave = async () => {
         if (!selectedProduct) {
-            alert('Vui lòng chọn sản phẩm');
+            notifyError('Vui lòng chọn sản phẩm');
             return;
         }
 
         const p = products.find(prod => prod.id === selectedProduct);
-        const isProductGoods = p?.category === 'Hàng hóa';
+        const isProductGoods = p?.category?.toLowerCase() === 'hàng hóa';
 
         // Validation
         if (isProductGoods) {
-            if (serials.length === 0 && !manualSerial) {
-                // Try manual serial as last resort if user forgot to click Add
-                if (manualSerial) {
-                    setSerials([manualSerial]); // Proceed with this logic
-                } else {
-                    alert('Hàng hóa yêu cầu phải có Serial!');
-                    return;
-                }
+            if (serials.length === 0 && !manualSerial.trim()) {
+                notifyError('Hàng hóa yêu cầu phải có Serial!');
+                return;
             }
         }
 
@@ -271,7 +289,7 @@ const EmployeeReturns = () => {
 
         try {
             const createdReturns = await dispatch(addReturns(returnsData)).unwrap();
-            setNotification({ type: 'success', message: `Đã tạo ${returnsData.length} phiếu trả hàng thành công!` });
+            success(`Đã tạo ${returnsData.length} phiếu trả hàng thành công!`);
             
             // Notification
             const productsMap: Record<string, string> = {};
@@ -286,11 +304,11 @@ const EmployeeReturns = () => {
             setManualSerial('');
             setQuantity(1);
             setReason(REASONS[0]);
-            dispatch(fetchReturns()); // Refresh
-            dispatch(fetchTransactions()); // Sync inbound transactions
-            dispatch(fetchInventory()); // Sync stock levels
+            dispatch(fetchReturns());
+            dispatch(fetchTransactions());
+            dispatch(fetchInventory());
         } catch (error: any) {
-            setNotification({ type: 'error', message: 'Lỗi: ' + error.message });
+            notifyError('Lỗi: ' + error.message);
         }
     };
 
@@ -329,10 +347,10 @@ const EmployeeReturns = () => {
 
         try {
             await dispatch(deleteReturns(selectedIds)).unwrap();
-            setNotification({ type: 'success', message: 'Đã xóa thành công!' });
-            setSelectedIds([]); // Clear selection
+            success('Đã xóa thành công!');
+            setSelectedIds([]);
         } catch (error: any) {
-            setNotification({ type: 'error', message: 'Lỗi xóa: ' + error.message });
+            notifyError('Lỗi xóa: ' + error.message);
         }
     };
 
@@ -424,11 +442,6 @@ const EmployeeReturns = () => {
                 </Stack>
             </Box>
 
-            {notification && (
-                <Alert severity={notification.type} onClose={() => setNotification(null)} sx={{ mb: 2, borderRadius: 2 }}>
-                    {notification.message}
-                </Alert>
-            )}
 
             {isMobile ? (
                 // Mobile View: Cards
@@ -501,7 +514,9 @@ const EmployeeReturns = () => {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {returns.length === 0 ? (
+                                {returnsStatus === 'loading' ? (
+                                    <TableSkeleton columns={10} rows={10} />
+                                ) : returns.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={10} align="center" sx={{ py: 3 }}>
                                             Chưa có dữ liệu trả hàng
@@ -562,53 +577,56 @@ const EmployeeReturns = () => {
                         </Box>
 
                         {/* Serial Input Area */}
-                        <Box sx={{ p: 2, border: '1px dashed #ccc', borderRadius: 1 }}>
-                            <Typography variant="subtitle2" gutterBottom>Danh sách Serial ({serials.length})</Typography>
+                        {product?.category?.toLowerCase() === 'hàng hóa' && (
+                            <Box sx={{ p: 2, border: '1px dashed', borderColor: 'divider', borderRadius: 2, bgcolor: 'grey.50' }}>
+                                <Typography variant="subtitle2" gutterBottom fontWeight="bold">Quét/Nhập Serial ({serials.length})</Typography>
 
-                            <Grid container spacing={1} alignItems="center" mb={1}>
-                                <Grid size={{ xs: 8 }}>
-                                    <TextField
-                                        fullWidth
-                                        size="small"
-                                        label="Nhập/Quét Serial"
-                                        value={manualSerial}
-                                        onChange={(e) => setManualSerial(e.target.value)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                                e.preventDefault();
-                                                handleAddManualSerial();
-                                            }
-                                        }}
-                                        helperText="Nhấn Enter để thêm"
-                                    />
+                                <Grid container spacing={1} alignItems="center" mb={2}>
+                                    <Grid size={8}>
+                                        <TextField
+                                            fullWidth
+                                            size="small"
+                                            label="Serial Code"
+                                            value={manualSerial}
+                                            onChange={(e) => setManualSerial(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    handleAddManualSerial();
+                                                }
+                                            }}
+                                            placeholder="Quét mã..."
+                                        />
+                                    </Grid>
+                                    <Grid size={2}>
+                                        <Tooltip title="Thêm">
+                                            <Button variant="contained" onClick={handleAddManualSerial} sx={{ height: 40, minWidth: 40, p: 0, borderRadius: 2 }}>
+                                                <AddIcon />
+                                            </Button>
+                                        </Tooltip>
+                                    </Grid>
+                                    <Grid size={2}>
+                                        <Tooltip title="Mở Camera">
+                                            <Button variant="outlined" color="primary" onClick={() => setOpenScanner(true)} sx={{ height: 40, minWidth: 40, p: 0, borderRadius: 2 }}>
+                                                <QrCodeScannerIcon />
+                                            </Button>
+                                        </Tooltip>
+                                    </Grid>
                                 </Grid>
-                                <Grid size={{ xs: 2 }}>
-                                    <Button variant="contained" onClick={handleAddManualSerial} sx={{ height: 40, minWidth: 40, p: 0 }}>
-                                        <AddIcon />
-                                    </Button>
-                                </Grid>
-                                <Grid size={{ xs: 2 }}>
-                                    <Button variant="outlined" color="primary" onClick={() => setOpenScanner(true)} sx={{ height: 40, minWidth: 40, p: 0 }}>
-                                        <QrCodeScannerIcon />
-                                    </Button>
-                                </Grid>
-                            </Grid>
 
-                            {/* Serial List */}
-                            <Box sx={{ maxHeight: 150, overflowY: 'auto' }}>
-                                {serials.map((s, index) => (
-                                    <Chip
-                                        key={index}
-                                        label={s}
-                                        onDelete={() => handleRemoveSerial(s)}
-                                        sx={{ m: 0.5 }}
-                                    />
-                                ))}
+                                <SerialChips
+                                    serials={serials}
+                                    onRemove={handleRemoveSerial}
+                                    maxVisible={8}
+                                />
+                                
                                 {serials.length === 0 && (
-                                    <Typography variant="caption" color="text.secondary" fontStyle="italic">Chưa có serial nào được thêm.</Typography>
+                                    <Typography variant="caption" color="text.secondary" display="block" textAlign="center" py={1}>
+                                        Chưa có serial nào. Số lượng sẽ lấy theo số serial.
+                                    </Typography>
                                 )}
                             </Box>
-                        </Box>
+                        )}
 
 
                         <TextField
@@ -651,12 +669,10 @@ const EmployeeReturns = () => {
                 <DialogContent sx={{ p: 0 }}>
                     <QRScanner
                         onScanSuccess={(decodedText) => {
-                            // Split scannned text by space, newline, comma, semicolon
-                            const newCodes = decodedText.split(/[\s,;\n]+/).map(s => s.trim()).filter(s => s !== '');
-
+                            const newCodes = parseSerialInput(decodedText);
                             if (newCodes.length > 0) {
                                 setSerials(prev => {
-                                    const uniqueNew = newCodes.filter(c => !prev.includes(c));
+                                    const uniqueNew = filterNewSerials(newCodes, prev);
                                     if (uniqueNew.length > 0) {
                                         setTimeout(() => setOpenScanner(false), 200);
                                         return [...prev, ...uniqueNew];

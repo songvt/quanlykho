@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
-    Box, Paper, Typography, List, ListItem, ListItemText, CircularProgress, Chip, Grid
+    Box, Paper, Typography, List, ListItem, ListItemText, Chip, Grid
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import {
@@ -22,9 +22,9 @@ import { fetchProducts } from '../store/slices/productsSlice';
 import { fetchTransactions } from '../store/slices/transactionsSlice';
 import { fetchInventory } from '../store/slices/inventorySlice';
 import type { DashboardStats } from '../types';
-
-// Custom metric card component matching ERP image
 import React from 'react';
+import DashboardSkeleton from './DashboardSkeleton';
+
 const MetricCard = ({ title, value, subtitle, icon, color, trend, onClick }: any) => (
     <Paper 
         elevation={0} 
@@ -139,7 +139,7 @@ const Dashboard = () => {
 
     }, [products, transactions, stockMap]);
 
-    if (isLoading && !stats) return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
+    if (isLoading && !stats) return <DashboardSkeleton />;
 
     if (!stats) {
         return (
@@ -166,11 +166,7 @@ const Dashboard = () => {
     return (
         <Box sx={{ maxWidth: '1400px', mx: 'auto' }}>
             <Box mb={4}>
-                <Typography variant="h4" sx={{
-                    fontWeight: 700,
-                    color: '#0f172a',
-                    letterSpacing: '-1px'
-                }}>
+                <Typography variant="h4" sx={{ fontWeight: 700, color: '#0f172a', letterSpacing: '-1px' }}>
                     Tổng quan
                 </Typography>
                 <Typography variant="body1" sx={{ color: '#64748b', mt: 0.5 }}>
@@ -178,14 +174,13 @@ const Dashboard = () => {
                 </Typography>
             </Box>
 
-            {/* Top KPI Cards Section */}
             <Grid container spacing={2} mb={3}>
                 <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <MetricCard 
                         title="TỔNG SẢN PHẨM" 
                         value={stats.total_products} 
                         icon={<InventoryIcon />} 
-                        color="#0f766e" // Teal
+                        color="#0f766e"
                         subtitle="Tất cả danh mục hệ thống"
                         onClick={() => navigate('/products')}
                     />
@@ -195,7 +190,7 @@ const Dashboard = () => {
                         title="SỐ LƯỢNG TỒN KHO" 
                         value={stats.total_inventory.toLocaleString('vi-VN')} 
                         icon={<ShippingIcon />} 
-                        color="#10b981" // emerald-500
+                        color="#10b981"
                         subtitle="Tổng số lượng hiện có"
                         trend="up"
                         onClick={() => navigate('/products')}
@@ -206,7 +201,7 @@ const Dashboard = () => {
                         title="SẮP HẾT HÀNG" 
                         value={stats.low_stock_items} 
                         icon={<WarningIcon />} 
-                        color="#f59e0b" // amber-500
+                        color="#f59e0b"
                         subtitle="Cần nhập thêm sản phẩm"
                         onClick={() => navigate('/products?filter=low_stock')}
                     />
@@ -216,14 +211,13 @@ const Dashboard = () => {
                         title="HẾT HÀNG" 
                         value={stats.out_of_stock_items} 
                         icon={<ErrorIcon />} 
-                        color="#ef4444" // red-500
+                        color="#ef4444"
                         subtitle="Kho đã cạn kiệt"
                         onClick={() => navigate('/products?filter=out_of_stock')}
                     />
                 </Grid>
             </Grid>
 
-            {/* Charts Section */}
             <Grid container spacing={3} mb={4}>
                 <Grid size={{ xs: 12, lg: 8 }}>
                     <Paper elevation={0} sx={{ p: 3, borderRadius: 3, height: 420, border: '1px solid #e2e8f0', bgcolor: 'white' }}>
@@ -293,7 +287,6 @@ const Dashboard = () => {
                 </Grid>
             </Grid>
 
-            {/* Bottom Section: Recent Transactions Feed */}
             <Grid container spacing={3}>
                 <Grid size={{ xs: 12 }}>
                     <Paper elevation={0} sx={{ p: 0, borderRadius: 3, overflow: 'hidden', border: '1px solid #e2e8f0', bgcolor: 'white' }}>

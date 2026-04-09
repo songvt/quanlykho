@@ -1,19 +1,75 @@
 import type { Product, Transaction, DashboardStats, FifoAgingItem, EmployeeReturn } from '../types';
 
 const API_BASE = '/api';
+const REQUEST_TIMEOUT_MS = 15000; // 15 giây timeout
+const MAX_RETRIES = 2;            // Retry tối đa 2 lần nếu lỗi mạng
 
-const apiRequest = async (endpoint: string, options?: RequestInit) => {
+/** Delay helper */
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * apiRequest với auto-retry + timeout
+ * - Timeout: 15s (tránh treo vô hạn khi Google Sheets chậm)
+ * - Retry: 2 lần với exponential backoff (1s, 2s) cho lỗi mạng
+ * - Không retry lỗi 4xx (client error)
+ */
+const apiRequest = async (endpoint: string, options?: RequestInit, retryCount = 0): Promise<any> => {
     const url = `${API_BASE}/${endpoint}`;
-    const response = await fetch(url, options);
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || errorData.details || `API Request failed: ${response.statusText}`);
+    // AbortController để timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            const errMsg = errorData.error || errorData.details || `Lỗi ${response.status}: ${response.statusText}`;
+
+            // 4xx → lỗi client, không retry
+            if (response.status >= 400 && response.status < 500) {
+                throw new Error(errMsg);
+            }
+
+            // 5xx → có thể retry
+            if (retryCount < MAX_RETRIES) {
+                await delay(1000 * (retryCount + 1)); // 1s, 2s
+                return apiRequest(endpoint, options, retryCount + 1);
+            }
+            throw new Error(errMsg);
+        }
+
+        const text = await response.text();
+        return text ? JSON.parse(text) : null;
+
+    } catch (err: any) {
+        clearTimeout(timeoutId);
+
+        if (err.name === 'AbortError') {
+            // Timeout
+            if (retryCount < MAX_RETRIES) {
+                await delay(1000 * (retryCount + 1));
+                return apiRequest(endpoint, options, retryCount + 1);
+            }
+            throw new Error('Kết nối quá lâu, vui lòng thử lại');
+        }
+
+        // Lỗi mạng (TypeError: Failed to fetch)
+        if (err instanceof TypeError && retryCount < MAX_RETRIES) {
+            await delay(1000 * (retryCount + 1));
+            return apiRequest(endpoint, options, retryCount + 1);
+        }
+
+        throw err;
     }
-
-    const text = await response.text();
-    return text ? JSON.parse(text) : null;
 };
+
+
 
 export const GoogleSheetService = {
     // --- Products ---
@@ -115,6 +171,15 @@ export const GoogleSheetService = {
             body: JSON.stringify({ id, type })
         });
         return id;
+    },
+
+    async bulkDeleteTransactions(ids: string[], type: 'inbound' | 'outbound') {
+        await apiRequest('transactions', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids, type })
+        });
+        return ids;
     },
 
     // --- Employee Returns ---

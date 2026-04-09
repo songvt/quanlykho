@@ -65,6 +65,9 @@ export interface Transaction {
     // Join fields
     product?: Product;
     user_name?: string; // Tên nhân viên thực hiện (created_by)
+    receiver_group?: string; // Tên nhóm/người nhận
+    outbound_date?: string; // Ngày xuất kho
+    inbound_date?: string; // Ngày nhập kho
 }
 
 export interface DashboardStats {

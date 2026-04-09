@@ -5,13 +5,15 @@ import {
     Box, Paper, Typography, Button, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, IconButton, Dialog,
     DialogTitle, DialogContent, DialogActions, TextField, Stack,
-    CircularProgress, Alert, Tooltip, Checkbox, FormControl, InputLabel, Select, MenuItem, TablePagination
+    Alert, Tooltip, Checkbox, FormControl, InputLabel, Select, MenuItem, TablePagination
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import { fetchProducts, addNewProduct, updateProduct, deleteProduct, deleteProducts, importProducts } from '../../store/slices/productsSlice';
 import { fetchInventory } from '../../store/slices/inventorySlice';
+import TableSkeleton from '../../components/Common/TableSkeleton';
+import { useNotification } from '../../contexts/NotificationContext';
 import { generateProductTemplate, readExcelFile } from '../../utils/excelUtils';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -24,6 +26,7 @@ const ProductList = () => {
     const { items: products, status, error } = useSelector((state: RootState) => state.products);
     const { stockMap, status: inventoryStatus } = useSelector((state: RootState) => state.inventory);
     const { hasPermission } = usePermission();
+    const { success, error: notifyError } = useNotification();
     const canManage = hasPermission('inventory.manage');
 
     const [openDialog, setOpenDialog] = useState(false);
@@ -39,7 +42,7 @@ const ProductList = () => {
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(25);
 
-    const handleChangePage = (event: unknown, newPage: number) => {
+    const handleChangePage = (_event: unknown, newPage: number) => {
         setPage(newPage);
     };
 
@@ -82,7 +85,12 @@ const ProductList = () => {
 
     const handleDelete = async (id: string) => {
         if (window.confirm('Bạn có chắc chắn muốn xóa sản phẩm này? hành động này không thể hoàn tác nếu đã có giao dịch phát sinh.')) {
-            await dispatch(deleteProduct(id));
+            try {
+                await dispatch(deleteProduct(id)).unwrap();
+                success('Đã xóa sản phẩm thành công!');
+            } catch (err: any) {
+                notifyError(err.message || 'Lỗi khi xóa sản phẩm');
+            }
         }
     };
 
@@ -105,29 +113,33 @@ const ProductList = () => {
     const handleBulkDelete = async () => {
         if (window.confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.length} sản phẩm đã chọn? Hành động này không thể hoàn tác.`)) {
             try {
-                // @ts-ignore
                 await dispatch(deleteProducts(selectedIds)).unwrap();
                 setSelectedIds([]);
-                alert('Đã xóa thành công!');
-            } catch (err) {
-                console.error('Bulk delete failed:', err);
-                alert('Lỗi khi xóa hàng loạt.');
+                success('Đã xóa thành công!');
+            } catch (err: any) {
+                notifyError(err.message || 'Lỗi khi xóa hàng loạt.');
             }
         }
     };
 
     const handleSave = async () => {
         if (!currentProduct.name || !currentProduct.item_code) {
-            alert('Vui lòng điền tên và mã sản phẩm');
+            notifyError('Vui lòng điền tên và mã sản phẩm');
             return;
         }
 
-        if (isEditMode && currentProduct.id) {
-            await dispatch(updateProduct(currentProduct as Product));
-        } else {
-            await dispatch(addNewProduct(currentProduct as Omit<Product, 'id'>));
+        try {
+            if (isEditMode && currentProduct.id) {
+                await dispatch(updateProduct(currentProduct as Product)).unwrap();
+                success('Cập nhật thành công!');
+            } else {
+                await dispatch(addNewProduct(currentProduct as Omit<Product, 'id'>)).unwrap();
+                success('Thêm mới thành công!');
+            }
+            setOpenDialog(false);
+        } catch (err: any) {
+            notifyError(err.message || 'Lỗi khi lưu sản phẩm');
         }
-        setOpenDialog(false);
     };
 
     const filteredProducts = useMemo(() => {
@@ -152,7 +164,6 @@ const ProductList = () => {
         return result;
     }, [products, searchTerm, filterParam, stockMap]);
 
-    if (status === 'loading') return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
     if (status === 'failed') return <Alert severity="error">{error}</Alert>;
 
     return (
@@ -172,7 +183,6 @@ const ProductList = () => {
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' }, mt: 0.5 }}>Quản lý danh sách sản phẩm và tồn kho</Typography>
                 </Box>
-                {/* ... buttons stack ... */}
                 <Stack direction="row" spacing={1} width={{ xs: '100%', sm: 'auto' }} flexWrap="wrap" useFlexGap sx={{ gap: 1 }}>
                     {canManage && (
                         <>
@@ -226,19 +236,19 @@ const ProductList = () => {
                                                 if (mappedData.length > 0) {
                                                     try {
                                                         await dispatch(importProducts(mappedData)).unwrap();
-                                                        alert(`Đã nhập thành công ${mappedData.length} sản phẩm!`);
+                                                        success(`Đã nhập thành công ${mappedData.length} sản phẩm!`);
                                                         // Reset input only on success or if we want to allow retry
                                                         e.target.value = '';
                                                     } catch (err: any) {
                                                         console.error('Import failed:', err);
-                                                        alert(`Lỗi khi nhập dữ liệu: ${err.message || JSON.stringify(err)}`);
+                                                        notifyError(`Lỗi khi nhập dữ liệu: ${err.message || JSON.stringify(err)}`);
                                                     }
                                                 } else {
-                                                    alert('Không tìm thấy dữ liệu hợp lệ trong file. Vui lòng kiểm tra lại các cột.');
+                                                    notifyError('Không tìm thấy dữ liệu hợp lệ trong file. Vui lòng kiểm tra lại các cột.');
                                                 }
                                             } catch (error) {
                                                 console.error('Import failed:', error);
-                                                alert('Lỗi khi nhập file. Vui lòng kiểm tra định dạng.');
+                                                notifyError('Lỗi khi nhập file. Vui lòng kiểm tra định dạng.');
                                             }
                                             // Reset input value to allow re-uploading same file
                                             e.target.value = '';
@@ -293,106 +303,113 @@ const ProductList = () => {
                 </FormControl>
             </Paper>
 
-            <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 2px 4px -1px rgb(0 0 0 / 0.1)', overflowX: 'auto' }}>
-                <Table size="small" sx={{ minWidth: 800 }}>
-                    <TableHead>
-                        <TableRow>
-                            {canManage && (
-                                <TableCell padding="checkbox">
-                                    <Checkbox
-                                        checked={filteredProducts.length > 0 && selectedIds.length === filteredProducts.length}
-                                        indeterminate={selectedIds.length > 0 && selectedIds.length < filteredProducts.length}
-                                        onChange={(e) => handleSelectAll(e.target.checked)}
-                                        size="small"
-                                    />
-                                </TableCell>
-                            )}
-                            <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 600, color: 'text.secondary', py: 1.5 }}>Mã SKU</TableCell>
-                            <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 600, color: 'text.secondary', py: 1.5 }}>Tên Sản Phẩm</TableCell>
-                            <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 600, color: 'text.secondary', py: 1.5 }}>Danh Mục</TableCell>
-                            <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 600, color: 'text.secondary', py: 1.5 }}>Đơn Giá</TableCell>
-                            <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 600, color: 'text.secondary', py: 1.5 }}>ĐVT</TableCell>
-                            <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 600, color: 'text.secondary', py: 1.5 }}>Tồn Kho</TableCell>
-                            {canManage && (
-                                <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 600, color: 'text.secondary', py: 1.5 }}>Hành động</TableCell>
-                            )}
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {filteredProducts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((product) => {
-                            const isSelected = selectedIds.includes(product.id);
-                            return (
-                                <TableRow key={product.id} hover sx={{ transition: 'all 0.2s', bgcolor: isSelected ? 'action.selected' : 'inherit' }}>
-                                    {canManage && (
-                                        <TableCell padding="checkbox">
-                                            <Checkbox
-                                                checked={isSelected}
-                                                onChange={(e) => handleSelectOne(product.id, e.target.checked)}
-                                                size="small"
-                                            />
+            {status === 'loading' ? (
+                <TableSkeleton columns={canManage ? 8 : 7} rows={10} />
+            ) : (
+                <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', overflowX: 'auto', border: '1px solid #e2e8f0' }}>
+                    <Table size="small" sx={{ minWidth: 800 }}>
+                        <TableHead sx={{ bgcolor: '#f8fafc' }}>
+                            <TableRow>
+                                {canManage && (
+                                    <TableCell padding="checkbox">
+                                        <Checkbox
+                                            checked={filteredProducts.length > 0 && selectedIds.length === filteredProducts.length}
+                                            indeterminate={selectedIds.length > 0 && selectedIds.length < filteredProducts.length}
+                                            onChange={(e) => handleSelectAll(e.target.checked)}
+                                            size="small"
+                                        />
+                                    </TableCell>
+                                )}
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 700, color: '#475569', py: 2 }}>Mã SKU</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 700, color: '#475569', py: 2 }}>Tên Sản Phẩm</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 700, color: '#475569', py: 2 }}>Danh Mục</TableCell>
+                                <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 700, color: '#475569', py: 2 }}>Đơn Giá</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 700, color: '#475569', py: 2 }}>ĐVT</TableCell>
+                                <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 700, color: '#475569', py: 2 }}>Tồn Kho</TableCell>
+                                {canManage && (
+                                    <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 700, color: '#475569', py: 2 }}>Hành Động</TableCell>
+                                )}
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {filteredProducts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((product) => {
+                                const isSelected = selectedIds.includes(product.id);
+                                return (
+                                    <TableRow key={product.id} hover sx={{ transition: 'all 0.2s', bgcolor: isSelected ? 'action.selected' : 'inherit' }}>
+                                        {canManage && (
+                                            <TableCell padding="checkbox">
+                                                <Checkbox
+                                                    checked={isSelected}
+                                                    onChange={(e) => handleSelectOne(product.id, e.target.checked)}
+                                                    size="small"
+                                                />
+                                            </TableCell>
+                                        )}
+                                        <TableCell sx={{ py: 1.5 }}>
+                                            <Typography variant="body2" fontWeight="600" color="primary.main" sx={{ fontSize: '14px' }}>{product.item_code}</Typography>
                                         </TableCell>
-                                    )}
-                                    <TableCell sx={{ py: 1 }}>
-                                        <Typography variant="body2" fontWeight="600" color="primary.main" sx={{ fontSize: '14px' }}>{product.item_code}</Typography>
-                                    </TableCell>
-                                    <TableCell sx={{ py: 1 }}>
-                                        <Typography variant="body2" fontWeight="500" sx={{ fontSize: '14px' }}>{product.name}</Typography>
-                                    </TableCell>
-                                    <TableCell sx={{ py: 1 }}>
-                                        <Box sx={{
-                                            bgcolor: 'primary.50', color: 'primary.700',
-                                            py: 0.25, px: 1, borderRadius: 10, display: 'inline-block',
-                                            fontSize: '12px', fontWeight: 600
-                                        }}>
-                                            {product.category}
+                                        <TableCell sx={{ py: 1.5 }}>
+                                            <Typography variant="body2" fontWeight="500" sx={{ fontSize: '14px' }}>{product.name}</Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 1.5 }}>
+                                            <Box sx={{
+                                                bgcolor: 'primary.50', color: 'primary.700',
+                                                py: 0.25, px: 1, borderRadius: 1.5, display: 'inline-block',
+                                                fontSize: '11px', fontWeight: 700, textTransform: 'uppercase'
+                                            }}>
+                                                {product.category}
+                                            </Box>
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ py: 1.5 }}>
+                                            <Typography variant="body2" fontWeight="600" sx={{ fontSize: '14px' }}>
+                                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.unit_price)}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 1.5, fontSize: '14px', color: '#64748b' }}>{product.unit}</TableCell>
+                                        <TableCell align="right" sx={{ py: 1.5, fontSize: '14px', fontWeight: 700, color: (stockMap[product.id] || 0) <= 0 ? 'error.main' : ((stockMap[product.id] || 0) < 10 ? 'warning.main' : 'success.main') }}>
+                                            {stockMap[product.id] || 0}
+                                        </TableCell>
+                                        {canManage && (
+                                            <TableCell align="center" sx={{ py: 1.5 }}>
+                                                <Stack direction="row" spacing={1} justifyContent="center">
+                                                    <Tooltip title="Chỉnh sửa">
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => handleOpenEdit(product)}
+                                                            sx={{ color: 'primary.main', bgcolor: '#eff6ff', '&:hover': { bgcolor: '#dbeafe' }, width: 32, height: 32 }}
+                                                        >
+                                                            <EditIcon sx={{ fontSize: '1.2rem' }} />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="Xóa">
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => handleDelete(product.id)}
+                                                            sx={{ color: 'error.main', bgcolor: '#fef2f2', '&:hover': { bgcolor: '#fee2e2' }, width: 32, height: 32 }}
+                                                        >
+                                                            <DeleteIcon sx={{ fontSize: '1.2rem' }} />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </Stack>
+                                            </TableCell>
+                                        )}
+                                    </TableRow>
+                                )
+                            })}
+                            {filteredProducts.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={canManage ? 8 : 7} align="center" sx={{ py: 8 }}>
+                                        <Box display="flex" flexDirection="column" alignItems="center" gap={1}>
+                                             <Typography color="text.secondary" variant="body1" fontWeight={500}>Không tìm thấy sản phẩm nào</Typography>
+                                             <Typography color="text.disabled" variant="body2">Hãy thử thay đổi từ khóa hoặc bộ lọc</Typography>
                                         </Box>
                                     </TableCell>
-                                    <TableCell align="right" sx={{ py: 1 }}>
-                                        <Typography variant="body2" fontWeight="600" sx={{ fontSize: '14px' }}>
-                                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.unit_price)}
-                                        </Typography>
-                                    </TableCell>
-                                    <TableCell sx={{ py: 1, fontSize: '14px' }}>{product.unit}</TableCell>
-                                    <TableCell align="right" sx={{ py: 1, fontSize: '14px', fontWeight: 700, color: (stockMap[product.id] || 0) <= 0 ? 'error.main' : ((stockMap[product.id] || 0) < 10 ? 'warning.main' : 'success.main') }}>
-                                        {stockMap[product.id] || 0}
-                                    </TableCell>
-                                    {canManage && (
-                                        <TableCell align="center" sx={{ py: 1 }}>
-                                            <Stack direction="row" spacing={0.5} justifyContent="center">
-                                                <Tooltip title="Chỉnh sửa">
-                                                    <IconButton
-                                                        size="small"
-                                                        onClick={() => handleOpenEdit(product)}
-                                                        sx={{ color: 'primary.main', bgcolor: 'primary.50', '&:hover': { bgcolor: 'primary.100' }, padding: 0.5 }}
-                                                    >
-                                                        <EditIcon sx={{ fontSize: '1rem' }} />
-                                                    </IconButton>
-                                                </Tooltip>
-                                                <Tooltip title="Xóa">
-                                                    <IconButton
-                                                        size="small"
-                                                        onClick={() => handleDelete(product.id)}
-                                                        sx={{ color: 'error.main', bgcolor: 'error.50', '&:hover': { bgcolor: 'error.100' }, padding: 0.5 }}
-                                                    >
-                                                        <DeleteIcon sx={{ fontSize: '1rem' }} />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            </Stack>
-                                        </TableCell>
-                                    )}
                                 </TableRow>
-                            )
-                        })}
-                        {filteredProducts.length === 0 && (
-                            <TableRow>
-                                <TableCell colSpan={canManage ? 8 : 7} align="center" sx={{ py: 4 }}>
-                                    <Typography color="text.secondary" variant="body2">Không tìm thấy sản phẩm nào.</Typography>
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            )}
 
             <TablePagination
                 rowsPerPageOptions={[10, 25, 50, 100]}
