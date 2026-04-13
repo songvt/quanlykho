@@ -16,11 +16,13 @@
 body {
   margin: 0;
   display: block;
-  /* changed from flex center/place-items center which is bad for app root */
   min-width: 320px;
   min-height: 100vh;
   background-color: #f4f7fb;
-  /* Match theme background */
+  overflow-x: hidden;
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /* Scrollbar styling */
@@ -40,4 +42,21 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* --- Tối ưu hoá Visual Performance (Nhanh và mượt) --- */
+/* Thêm transition cho các thành phần chính để UI cảm giác mượt mà hơn */
+.MuiButtonBase-root, 
+.MuiPaper-root,
+.MuiTableRow-root {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+input.MuiInputBase-input {
+  transition: background-color 0.2s ease, border-color 0.2s ease !important;
+}
+
+/* Hiệu ứng hover cho Table Row */
+.MuiTableRow-hover:hover {
+  background-color: rgba(2, 136, 209, 0.04) !important;
 }

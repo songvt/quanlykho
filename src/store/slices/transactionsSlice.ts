@@ -161,6 +161,23 @@ const transactionsSlice = createSlice({
                 if (index !== -1) {
                     state.items[index] = action.payload;
                 }
+            })
+            // ── Add (Optimistic directly from backend response) ─────────
+            .addCase(addInboundTransaction.fulfilled, (state, action) => {
+                const newItems = Array.isArray(action.payload) ? action.payload : [action.payload];
+                state.items = [...newItems, ...state.items];
+            })
+            .addCase(addOutboundTransaction.fulfilled, (state, action) => {
+                const newItems = Array.isArray(action.payload) ? action.payload : [action.payload];
+                state.items = [...newItems, ...state.items];
+            })
+            .addCase(importInboundTransactions.fulfilled, (state, action) => {
+                const newItems = Array.isArray(action.payload) ? action.payload : [];
+                state.items = [...newItems, ...state.items];
+            })
+            .addCase(importOutboundTransactions.fulfilled, (state, action) => {
+                const newItems = Array.isArray(action.payload) ? action.payload : [];
+                state.items = [...newItems, ...state.items];
             });
     },
 });

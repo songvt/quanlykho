@@ -1,59 +1,100 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { GoogleSheetService as SupabaseService } from '../../services/GoogleSheetService';
+import { createSelector } from 'reselect';
 import type { RootState } from '../index';
 
 interface InventoryState {
-    stockMap: Record<string, number>; // Total stock map (for backward compatibility)
-    detailedStockMap: Record<string, number>; // Detailed stock map
     status: 'idle' | 'loading' | 'succeeded' | 'failed';
 }
 
 const initialState: InventoryState = {
-    stockMap: {},
-    detailedStockMap: {}, // Initialize
-    status: 'idle',
+    status: 'succeeded',
 };
 
+// No async thunk needed, we compute dynamically, but keeping this export to not break existing component imports
 export const fetchInventory = createAsyncThunk('inventory/fetchInventory', async () => {
-    const data = await SupabaseService.getInventorySnapshot();
-    return data;
+    return null;
 });
 
 const inventorySlice = createSlice({
     name: 'inventory',
     initialState,
     reducers: {},
-    extraReducers: (builder) => {
-        builder
-            .addCase(fetchInventory.pending, (state) => {
-                state.status = 'loading';
-            })
-            .addCase(fetchInventory.fulfilled, (state, action) => {
-                state.status = 'succeeded';
-                state.stockMap = action.payload.total;
-                state.detailedStockMap = action.payload.detailed;
-            })
-            .addCase(fetchInventory.rejected, (state) => {
-                state.status = 'failed';
-            });
-    },
 });
 
-export const selectProductStock = (state: RootState, productId: string) =>
-    state.inventory.stockMap[productId] || 0;
+// Dynamic memoized selectors to instantly compute inventory without hitting the DB
+const rawTransactions = (state: RootState) => state.transactions.items;
+const rawOrders = (state: RootState) => state.orders.items;
+
+export const selectDetailedStockMap = createSelector(
+    [rawTransactions, rawOrders],
+    (transactions, orders) => {
+        const detailedStockMap: Record<string, number> = {};
+
+        transactions.forEach((t: any) => {
+            const qty = t.type === 'inbound' ? Number(t.quantity) : -Number(t.quantity);
+            const pId = t.product_id;
+            const dist = t.district || '';
+            const status = t.item_status || '';
+
+            // Detailed Stock
+            const specificKey = `${pId}|${dist}|${status}`;
+            detailedStockMap[specificKey] = (detailedStockMap[specificKey] || 0) + qty;
+
+            const districtAggKey = `${pId}|${dist}|*ALL*`;
+            detailedStockMap[districtAggKey] = (detailedStockMap[districtAggKey] || 0) + qty;
+            
+            // Total Stock mapping (district empty, status empty)
+            const totalKey = `${pId}||`;
+            detailedStockMap[totalKey] = (detailedStockMap[totalKey] || 0) + qty;
+        });
+
+        // Deduct pending and approved orders from available stock
+        if (orders && Array.isArray(orders)) {
+            orders.forEach((o: any) => {
+                if (o.status === 'pending' || o.status === 'approved') {
+                    const qty = Number(o.quantity) || 0;
+                    const pId = o.product_id;
+                    if (pId) {
+                        const totalKey = `${pId}||`;
+                        detailedStockMap[totalKey] = (detailedStockMap[totalKey] || 0) - qty;
+                    }
+                }
+            });
+        }
+
+        return detailedStockMap;
+    }
+);
+
+export const selectStockMap = createSelector(
+    selectDetailedStockMap,
+    (detailedMap) => {
+        const simpleMap: Record<string, number> = {};
+        Object.keys(detailedMap).forEach(key => {
+            if (key.endsWith('||')) {
+                simpleMap[key.replace('||', '')] = detailedMap[key];
+            }
+        });
+        return simpleMap;
+    }
+);
+
+export const selectProductStock = (state: RootState, productId: string) => {
+    const map = selectDetailedStockMap(state);
+    return map[`${productId}||`] || 0;
+};
 
 export const selectDetailedStock = (state: RootState, productId: string, district?: string, itemStatus?: string) => {
-    // If no filters are applied, return total stock
     if (!district && !itemStatus) {
-        return state.inventory.stockMap[productId] || 0;
+        return selectProductStock(state, productId);
     }
 
+    const map = selectDetailedStockMap(state);
     const districtKey = district || '';
-    // If itemStatus is NOT provided, we want the Aggregated District Total (*ALL*)
-    // If itemStatus IS provided, we want strict match
     const statusKey = itemStatus !== undefined && itemStatus !== '' ? itemStatus : '*ALL*';
     const key = `${productId}|${districtKey}|${statusKey}`;
-    return state.inventory.detailedStockMap?.[key] || 0;
+    
+    return map[key] || 0;
 };
 
 export default inventorySlice.reducer;

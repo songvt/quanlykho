@@ -10,7 +10,7 @@ import {
     Button, TextField, Checkbox, Chip,
     Typography, Box, Alert, Paper, Stack, Dialog, DialogContent, DialogTitle, Autocomplete,
     IconButton, CircularProgress, InputAdornment, DialogActions,
-    Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Grid
+    Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Grid, MenuItem
 } from '@mui/material';
 import type { Order, Transaction } from '../types';
 import SerialChips from '../components/Common/SerialChips';
@@ -33,6 +33,7 @@ import ProductSearchDialog from '../components/ProductSearchDialog';
 import OutboundReportPreview from '../components/Reports/OutboundReportPreview';
 import SearchIcon from '@mui/icons-material/Search';
 import { GoogleSheetService as SupabaseService } from '../services/GoogleSheetService';
+import { matchDistrict } from '../utils/format';
 
 const sendTelegramNotification = async (
     title: string,
@@ -92,7 +93,7 @@ export const Outbound = () => {
     const [serial, setSerial] = useState('');
     const [receiver, setReceiver] = useState(isAdmin ? '' : (profile?.full_name || profile?.username || profile?.email || ''));
 
-    const [district, setDistrict] = useState('');
+    const [district, setDistrict] = useState(profile?.district || '');
     const [itemStatus, setItemStatus] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const { success, error: notifyError } = useNotification();
@@ -104,6 +105,7 @@ export const Outbound = () => {
     const [selectedPrintIds, setSelectedPrintIds] = useState<string[]>([]);
     const [openPrintPreview, setOpenPrintPreview] = useState(false);
     const [reportNumber, setReportNumber] = useState(1);
+    const [resolvedDelivererName, setResolvedDelivererName] = useState('');
     const [isUploadingDrive, setIsUploadingDrive] = useState(false);
 
     const [outboundSearch, setOutboundSearch] = useState('');
@@ -129,25 +131,39 @@ export const Outbound = () => {
             const receiverNameStr = Array.from(new Set(recentTransactions.filter(t => selectedPrintIds.includes(t.id)).map(t => t.group_name || t.receiver_group))).join('_');
             const fileName = `BBXK_${receiverNameStr}_${dateStr}.pdf`;
 
-            const formData = new FormData();
-            formData.append('file', pdfBlob, fileName);
-            formData.append('fileName', fileName);
+            const reader = new FileReader();
+            reader.readAsDataURL(pdfBlob);
+            reader.onloadend = async () => {
+                const base64Data = (reader.result as string).split(',')[1];
+                try {
+                    const response = await fetch('/api/drive_upload', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            fileName,
+                            mimeType: 'application/pdf',
+                            fileData: base64Data
+                        })
+                    });
 
-            const response = await fetch('/api/drive_upload', {
-                method: 'POST',
-                body: formData
-            });
-
-            const result = await response.json();
-            if (response.ok && result.success) {
-            success(`Lưu Drive thành công: ${fileName}`);
-            } else {
-                notifyError(`Lỗi lưu Drive: ${result.error}`);
-            }
+                    const result = await response.json();
+                    if (response.ok) {
+                        success(`Lưu Drive thành công: ${fileName}`);
+                    } else {
+                        const errorMessage = result.details || result.error || 'Server error';
+                        notifyError(`Lỗi lưu Drive: ${errorMessage}`);
+                    }
+                } catch (error: any) {
+                    console.error('Drive upload failed', error);
+                    notifyError(`Lỗi lưu Drive: ${error.message || 'Mất kết nối server'}`);
+                } finally {
+                    setIsUploadingDrive(false);
+                }
+            };
+            
         } catch (error: any) {
-            console.error('Drive upload failed', error);
-            notifyError(`Lỗi tạo PDF: ${error.message}`);
-        } finally {
+            console.error('PDF creation failed', error);
+            notifyError(`Lỗi xử lý PDF: ${error.message}`);
             setIsUploadingDrive(false);
         }
     };
@@ -714,13 +730,13 @@ export const Outbound = () => {
                         Tạo phiếu xuất kho trực tiếp (Admin)
                     </Typography>
                 </Box>
-                <Stack direction="row" spacing={1}>
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ gap: 1 }}>
                     <Button
                         variant="contained"
                         color="secondary"
                         startIcon={<PrintIcon />}
                         disabled={selectedPrintIds.length === 0}
-                        onClick={() => {
+                        onClick={async () => {
                             const receivers = new Set(recentTransactions.filter(t => selectedPrintIds.includes(t.id)).map(t => t.group_name || (t as any).receiver_group));
                             if (receivers.size > 1) {
                                 if (!window.confirm(`Bạn đang chọn in biên bản cho ${receivers.size} người nhận khác nhau. Bạn có chắc chắn không?`)) {
@@ -733,11 +749,29 @@ export const Outbound = () => {
                                 const dateVal = new Date(firstTx.date || new Date());
                                 const receiverVal = firstTx.group_name || (firstTx as any).receiver_group || '';
 
+                                let deliverer = profile?.full_name || 'Admin';
+                                try {
+                                    const districtConfigs = await SupabaseService.getDistrictStorekeepers();
+                                    const receiverObj = employees.find(e => e.full_name === receiverVal || e.username === receiverVal);
+                                    const empDistrict = receiverObj?.district || '';
+                                    const transactionDistrict = firstTx.district || '';
+                                    const searchDistrict = transactionDistrict || empDistrict;
+
+                                    if (searchDistrict) {
+                                        const config = districtConfigs.find((c: any) => matchDistrict(searchDistrict, c.district));
+                                        if (config) {
+                                            deliverer = config.storekeeper_name;
+                                        }
+                                    }
+                                } catch(e) { console.error('Failed to resolve storekeeper', e); }
+
+                                setResolvedDelivererName(deliverer);
                                 SupabaseService.getReportNumber(dateVal, receiverVal).then(num => {
                                     setReportNumber(num);
                                     setOpenPrintPreview(true);
                                 });
                             } else {
+                                setResolvedDelivererName(profile?.full_name || 'Admin');
                                 setOpenPrintPreview(true);
                             }
                         }}
@@ -845,7 +879,6 @@ export const Outbound = () => {
                             type="number"
                             value={quantity}
                             onChange={(e) => setQuantity(Number(e.target.value))}
-                            disabled={products.find(p => p.id === selectedProduct)?.category?.toLowerCase() === 'hàng hóa'}
                             size="small"
                         />
                     </Grid>
@@ -856,7 +889,16 @@ export const Outbound = () => {
                                 options={employees}
                                 getOptionLabel={(option: any) => typeof option === 'string' ? option : `${option.full_name || ''} (${option.username || option.email || ''})`.trim()}
                                 onChange={(_, newValue: any) => {
-                                    setReceiver(typeof newValue === 'string' ? newValue : (newValue?.full_name || newValue?.username || ''));
+                                    if (typeof newValue === 'string') {
+                                        setReceiver(newValue);
+                                        setDistrict('');
+                                    } else if (newValue) {
+                                        setReceiver(newValue.full_name || newValue.username || '');
+                                        setDistrict(newValue.district || '');
+                                    } else {
+                                        setReceiver('');
+                                        setDistrict('');
+                                    }
                                 }}
                                 renderInput={(params) => (
                                     <TextField
@@ -881,12 +923,18 @@ export const Outbound = () => {
                     </Grid>
                     <Grid size={{ xs: 12, md: 5 }}>
                         <TextField
+                            select
                             fullWidth
                             label="Quận/Huyện"
                             value={district}
                             onChange={e => setDistrict(e.target.value)}
                             size="small"
-                        />
+                        >
+                            <MenuItem value=""><em>-- Chọn quận/huyện --</em></MenuItem>
+                            <MenuItem value="Q12">Q12</MenuItem>
+                            <MenuItem value="HMN">HMN</MenuItem>
+                            <MenuItem value="CCI">CCI</MenuItem>
+                        </TextField>
                     </Grid>
 
                     {products.find(p => p.id === selectedProduct)?.category?.toLowerCase() === 'hàng hóa' && (
@@ -1223,7 +1271,7 @@ export const Outbound = () => {
                                     };
                                 })
                             }
-                            delivererName={profile?.full_name || 'Admin'}
+                            delivererName={resolvedDelivererName || profile?.full_name || 'Admin'}
                             senderPhone={profile?.phone_number || ''}
                             date={new Date().toISOString()}
                             receiverName={Array.from(new Set(recentTransactions.filter(t => selectedPrintIds.includes(t.id)).map(t => t.group_name || t.receiver_group))).join(', ')}

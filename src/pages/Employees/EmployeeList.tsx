@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useDebounce } from '../../hooks/useDebounce';
 import { useDispatch, useSelector } from 'react-redux';
 import {
     Box, Paper, Typography, Button, IconButton, Dialog, DialogTitle, DialogContent, DialogActions,
@@ -38,6 +39,7 @@ const EmployeeList = () => {
 
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
     useEffect(() => {
         if (status === 'idle') {
@@ -163,12 +165,15 @@ const EmployeeList = () => {
         }
     };
 
-    const filteredEmployees = employees.filter(emp =>
-        (emp.full_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (emp.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (emp.username?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (emp.phone_number?.toLowerCase() || '').includes(searchTerm.toLowerCase())
-    );
+    const filteredEmployees = useMemo(() => {
+        const term = debouncedSearchTerm.toLowerCase();
+        return employees.filter(emp =>
+            (emp.full_name?.toLowerCase() || '').includes(term) ||
+            (emp.email?.toLowerCase() || '').includes(term) ||
+            (emp.username?.toLowerCase() || '').includes(term) ||
+            (emp.phone_number?.toLowerCase() || '').includes(term)
+        );
+    }, [employees, debouncedSearchTerm]);
 
     if (status === 'loading') return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
     if (status === 'failed') return <Alert severity="error">{error}</Alert>;

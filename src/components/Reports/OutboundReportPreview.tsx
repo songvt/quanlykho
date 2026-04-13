@@ -105,18 +105,24 @@ const OutboundReportTemplate = ({ data, delivererName, date, receiverName, sende
             </Typography>
 
             {/* Signatures */}
-            <Box display="flex" justifyContent="space-around" px={2} mb={5}>
-                <Box textAlign="center">
-                    <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>BÊN GIAO</Typography>
+            <Box display="flex" justifyContent="space-between" px={2} mb={5}>
+                <Box textAlign="center" flex={1}>
+                    <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>Người nhận</Typography>
+                    <Typography fontStyle="italic" sx={{ fontSize: '12pt' }}>(Ký, họ tên)</Typography>
+                    <Box height={100} />
+                    <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>{receiverName}</Typography>
+                </Box>
+                <Box textAlign="center" flex={1}>
+                    <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>Thủ kho</Typography>
                     <Typography fontStyle="italic" sx={{ fontSize: '12pt' }}>(Ký, họ tên)</Typography>
                     <Box height={100} />
                     <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>{delivererName}</Typography>
                 </Box>
-                <Box textAlign="center">
-                    <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>BÊN NHẬN</Typography>
+                <Box textAlign="center" flex={1}>
+                    <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>Thủ trưởng đơn vị</Typography>
                     <Typography fontStyle="italic" sx={{ fontSize: '12pt' }}>(Ký, họ tên)</Typography>
                     <Box height={100} />
-                    <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>{receiverName}</Typography>
+                    <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>Trần Kim Hùng</Typography>
                 </Box>
             </Box>
         </Box>

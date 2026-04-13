@@ -358,48 +358,7 @@ export const GoogleSheetService = {
         return district;
     },
 
-    // --- Complex Analytics Dashboard (Requires fetching ALL data, potentially slow on Sheets) ---
-    // For now we will implement simple frontend-side calc based on raw data
-    async getInventorySnapshot() {
-        const p1 = this.fetchTransactions();
-        const p2 = this.fetchOrders();
-        const [transactions, orders] = await Promise.all([p1, p2]);
-
-        const stockMap: Record<string, number> = {};
-        const detailedStockMap: Record<string, number> = {};
-
-        transactions.forEach((t: any) => {
-            const qty = t.type === 'inbound' ? Number(t.quantity) : -Number(t.quantity);
-            const pId = t.product_id;
-            const dist = t.district || '';
-            const status = t.item_status || '';
-
-            // Total Stock
-            stockMap[pId] = (stockMap[pId] || 0) + qty;
-
-            // Detailed Stock
-            const specificKey = `${pId}|${dist}|${status}`;
-            detailedStockMap[specificKey] = (detailedStockMap[specificKey] || 0) + qty;
-
-            const districtAggKey = `${pId}|${dist}|*ALL*`;
-            detailedStockMap[districtAggKey] = (detailedStockMap[districtAggKey] || 0) + qty;
-        });
-
-        // Deduct pending and approved orders from available stock
-        if (orders && Array.isArray(orders)) {
-            orders.forEach((o: any) => {
-                if (o.status === 'pending' || o.status === 'approved') {
-                    const qty = Number(o.quantity) || 0;
-                    const pId = o.product_id;
-                    if (pId) {
-                        stockMap[pId] = (stockMap[pId] || 0) - qty;
-                    }
-                }
-            });
-        }
-
-        return { total: stockMap, detailed: detailedStockMap };
-    },
+    // --- Complex Analytics Dashboard ---
 
     async getDashboardStats() {
         // Simplistic mock until fully implemented

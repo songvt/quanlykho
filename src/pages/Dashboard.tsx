@@ -20,7 +20,7 @@ import {
 import type { RootState, AppDispatch } from '../store';
 import { fetchProducts } from '../store/slices/productsSlice';
 import { fetchTransactions } from '../store/slices/transactionsSlice';
-import { fetchInventory } from '../store/slices/inventorySlice';
+import { fetchInventory, selectStockMap } from '../store/slices/inventorySlice';
 import type { DashboardStats } from '../types';
 import React from 'react';
 import DashboardSkeleton from './DashboardSkeleton';
@@ -74,7 +74,8 @@ const Dashboard = () => {
     const navigate = useNavigate();
     const { items: products, status: productStatus } = useSelector((state: RootState) => state.products);
     const { items: transactions, status: transactionStatus } = useSelector((state: RootState) => state.transactions);
-    const { stockMap, status: inventoryStatus } = useSelector((state: RootState) => state.inventory);
+    const { status: inventoryStatus } = useSelector((state: RootState) => state.inventory);
+    const stockMap = useSelector(selectStockMap);
 
     const isLoading = productStatus === 'loading' || transactionStatus === 'loading' || inventoryStatus === 'loading';
 

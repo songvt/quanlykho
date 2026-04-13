@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useDebounce } from '../../hooks/useDebounce';
 import { useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -11,7 +12,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import { fetchProducts, addNewProduct, updateProduct, deleteProduct, deleteProducts, importProducts } from '../../store/slices/productsSlice';
-import { fetchInventory } from '../../store/slices/inventorySlice';
+import { fetchInventory, selectStockMap } from '../../store/slices/inventorySlice';
 import TableSkeleton from '../../components/Common/TableSkeleton';
 import { useNotification } from '../../contexts/NotificationContext';
 import { generateProductTemplate, readExcelFile } from '../../utils/excelUtils';
@@ -24,7 +25,8 @@ import { usePermission } from '../../hooks/usePermission';
 const ProductList = () => {
     const dispatch = useDispatch<AppDispatch>();
     const { items: products, status, error } = useSelector((state: RootState) => state.products);
-    const { stockMap, status: inventoryStatus } = useSelector((state: RootState) => state.inventory);
+    const { status: inventoryStatus } = useSelector((state: RootState) => state.inventory);
+    const stockMap = useSelector(selectStockMap);
     const { hasPermission } = usePermission();
     const { success, error: notifyError } = useNotification();
     const canManage = hasPermission('inventory.manage');
@@ -33,6 +35,7 @@ const ProductList = () => {
     const [currentProduct, setCurrentProduct] = useState<Partial<Product>>({});
     const [isEditMode, setIsEditMode] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 300);
     const [searchParams, setSearchParams] = useSearchParams();
     const filterParam = searchParams.get('filter');
 
@@ -54,7 +57,7 @@ const ProductList = () => {
     // Reset page when filter/search changes
     useEffect(() => {
         setPage(0);
-    }, [searchTerm, filterParam]);
+    }, [debouncedSearchTerm, filterParam]);
 
     useEffect(() => {
         if (status === 'idle') {
@@ -143,7 +146,7 @@ const ProductList = () => {
     };
 
     const filteredProducts = useMemo(() => {
-        const lowerTerm = searchTerm.toLowerCase();
+        const lowerTerm = debouncedSearchTerm.toLowerCase();
         let result = products.filter(p =>
             (p.name?.toLowerCase() || '').includes(lowerTerm) ||
             (p.item_code?.toLowerCase() || '').includes(lowerTerm)
@@ -162,7 +165,7 @@ const ProductList = () => {
         }
 
         return result;
-    }, [products, searchTerm, filterParam, stockMap]);
+    }, [products, debouncedSearchTerm, filterParam, stockMap]);
 
     if (status === 'failed') return <Alert severity="error">{error}</Alert>;
 

@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useDebounce } from '../hooks/useDebounce';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts } from '../store/slices/productsSlice';
-import { fetchInventory, selectProductStock } from '../store/slices/inventorySlice';
+import { fetchInventory, selectProductStock, selectStockMap } from '../store/slices/inventorySlice';
 import { addInboundTransaction, fetchTransactions, updateTransaction, deleteTransaction, bulkDeleteTransactions, importInboundTransactions } from '../store/slices/transactionsSlice';
 import type { RootState, AppDispatch } from '../store';
 import type { Transaction } from '../types';
@@ -30,7 +31,7 @@ export const Inbound = () => {
     const dispatch = useDispatch<AppDispatch>();
     const { items: products, status } = useSelector((state: RootState) => state.products);
     const { profile } = useSelector((state: RootState) => state.auth);
-    const { stockMap } = useSelector((state: RootState) => state.inventory);
+    const stockMap = useSelector(selectStockMap);
     const { items: transactions, status: txStatus } = useSelector((state: RootState) => state.transactions);
     const isAdmin = profile?.role === 'admin';
 
@@ -60,6 +61,7 @@ export const Inbound = () => {
 
     // List State
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 300);
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
 
@@ -235,17 +237,20 @@ export const Inbound = () => {
     };
 
     // List Handlers
-    const filteredTransactions = transactions
-        .filter(t => t.type === 'inbound')
-        .filter(t => {
-            const searchStr = searchTerm.toLowerCase();
-            return (
-                t.product?.name?.toLowerCase().includes(searchStr) ||
-                t.product?.item_code?.toLowerCase().includes(searchStr) ||
-                (t.serial_code && t.serial_code.toLowerCase().includes(searchStr)) ||
-                (t.district && t.district.toLowerCase().includes(searchStr))
-            );
-        });
+    const filteredTransactions = useMemo(() => {
+        const searchStr = debouncedSearchTerm.toLowerCase();
+        return transactions
+            .filter(t => t.type === 'inbound')
+            .filter(t => {
+                if (!searchStr) return true;
+                return (
+                    t.product?.name?.toLowerCase().includes(searchStr) ||
+                    t.product?.item_code?.toLowerCase().includes(searchStr) ||
+                    (t.serial_code && t.serial_code.toLowerCase().includes(searchStr)) ||
+                    (t.district && t.district.toLowerCase().includes(searchStr))
+                );
+            });
+    }, [transactions, debouncedSearchTerm]);
 
     const paginatedTransactions = filteredTransactions.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
@@ -624,7 +629,10 @@ export const Inbound = () => {
                             placeholder="Tìm kiếm theo Tên SP, Serial, Quận/Huyện..."
                             size="small"
                             value={searchTerm}
-                            onChange={e => setSearchTerm(e.target.value)}
+                            onChange={e => {
+                                setSearchTerm(e.target.value);
+                                setPage(0);
+                            }}
                             sx={{ width: { xs: '100%', sm: 350 } }}
                             InputProps={{
                                 startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,

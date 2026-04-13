@@ -182,6 +182,6 @@ export const useScanDetection = (
             if (flushTimer) clearTimeout(flushTimer);
         };
         // Không dependency array → re-register dùng optionsRef để tránh stale closure
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, []);
 };

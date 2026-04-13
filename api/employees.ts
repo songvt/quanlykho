@@ -150,7 +150,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             case 'DELETE': {
                 const { id, ids } = req.body;
                 const rows = await sheet.getRows();
-                let deletedIds: string[] = [];
+                const deletedIds: string[] = [];
 
                 if (ids && Array.isArray(ids)) {
                     for (let i = rows.length - 1; i >= 0; i--) {

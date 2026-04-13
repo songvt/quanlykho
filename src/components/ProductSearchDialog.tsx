@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useDebounce } from '../hooks/useDebounce';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     TextField, Button, Table, TableBody, TableCell,
@@ -18,15 +19,16 @@ interface ProductSearchDialogProps {
 
 const ProductSearchDialog: React.FC<ProductSearchDialogProps> = ({ open, onClose, onSelect, products }) => {
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
     const filteredProducts = useMemo(() => {
-        if (!searchTerm) return products;
-        const lowerTerm = searchTerm.toLowerCase();
+        if (!debouncedSearchTerm) return products;
+        const lowerTerm = debouncedSearchTerm.toLowerCase();
         return products.filter(p =>
             (p.name && p.name.toLowerCase().includes(lowerTerm)) ||
             (p.item_code && p.item_code.toLowerCase().includes(lowerTerm))
         );
-    }, [products, searchTerm]);
+    }, [products, debouncedSearchTerm]);
 
     return (
         <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">

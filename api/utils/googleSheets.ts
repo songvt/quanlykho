@@ -54,7 +54,7 @@ export const getGoogleSheet = async () => {
  * Important: Make sure the sheet titles match exactly what you pass here.
  */
 export const getSheetByTitle = async (doc: GoogleSpreadsheet, title: string) => {
-    let sheet = doc.sheetsByTitle[title];
+    const sheet = doc.sheetsByTitle[title];
     if (!sheet) {
         console.warn(`Sheet with title "${title}" not found.`);
         // Note: Creating sheets programmatically might need specific headers defined, 

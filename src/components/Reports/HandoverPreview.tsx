@@ -56,26 +56,26 @@ const HandoverTemplate = ({ data, employeeName, date, reporterName, senderPhone,
             </Box>
 
             {/* Info */}
-            <Box mb={1} sx={{ fontSize: '12pt', color: 'blue' }}>
-                <Typography fontWeight="bold" mb={0.5}>BÊN GIAO :</Typography>
-                <Box display="flex" justifyContent="space-between">
-                    <Typography>Họ tên người giao hàng : <b>{reporterName}</b></Typography>
-                    <Typography>Chức vụ: Nhân viên - QLTS(Kho)</Typography>
-                    <Typography>Điện thoại : {senderPhone}</Typography>
+                <Box mb={1} sx={{ fontSize: '12pt', color: 'blue' }}>
+                    <Typography fontWeight="bold" mb={0.5}>BÊN GIAO :</Typography>
+                    <Box display="flex" justifyContent="space-between">
+                        <Typography sx={{ whiteSpace: 'nowrap', pr: 1 }}>Họ tên người giao hàng : <b>{reporterName}</b></Typography>
+                        <Typography sx={{ whiteSpace: 'nowrap', pr: 1 }}>Chức vụ: Nhân viên - QLTS(Kho)</Typography>
+                        <Typography sx={{ whiteSpace: 'nowrap' }}>Điện thoại : {senderPhone}</Typography>
+                    </Box>
+                    <Typography>Địa chỉ(Bộ phận) : 455A Trần Thị Năm , P.Trung Mỹ Tây , Tp.Hồ Chí Minh</Typography>
+                    <Typography>Lý do xuất: Xuất hàng hóa,vật tư phát triển và xử lý sự cố, UCTT.....</Typography>
                 </Box>
-                <Typography>Địa chỉ(Bộ phận) : 455A Trần Thị Năm , P.Trung Mỹ Tây , Tp.Hồ Chí Minh</Typography>
-                <Typography>Lý do xuất: Xuất hàng hóa,vật tư phát triển và xử lý sự cố, UCTT.....</Typography>
-            </Box>
-
-            <Box mb={2} sx={{ fontSize: '12pt', color: 'blue' }}>
-                <Typography fontWeight="bold" mb={0.5}>BÊN NHẬN :</Typography>
-                <Typography>Địa chỉ(Bộ phận) : 455A Trần Thị Năm , P.Trung Mỹ Tây , Tp.Hồ Chí Minh</Typography>
-                <Box display="flex" justifyContent="space-between">
-                    <Typography>Họ tên người nhận hàng : <b style={{ color: 'red' }}>{employeeName}</b></Typography>
-                    <Typography>Chức vụ: Nhân viên Kỹ thuật CĐBR</Typography>
-                    <Typography>Điện thoại : {receiverPhone}</Typography>
+    
+                <Box mb={2} sx={{ fontSize: '12pt', color: 'blue' }}>
+                    <Typography fontWeight="bold" mb={0.5}>BÊN NHẬN :</Typography>
+                    <Typography>Địa chỉ(Bộ phận) : 455A Trần Thị Năm , P.Trung Mỹ Tây , Tp.Hồ Chí Minh</Typography>
+                    <Box display="flex" justifyContent="space-between">
+                        <Typography sx={{ whiteSpace: 'nowrap', pr: 1 }}>Họ tên người nhận hàng : <b style={{ color: 'red' }}>{employeeName}</b></Typography>
+                        <Typography sx={{ whiteSpace: 'nowrap', pr: 1 }}>Chức vụ: Nhân viên Kỹ thuật CĐBR</Typography>
+                        <Typography sx={{ whiteSpace: 'nowrap' }}>Điện thoại : {receiverPhone}</Typography>
+                    </Box>
                 </Box>
-            </Box>
 
             {/* Table */}
             <Table size="small" sx={{ borderCollapse: 'collapse', '& td, & th': { border: '1px solid black', fontSize: '12pt', padding: '4px' } }}>

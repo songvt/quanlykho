@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useDebounce } from '../../hooks/useDebounce';
 import { useDispatch, useSelector } from 'react-redux';
 import {
     Box, Paper, Typography, Button, Table, TableBody, TableCell,
@@ -20,7 +21,7 @@ import ProductSearchDialog from '../../components/ProductSearchDialog';
 import { fetchOrders, addOrder, updateOrderStatus, deleteOrders } from '../../store/slices/ordersSlice';
 import { fetchEmployees } from '../../store/slices/employeesSlice';
 import { fetchProducts } from '../../store/slices/productsSlice';
-import { fetchInventory } from '../../store/slices/inventorySlice';
+import { fetchInventory, selectStockMap } from '../../store/slices/inventorySlice';
 import type { RootState, AppDispatch } from '../../store';
 import type { Order } from '../../types';
 import { usePermission } from '../../hooks/usePermission';
@@ -30,7 +31,8 @@ const OrderList = () => {
     const { items: orders, status: orderStatus, error } = useSelector((state: RootState) => state.orders);
     const { items: products, status: productStatus } = useSelector((state: RootState) => state.products);
     const { items: employees, status: employeeStatus } = useSelector((state: RootState) => state.employees);
-    const { stockMap: inventory, status: inventoryStatus } = useSelector((state: RootState) => state.inventory);
+    const { status: inventoryStatus } = useSelector((state: RootState) => state.inventory);
+    const inventory = useSelector(selectStockMap);
     const { profile } = useSelector((state: RootState) => state.auth);
     const { hasPermission } = usePermission();
 
@@ -45,6 +47,7 @@ const OrderList = () => {
 
     const [openDialog, setOpenDialog] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 300);
     const [newOrder, setNewOrder] = useState({
         product_id: '',
         quantity: 1,
@@ -157,13 +160,12 @@ const OrderList = () => {
     });
 
     const filteredOrders = useMemo(() => {
-        // Create an O(1) lookup map for products to massively improve filter performance
         const productMap = products.reduce((acc, p) => {
             acc[p.id] = p;
             return acc;
         }, {} as Record<string, typeof products[0]>);
 
-        const term = searchTerm.toLowerCase();
+        const term = debouncedSearchTerm.toLowerCase();
 
         return visibleOrders.filter(order => {
             const product = productMap[order.product_id];
@@ -180,7 +182,7 @@ const OrderList = () => {
                 order.id.toLowerCase().includes(term)
             );
         });
-    }, [visibleOrders, products, searchTerm, startDate, endDate]);
+    }, [visibleOrders, products, debouncedSearchTerm, startDate, endDate]);
 
     const availableProducts = useMemo(() => {
         return isAdmin ? products : products.filter(p => (inventory[p.id] || 0) > 0);

@@ -15,7 +15,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 
 import { fetchReturns, addReturns, deleteReturns } from '../../store/slices/returnsSlice';
 import { fetchProducts } from '../../store/slices/productsSlice';
-import { fetchInventory } from '../../store/slices/inventorySlice';
+import { fetchInventory, selectStockMap } from '../../store/slices/inventorySlice';
 import { fetchTransactions } from '../../store/slices/transactionsSlice';
 import type { RootState, AppDispatch } from '../../store';
 import QRScanner from '../../components/QRScanner';
@@ -33,6 +33,7 @@ import { jsPDF } from 'jspdf';
 import { usePermission } from '../../hooks/usePermission';
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { GoogleSheetService } from '../../services/GoogleSheetService';
 
 const REASONS = ['Hàng tồn lâu', 'Hàng mới hỏng', 'Hàng thu hồi khách hàng rời mạng', 'Trả hàng KH nâng cấp Mesh'];
 
@@ -108,7 +109,8 @@ const EmployeeReturns = () => {
     const { items: returns, status: returnsStatus } = useSelector((state: RootState) => state.returns);
     const { items: products } = useSelector((state: RootState) => state.products);
     const { profile } = useSelector((state: RootState) => state.auth);
-    const { stockMap, status: inventoryStatus } = useSelector((state: RootState) => state.inventory);
+    const { status: inventoryStatus } = useSelector((state: RootState) => state.inventory);
+    const stockMap = useSelector(selectStockMap);
     const { hasPermission } = usePermission();
     const { success, error: notifyError } = useNotification();
 
@@ -133,6 +135,7 @@ const EmployeeReturns = () => {
     const [openScanner, setOpenScanner] = useState(false);
     const [openProductSearch, setOpenProductSearch] = useState(false);
     const [isUploadingDrive, setIsUploadingDrive] = useState(false);
+    const [resolvedReceiverName, setResolvedReceiverName] = useState('');
 
     const handleUploadDrive = async () => {
         const element = document.getElementById('returns-report-content');
@@ -155,25 +158,39 @@ const EmployeeReturns = () => {
             const empName = previewEmployeeName.replace(/\s+/g, '_');
             const fileName = `BBNK_${empName}_${dateStr}.pdf`;
 
-            const formData = new FormData();
-            formData.append('file', pdfBlob, fileName);
-            formData.append('fileName', fileName);
+            const reader = new FileReader();
+            reader.readAsDataURL(pdfBlob);
+            reader.onloadend = async () => {
+                const base64Data = (reader.result as string).split(',')[1];
+                try {
+                    const response = await fetch('/api/drive_upload', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            fileName,
+                            mimeType: 'application/pdf',
+                            fileData: base64Data
+                        })
+                    });
 
-            const response = await fetch('/api/drive_upload', {
-                method: 'POST',
-                body: formData
-            });
-
-            const result = await response.json();
-            if (response.ok && result.success) {
-                success(`Lưu Drive thành công: ${fileName}`);
-            } else {
-                notifyError(`Lỗi lưu Drive: ${result.error}`);
-            }
+                    const result = await response.json();
+                    if (response.ok) {
+                        success(`Lưu Drive thành công: ${fileName}`);
+                    } else {
+                        const errorMessage = result.details || result.error || 'Server error';
+                        notifyError(`Lỗi lưu Drive: ${errorMessage}`);
+                    }
+                } catch (error: any) {
+                    console.error('Drive upload failed', error);
+                    notifyError(`Lỗi lưu Drive: ${error.message || 'Mất kết nối server'}`);
+                } finally {
+                    setIsUploadingDrive(false);
+                }
+            };
+            
         } catch (error: any) {
-            console.error('Drive upload failed', error);
-            notifyError(`Lỗi tạo PDF: ${error.message}`);
-        } finally {
+            console.error('PDF creation failed', error);
+            notifyError(`Lỗi xử lý PDF: ${error.message}`);
             setIsUploadingDrive(false);
         }
     };
@@ -339,7 +356,7 @@ const EmployeeReturns = () => {
         }));
 
     const previewEmployeeName = returns.find(r => selectedIds.includes(r.id))?.employee?.full_name || 'N/A';
-    const receiverName = 'Võ Thanh Song';
+    const receiverName = resolvedReceiverName || 'Võ Thanh Song';
 
     // --- Admin Handlers (Delete & Export) ---
     const handleDelete = async () => {
@@ -422,7 +439,26 @@ const EmployeeReturns = () => {
                         variant="outlined"
                         startIcon={<PrintIcon />}
                         disabled={selectedIds.length === 0}
-                        onClick={() => setOpenPreview(true)}
+                        onClick={async () => {
+                            let rName = 'Võ Thanh Song';
+                            try {
+                                const districtConfigs = await GoogleSheetService.getDistrictStorekeepers();
+                                const firstTx = returns.find(r => selectedIds.includes(r.id));
+                                const empDistrict = firstTx?.employee?.district || '';
+                                if (empDistrict) {
+                                    const normalizedSearch = empDistrict.toLowerCase().replace(/\s+/g, '').replace('quận', 'q').replace('huyện', 'h');
+                                    const config = districtConfigs.find((c: any) => {
+                                        const normalizedConfig = c.district.toLowerCase().replace(/\s+/g, '').replace('quận', 'q').replace('huyện', 'h');
+                                        return normalizedConfig === normalizedSearch || c.district.toLowerCase() === empDistrict.toLowerCase();
+                                    });
+                                    if (config) {
+                                        rName = config.storekeeper_name;
+                                    }
+                                }
+                            } catch(e) { console.error('Failed to resolve storekeeper', e); }
+                            setResolvedReceiverName(rName);
+                            setOpenPreview(true);
+                        }}
                         fullWidth={isMobile}
                     >
                         In Biên Bản ({selectedIds.length})

@@ -111,18 +111,24 @@ const ReturnsReportTemplate = ({ data, employeeName, date, receiverName }: Retur
             </Box>
 
             {/* Signatures */}
-            <Box display="flex" justifyContent="space-around" mt={2}>
-                <Box textAlign="center">
-                    <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>NGƯỜI GIAO HÀNG</Typography>
-                    <Typography fontStyle="italic" sx={{ fontSize: '12pt' }}>(Ký, ghi rõ họ tên)</Typography>
+            <Box display="flex" justifyContent="space-between" mt={2} mb={5}>
+                <Box textAlign="center" flex={1}>
+                    <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>Người giao hàng</Typography>
+                    <Typography fontStyle="italic" sx={{ fontSize: '12pt' }}>(Ký, họ tên)</Typography>
                     <Box height={100} />
                     <Typography fontWeight="bold" sx={{ fontSize: '12pt', textTransform: 'uppercase' }}>{employeeName}</Typography>
                 </Box>
-                <Box textAlign="center">
-                    <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>THỦ KHO</Typography>
-                    <Typography fontStyle="italic" sx={{ fontSize: '12pt' }}>(Ký, ghi rõ họ tên)</Typography>
+                <Box textAlign="center" flex={1}>
+                    <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>Thủ kho</Typography>
+                    <Typography fontStyle="italic" sx={{ fontSize: '12pt' }}>(Ký, họ tên)</Typography>
                     <Box height={100} />
                     <Typography fontWeight="bold" sx={{ fontSize: '12pt', textTransform: 'uppercase' }}>{receiverName}</Typography>
+                </Box>
+                <Box textAlign="center" flex={1}>
+                    <Typography fontWeight="bold" sx={{ fontSize: '12pt' }}>Thủ trưởng đơn vị</Typography>
+                    <Typography fontStyle="italic" sx={{ fontSize: '12pt' }}>(Ký, họ tên)</Typography>
+                    <Box height={100} />
+                    <Typography fontWeight="bold" sx={{ fontSize: '12pt', textTransform: 'uppercase' }}>TRẦN KIM HÙNG</Typography>
                 </Box>
             </Box>
         </Box>

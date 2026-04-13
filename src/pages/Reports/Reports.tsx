@@ -17,23 +17,26 @@ import WarningIcon from '@mui/icons-material/Warning';
 import PrintIcon from '@mui/icons-material/Print';
 
 import { fetchProducts } from '../../store/slices/productsSlice';
-import { fetchInventory } from '../../store/slices/inventorySlice';
-import { fetchTransactions, deleteTransaction } from '../../store/slices/transactionsSlice';
+import { fetchInventory, selectStockMap, selectDetailedStockMap } from '../../store/slices/inventorySlice';
 import { fetchOrders } from '../../store/slices/ordersSlice';
+import { fetchTransactions, deleteTransaction } from '../../store/slices/transactionsSlice';
 import { fetchEmployees } from '../../store/slices/employeesSlice';
 import type { RootState, AppDispatch } from '../../store';
 import { exportHandoverMinutesV2, exportStandardReport } from '../../utils/excelUtils';
 import type { ReportColumn } from '../../utils/excelUtils';
 import HandoverPreview from '../../components/Reports/HandoverPreview';
-import { formatCurrency, getLocalYYYYMMDD } from '../../utils/format';
+import ReturnsReportPreview from '../../components/Reports/ReturnsReportPreview';
+import { formatCurrency, getLocalYYYYMMDD, matchDistrict } from '../../utils/format';
 
 const Reports = () => {
     const dispatch = useDispatch<AppDispatch>();
 
     // Selectors
     const { items: products, status: productsStatus } = useSelector((state: RootState) => state.products);
-    const { stockMap, detailedStockMap } = useSelector((state: RootState) => state.inventory);
+    const stockMap = useSelector(selectStockMap);
+    const detailedStockMap = useSelector(selectDetailedStockMap);
     const { items: transactions, status } = useSelector((state: RootState) => state.transactions);
+    const { items: returns } = useSelector((state: RootState) => state.returns);
     const { items: orders } = useSelector((state: RootState) => state.orders);
     const { items: employees } = useSelector((state: RootState) => state.employees);
     // Access profile for role checks
@@ -42,6 +45,7 @@ const Reports = () => {
 
     // State for Handover Dialog
     const [openHandover, setOpenHandover] = useState(false);
+    const [handoverType, setHandoverType] = useState<'inbound' | 'outbound'>('outbound');
     // Auto-fill for Staff
     const [selectedEmployee, setSelectedEmployee] = useState<string | null>(
         isAdmin ? null : (profile?.full_name || profile?.username || profile?.email || '')
@@ -101,6 +105,48 @@ const Reports = () => {
         // Load district configs
         import('../../services/GoogleSheetService').then(m => m.GoogleSheetService.getDistrictStorekeepers().then(setDistrictConfigs).catch(console.error));
     }, [status, productsStatus, dispatch]);
+
+    const getHandoverData = () => {
+        if (handoverType === 'inbound') {
+            return returns.filter(r => {
+                const dStr = getLocalYYYYMMDD(new Date(r.created_at || r.return_date || new Date()));
+                const empName = r.employee?.full_name || '';
+                const matchUser = selectedEmployee ? (empName.toLowerCase() === selectedEmployee.toLowerCase()) : true;
+                return dStr === selectedDate && matchUser;
+            }).map((r: any) => ({
+                item_code: r.product?.item_code || 'N/A',
+                product_name: r.product?.name || 'Sản phẩm đã xóa',
+                unit: r.product?.unit || 'Cái',
+                quantity: r.quantity,
+                unit_price: r.unit_price,
+                serial_code: r.serial_code,
+                note: r.reason || '',
+                district: r.employee?.district || '',
+                item_status: r.item_status || 'Hàng thu hồi',
+                date: r.created_at || r.return_date,
+                type: 'inbound'
+            }));
+        }
+
+        return transactions.filter(t => {
+            const dStr = getLocalYYYYMMDD(new Date(t.date));
+            const empName = t.group_name || t.receiver_group || t.user_name || '';
+            const matchUser = selectedEmployee ? (empName.toLowerCase() === selectedEmployee.toLowerCase()) : true;
+            return t.type === 'outbound' && dStr === selectedDate && matchUser;
+        }).map(t => ({
+             item_code: t.product?.item_code || 'N/A',
+            product_name: t.product?.name || 'Sản phẩm đã xóa',
+            unit: t.product?.unit || 'Cái',
+            quantity: t.quantity,
+            unit_price: t.unit_price,
+            serial_code: t.serial_code,
+            note: t.group_name || t.receiver_group,
+            district: t.district,
+            item_status: t.item_status,
+            date: t.date,
+            type: 'outbound'
+        }));
+    };
 
     // Filter transactions for Management Tab
     const managementTransactions = useMemo(() => {
@@ -401,57 +447,33 @@ const Reports = () => {
         );
     };
 
-    const getHandoverData = () => {
-        if (!selectedEmployee) { alert('Vui lòng chọn nhân viên nhận bàn giao'); return null; }
-        if (!selectedDate) { alert('Vui lòng chọn ngày xuất kho'); return null; }
-
-        // Filter transactions
-        const filtered = transactions.filter(t => {
-            if (t.type !== 'outbound') return false;
-
-            // Check Date (Compare YYYY-MM-DD)
-            const tDate = getLocalYYYYMMDD(t.date);
-            if (tDate !== selectedDate) return false;
-
-            // Check Employee (fuzzy match name or exact match depending on data)
-            return t.group_name?.toLowerCase().includes(selectedEmployee.toLowerCase());
-        });
-
-        if (filtered.length === 0) {
-            alert(`Không tìm thấy phiếu xuất kho nào cho nhân viên "${selectedEmployee}" vào ngày ${selectedDate}.`);
-            return null;
-        }
-
-        // Prepare data
-        return filtered.map(t => ({
-            item_code: t.product?.item_code || 'N/A',
-            product_name: t.product?.name || 'Sản phẩm đã xóa',
-            unit: t.product?.unit || 'Cái',
-            quantity: t.quantity,
-            unit_price: t.unit_price,
-            serial_code: t.serial_code,
-            note: t.group_name,
-            district: t.district, // Added
-            item_status: t.item_status // Added
-        }));
-    };
-
     const calculateReportNumber = (targetDate: string, targetEmployee: string) => {
         const [year, month] = targetDate.split('-');
         const currentMonthPrefix = `${year}-${month}`;
 
         const uniqueHandovers = new Set<string>();
-        transactions.forEach(t => {
-            if (t.type === 'outbound' && getLocalYYYYMMDD(t.date).startsWith(currentMonthPrefix)) {
-                const dateStr = getLocalYYYYMMDD(t.date);
-                const empName = (t.group_name || '').toLowerCase().trim();
-                // To maintain chronological order of entry time if possible, but Set + Sort is deterministic.
-                // We'll use dateStr + empName to uniquely identify a handover event.
-                if (empName) {
-                    uniqueHandovers.add(`${dateStr}|${empName}`);
+        if (handoverType === 'inbound') {
+            returns.forEach(r => {
+                const d = r.created_at || r.return_date || '';
+                if (d && getLocalYYYYMMDD(new Date(d)).startsWith(currentMonthPrefix)) {
+                    const dateStr = getLocalYYYYMMDD(new Date(d));
+                    const empName = (r.employee?.full_name || '').toLowerCase().trim();
+                    if (empName) {
+                        uniqueHandovers.add(`${dateStr}|${empName}`);
+                    }
                 }
-            }
-        });
+            });
+        } else {
+            transactions.forEach(t => {
+                if (t.type === 'outbound' && getLocalYYYYMMDD(t.date).startsWith(currentMonthPrefix)) {
+                    const dateStr = getLocalYYYYMMDD(t.date);
+                    const empName = (t.group_name || t.receiver_group || t.user_name || '').toLowerCase().trim();
+                    if (empName) {
+                        uniqueHandovers.add(`${dateStr}|${empName}`);
+                    }
+                }
+            });
+        }
 
         const sortedHandovers = Array.from(uniqueHandovers).sort();
         const targetEmpStr = targetEmployee.toLowerCase().trim();
@@ -467,33 +489,43 @@ const Reports = () => {
 
     const handleExportHandover = async () => {
         const exportData = getHandoverData();
-        if (exportData && selectedEmployee && selectedDate) {
-            // Find employee to get phone number
-            const receiverObj = employees.find(e => e.full_name === selectedEmployee);
-            const receiverPhone = receiverObj?.phone_number || '';
-            const senderPhone = profile?.phone_number || '';
-
-            // Resolve Sender (Reporter) Name based on District
-            let resolvedSenderName = reporterName;
-            const firstItemWithDistrict = exportData.find(i => i.district);
-            if (firstItemWithDistrict) {
-                const config = districtConfigs.find(c => c.district.toLowerCase() === firstItemWithDistrict.district?.toLowerCase());
-                if (config) {
-                    resolvedSenderName = config.storekeeper_name;
-                }
-            }
-
-            const num = calculateReportNumber(selectedDate, selectedEmployee);
-            const reportNumber = num.toString();
-
-            try {
-                await exportHandoverMinutesV2(exportData, selectedEmployee, selectedDate, resolvedSenderName, senderPhone, receiverPhone, reportNumber);
-            } catch (error: any) {
-                console.error(error);
-                alert("Lỗi xuất báo cáo: " + (error?.message || JSON.stringify(error)));
-            }
-            setOpenHandover(false);
+        if (exportData.length === 0) {
+            alert(`Không tìm thấy phiếu ${handoverType === 'inbound' ? 'nhập' : 'xuất'} kho nào cho nhân viên "${selectedEmployee}" vào ngày ${selectedDate}.`);
+            return;
         }
+
+        // Prepare data
+        const formattedData = exportData;
+
+        // Find employee to get phone number
+        const receiverObj = employees.find(e => e.full_name === selectedEmployee);
+        const receiverPhone = receiverObj?.phone_number || '';
+        const senderPhone = profile?.phone_number || '';
+        const empDistrict = receiverObj?.district || '';
+
+        // Resolve Sender (Reporter) Name based on District
+        let resolvedSenderName = reporterName;
+        const firstItemWithDistrict = formattedData.find(i => i.district);
+        const transactionDistrict = firstItemWithDistrict?.district || '';
+        const searchDistrict = transactionDistrict || empDistrict;
+
+        if (searchDistrict) {
+            const config = districtConfigs.find(c => matchDistrict(searchDistrict, c.district));
+            if (config) {
+                resolvedSenderName = config.storekeeper_name;
+            }
+        }
+
+        const num = calculateReportNumber(selectedDate, selectedEmployee || '');
+        const reportNumber = num.toString();
+
+        try {
+            await exportHandoverMinutesV2(formattedData, selectedEmployee || 'N/A', selectedDate, resolvedSenderName, senderPhone, receiverPhone, reportNumber);
+        } catch (error: any) {
+            console.error(error);
+            alert("Lỗi xuất báo cáo: " + (error?.message || JSON.stringify(error)));
+        }
+        setOpenHandover(false);
     };
 
     // State for dynamic sender in preview
@@ -504,39 +536,48 @@ const Reports = () => {
 
     const handlePreviewHandover = (autoPrint = false) => {
         const handoverData = getHandoverData();
-        if (handoverData) {
-            // Resolve Sender (Reporter) Name & Phone based on District logic
-            let resolvedSenderName = reporterName;
-            // Default Profile Phones
-            let senderPh = profile?.phone_number || '';
+        if (handoverData.length === 0) {
+            alert(`Không tìm thấy phiếu ${handoverType === 'inbound' ? 'nhập' : 'xuất'} kho nào cho nhân viên "${selectedEmployee}" vào ngày ${selectedDate}.`);
+            return;
+        }
 
-            // Find employee phone
-            const receiverObj = employees.find(e => e.full_name === selectedEmployee);
-            const receiverPh = receiverObj?.phone_number || '';
+        const formattedData = handoverData;
 
-            const firstItemWithDistrict = handoverData.find(i => i.district);
-            if (firstItemWithDistrict) {
-                const config = districtConfigs.find(c => c.district.toLowerCase() === firstItemWithDistrict.district?.toLowerCase());
-                if (config) {
-                    resolvedSenderName = config.storekeeper_name;
-                }
+        // Resolve Sender (Reporter) Name & Phone based on District logic
+        let resolvedSenderName = reporterName;
+        // Default Profile Phones
+        const senderPh = profile?.phone_number || '';
+
+        // Find employee phone
+        const receiverObj = employees.find(e => e.full_name === selectedEmployee);
+        const receiverPh = receiverObj?.phone_number || '';
+        const empDistrict = receiverObj?.district || '';
+
+        const firstItemWithDistrict = formattedData.find(i => i.district);
+        const transactionDistrict = firstItemWithDistrict?.district || '';
+        const searchDistrict = transactionDistrict || empDistrict;
+
+        if (searchDistrict) {
+            const config = districtConfigs.find(c => matchDistrict(searchDistrict, c.district));
+            if (config) {
+                resolvedSenderName = config.storekeeper_name;
             }
+        }
 
-            const num = calculateReportNumber(selectedDate, selectedEmployee || '');
-            setPreviewSenderName(resolvedSenderName);
-            setPreviewSenderPhone(senderPh);
-            setPreviewReceiverPhone(receiverPh);
-            setPreviewReportNumber(num);
+        const num = calculateReportNumber(selectedDate, selectedEmployee || '');
+        setPreviewSenderName(resolvedSenderName);
+        setPreviewSenderPhone(senderPh);
+        setPreviewReceiverPhone(receiverPh);
+        setPreviewReportNumber(num);
 
-            setPreviewData(handoverData);
-            setOpenHandoverPreview(true);
-            setOpenHandover(false);
+        setPreviewData(formattedData);
+        setOpenHandoverPreview(true);
+        setOpenHandover(false);
 
-            if (autoPrint) {
-                setTimeout(() => {
-                    window.print();
-                }, 500); // 500ms allows the modal to finish animating in
-            }
+        if (autoPrint) {
+            setTimeout(() => {
+                window.print();
+            }, 500); // 500ms allows the modal to finish animating in
         }
     };
 
@@ -877,11 +918,20 @@ const Reports = () => {
 
                     <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                         <ReportCard
-                            title="Biên Bản Bàn Giao"
+                            title="Biên Bản Bàn Giao (Nhập Kho)"
+                            desc="In biên bản bàn giao phiếu nhập kho."
+                            icon={<AssignmentIndIcon />}
+                            color="success"
+                            onClick={() => { setHandoverType('inbound'); setOpenHandover(true); }}
+                        />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                        <ReportCard
+                            title="Biên Bản Bàn Giao (Xuất Kho)"
                             desc="In biên bản bàn giao phiếu xuất kho."
                             icon={<AssignmentIndIcon />}
                             color="warning"
-                            onClick={() => setOpenHandover(true)}
+                            onClick={() => { setHandoverType('outbound'); setOpenHandover(true); }}
                         />
                     </Grid>
 
@@ -1126,13 +1176,13 @@ const Reports = () => {
                 onClose={() => setOpenHandover(false)}
                 PaperProps={{ sx: { borderRadius: 4, width: '100%', maxWidth: 500 } }}
             >
-                <DialogTitle sx={{ textAlign: 'center', fontWeight: 900, pt: 4, textTransform: 'uppercase', color: 'primary.main' }}>
-                    XUẤT BIÊN BẢN BÀN GIAO
+                <DialogTitle sx={{ textAlign: 'center', fontWeight: 900, pt: 4, textTransform: 'uppercase', color: handoverType === 'inbound' ? 'success.main' : 'primary.main' }}>
+                    XUẤT BIÊN BẢN BÀN GIAO {handoverType === 'inbound' ? 'NHẬP KHO' : 'XUẤT KHO'}
                 </DialogTitle>
                 <DialogContent sx={{ pt: 3 }}>
                     <Stack spacing={3} mt={1}>
                         <Alert severity="info" sx={{ borderRadius: 2 }}>
-                            Chọn nhân viên và ngày để lọc các phiếu xuất kho tương ứng.
+                            Chọn nhân viên và ngày để lọc các phiếu {handoverType === 'inbound' ? 'nhập' : 'xuất'} kho tương ứng.
                         </Alert>
                         {isAdmin ? (
                             <Autocomplete
@@ -1248,15 +1298,24 @@ const Reports = () => {
                             Đóng
                         </Button>
                     </Stack>
-                    <HandoverPreview
-                        data={previewData}
-                        employeeName={selectedEmployee || ''}
-                        date={selectedDate}
-                        reporterName={previewSenderName}
-                        senderPhone={previewSenderPhone}
-                        receiverPhone={previewReceiverPhone}
-                        reportNumber={previewReportNumber}
-                    />
+                    {handoverType === 'inbound' ? (
+                        <ReturnsReportPreview
+                            data={previewData}
+                            employeeName={selectedEmployee || ''}
+                            date={selectedDate}
+                            receiverName={previewSenderName}
+                        />
+                    ) : (
+                        <HandoverPreview
+                            data={previewData}
+                            employeeName={selectedEmployee || ''}
+                            date={selectedDate}
+                            reporterName={previewSenderName}
+                            senderPhone={previewSenderPhone}
+                            receiverPhone={previewReceiverPhone}
+                            reportNumber={previewReportNumber}
+                        />
+                    )}
                 </Box>
             </Dialog>
 

@@ -31,11 +31,7 @@ const createVercelHandler = (handler: any) => {
     };
 };
 
-import multer from 'multer';
 import { uploadToGoogleDrive } from './api/utils/googleDrive.js';
-
-// Setup basic memory storage for multer
-const upload = multer({ storage: multer.memoryStorage() });
 
 // Mount the API endpoints explicitly
 app.all('/api/products', createVercelHandler(productsHandler));
@@ -46,19 +42,22 @@ app.all('/api/orders', createVercelHandler(ordersHandler));
 app.all('/api/district_storekeepers', createVercelHandler(districtStorekeepersHandler));
 app.all('/api/telegram', createVercelHandler(telegramHandler));
 
-// Setup Drive Upload endpoint
-app.post('/api/drive_upload', upload.single('file'), async (req, res) => {
+// Setup Drive Upload endpoint (Base64 JSON)
+app.post('/api/drive_upload', async (req, res) => {
     try {
-        if (!req.file) {
-            return res.status(400).json({ error: 'No file uploaded' });
+        const { fileName, mimeType, fileData } = req.body;
+
+        if (!fileData) {
+            return res.status(400).json({ error: 'No file data provided' });
         }
-        
+
+        const buffer = Buffer.from(fileData, 'base64');
         const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID || '1eAusIt6z7bcunlAPFe99ipMh1ZB2zCWE';
         
         const result = await uploadToGoogleDrive(
-            req.file.buffer,
-            req.body.fileName || req.file.originalname,
-            req.file.mimetype,
+            buffer,
+            fileName || `document_${Date.now()}.pdf`,
+            mimeType || 'application/pdf',
             folderId
         );
         res.status(200).json({ success: true, result });

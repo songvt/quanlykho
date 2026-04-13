@@ -204,8 +204,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     if (rowsToDelete.length === 0) {
                         return res.status(404).json({ error: 'No transactions found' });
                     }
-                    await Promise.all(rowsToDelete.map(row => row.delete()));
-                    return res.status(200).json({ message: `Deleted ${rowsToDelete.length} transactions`, ids });
+                    
+                    // Xóa từ dưới lên trên (bottom to top) để tránh lỗi lệch index trong Google Sheets
+                    let deletedCount = 0;
+                    for (let i = rows.length - 1; i >= 0; i--) {
+                        if (ids.includes(rows[i].get('id'))) {
+                            await rows[i].delete();
+                            deletedCount++;
+                        }
+                    }
+                    
+                    return res.status(200).json({ message: `Deleted ${deletedCount} transactions`, ids });
                 }
 
                 // Single delete

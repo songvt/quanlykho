@@ -131,7 +131,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 }
 
                 const rows = await returnsSheet.getRows();
-                let deletedIds: string[] = [];
+                const deletedIds: string[] = [];
 
                 for (let i = rows.length - 1; i >= 0; i--) {
                     if (ids.includes(rows[i].get('id'))) {
