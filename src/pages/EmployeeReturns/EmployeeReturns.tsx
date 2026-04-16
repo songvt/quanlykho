@@ -31,7 +31,7 @@ import { useScanDetection } from '../../hooks/useScanDetection';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { usePermission } from '../../hooks/usePermission';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { GoogleSheetService } from '../../services/GoogleSheetService';
 
@@ -218,6 +218,12 @@ const EmployeeReturns = () => {
     const isAdmin = profile?.role === 'admin';
     const hasSerials = serials.length > 0;
 
+    const visibleReturns = useMemo(() => {
+        if (isAdmin) return returns;
+        return returns.filter(r => r.employee?.full_name === profile?.full_name || r.employee_id === profile?.id || r.created_by === profile?.auth_user_id);
+    }, [returns, isAdmin, profile]);
+
+
     // Update quantity if serials are present
     useEffect(() => {
         if (hasSerials) {
@@ -331,7 +337,7 @@ const EmployeeReturns = () => {
 
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.checked) {
-            setSelectedIds(returns.map(r => r.id));
+            setSelectedIds(visibleReturns.map((r: any) => r.id));
         } else {
             setSelectedIds([]);
         }
@@ -343,9 +349,9 @@ const EmployeeReturns = () => {
         );
     };
 
-    const previewData = returns
-        .filter(r => selectedIds.includes(r.id))
-        .map(r => ({
+    const previewData = visibleReturns
+        .filter((r: any) => selectedIds.includes(r.id))
+        .map((r: any) => ({
             item_code: r.product?.item_code,
             product_name: r.product?.name,
             unit: r.product?.unit,
@@ -355,7 +361,7 @@ const EmployeeReturns = () => {
             reason: r.reason
         }));
 
-    const previewEmployeeName = returns.find(r => selectedIds.includes(r.id))?.employee?.full_name || 'N/A';
+    const previewEmployeeName = visibleReturns.find((r: any) => selectedIds.includes(r.id))?.employee?.full_name || 'N/A';
     const receiverName = resolvedReceiverName || 'Võ Thanh Song';
 
     // --- Admin Handlers (Delete & Export) ---
@@ -372,7 +378,7 @@ const EmployeeReturns = () => {
     };
 
     const handleExportExcel = async () => {
-        const dataToExport = returns.map((r, idx) => ({
+        const dataToExport = visibleReturns.map((r: any, idx: number) => ({
             stt: idx + 1,
             created_at: new Date(r.created_at || r.return_date).toLocaleDateString('vi-VN'),
             employee: r.employee?.full_name || 'N/A',
@@ -443,14 +449,11 @@ const EmployeeReturns = () => {
                             let rName = 'Võ Thanh Song';
                             try {
                                 const districtConfigs = await GoogleSheetService.getDistrictStorekeepers();
-                                const firstTx = returns.find(r => selectedIds.includes(r.id));
+                                const firstTx = visibleReturns.find((r: any) => selectedIds.includes(r.id));
                                 const empDistrict = firstTx?.employee?.district || '';
                                 if (empDistrict) {
-                                    const normalizedSearch = empDistrict.toLowerCase().replace(/\s+/g, '').replace('quận', 'q').replace('huyện', 'h');
-                                    const config = districtConfigs.find((c: any) => {
-                                        const normalizedConfig = c.district.toLowerCase().replace(/\s+/g, '').replace('quận', 'q').replace('huyện', 'h');
-                                        return normalizedConfig === normalizedSearch || c.district.toLowerCase() === empDistrict.toLowerCase();
-                                    });
+                                    const { matchDistrict } = await import('../../utils/format');
+                                    const config = districtConfigs.find((c: any) => matchDistrict(empDistrict, c.district));
                                     if (config) {
                                         rName = config.storekeeper_name;
                                     }
@@ -482,10 +485,10 @@ const EmployeeReturns = () => {
             {isMobile ? (
                 // Mobile View: Cards
                 <Stack spacing={2}>
-                    {returns.length === 0 ? (
+                    {visibleReturns.length === 0 ? (
                         <Typography align="center" py={4} color="text.secondary">Chưa có dữ liệu trả hàng</Typography>
                     ) : (
-                        returns.map((row) => (
+                        visibleReturns.map((row: any) => (
                             <Card key={row.id} variant="outlined" sx={{ position: 'relative', bgcolor: selectedIds.includes(row.id) ? 'action.selected' : 'background.paper' }}>
                                 <CardContent sx={{ pb: 1 }}>
                                     <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
@@ -534,7 +537,7 @@ const EmployeeReturns = () => {
                                 <TableRow>
                                     <TableCell padding="checkbox">
                                         <Checkbox
-                                            checked={returns.length > 0 && selectedIds.length === returns.length}
+                                            checked={visibleReturns.length > 0 && selectedIds.length === visibleReturns.length}
                                             onChange={handleSelectAll}
                                         />
                                     </TableCell>
@@ -552,14 +555,14 @@ const EmployeeReturns = () => {
                             <TableBody>
                                 {returnsStatus === 'loading' ? (
                                     <TableSkeleton columns={10} rows={10} />
-                                ) : returns.length === 0 ? (
+                                ) : visibleReturns.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={10} align="center" sx={{ py: 3 }}>
                                             Chưa có dữ liệu trả hàng
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    returns.map((row) => (
+                                    visibleReturns.map((row: any) => (
                                         <TableRow key={row.id} hover selected={selectedIds.includes(row.id)}>
                                             <TableCell padding="checkbox">
                                                 <Checkbox

@@ -751,7 +751,8 @@ export const Outbound = () => {
 
                                 let deliverer = profile?.full_name || 'Admin';
                                 try {
-                                    const districtConfigs = await SupabaseService.getDistrictStorekeepers();
+                                    const { GoogleSheetService } = await import('../services/GoogleSheetService');
+                                    const districtConfigs = await GoogleSheetService.getDistrictStorekeepers();
                                     const receiverObj = employees.find(e => e.full_name === receiverVal || e.username === receiverVal);
                                     const empDistrict = receiverObj?.district || '';
                                     const transactionDistrict = firstTx.district || '';
@@ -1120,7 +1121,10 @@ export const Outbound = () => {
                     if (!dateVal) return false;
                     const txDate = new Date(dateVal);
                     txDate.setHours(0, 0, 0, 0);
-                    return txDate.getTime() === today.getTime();
+                    if (txDate.getTime() !== today.getTime()) return false;
+                    
+                    if (isAdmin) return true;
+                    return (t as any).group_name === profile?.full_name || (t as any).receiver_group === profile?.full_name || (t as any).user_id === profile?.id;
                 });
 
                 const filteredOutbound = outboundTxs.filter(t => {

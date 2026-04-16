@@ -61,10 +61,7 @@ const Reports = () => {
     const [stockStartDate, setStockStartDate] = useState(getLocalYYYYMMDD());
     const [stockEndDate, setStockEndDate] = useState(getLocalYYYYMMDD());
 
-    // District Configs
-    const [districtConfigs, setDistrictConfigs] = useState<{ district: string; storekeeper_name: string }[]>([]);
-
-    // State for Period Report
+    // State for period report
     const [openPeriodReport, setOpenPeriodReport] = useState(false);
     const [periodType, setPeriodType] = useState<'all' | 'inbound' | 'outbound'>('all');
     const [timeRange, setTimeRange] = useState<'today' | 'week' | 'month' | 'custom'>('today');
@@ -101,9 +98,6 @@ const Reports = () => {
     useEffect(() => {
         if (status === 'idle') dispatch(fetchTransactions());
         if (productsStatus === 'idle') dispatch(fetchProducts());
-
-        // Load district configs
-        import('../../services/GoogleSheetService').then(m => m.GoogleSheetService.getDistrictStorekeepers().then(setDistrictConfigs).catch(console.error));
     }, [status, productsStatus, dispatch]);
 
     const getHandoverData = () => {
@@ -507,12 +501,18 @@ const Reports = () => {
         let resolvedSenderName = reporterName;
         const firstItemWithDistrict = formattedData.find(i => i.district);
         const transactionDistrict = firstItemWithDistrict?.district || '';
-        const searchDistrict = transactionDistrict || empDistrict;
+        const searchDistrict = empDistrict || transactionDistrict;
 
         if (searchDistrict) {
-            const config = districtConfigs.find(c => matchDistrict(searchDistrict, c.district));
-            if (config) {
-                resolvedSenderName = config.storekeeper_name;
+            try {
+                const { GoogleSheetService } = await import('../../services/GoogleSheetService');
+                const dConfigs = await GoogleSheetService.getDistrictStorekeepers();
+                const config = dConfigs.find((c: any) => matchDistrict(searchDistrict, c.district));
+                if (config) {
+                    resolvedSenderName = config.storekeeper_name;
+                }
+            } catch (e) {
+                console.error('Failed to parse GS configs for handover export', e);
             }
         }
 
@@ -534,7 +534,7 @@ const Reports = () => {
     const [previewReceiverPhone, setPreviewReceiverPhone] = useState('');
     const [previewReportNumber, setPreviewReportNumber] = useState(1);
 
-    const handlePreviewHandover = (autoPrint = false) => {
+    const handlePreviewHandover = async (autoPrint = false) => {
         const handoverData = getHandoverData();
         if (handoverData.length === 0) {
             alert(`Không tìm thấy phiếu ${handoverType === 'inbound' ? 'nhập' : 'xuất'} kho nào cho nhân viên "${selectedEmployee}" vào ngày ${selectedDate}.`);
@@ -555,12 +555,18 @@ const Reports = () => {
 
         const firstItemWithDistrict = formattedData.find(i => i.district);
         const transactionDistrict = firstItemWithDistrict?.district || '';
-        const searchDistrict = transactionDistrict || empDistrict;
+        const searchDistrict = empDistrict || transactionDistrict;
 
         if (searchDistrict) {
-            const config = districtConfigs.find(c => matchDistrict(searchDistrict, c.district));
-            if (config) {
-                resolvedSenderName = config.storekeeper_name;
+            try {
+                const { GoogleSheetService } = await import('../../services/GoogleSheetService');
+                const dConfigs = await GoogleSheetService.getDistrictStorekeepers();
+                const config = dConfigs.find((c: any) => matchDistrict(searchDistrict, c.district));
+                if (config) {
+                    resolvedSenderName = config.storekeeper_name;
+                }
+            } catch (e) {
+                console.error('Failed to parse GS configs for handover preview', e);
             }
         }
 
