@@ -239,7 +239,21 @@ export const Inbound = () => {
     // List Handlers
     const filteredTransactions = useMemo(() => {
         const searchStr = debouncedSearchTerm.toLowerCase();
-        return transactions
+        
+        // 1. Phân quyền: Nhân viên chỉ thấy giao dịch của mình
+        const userTransactions = transactions.filter(t => {
+            if (isAdmin) return true;
+            // Với Inbound, employee là người quét -> check created_by or user_id
+            const anyT = t as any;
+            const isOwner = anyT.user_id === profile?.auth_user_id || 
+                            anyT.user_name === profile?.full_name || 
+                            anyT.created_by === profile?.auth_user_id ||
+                            anyT.created_by === profile?.email;
+            return isOwner;
+        });
+
+        // 2. Lọc theo search term
+        return userTransactions
             .filter(t => t.type === 'inbound')
             .filter(t => {
                 if (!searchStr) return true;
@@ -250,7 +264,7 @@ export const Inbound = () => {
                     (t.district && t.district.toLowerCase().includes(searchStr))
                 );
             });
-    }, [transactions, debouncedSearchTerm]);
+    }, [transactions, debouncedSearchTerm, isAdmin, profile]);
 
     const paginatedTransactions = filteredTransactions.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
