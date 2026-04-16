@@ -274,7 +274,7 @@ export const Outbound = () => {
 
         if (isSerialized && serials.length > 0) {
             for (const code of serials) {
-                const actionResult = await dispatch(addOutboundTransaction({
+                const unwrapped = await dispatch(addOutboundTransaction({
                     product_id: prodId,
                     quantity: 1,
                     serial_code: code,
@@ -283,28 +283,26 @@ export const Outbound = () => {
                     district: districtVal,
                     item_status: itemStatusVal,
                     user_id: profile?.id
-                }));
+                })).unwrap();
+                
+                const apiItem = Array.isArray(unwrapped) ? unwrapped[0] : unwrapped;
 
-                if (addOutboundTransaction.fulfilled.match(actionResult)) {
-                    const data = actionResult.payload;
-                    const apiItem = Array.isArray(data) ? data[0] : data;
-                    newTransactions.push({
-                        id: apiItem?.id || apiItem?.['id'] || ('temp-' + Math.random()),
-                        product_id: prodId,
-                        product_name: productName,
-                        quantity: 1,
-                        serial_code: code,
-                        group_name: receiverName,
-                        unit_price: price,
-                        total_price: price,
-                        date: timenow,
-                        district: districtVal,
-                        item_status: itemStatusVal
-                    });
-                }
+                newTransactions.push({
+                    id: apiItem?.id || apiItem?.['id'] || ('temp-' + Math.random()),
+                    product_id: prodId,
+                    product_name: productName,
+                    quantity: 1,
+                    serial_code: code,
+                    group_name: receiverName,
+                    unit_price: price,
+                    total_price: price,
+                    date: timenow,
+                    district: districtVal,
+                    item_status: itemStatusVal
+                });
             }
         } else {
-            const actionResult = await dispatch(addOutboundTransaction({
+            const unwrapped = await dispatch(addOutboundTransaction({
                 product_id: prodId,
                 quantity: qty,
                 serial_code: undefined,
@@ -313,27 +311,23 @@ export const Outbound = () => {
                 district: districtVal,
                 item_status: itemStatusVal,
                 user_id: profile?.id
-            }));
+            })).unwrap();
+            
+            const apiItem = Array.isArray(unwrapped) ? unwrapped[0] : unwrapped;
 
-            if (addOutboundTransaction.fulfilled.match(actionResult)) {
-                const data = actionResult.payload;
-                const apiItem = Array.isArray(data) ? data[0] : data;
-                newTransactions.push({
-                    id: apiItem?.id || apiItem?.['id'] || ('temp-' + Math.random()),
-                    product_id: prodId,
-                    product_name: productName,
-                    quantity: qty,
-                    serial_code: undefined,
-                    group_name: receiverName,
-                    unit_price: price,
-                    total_price: price * qty,
-                    date: timenow,
-                    district: districtVal,
-                    item_status: itemStatusVal
-                });
-            } else {
-                throw new Error('Xuất kho thất bại, vui lòng thử lại');
-            }
+            newTransactions.push({
+                id: apiItem?.id || apiItem?.['id'] || ('temp-' + Math.random()),
+                product_id: prodId,
+                product_name: productName,
+                quantity: qty,
+                serial_code: undefined,
+                group_name: receiverName,
+                unit_price: price,
+                total_price: price * qty,
+                date: timenow,
+                district: districtVal,
+                item_status: itemStatusVal
+            });
         }
 
         if (newTransactions.length > 0) {
@@ -459,7 +453,12 @@ export const Outbound = () => {
         });
     };
 
-    const fulfillmentStock = useSelector((state: RootState) => selectedOrder ? selectProductStock(state, selectedOrder.product_id) : 0);
+    const fulfillmentStock = useSelector((state: RootState) => {
+        if (!selectedOrder) return 0;
+        // selectProductStock already deducts 'approved' orders. Since we are fulfilling THIS order,
+        // we add its quantity back to check against the real physical stock available.
+        return selectProductStock(state, selectedOrder.product_id) + Number(selectedOrder.quantity || 0);
+    });
 
     const handleFulfillOrder = async () => {
         if (!selectedOrder) return;
