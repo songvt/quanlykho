@@ -93,20 +93,15 @@ const OrderList = () => {
         if (inventoryStatus === 'idle') dispatch(fetchInventory());
     }, [orderStatus, productStatus, employeeStatus, inventoryStatus, dispatch]);
 
-    // Tìm bản ghi nhân viên của user hiện tại trong danh sách
-    const currentEmployeeRecord = employees.find(emp =>
-        emp.auth_user_id === profile?.auth_user_id ||
-        emp.email === profile?.email ||
-        emp.id === profile?.id
-    );
+    // Dùng thẳng profile.check vì profile được lấy mới nhất từ server khi đăng nhập / restore session
+    const myCheck = (profile as any)?.check as string | undefined;
 
     const handleOpenAdd = () => {
         // Kiểm tra cột check nếu không phải admin
         if (!isAdmin) {
-            const checkValue = currentEmployeeRecord?.check;
-            if (checkValue !== ORDER_ALLOWED_CHECK) {
-                const msg = checkValue
-                    ? checkValue   // Hiển thị nội dung cột check lên cho user biết
+            if (myCheck !== ORDER_ALLOWED_CHECK) {
+                const msg = myCheck
+                    ? myCheck
                     : 'Tài khoản của bạn hiện chưa được phép đặt hàng. Vui lòng liên hệ quản lý.';
                 setNotification({ type: 'error', message: msg });
                 return;
@@ -383,9 +378,7 @@ const OrderList = () => {
             {/* Banner trạng thái đặt hàng cho nhân viên */}
             {!isAdmin && (
                 <Box mb={2}>
-                    {employeeStatus === 'loading' ? (
-                        <Alert severity="info" sx={{ borderRadius: 2 }}>Đang tải thông tin tài khoản...</Alert>
-                    ) : currentEmployeeRecord?.check === ORDER_ALLOWED_CHECK ? (
+                    {myCheck === ORDER_ALLOWED_CHECK ? (
                         /* Được phép đặt hàng */
                         <Alert
                             severity="success"
@@ -399,16 +392,16 @@ const OrderList = () => {
                                 py: 1.5
                             }}
                         >
-                            {currentEmployeeRecord.check}
+                            {myCheck}
                         </Alert>
-                    ) : currentEmployeeRecord?.check ? (
+                    ) : myCheck ? (
                         /* Có nội dung thông báo từ quản lý */
                         <Box
                             sx={{
                                 borderRadius: 2,
                                 border: '1.5px solid',
                                 borderColor: 'warning.main',
-                                bgcolor: 'warning.50',
+                                bgcolor: '#fffbeb',
                                 p: { xs: 1.5, sm: 2 },
                                 display: 'flex',
                                 flexDirection: 'column',
@@ -429,17 +422,18 @@ const OrderList = () => {
                                 color="warning.dark"
                                 sx={{ fontSize: { xs: '0.9rem', sm: '1rem' }, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
                             >
-                                {currentEmployeeRecord.check}
+                                {myCheck}
                             </Typography>
                         </Box>
                     ) : (
-                        /* Không có giá trị check */
+                        /* Không có giá trị check — chưa được phép */
                         <Alert severity="info" sx={{ borderRadius: 2, fontWeight: 500 }}>
                             Tài khoản của bạn hiện chưa được phép đặt hàng. Vui lòng liên hệ quản lý.
                         </Alert>
                     )}
                 </Box>
             )}
+
 
             {isMobile ? (
                 <Box>

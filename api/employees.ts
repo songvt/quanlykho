@@ -11,10 +11,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const doc = await getGoogleSheet();
         const sheet = await getSheetByTitle(doc, 'employees');
 
-        if (sheet.rowCount === 0) {
-            await sheet.setHeaderRow([
-                'id', 'auth_user_id', 'full_name', 'role', 'email', 'permissions', 'created_at', 'username', 'password', 'must_change_password', 'phone_number', 'district', 'check'
-            ]);
+        // Đảm bảo header có cột 'check' (cho cả sheet mới lẫn đang tồn tại)
+        await sheet.loadHeaderRow();
+        const headers = sheet.headerValues || [];
+        if (!headers.includes('check')) {
+            await sheet.setHeaderRow([...headers, 'check']);
         }
 
         switch (req.method) {
