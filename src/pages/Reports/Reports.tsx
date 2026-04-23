@@ -108,8 +108,11 @@ const Reports = () => {
     const getHandoverData = () => {
         if (handoverType === 'inbound') {
             return returns.filter(r => {
-                const dStr = getLocalYYYYMMDD(new Date(r.created_at || r.return_date || new Date()));
-                const empName = r.employee?.full_name || '';
+                const dateVal = r.created_at || r.return_date || r.date;
+                if (!dateVal) return false;
+                
+                const dStr = getLocalYYYYMMDD(new Date(dateVal));
+                const empName = (r.employee?.full_name || r.user_name || '').trim();
                 const matchUser = selectedEmployee ? (empName.toLowerCase() === selectedEmployee.toLowerCase()) : true;
                 return dStr === selectedDate && matchUser;
             }).map((r: any) => ({
@@ -128,8 +131,11 @@ const Reports = () => {
         }
 
         return transactions.filter(t => {
-            const dStr = getLocalYYYYMMDD(new Date(t.date));
-            const empName = t.group_name || t.receiver_group || t.user_name || '';
+            const dateVal = (t as any).outbound_date || t.date || (t as any).created_at;
+            if (!dateVal) return false;
+            
+            const dStr = getLocalYYYYMMDD(new Date(dateVal));
+            const empName = (t.group_name || (t as any).receiver_group || t.user_name || '').trim();
             const matchUser = selectedEmployee ? (empName.toLowerCase() === selectedEmployee.toLowerCase()) : true;
             return t.type === 'outbound' && dStr === selectedDate && matchUser;
         }).map(t => ({
@@ -151,7 +157,9 @@ const Reports = () => {
     const managementTransactions = useMemo(() => {
         return transactions.filter(t => {
             if (!startDate && !endDate) return false; // Only show if filtered
-            const tDate = getLocalYYYYMMDD(t.date);
+            const dateVal = t.date || (t as any).outbound_date || (t as any).created_at;
+            if (!dateVal) return false;
+            const tDate = getLocalYYYYMMDD(new Date(dateVal));
             if (startDate && tDate < startDate) return false;
             if (endDate && tDate > endDate) return false;
             if (filterType !== 'all' && t.type !== filterType) return false;
