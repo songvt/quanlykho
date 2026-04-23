@@ -171,6 +171,10 @@ export const Outbound = () => {
             notifyError('Vui lòng nhập người/đơn vị nhận');
             return;
         }
+        if (isAdmin && !district) {
+            notifyError('Vui lòng chọn Quận/Huyện xuất kho');
+            return;
+        }
 
         const product = products.find(p => p.id === selectedProduct);
         const isSerialized = product?.category?.toLowerCase() === 'hàng hóa';
@@ -438,9 +442,10 @@ export const Outbound = () => {
             }
         }
         try {
+            const reqGrp = selectedOrder.requester_group?.trim().toLowerCase();
             const requesterEmployee = employees.find(e =>
-                e.full_name === selectedOrder.requester_group ||
-                e.username === selectedOrder.requester_group
+                e.full_name?.trim().toLowerCase() === reqGrp ||
+                e.username?.trim().toLowerCase() === reqGrp
             );
             const requesterDistrict = requesterEmployee?.district || undefined;
             await executeOutbound(
