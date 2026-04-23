@@ -11,25 +11,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const doc = await getGoogleSheet();
         const sheet = await getSheetByTitle(doc, 'employees');
 
-        // Tải header row để toObject() nhận diện được tất cả cột kể cả 'check'
-        try { await sheet.loadHeaderRow(); } catch (_) { /* Sheet mới chưa có header */ }
-
-        // Nếu chưa có cột 'check', thêm vào header bằng cách ghi thẳng vào ô — KHÔNG dùng setHeaderRow (sẽ xóa dữ liệu)
-        const currentHeaders = sheet.headerValues || [];
-        if (!currentHeaders.includes('check')) {
-            const nextColIdx = currentHeaders.length;
-            await sheet.loadCells({ startRowIndex: 0, endRowIndex: 1, startColumnIndex: nextColIdx, endColumnIndex: nextColIdx + 1 });
-            const headerCell = sheet.getCell(0, nextColIdx);
-            headerCell.value = 'check';
-            await sheet.saveCells([headerCell]);
-            await sheet.loadHeaderRow(); // reload để nhận diện cột mới
-        }
 
         switch (req.method) {
             case 'GET': {
                 const { email, password } = req.query;
 
                 const rows = await sheet.getRows();
+
 
                 // Login scenario
                 if (email && password) {
