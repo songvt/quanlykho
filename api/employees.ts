@@ -13,7 +13,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (sheet.rowCount === 0) {
             await sheet.setHeaderRow([
-                'id', 'auth_user_id', 'full_name', 'role', 'email', 'permissions', 'created_at', 'username', 'password', 'must_change_password', 'phone_number', 'district'
+                'id', 'auth_user_id', 'full_name', 'role', 'email', 'permissions', 'created_at', 'username', 'password', 'must_change_password', 'phone_number', 'district', 'check'
             ]);
         }
 
