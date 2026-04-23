@@ -105,13 +105,27 @@ const Reports = () => {
         if (productsStatus === 'idle') dispatch(fetchProducts());
     }, [status, productsStatus, dispatch]);
 
+    const parseSafeDate = (val: any) => {
+        if (!val) return null;
+        if (val instanceof Date) return val;
+        const s = String(val).trim();
+        // Check for DD/MM/YYYY or DD-MM-YYYY
+        const match = s.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
+        if (match) {
+            return new Date(`${match[3]}-${match[2]}-${match[1]}T00:00:00`);
+        }
+        const d = new Date(s);
+        return isNaN(d.getTime()) ? null : d;
+    };
+
     const getHandoverData = () => {
         if (handoverType === 'inbound') {
             return returns.filter(r => {
-                const dateVal = r.created_at || r.return_date || r.date;
-                if (!dateVal) return false;
+                const dateVal = r.return_date || r.date || r.inbound_date;
+                const parsedDate = parseSafeDate(dateVal) || parseSafeDate(r.created_at);
+                if (!parsedDate) return false;
                 
-                const dStr = getLocalYYYYMMDD(new Date(dateVal));
+                const dStr = getLocalYYYYMMDD(parsedDate);
                 const empName = (r.employee?.full_name || r.user_name || '').trim();
                 const matchUser = selectedEmployee ? (empName.toLowerCase() === selectedEmployee.toLowerCase()) : true;
                 return dStr === selectedDate && matchUser;
@@ -131,11 +145,12 @@ const Reports = () => {
         }
 
         return transactions.filter(t => {
-            const dateVal = (t as any).outbound_date || t.date || (t as any).created_at;
-            if (!dateVal) return false;
+            const dateVal = (t as any).outbound_date || t.date;
+            const parsedDate = parseSafeDate(dateVal) || parseSafeDate((t as any).created_at);
+            if (!parsedDate) return false;
             
-            const dStr = getLocalYYYYMMDD(new Date(dateVal));
-            const empName = (t.group_name || (t as any).receiver_group || t.user_name || '').trim();
+            const dStr = getLocalYYYYMMDD(parsedDate);
+            const empName = (t.group_name || (t as any).receiver_group || '').trim();
             const matchUser = selectedEmployee ? (empName.toLowerCase() === selectedEmployee.toLowerCase()) : true;
             return t.type === 'outbound' && dStr === selectedDate && matchUser;
         }).map(t => ({
@@ -157,9 +172,11 @@ const Reports = () => {
     const managementTransactions = useMemo(() => {
         return transactions.filter(t => {
             if (!startDate && !endDate) return false; // Only show if filtered
-            const dateVal = t.date || (t as any).outbound_date || (t as any).created_at;
-            if (!dateVal) return false;
-            const tDate = getLocalYYYYMMDD(new Date(dateVal));
+            const dateVal = t.date || (t as any).outbound_date || (t as any).inbound_date;
+            const parsedDate = parseSafeDate(dateVal) || parseSafeDate((t as any).created_at);
+            if (!parsedDate) return false;
+            
+            const tDate = getLocalYYYYMMDD(parsedDate);
             if (startDate && tDate < startDate) return false;
             if (endDate && tDate > endDate) return false;
             if (filterType !== 'all' && t.type !== filterType) return false;
