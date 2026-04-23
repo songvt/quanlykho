@@ -11,12 +11,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const doc = await getGoogleSheet();
         const sheet = await getSheetByTitle(doc, 'employees');
 
-        // Đảm bảo header có cột 'check' (cho cả sheet mới lẫn đang tồn tại)
-        await sheet.loadHeaderRow();
-        const headers = sheet.headerValues || [];
-        if (!headers.includes('check')) {
-            await sheet.setHeaderRow([...headers, 'check']);
-        }
+        // Tải header để toObject() trả về đầy đủ tất cả cột (bao gồm cả 'check')
+        try { await sheet.loadHeaderRow(); } catch (_) { /* Sheet mới chưa có header */ }
 
         switch (req.method) {
             case 'GET': {
