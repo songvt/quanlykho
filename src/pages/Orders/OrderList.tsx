@@ -83,14 +83,35 @@ const OrderList = () => {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     });
 
+    const ORDER_ALLOWED_CHECK = '✨🥰😍😘Xin mời đ/c đặt hàng✨🥰😍😘';
+
     useEffect(() => {
         if (orderStatus === 'idle') dispatch(fetchOrders());
         if (productStatus === 'idle') dispatch(fetchProducts());
-        if (isAdmin && employeeStatus === 'idle') dispatch(fetchEmployees());
+        // Cần employees cho cả staff để đọc cột check
+        if (employeeStatus === 'idle') dispatch(fetchEmployees());
         if (inventoryStatus === 'idle') dispatch(fetchInventory());
-    }, [orderStatus, productStatus, employeeStatus, inventoryStatus, dispatch, isAdmin]);
+    }, [orderStatus, productStatus, employeeStatus, inventoryStatus, dispatch]);
+
+    // Tìm bản ghi nhân viên của user hiện tại trong danh sách
+    const currentEmployeeRecord = employees.find(emp =>
+        emp.auth_user_id === profile?.auth_user_id ||
+        emp.email === profile?.email ||
+        emp.id === profile?.id
+    );
 
     const handleOpenAdd = () => {
+        // Kiểm tra cột check nếu không phải admin
+        if (!isAdmin) {
+            const checkValue = currentEmployeeRecord?.check;
+            if (checkValue !== ORDER_ALLOWED_CHECK) {
+                const msg = checkValue
+                    ? checkValue   // Hiển thị nội dung cột check lên cho user biết
+                    : 'Tài khoản của bạn hiện chưa được phép đặt hàng. Vui lòng liên hệ quản lý.';
+                setNotification({ type: 'error', message: msg });
+                return;
+            }
+        }
         setNewOrder({
             product_id: '',
             quantity: 1,
@@ -357,6 +378,21 @@ const OrderList = () => {
                 <Alert severity={notification.type} onClose={() => setNotification(null)} sx={{ mb: 2, borderRadius: 2 }}>
                     {notification.message}
                 </Alert>
+            )}
+
+            {/* Banner trạng thái đặt hàng cho nhân viên */}
+            {!isAdmin && (
+                currentEmployeeRecord?.check === ORDER_ALLOWED_CHECK ? (
+                    <Alert severity="success" icon={false} sx={{ mb: 2, borderRadius: 2, fontWeight: 600, fontSize: '1rem' }}>
+                        {currentEmployeeRecord.check}
+                    </Alert>
+                ) : (
+                    <Alert severity="warning" sx={{ mb: 2, borderRadius: 2, fontWeight: 500 }}>
+                        {currentEmployeeRecord?.check
+                            ? currentEmployeeRecord.check
+                            : 'Tài khoản của bạn hiện chưa được phép đặt hàng. Vui lòng liên hệ quản lý.'}
+                    </Alert>
+                )
             )}
 
             {isMobile ? (
