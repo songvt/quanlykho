@@ -22,7 +22,6 @@ export interface Employee {
     password?: string;
     must_change_password?: boolean;
     permissions?: PermissionCode[];
-    check?: string; // Kiểm tra trạng thái cho phép đặt hàng
 }
 
 export interface Product {

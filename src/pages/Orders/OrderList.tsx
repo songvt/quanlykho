@@ -83,30 +83,14 @@ const OrderList = () => {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     });
 
-    const ORDER_ALLOWED_CHECK = '✨🥰😍😘Xin mời đ/c đặt hàng✨🥰😍😘';
-
     useEffect(() => {
         if (orderStatus === 'idle') dispatch(fetchOrders());
         if (productStatus === 'idle') dispatch(fetchProducts());
-        // Cần employees cho cả staff để đọc cột check
-        if (employeeStatus === 'idle') dispatch(fetchEmployees());
+        if (isAdmin && employeeStatus === 'idle') dispatch(fetchEmployees());
         if (inventoryStatus === 'idle') dispatch(fetchInventory());
-    }, [orderStatus, productStatus, employeeStatus, inventoryStatus, dispatch]);
-
-    // Dùng thẳng profile.check vì profile được lấy mới nhất từ server khi đăng nhập / restore session
-    const myCheck = (profile as any)?.check as string | undefined;
+    }, [orderStatus, productStatus, employeeStatus, inventoryStatus, dispatch, isAdmin]);
 
     const handleOpenAdd = () => {
-        // Kiểm tra cột check nếu không phải admin
-        if (!isAdmin) {
-            if (myCheck !== ORDER_ALLOWED_CHECK) {
-                const msg = myCheck
-                    ? myCheck
-                    : 'Tài khoản của bạn hiện chưa được phép đặt hàng. Vui lòng liên hệ quản lý.';
-                setNotification({ type: 'error', message: msg });
-                return;
-            }
-        }
         setNewOrder({
             product_id: '',
             quantity: 1,
@@ -373,65 +357,6 @@ const OrderList = () => {
                 <Alert severity={notification.type} onClose={() => setNotification(null)} sx={{ mb: 2, borderRadius: 2 }}>
                     {notification.message}
                 </Alert>
-            )}
-
-            {/* Banner trạng thái đặt hàng cho nhân viên */}
-            {!isAdmin && (
-                <Box mb={2}>
-                    {myCheck === ORDER_ALLOWED_CHECK ? (
-                        /* Được phép đặt hàng */
-                        <Alert
-                            severity="success"
-                            icon={false}
-                            sx={{
-                                borderRadius: 2,
-                                fontWeight: 700,
-                                fontSize: { xs: '0.95rem', sm: '1.05rem' },
-                                textAlign: 'center',
-                                letterSpacing: '0.3px',
-                                py: 1.5
-                            }}
-                        >
-                            {myCheck}
-                        </Alert>
-                    ) : myCheck ? (
-                        /* Có nội dung thông báo từ quản lý */
-                        <Box
-                            sx={{
-                                borderRadius: 2,
-                                border: '1.5px solid',
-                                borderColor: 'warning.main',
-                                bgcolor: '#fffbeb',
-                                p: { xs: 1.5, sm: 2 },
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 0.5
-                            }}
-                        >
-                            <Typography
-                                variant="caption"
-                                color="warning.dark"
-                                fontWeight={700}
-                                sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', mb: 0.5 }}
-                            >
-                                📢 Thông báo từ quản lý
-                            </Typography>
-                            <Typography
-                                variant="body1"
-                                fontWeight={600}
-                                color="warning.dark"
-                                sx={{ fontSize: { xs: '0.9rem', sm: '1rem' }, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-                            >
-                                {myCheck}
-                            </Typography>
-                        </Box>
-                    ) : (
-                        /* Không có giá trị check — chưa được phép */
-                        <Alert severity="info" sx={{ borderRadius: 2, fontWeight: 500 }}>
-                            Tài khoản của bạn hiện chưa được phép đặt hàng. Vui lòng liên hệ quản lý.
-                        </Alert>
-                    )}
-                </Box>
             )}
 
 
