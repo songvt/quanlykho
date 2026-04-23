@@ -30,7 +30,6 @@ export const downloadAsDataUri = (buffer: ArrayBuffer | Uint8Array, fileName: st
     saveAs(blob, fileName);
 };
 
-import * as XLSX from 'xlsx';
 
 // --- Utility: Read Number to Text (Vietnamese) ---
 const readGroup = (group: string) => {
@@ -276,84 +275,108 @@ export const exportStandardReport = async (
     downloadAsDataUri(buffer, `${fileName}.xlsx`);
 };
 
-// --- LEGACY EXPORTS (XLSX) ---
-export const exportToExcel = (data: any[], fileName: string, sheetName: string = 'Sheet1', options?: { title?: string; reporter?: string; }) => {
-    const headers = [];
-    if (options?.title) headers.push([options.title.toUpperCase()]);
-    if (options?.reporter) headers.push(['Người lập báo cáo:', options.reporter]);
+// --- LEGACY EXPORTS (converted to ExcelJS) ---
+export const exportToExcel = async (data: any[], fileName: string, sheetName: string = 'Sheet1', options?: { title?: string; reporter?: string; }) => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet(sheetName);
+    
+    let currentRow = 1;
+    if (options?.title) {
+        sheet.mergeCells(currentRow, 1, currentRow, 6);
+        sheet.getCell(currentRow, 1).value = options.title.toUpperCase();
+        currentRow++;
+    }
+    if (options?.reporter) {
+        sheet.getCell(currentRow, 1).value = 'Người lập báo cáo:';
+        sheet.getCell(currentRow, 2).value = options.reporter;
+        currentRow++;
+    }
     const now = new Date();
-    headers.push(['Thời gian xuất:', `${now.toLocaleTimeString('vi-VN')} - ${now.toLocaleDateString('vi-VN')}`]);
-    headers.push(['']);
+    sheet.getCell(currentRow, 1).value = 'Thời gian xuất:';
+    sheet.getCell(currentRow, 2).value = `${now.toLocaleTimeString('vi-VN')} - ${now.toLocaleDateString('vi-VN')}`;
+    currentRow += 2; // Add a blank line
 
     const tableKeys = data.length > 0 ? Object.keys(data[0]) : [];
-    const tableHeader = [tableKeys];
-    const tableBody = data.map(row => tableKeys.map(key => row[key]));
-    const finalData = [...headers, ...tableHeader, ...tableBody];
-    const ws = XLSX.utils.aoa_to_sheet(finalData);
-    if (options?.title) {
-        if (!ws['!merges']) ws['!merges'] = [];
-        ws['!merges'].push({ s: { r: 0, c: 0 }, e: { r: 0, c: 5 } });
-    }
-    const colWidths = tableKeys.map(key => ({ wch: Math.max(key.length, 20) }));
-    ws['!cols'] = colWidths;
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    sheet.getRow(currentRow).values = tableKeys;
+    currentRow++;
+
+    data.forEach(row => {
+        const rowValues = tableKeys.map(key => row[key] !== undefined && row[key] !== null ? row[key] : '');
+        sheet.getRow(currentRow).values = rowValues;
+        currentRow++;
+    });
+
+    sheet.columns = tableKeys.map(key => ({ width: Math.max(key.length, 20) }));
+
+    const buffer = await workbook.xlsx.writeBuffer();
     downloadAsDataUri(buffer, `${fileName}.xlsx`);
+};
+
+const generateTemplateFromHeaders = async (headers: any[], colsConfig: number[], sheetName: string, fileName: string) => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet(sheetName);
+    
+    const keys = Object.keys(headers[0]);
+    sheet.addRow(keys);
+    sheet.addRow(Object.values(headers[0]));
+    
+    sheet.columns = colsConfig.map(wch => ({ width: wch }));
+    
+    const buffer = await workbook.xlsx.writeBuffer();
+    downloadAsDataUri(buffer, fileName);
 };
 
 export const generateProductTemplate = () => {
     const headers = [{ MA_HANG: "SP001", TEN_HANG_HOA: "Sản phẩm mẫu", LOAI_DM: "Hàng hóa", DON_GIA: 100000, DON_VI: "Cái", LOAI_HANG: "Thường" }];
-    const ws = XLSX.utils.json_to_sheet(headers);
-    ws['!cols'] = [{ wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 15 }, { wch: 10 }, { wch: 15 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "ProductTemplate");
-    const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    downloadAsDataUri(buffer, "ProductImportTemplate.xlsx");
+    generateTemplateFromHeaders(headers, [15, 30, 20, 15, 10, 15], "ProductTemplate", "ProductImportTemplate.xlsx");
 };
 export const generateEmployeeTemplate = () => {
     const headers = [{ HO_TEN: "Nguyễn Văn A", EMAIL: "nguyenvan.a@example.com", SO_DIEN_THOAI: "0901234567", VAI_TRO: "staff", TEN_DANG_NHAP: "nguyenvana", QUAN_HUYEN: "Quận 1" }];
-    const ws = XLSX.utils.json_to_sheet(headers);
-    ws['!cols'] = [{ wch: 25 }, { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 15 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "EmployeeTemplate");
-    const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    downloadAsDataUri(buffer, "EmployeeImportTemplate.xlsx");
+    generateTemplateFromHeaders(headers, [25, 30, 15, 15, 20, 15], "EmployeeTemplate", "EmployeeImportTemplate.xlsx");
 };
 export const generateInboundTemplate = () => {
     const headers = [{ MA_HANG: "SP001", SO_LUONG: 10, DON_GIA: 150000, SERIAL: "SN123456", GHI_CHU: "Nhập hàng đợt 1", QUAN_HUYEN: "Quận 1", TRANG_THAI_HANG: "Mới 100%" }];
-    const ws = XLSX.utils.json_to_sheet(headers);
-    ws['!cols'] = [{ wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 20 }, { wch: 30 }, { wch: 15 }, { wch: 20 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "InboundTemplate");
-    const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    downloadAsDataUri(buffer, "InboundImportTemplate.xlsx");
+    generateTemplateFromHeaders(headers, [15, 10, 15, 20, 30, 15, 20], "InboundTemplate", "InboundImportTemplate.xlsx");
 };
 export const generateOutboundTemplate = () => {
     const headers = [{ MA_HANG: "SP001", SO_LUONG: 5, EMAIL_NGUOI_NHAN: "nguyenvan.a@example.com", SERIAL: "SN123", GHI_CHU: "Xuất cho dự án A", QUAN_HUYEN: "Quận 3", TRANG_THAI_HANG: "Đã qua sử dụng" }];
-    const ws = XLSX.utils.json_to_sheet(headers);
-    ws['!cols'] = [{ wch: 15 }, { wch: 10 }, { wch: 30 }, { wch: 20 }, { wch: 30 }, { wch: 15 }, { wch: 20 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "OutboundTemplate");
-    const buffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-    downloadAsDataUri(buffer, "OutboundImportTemplate.xlsx");
+    generateTemplateFromHeaders(headers, [15, 10, 30, 20, 30, 15, 20], "OutboundTemplate", "OutboundImportTemplate.xlsx");
 };
-export const readExcelFile = (file: File): Promise<any[]> => {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const data = e.target?.result;
-                const workbook = XLSX.read(data, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                const json = XLSX.utils.sheet_to_json(worksheet);
-                resolve(json);
-            } catch (error) { reject(error); }
-        };
-        reader.onerror = (error) => reject(error);
-        reader.readAsArrayBuffer(file);
+
+export const readExcelFile = async (file: File): Promise<any[]> => {
+    const workbook = new ExcelJS.Workbook();
+    const arrayBuffer = await file.arrayBuffer();
+    await workbook.xlsx.load(arrayBuffer);
+    const worksheet = workbook.worksheets[0];
+    
+    const json: any[] = [];
+    if (!worksheet) return json;
+    
+    const headers: string[] = [];
+    worksheet.getRow(1).eachCell((cell, colNumber) => {
+        headers[colNumber] = cell.text;
     });
+    
+    worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return; // skip header
+        const obj: any = {};
+        row.eachCell((cell, colNumber) => {
+            const header = headers[colNumber];
+            if (header) {
+                let val = cell.value;
+                if (val && typeof val === 'object') {
+                    if ('formula' in val) {
+                        val = (val as ExcelJS.CellFormulaValue).result;
+                    } else if ('richText' in val) {
+                        val = (val as ExcelJS.CellRichTextValue).richText.map(t => t.text).join('');
+                    }
+                }
+                obj[header] = val;
+            }
+        });
+        json.push(obj);
+    });
+    return json;
 };
 
 // --- NEW EXCELJS HANDOVER EXPORT ---

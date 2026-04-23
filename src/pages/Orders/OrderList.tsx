@@ -5,7 +5,7 @@ import {
     Box, Paper, Typography, Button, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Dialog,
     DialogTitle, DialogContent, DialogActions, TextField, Stack,
-    CircularProgress, Alert, Chip, Select, MenuItem, FormControl, InputLabel, Checkbox, Autocomplete
+    CircularProgress, Alert, Chip, Select, MenuItem, FormControl, InputLabel, Checkbox, Autocomplete, useMediaQuery, useTheme, Card, CardContent, Divider
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -16,6 +16,7 @@ import DoneAllIcon from '@mui/icons-material/DoneAll';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { InputAdornment } from '@mui/material';
 import ProductSearchDialog from '../../components/ProductSearchDialog';
+import { useNavigate } from 'react-router-dom';
 
 
 import { fetchOrders, addOrder, updateOrderStatus, deleteOrders } from '../../store/slices/ordersSlice';
@@ -25,9 +26,13 @@ import { fetchInventory, selectStockMap } from '../../store/slices/inventorySlic
 import type { RootState, AppDispatch } from '../../store';
 import type { Order } from '../../types';
 import { usePermission } from '../../hooks/usePermission';
+import ConfirmDialog from '../../components/Common/ConfirmDialog';
+import VoiceSearchButton from '../../components/VoiceSearchButton';
+import { getOrderLimit } from '../../config/orderLimits';
 
 const OrderList = () => {
     const dispatch = useDispatch<AppDispatch>();
+    const navigate = useNavigate();
     const { items: orders, status: orderStatus, error } = useSelector((state: RootState) => state.orders);
     const { items: products, status: productStatus } = useSelector((state: RootState) => state.products);
     const { items: employees, status: employeeStatus } = useSelector((state: RootState) => state.employees);
@@ -45,6 +50,9 @@ const OrderList = () => {
     // Legacy isAdmin for logic not strictly covered by basic permissions if any, or just strictly replaced
     const isAdmin = canViewAll; // For backward compatibility in this file mostly meant view_all or manage
 
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
     const [openDialog, setOpenDialog] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -57,6 +65,12 @@ const OrderList = () => {
     const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
     const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
+    const [actionLoading, setActionLoading] = useState(false);
+    const [confirmState, setConfirmState] = useState<{
+        open: boolean; title: string; message: string; onConfirm: () => void;
+    }>({ open: false, title: '', message: '', onConfirm: () => {} });
+    const [approveLoadingId, setApproveLoadingId] = useState<string | null>(null);
+    const [bulkApproveLoading, setBulkApproveLoading] = useState(false);
 
     // Date Filter State
     const [startDate, setStartDate] = useState(() => {
@@ -85,15 +99,26 @@ const OrderList = () => {
         setOpenDialog(true);
     };
 
+    // Tính giới hạn số lượng đặt hàng hiệu quả cho sản phẩm đang chọn
+    // Admin không bị giới hạn theo chính sách, chỉ bị giới hạn bởi tồn kho
+    const selectedProduct = products.find(p => p.id === newOrder.product_id);
+    const stockLimit = inventory[newOrder.product_id] || 0;
+    const policyLimit = (!isAdmin && selectedProduct) ? getOrderLimit(selectedProduct.name) : null;
+    const effectiveMaxQty = policyLimit !== null ? Math.min(stockLimit, policyLimit) : stockLimit;
+
     const handleSave = async () => {
         if (!newOrder.product_id || !newOrder.requester_group) {
-            alert('Vui lòng điền đầy đủ thông tin');
+            setNotification({ type: 'error', message: 'Vui lòng điền đầy đủ thông tin' });
             return;
         }
 
-        const maxQty = inventory[newOrder.product_id] || 0;
-        if (newOrder.quantity > maxQty) {
-            alert(`Sản phẩm này chỉ còn ${maxQty} tồn kho (khoả dụng). Không thể đặt vượt quá số lượng!`);
+        if (newOrder.quantity > stockLimit) {
+            setNotification({ type: 'error', message: `Sản phẩm này chỉ còn ${stockLimit} tồn kho khả dụng. Không thể đặt vượt quá số lượng tồn kho!` });
+            return;
+        }
+
+        if (!isAdmin && policyLimit !== null && newOrder.quantity > policyLimit) {
+            setNotification({ type: 'error', message: `Mặt hàng "${selectedProduct?.name}" chỉ được đặt tối đa ${policyLimit} mỗi lần. Vui lòng điều chỉnh số lượng!` });
             return;
         }
 
@@ -113,33 +138,31 @@ const OrderList = () => {
     };
 
     const handleUpdateStatus = async (id: string, status: Order['status']) => {
-        if (window.confirm(`Bạn có chắc chắn muốn chuyển trạng thái đơn hàng này thành "${status}"?`)) {
-            try {
-                const approver = (status === 'approved' || status === 'rejected') ? (profile?.full_name || profile?.username || profile?.email) : undefined;
-                await dispatch(updateOrderStatus({ id, status, approver })).unwrap();
-                dispatch(fetchInventory());
-                setNotification({ type: 'success', message: `Cập nhật trạng thái thành công!` });
-            } catch (err) {
-                setNotification({ type: 'error', message: 'Lỗi khi cập nhật trạng thái.' });
-            }
+        setApproveLoadingId(id);
+        try {
+            const approver = (status === 'approved' || status === 'rejected') ? (profile?.full_name || profile?.username || profile?.email) : undefined;
+            await dispatch(updateOrderStatus({ id, status, approver })).unwrap();
+            dispatch(fetchInventory());
+            setNotification({ type: 'success', message: `Cập nhật trạng thái thành công!` });
+        } catch (err) {
+            setNotification({ type: 'error', message: 'Lỗi khi cập nhật trạng thái.' });
+        } finally {
+            setApproveLoadingId(null);
         }
     };
 
     const handleBulkApprove = async () => {
-        if (window.confirm(`Bạn có chắc chắn muốn DUYỆT ${selectedOrderIds.length} đơn hàng đã chọn?`)) {
-            try {
-                // Execute sequentially or Promise.all. Promise.all is faster but risky if one fails.
-                // Considering SupabaseService might not support bulk update yet, we loop.
-                const approver = profile?.full_name || profile?.username || profile?.email;
-                await Promise.all(selectedOrderIds.map(id => dispatch(updateOrderStatus({ id, status: 'approved', approver })).unwrap()));
-
-                dispatch(fetchInventory());
-                setSelectedOrderIds([]); // Clear selection
-                setNotification({ type: 'success', message: 'Đã duyệt thành công hàng loạt!' });
-            } catch (err) {
-                console.error("Bulk approve failed", err);
-                setNotification({ type: 'error', message: 'Có lỗi xảy ra khi duyệt hàng loạt.' });
-            }
+        setBulkApproveLoading(true);
+        try {
+            const approver = profile?.full_name || profile?.username || profile?.email;
+            await Promise.all(selectedOrderIds.map(id => dispatch(updateOrderStatus({ id, status: 'approved', approver })).unwrap()));
+            dispatch(fetchInventory());
+            setSelectedOrderIds([]);
+            setNotification({ type: 'success', message: `Đã duyệt thành công ${selectedOrderIds.length} đơn hàng!` });
+        } catch (err) {
+            setNotification({ type: 'error', message: 'Có lỗi xảy ra khi duyệt hàng loạt.' });
+        } finally {
+            setBulkApproveLoading(false);
         }
     };
 
@@ -209,19 +232,27 @@ const OrderList = () => {
         }
     };
 
-    const handleBulkDelete = async () => {
-        if (window.confirm(`Bạn có chắc chắn muốn xóa ${selectedOrderIds.length} đơn hàng đã chọn?`)) {
-            try {
-                // @ts-ignore
-                await dispatch(deleteOrders(selectedOrderIds)).unwrap();
-                dispatch(fetchInventory());
-                setSelectedOrderIds([]);
-                setNotification({ type: 'success', message: 'Đã xóa thành công!' });
-            } catch (err) {
-                console.error('Bulk delete failed:', err);
-                setNotification({ type: 'error', message: 'Lỗi khi xóa đơn hàng.' });
+    const handleBulkDelete = () => {
+        setConfirmState({
+            open: true,
+            title: `Xóa ${selectedOrderIds.length} đơn hàng`,
+            message: `Bạn có chắc muốn xóa ${selectedOrderIds.length} đơn hàng đã chọn? Hành động này không thể hoàn tác.`,
+            onConfirm: async () => {
+                setActionLoading(true);
+                try {
+                    // @ts-ignore
+                    await dispatch(deleteOrders(selectedOrderIds)).unwrap();
+                    dispatch(fetchInventory());
+                    setSelectedOrderIds([]);
+                    setNotification({ type: 'success', message: 'Đã xóa thành công!' });
+                } catch (err) {
+                    setNotification({ type: 'error', message: 'Lỗi khi xóa đơn hàng.' });
+                } finally {
+                    setActionLoading(false);
+                    setConfirmState(s => ({ ...s, open: false }));
+                }
             }
-        }
+        });
     }
 
     if (orderStatus === 'loading') return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
@@ -263,11 +294,12 @@ const OrderList = () => {
                                     variant="contained"
                                     color="success"
                                     size="small"
-                                    startIcon={<DoneAllIcon />}
+                                    startIcon={bulkApproveLoading ? <CircularProgress size={14} color="inherit" /> : <DoneAllIcon />}
                                     onClick={handleBulkApprove}
+                                    disabled={bulkApproveLoading}
                                     sx={{ borderRadius: 2, flex: { xs: 1, sm: 'none' }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
                                 >
-                                    Duyệt
+                                    {bulkApproveLoading ? 'Đang duyệt...' : 'Duyệt'}
                                 </Button>
                             )}
                         </>
@@ -302,6 +334,7 @@ const OrderList = () => {
                                     <SearchIcon color="action" />
                                 </InputAdornment>
                             ),
+                            endAdornment: <VoiceSearchButton onResult={setSearchTerm} />,
                             sx: { borderRadius: 2, bgcolor: 'white', fontSize: { xs: '0.8rem', sm: '1rem' } }
                         }}
                         sx={{ flex: { xs: 1, sm: 'none' }, minWidth: '150px' }}
@@ -326,102 +359,77 @@ const OrderList = () => {
                 </Alert>
             )}
 
-            <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 2px 4px -1px rgb(0 0 0 / 0.1)', overflowX: 'auto' }}>
-                <Table size="small" sx={{ minWidth: 800 }}>
-                    <TableHead>
-                        <TableRow>
-                            {(canDelete || canApprove) && (
-                                <TableCell padding="checkbox">
-                                    <Checkbox
-                                        checked={filteredOrders.length > 0 && selectedOrderIds.length === filteredOrders.length}
-                                        indeterminate={selectedOrderIds.length > 0 && selectedOrderIds.length < filteredOrders.length}
-                                        onChange={(e) => handleSelectAll(e.target.checked)}
-                                        // disabled={pendingOrders.length === 0} // Enable even if no pending, just orders
-                                        size="small"
-                                    />
-                                </TableCell>
-                            )}
-                            <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Ngày đặt</TableCell>
-                            <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Nhân viên</TableCell>
-                            <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Vật tư hàng hóa</TableCell>
-                            <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Tồn kho</TableCell>
-                            <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Số lượng</TableCell>
-                            <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Người duyệt</TableCell>
-                            <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Trạng thái</TableCell>
-                            {(canApprove) && (
-                                <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Thao tác</TableCell>
-                            )}
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {filteredOrders.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={(canDelete || canApprove) ? 8 : 7} align="center" sx={{ py: 4, color: 'text.secondary', fontSize: '0.875rem' }}>Chưa có đơn hàng nào phù hợp</TableCell>
-                            </TableRow>
-                        ) : (
-                            filteredOrders.map((order) => {
-                                const isSelected = selectedOrderIds.includes(order.id);
-
-                                return (
-                                    <TableRow key={order.id} hover sx={{ transition: 'all 0.2s', bgcolor: isSelected ? 'action.selected' : 'inherit' }}>
-                                        {canDelete && (
-                                            <TableCell padding="checkbox">
-                                                <Checkbox
-                                                    checked={isSelected}
-                                                    onChange={(e) => handleSelectOne(order.id, e.target.checked)}
-                                                    size="small"
-                                                />
-                                            </TableCell>
-                                        )}
-                                        <TableCell sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
-                                            {new Date(order.order_date).toLocaleDateString('vi-VN')}
-                                        </TableCell>
-                                        <TableCell sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>
-                                            <Typography variant="body2" fontWeight="500" sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>{order.requester_group}</Typography>
-                                        </TableCell>
-                                        <TableCell sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>
-                                            <Box>
-                                                <Typography variant="body2" fontWeight="600" sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
-                                                    {products.find(p => p.id === order.product_id)?.name || 'Unknown Product'}
-                                                </Typography>
-                                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.6rem', sm: '0.75rem' } }}>
-                                                    SKU: {products.find(p => p.id === order.product_id)?.item_code}
+            {isMobile ? (
+                <Box>
+                    {filteredOrders.length === 0 ? (
+                        <Box py={4} textAlign="center">
+                            <Typography color="text.secondary" variant="body1" fontWeight={500}>Chưa có đơn hàng nào phù hợp</Typography>
+                        </Box>
+                    ) : (
+                        filteredOrders.map((order) => {
+                            const isSelected = selectedOrderIds.includes(order.id);
+                            return (
+                                <Card key={order.id} sx={{ mb: 2, borderRadius: 3, border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                                        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                                            <Box display="flex" alignItems="center" gap={1}>
+                                                {canDelete && (
+                                                    <Checkbox
+                                                        checked={isSelected}
+                                                        onChange={(e) => handleSelectOne(order.id, e.target.checked)}
+                                                        size="small"
+                                                        sx={{ p: 0 }}
+                                                    />
+                                                )}
+                                                <Typography variant="subtitle2" fontWeight="bold">
+                                                    {new Date(order.order_date).toLocaleDateString('vi-VN')}
                                                 </Typography>
                                             </Box>
-                                        </TableCell>
-                                        <TableCell align="center" sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>
+                                            {getStatusChip(order.status)}
+                                        </Stack>
+                                        
+                                        <Typography variant="body1" fontWeight="600" mb={0.5} color="primary.main">
+                                            {products.find(p => p.id === order.product_id)?.name || 'Unknown Product'}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                                            SKU: {products.find(p => p.id === order.product_id)?.item_code}
+                                        </Typography>
+                                        
+                                        <Divider sx={{ my: 1 }} />
+                                        
+                                        <Stack direction="row" justifyContent="space-between" mb={0.5}>
+                                            <Typography variant="body2" color="text.secondary">Nhân viên:</Typography>
+                                            <Typography variant="body2" fontWeight="600">{order.requester_group}</Typography>
+                                        </Stack>
+                                        
+                                        <Stack direction="row" justifyContent="space-between" mb={0.5}>
+                                            <Typography variant="body2" color="text.secondary">Số lượng đặt:</Typography>
+                                            <Typography variant="body2" fontWeight="bold" color="primary">{order.quantity}</Typography>
+                                        </Stack>
+
+                                        <Stack direction="row" justifyContent="space-between" mb={1}>
+                                            <Typography variant="body2" color="text.secondary">Tồn kho hiện tại:</Typography>
                                             <Chip
                                                 label={inventory[order.product_id] || 0}
                                                 size="small"
                                                 color={(inventory[order.product_id] || 0) > 0 ? 'default' : 'error'}
                                                 variant="outlined"
+                                                sx={{ height: 20 }}
                                             />
-                                        </TableCell>
-                                        <TableCell align="right" sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>
-                                            <Typography variant="body2" fontWeight="bold" sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>{order.quantity}</Typography>
-                                        </TableCell>
-                                        <TableCell sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>
-                                            <Typography variant="body2" sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' }, fontStyle: order.approved_by ? 'normal' : 'italic', color: order.approved_by ? 'text.primary' : 'text.secondary' }}>
-                                                {order.approved_by || 'Chưa duyệt'}
-                                            </Typography>
-                                            {order.approved_at && (
-                                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', display: 'block' }}>
-                                                    {new Date(order.approved_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}
-                                                </Typography>
-                                            )}
-                                        </TableCell>
-                                        <TableCell sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>{getStatusChip(order.status)}</TableCell>
+                                        </Stack>
 
-                                        {(canApprove) && (
-                                            <TableCell align="center">
+                                        {canApprove && (
+                                            <Box mt={2}>
                                                 {order.status === 'pending' && (
-                                                    <Stack direction="row" spacing={1} justifyContent="center">
+                                                    <Stack direction="row" spacing={1}>
                                                         <Button
                                                             size="small"
                                                             variant="contained"
                                                             color="success"
+                                                            fullWidth
                                                             onClick={() => handleUpdateStatus(order.id, 'approved')}
-                                                            sx={{ minWidth: 0, px: 2 }}
+                                                            disabled={approveLoadingId === order.id}
+                                                            startIcon={approveLoadingId === order.id ? <CircularProgress size={14} color="inherit" /> : null}
                                                         >
                                                             Duyệt
                                                         </Button>
@@ -429,8 +437,9 @@ const OrderList = () => {
                                                             size="small"
                                                             variant="outlined"
                                                             color="error"
+                                                            fullWidth
                                                             onClick={() => handleUpdateStatus(order.id, 'rejected')}
-                                                            sx={{ minWidth: 0, px: 2 }}
+                                                            disabled={approveLoadingId === order.id}
                                                         >
                                                             Từ chối
                                                         </Button>
@@ -440,21 +449,155 @@ const OrderList = () => {
                                                     <Button
                                                         size="small"
                                                         variant="contained"
-                                                        color="primary"
-                                                        onClick={() => handleUpdateStatus(order.id, 'completed')}
+                                                        color="secondary"
+                                                        fullWidth
+                                                        onClick={() => navigate('/outbound')}
                                                     >
-                                                        Hoàn tất
+                                                        Xuất kho
                                                     </Button>
                                                 )}
-                                            </TableCell>
+                                            </Box>
                                         )}
-                                    </TableRow>
-                                );
-                            })
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })
+                    )}
+                </Box>
+            ) : (
+                <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 2px 4px -1px rgb(0 0 0 / 0.1)', overflowX: 'auto' }}>
+                    <Table size="small" sx={{ minWidth: 800 }}>
+                        <TableHead>
+                            <TableRow>
+                                {(canDelete || canApprove) && (
+                                    <TableCell padding="checkbox">
+                                        <Checkbox
+                                            checked={filteredOrders.length > 0 && selectedOrderIds.length === filteredOrders.length}
+                                            indeterminate={selectedOrderIds.length > 0 && selectedOrderIds.length < filteredOrders.length}
+                                            onChange={(e) => handleSelectAll(e.target.checked)}
+                                            // disabled={pendingOrders.length === 0} // Enable even if no pending, just orders
+                                            size="small"
+                                        />
+                                    </TableCell>
+                                )}
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Ngày đặt</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Nhân viên</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Vật tư hàng hóa</TableCell>
+                                <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Tồn kho</TableCell>
+                                <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Số lượng</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Người duyệt</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Trạng thái</TableCell>
+                                {(canApprove) && (
+                                    <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.7rem', sm: '0.875rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>Thao tác</TableCell>
+                                )}
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {filteredOrders.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={(canDelete || canApprove) ? 8 : 7} align="center" sx={{ py: 4, color: 'text.secondary', fontSize: '0.875rem' }}>Chưa có đơn hàng nào phù hợp</TableCell>
+                                </TableRow>
+                            ) : (
+                                filteredOrders.map((order) => {
+                                    const isSelected = selectedOrderIds.includes(order.id);
+
+                                    return (
+                                        <TableRow key={order.id} hover sx={{ transition: 'all 0.2s', bgcolor: isSelected ? 'action.selected' : 'inherit' }}>
+                                            {canDelete && (
+                                                <TableCell padding="checkbox">
+                                                    <Checkbox
+                                                        checked={isSelected}
+                                                        onChange={(e) => handleSelectOne(order.id, e.target.checked)}
+                                                        size="small"
+                                                    />
+                                                </TableCell>
+                                            )}
+                                            <TableCell sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
+                                                {new Date(order.order_date).toLocaleDateString('vi-VN')}
+                                            </TableCell>
+                                            <TableCell sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>
+                                                <Typography variant="body2" fontWeight="500" sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>{order.requester_group}</Typography>
+                                            </TableCell>
+                                            <TableCell sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>
+                                                <Box>
+                                                    <Typography variant="body2" fontWeight="600" sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
+                                                        {products.find(p => p.id === order.product_id)?.name || 'Unknown Product'}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.6rem', sm: '0.75rem' } }}>
+                                                        SKU: {products.find(p => p.id === order.product_id)?.item_code}
+                                                    </Typography>
+                                                </Box>
+                                            </TableCell>
+                                            <TableCell align="center" sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>
+                                                <Chip
+                                                    label={inventory[order.product_id] || 0}
+                                                    size="small"
+                                                    color={(inventory[order.product_id] || 0) > 0 ? 'default' : 'error'}
+                                                    variant="outlined"
+                                                />
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>
+                                                <Typography variant="body2" fontWeight="bold" sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>{order.quantity}</Typography>
+                                            </TableCell>
+                                            <TableCell sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>
+                                                <Typography variant="body2" sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' }, fontStyle: order.approved_by ? 'normal' : 'italic', color: order.approved_by ? 'text.primary' : 'text.secondary' }}>
+                                                    {order.approved_by || 'Chưa duyệt'}
+                                                </Typography>
+                                                {order.approved_at && (
+                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', display: 'block' }}>
+                                                        {new Date(order.approved_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                                    </Typography>
+                                                )}
+                                            </TableCell>
+                                            <TableCell sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>{getStatusChip(order.status)}</TableCell>
+
+                                            {(canApprove) && (
+                                                <TableCell align="center">
+                                                    {order.status === 'pending' && (
+                                                        <Stack direction="row" spacing={1} justifyContent="center">
+                                                            <Button
+                                                                size="small"
+                                                                variant="contained"
+                                                                color="success"
+                                                                onClick={() => handleUpdateStatus(order.id, 'approved')}
+                                                                disabled={approveLoadingId === order.id}
+                                                                startIcon={approveLoadingId === order.id ? <CircularProgress size={14} color="inherit" /> : null}
+                                                                sx={{ minWidth: 0, px: 2 }}
+                                                            >
+                                                                {approveLoadingId === order.id ? '...' : 'Duyệt'}
+                                                            </Button>
+                                                            <Button
+                                                                size="small"
+                                                                variant="outlined"
+                                                                color="error"
+                                                                onClick={() => handleUpdateStatus(order.id, 'rejected')}
+                                                                disabled={approveLoadingId === order.id}
+                                                                sx={{ minWidth: 0, px: 2 }}
+                                                            >
+                                                                Từ chối
+                                                            </Button>
+                                                        </Stack>
+                                                    )}
+                                                    {order.status === 'approved' && (
+                                                        <Button
+                                                            size="small"
+                                                            variant="contained"
+                                                            color="secondary"
+                                                            onClick={() => navigate('/outbound')}
+                                                        >
+                                                            Xuất kho
+                                                        </Button>
+                                                    )}
+                                                </TableCell>
+                                            )}
+                                        </TableRow>
+                                    );
+                                })
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            )}
 
             {/* Add Order Dialog */}
             <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
@@ -528,14 +671,21 @@ const OrderList = () => {
                             value={newOrder.quantity}
                             onChange={(e) => {
                                 const val = Number(e.target.value);
-                                const maxQty = inventory[newOrder.product_id] || 0;
-                                if (val > maxQty) {
-                                    setNewOrder({ ...newOrder, quantity: maxQty });
+                                if (val > effectiveMaxQty) {
+                                    setNewOrder({ ...newOrder, quantity: effectiveMaxQty });
                                 } else {
-                                    setNewOrder({ ...newOrder, quantity: val });
+                                    setNewOrder({ ...newOrder, quantity: Math.max(1, val) });
                                 }
                             }}
-                            inputProps={{ min: 1, max: newOrder.product_id ? (inventory[newOrder.product_id] || 1) : 1 }}
+                            inputProps={{ min: 1, max: effectiveMaxQty || 1 }}
+                            helperText={
+                                newOrder.product_id
+                                    ? policyLimit !== null
+                                        ? `Tồn kho: ${stockLimit} | Giới hạn đặt hàng: ${policyLimit} | Tối đa: ${effectiveMaxQty}`
+                                        : `Tồn kho khả dụng: ${stockLimit}`
+                                    : 'Chọn sản phẩm trước'
+                            }
+                            error={newOrder.product_id !== '' && newOrder.quantity > effectiveMaxQty}
                         />
                     </Stack>
                 </DialogContent>
@@ -554,6 +704,17 @@ const OrderList = () => {
                     setNewOrder(prev => ({ ...prev, product_id: product.id }));
                     setShowProductSearch(false);
                 }}
+            />
+
+            <ConfirmDialog
+                open={confirmState.open}
+                title={confirmState.title}
+                message={confirmState.message}
+                confirmLabel="Xóa ngay"
+                severity="danger"
+                loading={actionLoading}
+                onConfirm={confirmState.onConfirm}
+                onCancel={() => setConfirmState(s => ({ ...s, open: false }))}
             />
         </Box >
     );

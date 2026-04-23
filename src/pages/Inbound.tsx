@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import VoiceSearchButton from '../components/VoiceSearchButton';
 import { useDebounce } from '../hooks/useDebounce';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts } from '../store/slices/productsSlice';
@@ -9,7 +10,8 @@ import type { Transaction } from '../types';
 import {
     Button, TextField, FormControl, FormHelperText, Checkbox, Chip,
     Typography, Box, CircularProgress, Paper, Stack, Dialog, DialogContent, DialogTitle, Autocomplete,
-    IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Tooltip, DialogActions, InputAdornment, MenuItem, Grid
+    IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Tooltip, DialogActions, InputAdornment, MenuItem, Grid,
+    Card, CardContent, Divider, useMediaQuery, useTheme
 } from '@mui/material';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
@@ -33,9 +35,12 @@ export const Inbound = () => {
     const { profile } = useSelector((state: RootState) => state.auth);
     const stockMap = useSelector(selectStockMap);
     const { items: transactions, status: txStatus } = useSelector((state: RootState) => state.transactions);
-    const isAdmin = profile?.role === 'admin';
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';
 
     const { success, error: notifyError } = useNotification();
+    
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     // Form state
     const [selectedProduct, setSelectedProduct] = useState('');
@@ -474,7 +479,7 @@ export const Inbound = () => {
                             type="number"
                             value={quantity}
                             onChange={e => setQuantity(Number(e.target.value))}
-                            inputProps={{ min: 1 }}
+                            inputProps={{ min: 1, inputMode: 'numeric', pattern: '[0-9]*' }}
                             size="small"
                             disabled={products.find(p => p.id === selectedProduct)?.category?.toLowerCase() === 'hàng hóa'}
                         />
@@ -486,6 +491,7 @@ export const Inbound = () => {
                             type="number"
                             value={price}
                             onChange={e => setPrice(Number(e.target.value))}
+                            inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
                             size="small"
                         />
                     </Grid>
@@ -650,6 +656,7 @@ export const Inbound = () => {
                             sx={{ width: { xs: '100%', sm: 350 } }}
                             InputProps={{
                                 startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
+                                endAdornment: <VoiceSearchButton onResult={setSearchTerm} />,
                                 sx: { borderRadius: 2 }
                             }}
                         />
@@ -660,77 +667,129 @@ export const Inbound = () => {
                             </Box>
                         )}
                     </Box>
-                    <TableContainer>
-                        <Table sx={{ minWidth: 800 }}>
-                            <TableHead sx={{ bgcolor: 'grey.50' }}>
-                                <TableRow>
-                                    <TableCell padding="checkbox" sx={{ pl: 1.5 }}>
-                                        <Checkbox
-                                            size="small"
-                                            indeterminate={selectedIds.length > 0 && selectedIds.length < paginatedTransactions.length}
-                                            checked={paginatedTransactions.length > 0 && paginatedTransactions.every(t => selectedIds.includes(t.id))}
-                                            onChange={e => handleSelectAll(e.target.checked)}
-                                        />
-                                    </TableCell>
-                                    <TableCell sx={{ fontWeight: 600 }}>Thời gian</TableCell>
-                                    <TableCell sx={{ fontWeight: 600 }}>Tên vật tư</TableCell>
-                                    <TableCell sx={{ fontWeight: 600 }}>Serial</TableCell>
-                                    <TableCell sx={{ fontWeight: 600, align: 'right' }}>SL</TableCell>
-                                    <TableCell sx={{ fontWeight: 600, align: 'right' }}>Đơn giá</TableCell>
-                                    <TableCell sx={{ fontWeight: 600 }}>Quận/Huyện</TableCell>
-                                    <TableCell sx={{ fontWeight: 600 }}>Trạng thái</TableCell>
-                                    <TableCell sx={{ fontWeight: 600, align: 'center' }}>Thao tác</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {txStatus === 'loading' ? (
-                                    <TableSkeleton columns={9} rows={rowsPerPage} />
-                                ) : paginatedTransactions.length > 0 ? (
-                                    paginatedTransactions.map((row) => (
-                                        <TableRow
-                                            key={row.id}
-                                            hover
-                                            selected={selectedIds.includes(row.id)}
-                                            sx={{ '&.Mui-selected': { bgcolor: 'primary.50' } }}
-                                        >
-                                            <TableCell padding="checkbox" sx={{ pl: 1.5 }}>
-                                                <Checkbox
-                                                    size="small"
-                                                    checked={selectedIds.includes(row.id)}
-                                                    onChange={e => handleSelectOne(row.id, e.target.checked)}
-                                                />
-                                            </TableCell>
-                                            <TableCell>{new Date(row.date || row.inbound_date || '').toLocaleString('vi-VN')}</TableCell>
-                                            <TableCell>{row.product?.name || 'Unknown'}</TableCell>
-                                            <TableCell>{row.serial_code || '-'}</TableCell>
-                                            <TableCell align="right">{row.quantity}</TableCell>
-                                            <TableCell align="right">{Number(row.unit_price || 0).toLocaleString('vi-VN')} đ</TableCell>
-                                            <TableCell>{row.district || '-'}</TableCell>
-                                            <TableCell>{row.item_status || '-'}</TableCell>
-                                            <TableCell align="center">
-                                                <Tooltip title="Sửa">
-                                                    <IconButton color="primary" onClick={() => handleEditClick(row)} size="small">
-                                                        <EditIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                                <Tooltip title="Xóa">
-                                                    <IconButton color="error" onClick={() => handleDeleteClick(row)} size="small">
-                                                        <DeleteIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
+                    {isMobile ? (
+                        <Box p={2}>
+                            {txStatus === 'loading' ? (
+                                <Box display="flex" justifyContent="center"><CircularProgress /></Box>
+                            ) : paginatedTransactions.length > 0 ? (
+                                <Stack spacing={2}>
+                                    {paginatedTransactions.map((row, idx) => (
+                                        <Card key={row.id ? `card-${row.id}` : `inbound-card-${idx}`} variant="outlined" sx={{ borderRadius: 2, borderColor: selectedIds.includes(row.id) ? 'primary.main' : 'divider', bgcolor: selectedIds.includes(row.id) ? 'primary.50' : 'white' }}>
+                                            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                                                <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                                                    <Box display="flex" alignItems="center" gap={1}>
+                                                        <Checkbox size="small" sx={{ p: 0 }} checked={selectedIds.includes(row.id)} onChange={e => handleSelectOne(row.id, e.target.checked)} />
+                                                        <Typography variant="subtitle2" fontWeight="bold" color="primary">{row.product?.name || 'Unknown'}</Typography>
+                                                    </Box>
+                                                    <Typography variant="body2" fontWeight="bold">SL: {row.quantity}</Typography>
+                                                </Box>
+                                                <Divider sx={{ my: 1 }} />
+                                                <Grid container spacing={1}>
+                                                    <Grid size={6}>
+                                                        <Typography variant="caption" color="text.secondary">Serial</Typography>
+                                                        <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>{row.serial_code || '-'}</Typography>
+                                                    </Grid>
+                                                    <Grid size={6}>
+                                                        <Typography variant="caption" color="text.secondary">Quận/Huyện</Typography>
+                                                        <Typography variant="body2">{row.district || '-'}</Typography>
+                                                    </Grid>
+                                                    <Grid size={6}>
+                                                        <Typography variant="caption" color="text.secondary">Đơn giá</Typography>
+                                                        <Typography variant="body2">{Number(row.unit_price || 0).toLocaleString('vi-VN')} đ</Typography>
+                                                    </Grid>
+                                                    <Grid size={6}>
+                                                        <Typography variant="caption" color="text.secondary">Trạng thái</Typography>
+                                                        <Typography variant="body2">{row.item_status || '-'}</Typography>
+                                                    </Grid>
+                                                    <Grid size={12}>
+                                                        <Typography variant="caption" color="text.secondary">Thời gian: {new Date(row.date || row.inbound_date || '').toLocaleString('vi-VN')}</Typography>
+                                                    </Grid>
+                                                </Grid>
+                                                <Box display="flex" justifyContent="flex-end" gap={1} mt={1}>
+                                                    <Button size="small" startIcon={<EditIcon />} onClick={() => handleEditClick(row)}>Sửa</Button>
+                                                    <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={() => handleDeleteClick(row)}>Xóa</Button>
+                                                </Box>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </Stack>
+                            ) : (
+                                <Typography textAlign="center" color="text.secondary" py={3}>Không có dữ liệu</Typography>
+                            )}
+                        </Box>
+                    ) : (
+                        <TableContainer>
+                            <Table sx={{ minWidth: 800 }}>
+                                <TableHead sx={{ bgcolor: 'grey.50' }}>
+                                    <TableRow>
+                                        <TableCell padding="checkbox" sx={{ pl: 1.5 }}>
+                                            <Checkbox
+                                                size="small"
+                                                indeterminate={selectedIds.length > 0 && selectedIds.length < paginatedTransactions.length}
+                                                checked={paginatedTransactions.length > 0 && paginatedTransactions.every(t => selectedIds.includes(t.id))}
+                                                onChange={e => handleSelectAll(e.target.checked)}
+                                            />
+                                        </TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>Thời gian</TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>Tên vật tư</TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>Serial</TableCell>
+                                        <TableCell sx={{ fontWeight: 600, align: 'right' }}>SL</TableCell>
+                                        <TableCell sx={{ fontWeight: 600, align: 'right' }}>Đơn giá</TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>Quận/Huyện</TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>Trạng thái</TableCell>
+                                        <TableCell sx={{ fontWeight: 600, align: 'center' }}>Thao tác</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {txStatus === 'loading' ? (
+                                        <TableSkeleton columns={9} rows={rowsPerPage} />
+                                    ) : paginatedTransactions.length > 0 ? (
+                                        paginatedTransactions.map((row, idx) => (
+                                            <TableRow
+                                                key={row.id ? `row-${row.id}` : `inbound-row-${idx}`}
+                                                hover
+                                                selected={selectedIds.includes(row.id)}
+                                                sx={{ '&.Mui-selected': { bgcolor: 'primary.50' } }}
+                                            >
+                                                <TableCell padding="checkbox" sx={{ pl: 1.5 }}>
+                                                    <Checkbox
+                                                        size="small"
+                                                        checked={selectedIds.includes(row.id)}
+                                                        onChange={e => handleSelectOne(row.id, e.target.checked)}
+                                                    />
+                                                </TableCell>
+                                                <TableCell>{new Date(row.date || row.inbound_date || '').toLocaleString('vi-VN')}</TableCell>
+                                                <TableCell>{row.product?.name || 'Unknown'}</TableCell>
+                                                <TableCell>{row.serial_code || '-'}</TableCell>
+                                                <TableCell align="right">{row.quantity}</TableCell>
+                                                <TableCell align="right">{Number(row.unit_price || 0).toLocaleString('vi-VN')} đ</TableCell>
+                                                <TableCell>{row.district || '-'}</TableCell>
+                                                <TableCell>{row.item_status || '-'}</TableCell>
+                                                <TableCell align="center">
+                                                    <Tooltip title="Sửa">
+                                                        <IconButton color="primary" onClick={() => handleEditClick(row)} size="small">
+                                                            <EditIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="Xóa">
+                                                        <IconButton color="error" onClick={() => handleDeleteClick(row)} size="small">
+                                                            <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={9} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                                                Không có dữ liệu
                                             </TableCell>
                                         </TableRow>
-                                    ))
-                                ) : (
-                                    <TableRow>
-                                        <TableCell colSpan={9} align="center" sx={{ py: 3, color: 'text.secondary' }}>
-                                            Không có dữ liệu
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    )}
                     <TablePagination
                         component="div"
                         count={filteredTransactions.length}

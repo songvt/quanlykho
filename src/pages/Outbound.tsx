@@ -8,18 +8,18 @@ import { fetchOrders, updateOrderStatus } from '../store/slices/ordersSlice';
 import type { RootState, AppDispatch } from '../store';
 import {
     Button, TextField, Checkbox, Chip,
-    Typography, Box, Alert, Paper, Stack, Dialog, DialogContent, DialogTitle, Autocomplete,
-    IconButton, CircularProgress, InputAdornment, DialogActions,
-    Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Grid, MenuItem
+    Typography, Box, Paper, Stack, Dialog, DialogContent, DialogTitle, Autocomplete,
+    IconButton, CircularProgress, InputAdornment,
+    Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TablePagination, Grid, MenuItem,
+    Card, CardContent, Divider, useMediaQuery, useTheme
 } from '@mui/material';
-import type { Order, Transaction } from '../types';
+import type { Order } from '../types';
 import SerialChips from '../components/Common/SerialChips';
 import { useNotification } from '../contexts/NotificationContext';
 import PrintIcon from '@mui/icons-material/Print';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import QRScanner from '../components/QRScanner';
 import { readExcelFile, generateOutboundTemplate } from '../utils/excelUtils';
@@ -28,55 +28,19 @@ import { useScanDetection } from '../hooks/useScanDetection';
 import { playBeep } from '../utils/audio';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import VoiceSearchButton from '../components/VoiceSearchButton';
 
 import ProductSearchDialog from '../components/ProductSearchDialog';
 import OutboundReportPreview from '../components/Reports/OutboundReportPreview';
 import SearchIcon from '@mui/icons-material/Search';
 import { GoogleSheetService as SupabaseService } from '../services/GoogleSheetService';
 import { matchDistrict } from '../utils/format';
+import StockDisplay from './Outbound/StockDisplay';
+import { sendTelegramNotification } from './Outbound/outboundTelegram';
+import FulfillOrderDialog from './Outbound/FulfillOrderDialog';
+import StaffOutboundView from './Outbound/StaffOutboundView';
 
-const sendTelegramNotification = async (
-    title: string,
-    transactions: Transaction[],
-    productsMap: Record<string, string>,
-    receiverOverride?: string
-) => {
-    if (!transactions || transactions.length === 0) return;
-    try {
-        const groups: Record<string, any> = {};
-        transactions.forEach(t => {
-            const pId = t.product_id;
-            const pName = productsMap[pId] || 'Unknown';
-            const receiver = receiverOverride || t.group_name || t.receiver_group || 'Unknown';
-            const key = `${pId}_${receiver}`;
-            if (!groups[key]) groups[key] = { pName, receiver, qty: 0, serials: [] };
-            groups[key].qty += Number(t.quantity || 1);
-            if (t.serial_code) groups[key].serials.push(t.serial_code);
-        });
 
-        const escapeHtml = (text: string) => String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        let msg = `✅ <b>${escapeHtml(title)}</b>\n📅 Ngày: ${new Date().toLocaleString('vi-VN')}\n\n`;
-        Object.values(groups).forEach(g => {
-            msg += `👤 Người nhận: <b>${escapeHtml(g.receiver)}</b>\n📦 Sản phẩm: <b>${escapeHtml(g.pName)}</b>\n🔢 Số lượng: <b>${g.qty}</b>\n`;
-            if (g.serials.length > 0) msg += `🔤 Serial: ${escapeHtml(g.serials.slice(0, 10).join(', '))}${g.serials.length > 10 ? `... (+${g.serials.length - 10} nữa)` : ''}\n`;
-            msg += `---------------------\n`;
-        });
-        await fetch('/api/telegram', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: msg }) });
-    } catch (e) { console.error('Telegram message failed:', e); }
-};
-
-const StockDisplay = ({ productId }: { productId: string }) => {
-    const totalStock = useSelector((state: RootState) => selectProductStock(state, productId));
-    return (
-        <Chip
-            label={`Tồn: ${totalStock}`}
-            size="small"
-            color={totalStock > 0 ? 'success' : 'error'}
-            variant="outlined"
-            sx={{ height: 20, fontSize: '0.75rem', fontWeight: 'bold' }}
-        />
-    );
-};
 
 export const Outbound = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -87,6 +51,9 @@ export const Outbound = () => {
     const { status: inventoryStatus } = useSelector((state: RootState) => state.inventory);
     const { items: allTransactions } = useSelector((state: RootState) => state.transactions);
     const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';
+
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     const [selectedProduct, setSelectedProduct] = useState('');
     const [quantity, setQuantity] = useState(1);
@@ -231,16 +198,11 @@ export const Outbound = () => {
             }
         } else {
             if (district && totalQuantity > currentDetailedStock) {
-                const msg = `Kho Quận/Huyện "${district}" không đủ tồn! (Có: ${currentDetailedStock}, Cần: ${totalQuantity}). Bạn có chắc chắn muốn xuất âm không?`;
-                if (!window.confirm(msg)) {
-                    return;
-                }
+                notifyError(`⚠️ Kho "${district}" không đủ tồn (Có: ${currentDetailedStock}, Cần: ${totalQuantity}) — Đang xuất âm!`);
             }
 
             if (totalQuantity > currentTotalStock) {
-                if (!window.confirm(`CẢNH BÁO: Số lượng xuất (${totalQuantity}) lớn hơn TỔNG tồn kho hệ thống (${currentTotalStock}). Bạn có chắc chắn muốn xuất âm không?`)) {
-                    return;
-                }
+                notifyError(`⚠️ CẢNH BÁO: Xuất âm tổng kho (Tồn: ${currentTotalStock}, Xuất: ${totalQuantity})!`);
             }
         }
 
@@ -513,213 +475,103 @@ export const Outbound = () => {
     if (!isAdmin) {
         const staffName = profile?.full_name || profile?.username || '';
         const myApprovedOrders = orders.filter(o =>
-            o.status === 'approved' &&
-            o.requester_group === staffName
+            o.status === 'approved' && o.requester_group === staffName
         );
         const myCompletedOrders = orders.filter(o =>
-            o.status === 'completed' &&
-            o.requester_group === staffName
+            o.status === 'completed' && o.requester_group === staffName
         );
 
         return (
-            <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: '100%', overflowX: 'hidden', minHeight: '100vh' }}>
-                <Box mb={{ xs: 2, sm: 4 }} textAlign="center">
-                    <Typography variant="h3" fontWeight="bold" color="text.primary" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' } }}>Xuất Kho (Đơn Hàng)</Typography>
-                    <Typography variant="h6" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem', md: '1.25rem' } }}>Danh sách các đơn hàng đã được duyệt chờ xuất kho</Typography>
-                </Box>
+            <>
+                <StaffOutboundView
+                    approvedOrders={myApprovedOrders}
+                    completedOrders={myCompletedOrders}
+                    products={products}
+                    onFulfill={handleOpenFulfill}
+                />
 
-                <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', maxWidth: 1200, mx: 'auto', borderRadius: 3, overflowX: 'auto' }}>
-                    <Table size="small" sx={{ minWidth: 800 }}>
-                        <TableHead sx={{ bgcolor: 'grey.50' }}>
-                            <TableRow>
-                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Ngày đặt</TableCell>
-                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Sản phẩm</TableCell>
-                                <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Tồn kho</TableCell>
-                                <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>SL Yêu cầu</TableCell>
-                                <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Trạng thái</TableCell>
-                                <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Thao tác</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {myApprovedOrders.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                                        Không có đơn hàng nào chờ xuất kho.
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                myApprovedOrders.map(order => {
-                                    const product = products.find(p => p.id === order.product_id);
-                                    return (
-                                        <TableRow key={order.id} hover>
-                                            <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{new Date(order.order_date).toLocaleDateString('vi-VN')}</TableCell>
-                                            <TableCell>
-                                                <Typography variant="subtitle2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{product?.name || 'Unknown'}</Typography>
-                                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>{product?.item_code}</Typography>
-                                            </TableCell>
-                                            <TableCell align="center">
-                                                <StockDisplay productId={order.product_id} />
-                                            </TableCell>
-                                            <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{order.quantity}</TableCell>
-                                            <TableCell align="center">
-                                                <Chip label="Đã duyệt" color="success" size="small" icon={<CheckCircleIcon />} sx={{ height: 24, fontSize: '0.75rem' }} />
-                                            </TableCell>
-                                            <TableCell align="center">
-                                                <Button
-                                                    variant="contained"
-                                                    color="secondary"
-                                                    size="small"
-                                                    onClick={() => handleOpenFulfill(order)}
-                                                    sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' }, minWidth: 64 }}
-                                                >
-                                                    Xuất kho
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-
-                <Box mt={6} mb={{ xs: 2, sm: 4 }} textAlign="center">
-                    <Typography variant="h5" color="text.secondary" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }}>Lịch Sử Đơn Hàng Đã Xuất</Typography>
-                </Box>
-                <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', maxWidth: 1200, mx: 'auto', borderRadius: 3, overflowX: 'auto', mb: 4 }}>
-                    <Table size="small" sx={{ minWidth: 800 }}>
-                        <TableHead sx={{ bgcolor: 'grey.50' }}>
-                            <TableRow>
-                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Ngày đặt</TableCell>
-                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Sản phẩm</TableCell>
-                                <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>SL Đã xuất</TableCell>
-                                <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Trạng thái</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {myCompletedOrders.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                                        Chưa có đơn hàng nào đã xuất xong.
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                myCompletedOrders.map(order => {
-                                    const product = products.find(p => p.id === order.product_id);
-                                    return (
-                                        <TableRow key={order.id} hover>
-                                            <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{new Date(order.order_date).toLocaleDateString('vi-VN')}</TableCell>
-                                            <TableCell>
-                                                <Typography variant="subtitle2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{product?.name || 'Unknown'}</Typography>
-                                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>{product?.item_code}</Typography>
-                                            </TableCell>
-                                            <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{order.quantity}</TableCell>
-                                            <TableCell align="center">
-                                                <Chip label="Đã xuất" color="primary" size="small" icon={<CheckCircleIcon />} sx={{ height: 24, fontSize: '0.75rem' }} />
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-
-                <Dialog open={openFulfillDialog} onClose={() => setOpenFulfillDialog(false)} fullWidth maxWidth="sm">
-                    <DialogTitle>Xác nhận Xuất Kho</DialogTitle>
-                    <DialogContent>
-                        {selectedOrder && (
-                            <Stack spacing={3} sx={{ mt: 1 }}>
-                                <Alert severity="info" icon={<CheckCircleIcon />}>
-                                    Đang xuất kho cho đơn hàng: <b>{selectedOrder.quantity} {products.find(p => p.id === selectedOrder.product_id)?.name}</b>
-                                </Alert>
-
-                                {products.find(p => p.id === selectedOrder.product_id)?.category?.toLowerCase() === 'hàng hóa' ? (
-                                    <Box>
-                                        <Stack direction="row" spacing={2} alignItems="center" mb={2}>
-                                            <TextField
-                                                fullWidth
-                                                label="Nhập Serial"
-                                                value={serial}
-                                                onChange={e => setSerial(e.target.value)}
-                                                onKeyDown={e => {
-                                                    if (e.key === 'Enter') {
-                                                        e.preventDefault();
-                                                        handleManualAddSerial();
-                                                    }
-                                                }}
-                                                placeholder="Quét mã hoặc nhập tay rồi Enter"
-                                            />
-                                            <IconButton onClick={() => setShowScanner(true)} color="secondary" sx={{ border: '1px solid', borderColor: 'divider', p: 2 }}>
-                                                <QrCodeScannerIcon fontSize="large" />
-                                            </IconButton>
-                                        </Stack>
-                                        
-                                        <SerialChips 
-                                            serials={scannedSerials} 
-                                            onRemove={handleRemoveSerial} 
-                                            maxVisible={10} 
-                                        />
-                                        
-                                        {scannedSerials.length === 0 && (
-                                            <Typography variant="body2" color="text.secondary" p={2} textAlign="center">Chưa có serial nào được quét.</Typography>
-                                        )}
-                                    </Box>
-                                ) : (
-                                    <Box textAlign="center" py={2}>
-                                        <Typography gutterBottom>Sản phẩm này không yêu cầu Serial.</Typography>
-                                        {isProductVerified ? (
-                                            <Alert severity="success">Đã xác thực đúng sản phẩm!</Alert>
-                                        ) : (
-                                            <Button
-                                                variant="outlined"
-                                                startIcon={<QrCodeScannerIcon />}
-                                                onClick={() => setShowScanner(true)}
-                                            >
-                                                Quét mã sản phẩm để xác thực (Tùy chọn)
-                                            </Button>
-                                        )}
-                                    </Box>
-                                )}
-                            </Stack>
-                        )}
-                    </DialogContent>
-                    <DialogActions>
-                        <Button onClick={() => setOpenFulfillDialog(false)}>Hủy</Button>
-                        <Button
-                            onClick={handleFulfillOrder}
-                            variant="contained"
-                            color="secondary"
-                            disabled={!selectedOrder || fulfillmentStock < Number(selectedOrder.quantity) || (
-                                products.find(p => p.id === selectedOrder.product_id)?.category?.toLowerCase() === 'hàng hóa' && scannedSerials.length !== Number(selectedOrder.quantity)
-                            )}
-                        >
-                            Hoàn tất Xuất Kho
-                        </Button>
-                    </DialogActions>
-                </Dialog>
+                <FulfillOrderDialog
+                    open={openFulfillDialog}
+                    order={selectedOrder}
+                    products={products}
+                    scannedSerials={scannedSerials}
+                    serial={serial}
+                    isProductVerified={isProductVerified}
+                    fulfillmentStock={fulfillmentStock}
+                    onClose={() => setOpenFulfillDialog(false)}
+                    onConfirm={handleFulfillOrder}
+                    onSerialChange={setSerial}
+                    onManualAddSerial={handleManualAddSerial}
+                    onRemoveSerial={handleRemoveSerial}
+                    onOpenScanner={() => setShowScanner(true)}
+                />
 
                 <Dialog open={showScanner} onClose={() => setShowScanner(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3, m: 2 } }}>
                     <DialogTitle sx={{ fontWeight: 900, textTransform: 'uppercase', color: 'primary.main', textAlign: 'center' }}>
                         QUÉT MÃ QR/MÃ VẠCH
                     </DialogTitle>
                     <DialogContent sx={{ p: 0, overflow: 'hidden' }}>
-                        <QRScanner
-                            onScanSuccess={handleScanSuccess}
-                            onScanFailure={() => { }}
-                            height={400}
-                        />
+                        <QRScanner onScanSuccess={handleScanSuccess} onScanFailure={() => {}} height={400} />
                         <Box textAlign="center" p={2}>
                             <Button onClick={() => setShowScanner(false)} variant="outlined" color="inherit">Đóng Camera</Button>
                         </Box>
                     </DialogContent>
                 </Dialog>
-            </Box>
+            </>
         );
     }
 
+    const allApprovedOrders = orders.filter(o => o.status === 'approved');
+
     return (
         <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: 1200, mx: 'auto' }}>
+            {allApprovedOrders.length > 0 && (
+                <Box mb={4}>
+                    <Typography variant="h6" gutterBottom fontWeight="bold" color="error">
+                        ĐƠN HÀNG CẦN XUẤT KHO ({allApprovedOrders.length})
+                    </Typography>
+                    <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #ddd' }}>
+                        <Table size="small">
+                            <TableHead sx={{ bgcolor: '#f0f0f0' }}>
+                                <TableRow>
+                                    <TableCell>Người/Đơn vị yêu cầu</TableCell>
+                                    <TableCell>Sản phẩm</TableCell>
+                                    <TableCell align="center">SL Yêu cầu</TableCell>
+                                    <TableCell align="center">Thao tác</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {allApprovedOrders.map(order => (
+                                    <TableRow key={order.id}>
+                                        <TableCell>{order.requester_group}</TableCell>
+                                        <TableCell>
+                                            <Typography variant="body2" fontWeight="600">
+                                                {products.find(p => p.id === order.product_id)?.name}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <Typography variant="body2" fontWeight="bold" color="primary">
+                                                {order.quantity}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <Button
+                                                variant="contained"
+                                                color="secondary"
+                                                size="small"
+                                                onClick={() => handleOpenFulfill(order)}
+                                            >
+                                                Xuất Kho
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                </Box>
+            )}
+
             <Box mb={3} display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'start', sm: 'center' }} gap={2}>
                 <Box>
                     <Typography variant="h5" fontWeight="700" color="primary">
@@ -738,9 +590,7 @@ export const Outbound = () => {
                         onClick={async () => {
                             const receivers = new Set(recentTransactions.filter(t => selectedPrintIds.includes(t.id)).map(t => t.group_name || (t as any).receiver_group));
                             if (receivers.size > 1) {
-                                if (!window.confirm(`Bạn đang chọn in biên bản cho ${receivers.size} người nhận khác nhau. Bạn có chắc chắn không?`)) {
-                                    return;
-                                }
+                                notifyError(`⚠️ Đang in biên bản cho ${receivers.size} người nhận khác nhau!`);
                             }
 
                             const firstTx = recentTransactions.find(t => selectedPrintIds.includes(t.id));
@@ -879,6 +729,7 @@ export const Outbound = () => {
                             type="number"
                             value={quantity}
                             onChange={(e) => setQuantity(Number(e.target.value))}
+                            inputProps={{ min: 1, inputMode: 'numeric', pattern: '[0-9]*' }}
                             size="small"
                         />
                     </Grid>
@@ -1079,7 +930,7 @@ export const Outbound = () => {
                                 {recentTransactions.map((tx, idx) => {
                                     const p = products.find(prod => prod.id === tx.product_id);
                                     return (
-                                        <TableRow key={tx.id || idx} hover selected={selectedPrintIds.includes(tx.id)}>
+                                        <TableRow key={tx.id ? `tx-${tx.id}` : `outbound-tx-${idx}`} hover selected={selectedPrintIds.includes(tx.id)}>
                                             <TableCell padding="checkbox">
                                                 <Checkbox
                                                     size="small"
@@ -1113,18 +964,34 @@ export const Outbound = () => {
             {(() => {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
+
                 const outboundTxs = allTransactions.filter(t => {
                     const isOutbound = (t as any).type === 'outbound' || (t as any).outbound_date;
                     if (!isOutbound) return false;
-                    const dateVal = (t as any).outbound_date || t.date || (t as any).created_at;
-                    if (!dateVal) return false;
-                    const txDate = new Date(dateVal);
-                    txDate.setHours(0, 0, 0, 0);
-                    if (txDate.getTime() !== today.getTime()) return false;
-                    
-                    if (isAdmin) return true;
-                    return (t as any).group_name === profile?.full_name || (t as any).receiver_group === profile?.full_name || (t as any).user_id === profile?.id;
+
+                    // Admin/Manager: chỉ hiển thị giao dịch hôm nay
+                    if (isAdmin) {
+                        const dateVal = (t as any).outbound_date || t.date || (t as any).created_at;
+                        if (!dateVal) return false;
+                        const txDate = new Date(dateVal);
+                        txDate.setHours(0, 0, 0, 0);
+                        return txDate.getTime() === today.getTime();
+                    }
+
+                    // Nhân viên: chỉ thấy giao dịch của mình (toàn bộ lịch sử)
+                    const anyT = t as any;
+                    const myName = profile?.full_name || profile?.username || profile?.email || '';
+                    return (
+                        anyT.group_name === myName ||
+                        anyT.receiver_group === myName ||
+                        anyT.user_name === myName ||
+                        anyT.user_id === profile?.id ||
+                        anyT.user_id === profile?.auth_user_id ||
+                        anyT.created_by === profile?.auth_user_id ||
+                        anyT.created_by === profile?.email
+                    );
                 });
+
 
                 const filteredOutbound = outboundTxs.filter(t => {
                     const p = products.find(prod => prod.id === t.product_id);
@@ -1145,7 +1012,7 @@ export const Outbound = () => {
                     <Box mt={6}>
                         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={2}>
                             <Typography variant="h5" fontWeight="bold">
-                                Danh sách hàng hóa đã xuất kho (Hôm nay)
+                                {isAdmin ? 'Danh sách hàng hóa đã xuất kho (Hôm nay)' : 'Giao dịch xuất kho của tôi'}
                                 {filteredOutbound.length > 0 && (
                                     <Chip label={filteredOutbound.length} size="small" color="primary" sx={{ ml: 1.5, fontWeight: 700, fontSize: '0.8rem' }} />
                                 )}
@@ -1161,66 +1028,133 @@ export const Outbound = () => {
                                     sx={{ width: { xs: '100%', sm: 380 } }}
                                     InputProps={{
                                         startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
+                                        endAdornment: <VoiceSearchButton onResult={setOutboundSearch} />,
                                         sx: { borderRadius: 2 }
                                     }}
                                 />
                             </Box>
-                            <TableContainer>
-                                <Table sx={{ minWidth: 800 }}>
-                                    <TableHead sx={{ bgcolor: 'grey.50' }}>
-                                        <TableRow>
-                                            <TableCell sx={{ fontWeight: 600 }}>Thời gian</TableCell>
-                                            <TableCell sx={{ fontWeight: 600 }}>Tên vật tư</TableCell>
-                                            <TableCell sx={{ fontWeight: 600 }}>Serial</TableCell>
-                                            <TableCell sx={{ fontWeight: 600 }}>Người nhận</TableCell>
-                                            <TableCell sx={{ fontWeight: 600 }}>Quận/Huyện</TableCell>
-                                            <TableCell sx={{ fontWeight: 600 }} align="right">SL</TableCell>
-                                            <TableCell sx={{ fontWeight: 600 }} align="right">Đơn giá</TableCell>
-                                            <TableCell sx={{ fontWeight: 600 }}>Trạng thái</TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {paginatedOutbound.length > 0 ? (
-                                            paginatedOutbound.map((row, idx) => {
+                            {isMobile ? (
+                                <Box p={2}>
+                                    {paginatedOutbound.length > 0 ? (
+                                        <Stack spacing={2}>
+                                            {paginatedOutbound.map((row, idx) => {
                                                 const p = products.find(prod => prod.id === row.product_id);
                                                 const isSerialized = p?.category?.toLowerCase() === 'hàng hóa';
                                                 const dateVal = (row as any).outbound_date || row.date || (row as any).created_at;
                                                 return (
-                                                    <TableRow key={(row as any).id || idx} hover>
-                                                        <TableCell>{dateVal ? new Date(dateVal).toLocaleString('vi-VN') : '—'}</TableCell>
-                                                        <TableCell>
-                                                            <Box>
-                                                                <Typography variant="body2" fontWeight={500}>{p?.name || 'Unknown'}</Typography>
-                                                                <Typography variant="caption" color="text.secondary">{p?.item_code}</Typography>
-                                                                {!isSerialized && (
-                                                                    <Chip label="Vật tư" size="small" color="default" sx={{ ml: 0.5, height: 16, fontSize: '0.65rem' }} />
-                                                                )}
+                                                    <Card key={(row as any).id ? `card-${(row as any).id}` : `card-idx-${idx}`} variant="outlined" sx={{ borderRadius: 2, borderColor: 'divider' }}>
+                                                        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                                                            <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                                                                <Box flex={1} mr={1}>
+                                                                    <Typography variant="subtitle2" fontWeight="bold" color="primary">{p?.name || 'Unknown'}</Typography>
+                                                                    <Typography variant="caption" color="text.secondary">{p?.item_code}</Typography>
+                                                                    {!isSerialized && (
+                                                                        <Chip label="Vật tư" size="small" color="default" sx={{ ml: 0.5, height: 16, fontSize: '0.65rem' }} />
+                                                                    )}
+                                                                </Box>
+                                                                <Typography variant="body2" fontWeight="bold">SL: {row.quantity}</Typography>
                                                             </Box>
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            {row.serial_code
-                                                                ? <Chip label={row.serial_code} size="small" variant="outlined" color="primary" sx={{ fontSize: '0.75rem', height: 22 }} />
-                                                                : <Typography variant="caption" color="text.disabled">—</Typography>
-                                                            }
-                                                        </TableCell>
-                                                        <TableCell>{(row as any).group_name || (row as any).receiver_group || '—'}</TableCell>
-                                                        <TableCell>{(row as any).district || '—'}</TableCell>
-                                                        <TableCell align="right"><b>{row.quantity}</b></TableCell>
-                                                        <TableCell align="right">{Number(row.unit_price || 0).toLocaleString('vi-VN')} đ</TableCell>
-                                                        <TableCell>{(row as any).item_status || '—'}</TableCell>
-                                                    </TableRow>
+                                                            <Divider sx={{ my: 1 }} />
+                                                            <Grid container spacing={1}>
+                                                                <Grid size={6}>
+                                                                    <Typography variant="caption" color="text.secondary">Người nhận</Typography>
+                                                                    <Typography variant="body2">{(row as any).group_name || (row as any).receiver_group || '—'}</Typography>
+                                                                </Grid>
+                                                                <Grid size={6}>
+                                                                    <Typography variant="caption" color="text.secondary">Quận/Huyện</Typography>
+                                                                    <Typography variant="body2">{(row as any).district || '—'}</Typography>
+                                                                </Grid>
+                                                                <Grid size={6}>
+                                                                    <Typography variant="caption" color="text.secondary">Đơn giá</Typography>
+                                                                    <Typography variant="body2">{Number(row.unit_price || 0).toLocaleString('vi-VN')} đ</Typography>
+                                                                </Grid>
+                                                                <Grid size={6}>
+                                                                    <Typography variant="caption" color="text.secondary">Trạng thái</Typography>
+                                                                    <Typography variant="body2">{(row as any).item_status || '—'}</Typography>
+                                                                </Grid>
+                                                                {row.serial_code && (
+                                                                    <Grid size={12}>
+                                                                        <Typography variant="caption" color="text.secondary">Serial</Typography>
+                                                                        <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                                                                            {row.serial_code}
+                                                                        </Typography>
+                                                                    </Grid>
+                                                                )}
+                                                                <Grid size={12}>
+                                                                    <Typography variant="caption" color="text.secondary">
+                                                                        Thời gian: {dateVal ? new Date(dateVal).toLocaleString('vi-VN') : '—'}
+                                                                    </Typography>
+                                                                </Grid>
+                                                            </Grid>
+                                                        </CardContent>
+                                                    </Card>
                                                 );
-                                            })
-                                        ) : (
+                                            })}
+                                        </Stack>
+                                    ) : (
+                                        <Typography textAlign="center" color="text.secondary" py={3}>
+                                            {outboundSearch ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có dữ liệu xuất kho'}
+                                        </Typography>
+                                    )}
+                                </Box>
+                            ) : (
+                                <TableContainer>
+                                    <Table sx={{ minWidth: 800 }}>
+                                        <TableHead sx={{ bgcolor: 'grey.50' }}>
                                             <TableRow>
-                                                <TableCell colSpan={8} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                                                    {outboundSearch ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có dữ liệu xuất kho'}
-                                                </TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }}>Thời gian</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }}>Tên vật tư</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }}>Serial</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }}>Người nhận</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }}>Quận/Huyện</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }} align="right">SL</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }} align="right">Đơn giá</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }}>Trạng thái</TableCell>
                                             </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
+                                        </TableHead>
+                                        <TableBody>
+                                            {paginatedOutbound.length > 0 ? (
+                                                paginatedOutbound.map((row, idx) => {
+                                                    const p = products.find(prod => prod.id === row.product_id);
+                                                    const isSerialized = p?.category?.toLowerCase() === 'hàng hóa';
+                                                    const dateVal = (row as any).outbound_date || row.date || (row as any).created_at;
+                                                    return (
+                                                        <TableRow key={(row as any).id ? `row-${(row as any).id}` : `row-idx-${idx}`} hover>
+                                                            <TableCell>{dateVal ? new Date(dateVal).toLocaleString('vi-VN') : '—'}</TableCell>
+                                                            <TableCell>
+                                                                <Box>
+                                                                    <Typography variant="body2" fontWeight={500}>{p?.name || 'Unknown'}</Typography>
+                                                                    <Typography variant="caption" color="text.secondary">{p?.item_code}</Typography>
+                                                                    {!isSerialized && (
+                                                                        <Chip label="Vật tư" size="small" color="default" sx={{ ml: 0.5, height: 16, fontSize: '0.65rem' }} />
+                                                                    )}
+                                                                </Box>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {row.serial_code
+                                                                    ? <Chip label={row.serial_code} size="small" variant="outlined" color="primary" sx={{ fontSize: '0.75rem', height: 22 }} />
+                                                                    : <Typography variant="caption" color="text.disabled">—</Typography>
+                                                                }
+                                                            </TableCell>
+                                                            <TableCell>{(row as any).group_name || (row as any).receiver_group || '—'}</TableCell>
+                                                            <TableCell>{(row as any).district || '—'}</TableCell>
+                                                            <TableCell align="right"><b>{row.quantity}</b></TableCell>
+                                                            <TableCell align="right">{Number(row.unit_price || 0).toLocaleString('vi-VN')} đ</TableCell>
+                                                            <TableCell>{(row as any).item_status || '—'}</TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })
+                                            ) : (
+                                                <TableRow>
+                                                    <TableCell colSpan={8} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                                                        {outboundSearch ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có dữ liệu xuất kho'}
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            )}
                             <TablePagination
                                 component="div"
                                 count={filteredOutbound.length}
@@ -1236,6 +1170,22 @@ export const Outbound = () => {
                     </Box>
                 );
             })()}
+
+            <FulfillOrderDialog
+                open={openFulfillDialog}
+                order={selectedOrder}
+                products={products}
+                scannedSerials={scannedSerials}
+                serial={serial}
+                isProductVerified={isProductVerified}
+                fulfillmentStock={fulfillmentStock}
+                onClose={() => setOpenFulfillDialog(false)}
+                onConfirm={handleFulfillOrder}
+                onSerialChange={setSerial}
+                onManualAddSerial={handleManualAddSerial}
+                onRemoveSerial={handleRemoveSerial}
+                onOpenScanner={() => setShowScanner(true)}
+            />
 
             <Dialog open={openPrintPreview} onClose={() => setOpenPrintPreview(false)} maxWidth="lg" fullWidth scroll="body">
                 <DialogTitle className="no-print" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

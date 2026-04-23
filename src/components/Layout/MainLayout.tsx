@@ -3,6 +3,8 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import type { RootState, AppDispatch } from '../../store';
 import { logoutUser } from '../../store/slices/authSlice';
+import { fetchTransactionsForce } from '../../store/slices/transactionsSlice';
+import { fetchEmployees } from '../../store/slices/employeesSlice';
 import { usePermission } from '../../hooks/usePermission';
 import {
     AppBar,
@@ -43,17 +45,21 @@ import {
     ExpandMore as ExpandMoreIcon,
     Business as BusinessIcon,
 } from '@mui/icons-material';
+import AIChatbot from '../Chatbot/AIChatbot';
 
 const drawerWidth = 260; 
 
 const MainLayout: React.FC = () => {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const [notificationAnchorEl, setNotificationAnchorEl] = useState<null | HTMLElement>(null);
 
     const navigate = useNavigate();
     const location = useLocation();
     const dispatch = useDispatch<AppDispatch>();
     const { profile } = useSelector((state: RootState) => state.auth);
+    const { items: transactions } = useSelector((state: RootState) => state.transactions);
+    const { items: employees, status: empStatus } = useSelector((state: RootState) => state.employees);
 
     const handleDrawerToggle = () => {
         setMobileOpen(!mobileOpen);
@@ -66,6 +72,40 @@ const MainLayout: React.FC = () => {
     const handleMenuClose = () => {
         setAnchorEl(null);
     };
+
+    const handleNotificationOpen = (event: React.MouseEvent<HTMLElement>) => {
+        setNotificationAnchorEl(event.currentTarget);
+    };
+
+    const handleNotificationClose = () => {
+        setNotificationAnchorEl(null);
+    };
+
+    // Auto refresh data every 30s to simulate realtime
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            dispatch(fetchTransactionsForce());
+        }, 30000);
+        return () => clearInterval(interval);
+    }, [dispatch]);
+
+    React.useEffect(() => {
+        if (empStatus === 'idle') {
+            dispatch(fetchEmployees());
+        }
+    }, [empStatus, dispatch]);
+
+    const recentNotifications = React.useMemo(() => {
+        return [...transactions]
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .slice(0, 5);
+    }, [transactions]);
+
+    const notificationsCount = React.useMemo(() => {
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        return transactions.filter(t => new Date(t.date || t.inbound_date || t.outbound_date || new Date()) >= todayStart).length;
+    }, [transactions]);
 
     // Force Change Password Check
     React.useEffect(() => {
@@ -312,8 +352,8 @@ const MainLayout: React.FC = () => {
                         <Divider orientation="vertical" flexItem sx={{ my: 1.5 }} />
 
                         {/* Notifications */}
-                        <IconButton sx={{ color: '#64748b' }}>
-                            <Badge badgeContent={3} color="error" sx={{ '& .MuiBadge-badge': { height: 16, minWidth: 16, fontSize: '0.65rem' } }}>
+                        <IconButton sx={{ color: '#64748b' }} onClick={handleNotificationOpen}>
+                            <Badge badgeContent={notificationsCount} color="error" sx={{ '& .MuiBadge-badge': { height: 16, minWidth: 16, fontSize: '0.65rem' } }}>
                                 <NotificationsIcon sx={{ fontSize: 22 }} />
                             </Badge>
                         </IconButton>
@@ -321,6 +361,77 @@ const MainLayout: React.FC = () => {
                 </Toolbar>
             </AppBar>
             
+            {/* Notification Menu */}
+            <Menu
+                sx={{ mt: '10px' }}
+                anchorEl={notificationAnchorEl}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                keepMounted
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                open={Boolean(notificationAnchorEl)}
+                onClose={handleNotificationClose}
+                PaperProps={{
+                    elevation: 0,
+                    sx: {
+                        overflow: 'visible',
+                        filter: 'drop-shadow(0px 4px 12px rgba(0,0,0,0.1))',
+                        mt: 1.5,
+                        width: 320,
+                        maxHeight: 400,
+                        borderRadius: 2,
+                        border: '1px solid #e2e8f0',
+                        '&:before': {
+                            content: '""',
+                            display: 'block',
+                            position: 'absolute',
+                            top: 0,
+                            right: 14,
+                            width: 10,
+                            height: 10,
+                            bgcolor: 'background.paper',
+                            transform: 'translateY(-50%) rotate(45deg)',
+                            zIndex: 0,
+                            borderTop: '1px solid #e2e8f0',
+                            borderLeft: '1px solid #e2e8f0',
+                        },
+                    },
+                }}
+            >
+                <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid #e2e8f0' }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#0f172a' }}>
+                        Hoạt động gần đây
+                    </Typography>
+                </Box>
+                {recentNotifications.length === 0 ? (
+                    <MenuItem disabled sx={{ py: 3, justifyContent: 'center' }}>
+                        <Typography variant="body2" sx={{ color: '#64748b' }}>Chưa có hoạt động nào</Typography>
+                    </MenuItem>
+                ) : (
+                    recentNotifications.map((n, idx) => {
+                        const employeeName = employees.find(e => e.id === (n as any).created_by || e.auth_user_id === (n as any).created_by)?.full_name || (n as any).created_by || 'Khuyết danh';
+                        return (
+                            <MenuItem key={n.id || idx} onClick={handleNotificationClose} sx={{ py: 1.5, px: 2, borderBottom: '1px solid #f1f5f9', whiteSpace: 'normal', alignItems: 'flex-start' }}>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                    <Typography variant="body2" sx={{ color: '#0f172a', fontWeight: 500, lineHeight: 1.4 }}>
+                                        <Typography component="span" sx={{ fontWeight: 600, color: '#2563eb' }}>{employeeName}</Typography>
+                                        {' vừa '}{n.type === 'inbound' ? 'nhập kho' : 'xuất kho'}{' '}
+                                        <Typography component="span" sx={{ fontWeight: 600 }}>{n.quantity} {n.product?.name || `Sản phẩm #${n.product_id}`}</Typography>
+                                    </Typography>
+                                    <Typography variant="caption" sx={{ color: '#64748b' }}>
+                                        {n.date ? new Date(n.date).toLocaleString('vi-VN', { timeStyle: 'short', dateStyle: 'medium' }) : 'N/A'}
+                                    </Typography>
+                                </Box>
+                            </MenuItem>
+                        );
+                    })
+                )}
+                <Box sx={{ p: 1, borderTop: '1px solid #e2e8f0', textAlign: 'center' }}>
+                    <Typography component="a" href="#" onClick={(e) => { e.preventDefault(); navigate('/'); handleNotificationClose(); }} sx={{ fontSize: '0.8rem', color: '#2563eb', textDecoration: 'none', fontWeight: 500, '&:hover': { textDecoration: 'underline' } }}>
+                        Xem tất cả trong Dashboard
+                    </Typography>
+                </Box>
+            </Menu>
+
             {/* User Dropdown Menu */}
             <Menu
                 sx={{ mt: '10px' }}
@@ -425,6 +536,9 @@ const MainLayout: React.FC = () => {
                 <Toolbar sx={{ minHeight: '64px !important' }} /> {/* Spacer */}
                 <Outlet />
             </Box>
+            
+            {/* Global AI Chatbot */}
+            <AIChatbot />
         </Box>
     );
 };

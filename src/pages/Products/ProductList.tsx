@@ -6,13 +6,15 @@ import {
     Box, Paper, Typography, Button, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, IconButton, Dialog,
     DialogTitle, DialogContent, DialogActions, TextField, Stack,
-    Alert, Tooltip, Checkbox, FormControl, InputLabel, Select, MenuItem, TablePagination
+    Alert, Tooltip, Checkbox, FormControl, InputLabel, Select, MenuItem, TablePagination, Chip, useMediaQuery, useTheme, Card, CardContent, Divider
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import { fetchProducts, addNewProduct, updateProduct, deleteProduct, deleteProducts, importProducts } from '../../store/slices/productsSlice';
 import { fetchInventory, selectStockMap } from '../../store/slices/inventorySlice';
+import { fetchTransactions } from '../../store/slices/transactionsSlice';
 import TableSkeleton from '../../components/Common/TableSkeleton';
 import { useNotification } from '../../contexts/NotificationContext';
 import { generateProductTemplate, readExcelFile } from '../../utils/excelUtils';
@@ -21,6 +23,9 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import type { RootState, AppDispatch } from '../../store';
 import type { Product } from '../../types';
 import { usePermission } from '../../hooks/usePermission';
+import ConfirmDialog from '../../components/Common/ConfirmDialog';
+import { useTabVisibility } from '../../hooks/useTabVisibility';
+import VoiceSearchButton from '../../components/VoiceSearchButton';
 
 const ProductList = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -30,6 +35,8 @@ const ProductList = () => {
     const { hasPermission } = usePermission();
     const { success, error: notifyError } = useNotification();
     const canManage = hasPermission('inventory.manage');
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     const [openDialog, setOpenDialog] = useState(false);
     const [currentProduct, setCurrentProduct] = useState<Partial<Product>>({});
@@ -40,6 +47,10 @@ const ProductList = () => {
     const filterParam = searchParams.get('filter');
 
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [actionLoading, setActionLoading] = useState(false);
+    const [confirmState, setConfirmState] = useState<{
+        open: boolean; title: string; message: string; onConfirm: () => void;
+    }>({ open: false, title: '', message: '', onConfirm: () => {} });
     
     // Pagination states
     const [page, setPage] = useState(0);
@@ -60,13 +71,16 @@ const ProductList = () => {
     }, [debouncedSearchTerm, filterParam]);
 
     useEffect(() => {
-        if (status === 'idle') {
-            dispatch(fetchProducts());
-        }
-        if (inventoryStatus === 'idle') {
-            dispatch(fetchInventory());
-        }
+        if (status === 'idle') dispatch(fetchProducts());
+        if (inventoryStatus === 'idle') dispatch(fetchInventory());
     }, [status, inventoryStatus, dispatch]);
+
+    // Tự động refresh khi quay lại tab (sau 5 phút stale)
+    useTabVisibility(() => {
+        dispatch(fetchProducts());
+        dispatch(fetchInventory());
+        dispatch(fetchTransactions());
+    }, 5 * 60 * 1000);
 
     const handleOpenAdd = () => {
         setCurrentProduct({
@@ -86,15 +100,24 @@ const ProductList = () => {
         setOpenDialog(true);
     };
 
-    const handleDelete = async (id: string) => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa sản phẩm này? hành động này không thể hoàn tác nếu đã có giao dịch phát sinh.')) {
-            try {
-                await dispatch(deleteProduct(id)).unwrap();
-                success('Đã xóa sản phẩm thành công!');
-            } catch (err: any) {
-                notifyError(err.message || 'Lỗi khi xóa sản phẩm');
+    const handleDelete = (id: string, name: string) => {
+        setConfirmState({
+            open: true,
+            title: 'Xóa sản phẩm',
+            message: `Xóa "${name}"? Nếu sản phẩm đã có giao dịch phát sinh, hành động này không thể hoàn tác.`,
+            onConfirm: async () => {
+                setActionLoading(true);
+                try {
+                    await dispatch(deleteProduct(id)).unwrap();
+                    success('Đã xóa sản phẩm thành công!');
+                } catch (err: any) {
+                    notifyError(err.message || 'Lỗi khi xóa sản phẩm');
+                } finally {
+                    setActionLoading(false);
+                    setConfirmState(s => ({ ...s, open: false }));
+                }
             }
-        }
+        });
     };
 
     const handleSelectAll = (checked: boolean) => {
@@ -113,16 +136,25 @@ const ProductList = () => {
         }
     };
 
-    const handleBulkDelete = async () => {
-        if (window.confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.length} sản phẩm đã chọn? Hành động này không thể hoàn tác.`)) {
-            try {
-                await dispatch(deleteProducts(selectedIds)).unwrap();
-                setSelectedIds([]);
-                success('Đã xóa thành công!');
-            } catch (err: any) {
-                notifyError(err.message || 'Lỗi khi xóa hàng loạt.');
+    const handleBulkDelete = () => {
+        setConfirmState({
+            open: true,
+            title: `Xóa ${selectedIds.length} sản phẩm`,
+            message: `Bạn có chắc muốn xóa ${selectedIds.length} sản phẩm đã chọn? Hành động này không thể hoàn tác.`,
+            onConfirm: async () => {
+                setActionLoading(true);
+                try {
+                    await dispatch(deleteProducts(selectedIds)).unwrap();
+                    setSelectedIds([]);
+                    success(`Đã xóa ${selectedIds.length} sản phẩm thành công!`);
+                } catch (err: any) {
+                    notifyError(err.message || 'Lỗi khi xóa hàng loạt.');
+                } finally {
+                    setActionLoading(false);
+                    setConfirmState(s => ({ ...s, open: false }));
+                }
             }
-        }
+        });
     };
 
     const handleSave = async () => {
@@ -162,10 +194,17 @@ const ProductList = () => {
                 const qty = stockMap[p.id] || 0;
                 return qty <= 0;
             });
+        } else if (filterParam === 'negative_stock') {
+            result = result.filter(p => (stockMap[p.id] || 0) < 0);
         }
 
         return result;
     }, [products, debouncedSearchTerm, filterParam, stockMap]);
+
+    // Danh sách sản phẩm tồn kho âm (để hiển thị cảnh báo)
+    const negativeStockProducts = useMemo(() =>
+        products.filter(p => (stockMap[p.id] || 0) < 0),
+    [products, stockMap]);
 
     if (status === 'failed') return <Alert severity="error">{error}</Alert>;
 
@@ -273,6 +312,37 @@ const ProductList = () => {
                 </Stack>
             </Stack>
 
+            {/* Cảnh báo tồn kho âm */}
+            {negativeStockProducts.length > 0 && (
+                <Alert
+                    severity="error"
+                    icon={<WarningAmberRoundedIcon />}
+                    sx={{ mb: 2, borderRadius: 2, alignItems: 'flex-start' }}
+                    action={
+                        <Button
+                            size="small"
+                            color="error"
+                            variant="outlined"
+                            sx={{ whiteSpace: 'nowrap', mt: 0.5 }}
+                            onClick={() => {
+                                searchParams.set('filter', 'negative_stock');
+                                setSearchParams(searchParams);
+                            }}
+                        >
+                            Xem danh sách ({negativeStockProducts.length})
+                        </Button>
+                    }
+                >
+                    <Typography fontWeight={700} variant="body2">
+                        Cảnh báo: {negativeStockProducts.length} sản phẩm đang tồn kho âm!
+                    </Typography>
+                    <Typography variant="caption" color="error.dark">
+                        {negativeStockProducts.slice(0, 3).map(p => p.name).join(', ')}
+                        {negativeStockProducts.length > 3 ? ` và ${negativeStockProducts.length - 3} sản phẩm khác...` : ''}
+                    </Typography>
+                </Alert>
+            )}
+
             <Paper sx={{ mb: 2, p: 1.5, borderRadius: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
                 <TextField
                     sx={{ flexGrow: 1, '& .MuiOutlinedInput-root': { backgroundColor: '#f8fafc', '& fieldset': { borderColor: '#e2e8f0' }, '&:hover fieldset': { borderColor: '#cbd5e1' } } }}
@@ -282,7 +352,8 @@ const ProductList = () => {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     size="small"
                     InputProps={{
-                        startAdornment: <Box component="span" sx={{ color: 'text.secondary', mr: 1, display: 'flex' }}><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></Box>
+                        startAdornment: <Box component="span" sx={{ color: 'text.secondary', mr: 1, display: 'flex' }}><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></Box>,
+                        endAdornment: <VoiceSearchButton onResult={setSearchTerm} />
                     }}
                 />
                 <FormControl size="small" sx={{ minWidth: 200, bgcolor: '#f8fafc' }}>
@@ -302,12 +373,117 @@ const ProductList = () => {
                         <MenuItem value="all">Tất cả sản phẩm</MenuItem>
                         <MenuItem value="low_stock">Sắp hết hàng</MenuItem>
                         <MenuItem value="out_of_stock">Hết hàng</MenuItem>
+                        <MenuItem value="negative_stock">
+                            <Box display="flex" alignItems="center" gap={0.5}>
+                                <WarningAmberRoundedIcon fontSize="small" sx={{ color: 'error.main' }} />
+                                Tồn kho âm
+                                {negativeStockProducts.length > 0 && (
+                                    <Chip label={negativeStockProducts.length} size="small" color="error" sx={{ ml: 0.5, height: 18, fontSize: '0.7rem' }} />
+                                )}
+                            </Box>
+                        </MenuItem>
                     </Select>
                 </FormControl>
             </Paper>
 
             {status === 'loading' ? (
                 <TableSkeleton columns={canManage ? 8 : 7} rows={10} />
+            ) : isMobile ? (
+                <Box>
+                    {filteredProducts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((product) => {
+                        const isSelected = selectedIds.includes(product.id);
+                        const qty = stockMap[product.id] || 0;
+                        return (
+                            <Card key={product.id} sx={{ mb: 2, borderRadius: 3, border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                                <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                                        <Box display="flex" alignItems="center" gap={1}>
+                                            {canManage && (
+                                                <Checkbox
+                                                    checked={isSelected}
+                                                    onChange={(e) => handleSelectOne(product.id, e.target.checked)}
+                                                    size="small"
+                                                    sx={{ p: 0 }}
+                                                />
+                                            )}
+                                            <Typography variant="subtitle1" fontWeight="bold" color="primary.main">
+                                                {product.item_code}
+                                            </Typography>
+                                        </Box>
+                                        <Box sx={{
+                                            bgcolor: 'primary.50', color: 'primary.700',
+                                            py: 0.25, px: 1, borderRadius: 1.5,
+                                            fontSize: '10px', fontWeight: 700, textTransform: 'uppercase'
+                                        }}>
+                                            {product.category}
+                                        </Box>
+                                    </Stack>
+                                    
+                                    <Typography variant="body1" fontWeight="600" mb={1}>
+                                        {product.name}
+                                    </Typography>
+                                    
+                                    <Divider sx={{ my: 1 }} />
+                                    
+                                    <Stack direction="row" justifyContent="space-between" mb={0.5}>
+                                        <Typography variant="body2" color="text.secondary">Đơn giá:</Typography>
+                                        <Typography variant="body2" fontWeight="600">
+                                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.unit_price)} / {product.unit}
+                                        </Typography>
+                                    </Stack>
+                                    
+                                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                        <Typography variant="body2" color="text.secondary">Tồn kho:</Typography>
+                                        {qty < 0 ? (
+                                            <Box display="inline-flex" alignItems="center" gap={0.5}
+                                                sx={{
+                                                    bgcolor: '#fef2f2', color: '#dc2626',
+                                                    px: 1, py: 0.25, borderRadius: 1, border: '1px solid #fecaca',
+                                                    fontWeight: 700, fontSize: '12px'
+                                                }}
+                                            >
+                                                <WarningAmberRoundedIcon sx={{ fontSize: 14 }} /> {qty}
+                                            </Box>
+                                        ) : (
+                                            <Typography variant="body2" fontWeight={700} color={qty === 0 ? 'error.main' : qty < 10 ? 'warning.main' : 'success.main'}>
+                                                {qty}
+                                            </Typography>
+                                        )}
+                                    </Stack>
+
+                                    {canManage && (
+                                        <Stack direction="row" spacing={1} justifyContent="flex-end" mt={2}>
+                                            <Button
+                                                size="small"
+                                                variant="outlined"
+                                                startIcon={<EditIcon />}
+                                                onClick={() => handleOpenEdit(product)}
+                                                sx={{ borderRadius: 2, textTransform: 'none', py: 0.5 }}
+                                            >
+                                                Sửa
+                                            </Button>
+                                            <Button
+                                                size="small"
+                                                variant="outlined"
+                                                color="error"
+                                                startIcon={<DeleteIcon />}
+                                                onClick={() => handleDelete(product.id, product.name)}
+                                                sx={{ borderRadius: 2, textTransform: 'none', py: 0.5 }}
+                                            >
+                                                Xóa
+                                            </Button>
+                                        </Stack>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
+                    {filteredProducts.length === 0 && (
+                        <Box py={4} textAlign="center">
+                            <Typography color="text.secondary" variant="body1" fontWeight={500}>Không tìm thấy sản phẩm nào</Typography>
+                        </Box>
+                    )}
+                </Box>
             ) : (
                 <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', overflowX: 'auto', border: '1px solid #e2e8f0' }}>
                     <Table size="small" sx={{ minWidth: 800 }}>
@@ -369,8 +545,40 @@ const ProductList = () => {
                                             </Typography>
                                         </TableCell>
                                         <TableCell sx={{ py: 1.5, fontSize: '14px', color: '#64748b' }}>{product.unit}</TableCell>
-                                        <TableCell align="right" sx={{ py: 1.5, fontSize: '14px', fontWeight: 700, color: (stockMap[product.id] || 0) <= 0 ? 'error.main' : ((stockMap[product.id] || 0) < 10 ? 'warning.main' : 'success.main') }}>
-                                            {stockMap[product.id] || 0}
+                                        <TableCell
+                                            align="right"
+                                            sx={{ py: 1.5 }}
+                                        >
+                                            {(() => {
+                                                const qty = stockMap[product.id] || 0;
+                                                if (qty < 0) {
+                                                    return (
+                                                        <Tooltip title="Tồn kho âm — cần kiểm tra xuất nhập!" arrow>
+                                                            <Box display="inline-flex" alignItems="center" gap={0.5}
+                                                                sx={{
+                                                                    bgcolor: '#fef2f2', color: '#dc2626',
+                                                                    px: 1, py: 0.25, borderRadius: 1,
+                                                                    border: '1px solid #fecaca',
+                                                                    fontWeight: 700, fontSize: '14px', cursor: 'help'
+                                                                }}
+                                                            >
+                                                                <WarningAmberRoundedIcon sx={{ fontSize: 14 }} />
+                                                                {qty}
+                                                            </Box>
+                                                        </Tooltip>
+                                                    );
+                                                }
+                                                return (
+                                                    <Typography
+                                                        variant="body2"
+                                                        fontWeight={700}
+                                                        fontSize="14px"
+                                                        color={qty === 0 ? 'error.main' : qty < 10 ? 'warning.main' : 'success.main'}
+                                                    >
+                                                        {qty}
+                                                    </Typography>
+                                                );
+                                            })()}
                                         </TableCell>
                                         {canManage && (
                                             <TableCell align="center" sx={{ py: 1.5 }}>
@@ -387,7 +595,7 @@ const ProductList = () => {
                                                     <Tooltip title="Xóa">
                                                         <IconButton
                                                             size="small"
-                                                            onClick={() => handleDelete(product.id)}
+                                                            onClick={() => handleDelete(product.id, product.name)}
                                                             sx={{ color: 'error.main', bgcolor: '#fef2f2', '&:hover': { bgcolor: '#fee2e2' }, width: 32, height: 32 }}
                                                         >
                                                             <DeleteIcon sx={{ fontSize: '1.2rem' }} />
@@ -501,6 +709,17 @@ const ProductList = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            <ConfirmDialog
+                open={confirmState.open}
+                title={confirmState.title}
+                message={confirmState.message}
+                confirmLabel="Xóa ngay"
+                severity="danger"
+                loading={actionLoading}
+                onConfirm={confirmState.onConfirm}
+                onCancel={() => setConfirmState(s => ({ ...s, open: false }))}
+            />
         </Box>
     );
 };

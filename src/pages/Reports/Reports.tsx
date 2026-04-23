@@ -15,6 +15,9 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import DeleteIcon from '@mui/icons-material/Delete';
 import WarningIcon from '@mui/icons-material/Warning';
 import PrintIcon from '@mui/icons-material/Print';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 import { fetchProducts } from '../../store/slices/productsSlice';
 import { fetchInventory, selectStockMap, selectDetailedStockMap } from '../../store/slices/inventorySlice';
@@ -55,6 +58,7 @@ const Reports = () => {
     // State for Preview
     const [openHandoverPreview, setOpenHandoverPreview] = useState(false);
     const [previewData, setPreviewData] = useState<any[]>([]);
+    const [isExportingPDF, setIsExportingPDF] = useState(false);
 
     // State for Stock Card Report
     const [openStockCard, setOpenStockCard] = useState(false);
@@ -85,6 +89,7 @@ const Reports = () => {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
     const [deleteProcessing, setDeleteProcessing] = useState(false);
+    const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'info', message: string } | null>(null);
 
     // Initial Fetch
     useEffect(() => {
@@ -179,12 +184,12 @@ const Reports = () => {
             }
             // Refetch inventory to update counts
             dispatch(fetchInventory());
-            alert(`Đã xóa ${selectedIds.length} giao dịch thành công!`);
+            setNotification({ type: 'success', message: `Đã xóa ${selectedIds.length} giao dịch thành công!` });
             setSelectedIds([]);
             setOpenDeleteConfirm(false);
         } catch (err) {
             console.error(err);
-            alert('Có lỗi xảy ra khi xóa dữ liệu.');
+            setNotification({ type: 'error', message: 'Có lỗi xảy ra khi xóa dữ liệu.' });
         } finally {
             setDeleteProcessing(false);
         }
@@ -201,7 +206,7 @@ const Reports = () => {
     const reporterName = profile?.full_name || profile?.username || profile?.email || 'Admin';
 
     const handleExportInventory = () => {
-        if (products.length === 0) return alert('Không có dữ liệu sản phẩm');
+        if (products.length === 0) { setNotification({ type: 'error', message: 'Không có dữ liệu sản phẩm' }); return; }
 
         const columns: ReportColumn[] = [
             { header: 'STT', key: 'stt', width: 6, align: 'center' },
@@ -232,7 +237,7 @@ const Reports = () => {
     };
 
     const handleExportTransactions = () => {
-        if (transactions.length === 0) return alert('Không có dữ liệu giao dịch');
+        if (transactions.length === 0) { setNotification({ type: 'error', message: 'Không có dữ liệu giao dịch' }); return; }
 
         const columns: ReportColumn[] = [
             { header: 'STT', key: 'stt', width: 6, align: 'center' },
@@ -275,7 +280,7 @@ const Reports = () => {
     };
 
     const handleExportOrders = () => {
-        if (orders.length === 0) return alert('Không có dữ liệu đơn hàng');
+        if (orders.length === 0) { setNotification({ type: 'error', message: 'Không có dữ liệu đơn hàng' }); return; }
 
         const columns: ReportColumn[] = [
             { header: 'STT', key: 'stt', width: 6, align: 'center' },
@@ -383,7 +388,7 @@ const Reports = () => {
     };
 
     const handleExportStockByDistrict = () => {
-        if (products.length === 0) return alert('Không có dữ liệu sản phẩm');
+        if (products.length === 0) { setNotification({ type: 'error', message: 'Không có dữ liệu sản phẩm' }); return; }
 
         // detailedStockMap keys: `${productId}|${districtKey}|${statusKey}`
         // Group by District -> Product
@@ -414,7 +419,7 @@ const Reports = () => {
             }
         });
 
-        if (data.length === 0) return alert('Không có dữ liệu tồn kho chi tiết theo khu vực');
+        if (data.length === 0) { setNotification({ type: 'error', message: 'Không có dữ liệu tồn kho chi tiết theo khu vực' }); return; }
 
         // Sort by District then Name
         data.sort((a, b) => {
@@ -484,7 +489,7 @@ const Reports = () => {
     const handleExportHandover = async () => {
         const exportData = getHandoverData();
         if (exportData.length === 0) {
-            alert(`Không tìm thấy phiếu ${handoverType === 'inbound' ? 'nhập' : 'xuất'} kho nào cho nhân viên "${selectedEmployee}" vào ngày ${selectedDate}.`);
+            setNotification({ type: 'error', message: `Không tìm thấy phiếu ${handoverType === 'inbound' ? 'nhập' : 'xuất'} kho nào cho nhân viên "${selectedEmployee}" vào ngày ${selectedDate}.` });
             return;
         }
 
@@ -523,7 +528,7 @@ const Reports = () => {
             await exportHandoverMinutesV2(formattedData, selectedEmployee || 'N/A', selectedDate, resolvedSenderName, senderPhone, receiverPhone, reportNumber);
         } catch (error: any) {
             console.error(error);
-            alert("Lỗi xuất báo cáo: " + (error?.message || JSON.stringify(error)));
+            setNotification({ type: 'error', message: "Lỗi xuất báo cáo: " + (error?.message || JSON.stringify(error)) });
         }
         setOpenHandover(false);
     };
@@ -537,7 +542,7 @@ const Reports = () => {
     const handlePreviewHandover = async (autoPrint = false) => {
         const handoverData = getHandoverData();
         if (handoverData.length === 0) {
-            alert(`Không tìm thấy phiếu ${handoverType === 'inbound' ? 'nhập' : 'xuất'} kho nào cho nhân viên "${selectedEmployee}" vào ngày ${selectedDate}.`);
+            setNotification({ type: 'error', message: `Không tìm thấy phiếu ${handoverType === 'inbound' ? 'nhập' : 'xuất'} kho nào cho nhân viên "${selectedEmployee}" vào ngày ${selectedDate}.` });
             return;
         }
 
@@ -582,9 +587,101 @@ const Reports = () => {
 
         if (autoPrint) {
             setTimeout(() => {
-                window.print();
+                handlePrint();
             }, 500); // 500ms allows the modal to finish animating in
         }
+    };
+
+    const handleExportPDF = async () => {
+        const handoverData = getHandoverData();
+        if (handoverData.length === 0) {
+            setNotification({ type: 'error', message: `Không tìm thấy phiếu ${handoverType === 'inbound' ? 'nhập' : 'xuất'} kho nào cho nhân viên "${selectedEmployee}" vào ngày ${selectedDate}.` });
+            return;
+        }
+
+        const formattedData = handoverData;
+
+        // Resolve Sender (Reporter) Name & Phone based on District logic
+        let resolvedSenderName = reporterName;
+        const senderPh = profile?.phone_number || '';
+        const receiverObj = employees.find(e => e.full_name === selectedEmployee);
+        const receiverPh = receiverObj?.phone_number || '';
+        const empDistrict = receiverObj?.district || '';
+
+        const firstItemWithDistrict = formattedData.find(i => i.district);
+        const transactionDistrict = firstItemWithDistrict?.district || '';
+        const searchDistrict = empDistrict || transactionDistrict;
+
+        if (searchDistrict) {
+            try {
+                const { GoogleSheetService } = await import('../../services/GoogleSheetService');
+                const dConfigs = await GoogleSheetService.getDistrictStorekeepers();
+                const config = dConfigs.find((c: any) => matchDistrict(searchDistrict, c.district));
+                if (config) {
+                    resolvedSenderName = config.storekeeper_name;
+                }
+            } catch (e) {
+                console.error('Failed to parse GS configs for handover export pdf', e);
+            }
+        }
+
+        const num = calculateReportNumber(selectedDate, selectedEmployee || '');
+        setPreviewSenderName(resolvedSenderName);
+        setPreviewSenderPhone(senderPh);
+        setPreviewReceiverPhone(receiverPh);
+        setPreviewReportNumber(num);
+        setPreviewData(formattedData);
+        setIsExportingPDF(true);
+
+        setTimeout(async () => {
+            const input = document.getElementById('hidden-pdf-container');
+            if (!input) {
+                setIsExportingPDF(false);
+                return;
+            }
+            try {
+                const canvas = await html2canvas(input, { 
+                    scale: 2, 
+                    useCORS: true,
+                    windowWidth: 1000,
+                    width: 900
+                });
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                
+                const [yyyy, mm, dd] = selectedDate.split('-');
+                const dateFormatted = `${dd}${mm}${yyyy}`;
+                const prefix = handoverType === 'inbound' ? 'BBNK' : 'BBXK';
+                const empName = selectedEmployee ? selectedEmployee.trim() : 'NhanVien';
+                pdf.save(`${prefix}_${empName} ${dateFormatted}.pdf`);
+            } catch (error) {
+                console.error("Error exporting PDF:", error);
+                setNotification({ type: 'error', message: 'Lỗi xuất PDF. Thử lại sau.' });
+            } finally {
+                setIsExportingPDF(false);
+                setOpenHandover(false);
+            }
+        }, 800);
+    };
+
+    const handlePrint = () => {
+        const [yyyy, mm, dd] = selectedDate.split('-');
+        const dateFormatted = `${dd}${mm}${yyyy}`;
+        const prefix = handoverType === 'inbound' ? 'BBNK' : 'BBXK';
+        const empName = selectedEmployee ? selectedEmployee.trim() : 'NhanVien';
+        const newTitle = `${prefix}_${empName} ${dateFormatted}`;
+
+        const originalTitle = document.title;
+        document.title = newTitle;
+        window.print();
+        
+        // Restore title after print dialog closes
+        setTimeout(() => {
+            document.title = originalTitle;
+        }, 500);
     };
 
     const handleExportPeriodReport = () => {
@@ -621,7 +718,7 @@ const Reports = () => {
         });
 
         if (filtered.length === 0) {
-            alert('Không có dữ liệu giao dịch trong khoảng thời gian này.');
+            setNotification({ type: 'error', message: 'Không có dữ liệu giao dịch trong khoảng thời gian này.' });
             return;
         }
 
@@ -717,7 +814,7 @@ const Reports = () => {
         });
 
         if (filtered.length === 0) {
-            alert('Không có dữ liệu giao dịch cho nhân viên này trong khoảng thời gian đã chọn.');
+            setNotification({ type: 'error', message: 'Không có dữ liệu giao dịch cho nhân viên này trong khoảng thời gian đã chọn.' });
             return;
         }
 
@@ -769,7 +866,7 @@ const Reports = () => {
         try {
             const data = await import('../../services/GoogleSheetService').then(m => m.GoogleSheetService.getFifoInventoryAging());
             if (!data || data.length === 0) {
-                alert('Không có dữ liệu hàng tồn kho quá hạn (theo FIFO).');
+                setNotification({ type: 'error', message: 'Không có dữ liệu hàng tồn kho quá hạn (theo FIFO).' });
                 return;
             }
 
@@ -803,7 +900,7 @@ const Reports = () => {
 
         } catch (error) {
             console.error(error);
-            alert('Lỗi khi tải báo cáo FIFO.');
+            setNotification({ type: 'error', message: 'Lỗi khi tải báo cáo FIFO.' });
         }
     };
 
@@ -876,6 +973,16 @@ const Reports = () => {
                     Trung tâm xuất dữ liệu và báo cáo quản trị kho.
                 </Typography>
             </Box>
+
+            {notification && (
+                <Alert
+                    severity={notification.type}
+                    onClose={() => setNotification(null)}
+                    sx={{ mb: 2, borderRadius: 2 }}
+                >
+                    {notification.message}
+                </Alert>
+            )}
 
             <Tabs
                 value={selectedTab}
@@ -1232,10 +1339,18 @@ const Reports = () => {
                         />
                     </Stack>
                 </DialogContent>
-                <DialogActions sx={{ p: 4, pt: 0, justifyContent: 'center' }}>
+                <DialogActions sx={{ p: 3, pt: 0, gap: 1.5, flexWrap: 'wrap', justifyContent: 'center' }}>
+                    {/* Shared button style for uniformity */}
                     <Button
                         onClick={() => setOpenHandover(false)}
-                        sx={{ color: 'text.secondary', fontWeight: 600, mr: 2 }}
+                        variant="outlined"
+                        color="inherit"
+                        sx={{
+                            borderRadius: 2.5, px: 3, py: 1,
+                            fontWeight: 600, textTransform: 'none',
+                            minWidth: 90, fontSize: '0.875rem',
+                            color: 'text.secondary', borderColor: 'divider',
+                        }}
                     >
                         Hủy
                     </Button>
@@ -1245,33 +1360,40 @@ const Reports = () => {
                         color="info"
                         startIcon={<DownloadIcon />}
                         sx={{
-                            borderRadius: 3, px: 4, py: 1, fontWeight: 700,
-                            boxShadow: '0 4px 12px rgba(2, 136, 209, 0.25)'
+                            borderRadius: 2.5, px: 3, py: 1,
+                            fontWeight: 700, textTransform: 'none',
+                            minWidth: 150, fontSize: '0.875rem',
+                            boxShadow: '0 4px 12px rgba(2, 136, 209, 0.25)',
                         }}
                     >
                         Xuất File Excel
                     </Button>
                     <Button
-                        onClick={() => handlePreviewHandover(true)}
+                        onClick={handleExportPDF}
                         variant="contained"
-                        color="success"
-                        startIcon={<PrintIcon />}
+                        color="error"
+                        startIcon={<PictureAsPdfIcon />}
                         sx={{
-                            borderRadius: 3, px: 3, py: 1, fontWeight: 700, ml: 2,
-                            boxShadow: '0 4px 12px rgba(46, 125, 50, 0.25)'
+                            borderRadius: 2.5, px: 3, py: 1,
+                            fontWeight: 700, textTransform: 'none',
+                            minWidth: 120, fontSize: '0.875rem',
+                            boxShadow: '0 4px 12px rgba(211, 47, 47, 0.25)',
                         }}
                     >
-                        In Nhanh
+                        Xuất File PDF
                     </Button>
                     <Button
                         onClick={() => handlePreviewHandover(false)}
                         variant="outlined"
                         color="primary"
+                        startIcon={<PrintIcon />}
                         sx={{
-                            borderRadius: 3, px: 3, py: 1, fontWeight: 700, ml: 2
+                            borderRadius: 2.5, px: 3, py: 1,
+                            fontWeight: 700, textTransform: 'none',
+                            minWidth: 120, fontSize: '0.875rem',
                         }}
                     >
-                        Xem Trước
+                        Xem Trước & In
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -1290,7 +1412,7 @@ const Reports = () => {
                             variant="contained"
                             color="info"
                             startIcon={<PrintIcon />}
-                            onClick={() => window.print()}
+                            onClick={handlePrint}
                             sx={{ fontWeight: 'bold' }}
                         >
                             In / Xuất PDF
@@ -1556,6 +1678,32 @@ const Reports = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Hidden container for PDF Generation */}
+            {isExportingPDF && (
+                <Box sx={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '900px' }}>
+                    <div id="hidden-pdf-container" style={{ padding: '30px', background: 'white' }}>
+                        {handoverType === 'inbound' ? (
+                            <ReturnsReportPreview
+                                data={previewData}
+                                employeeName={selectedEmployee || ''}
+                                date={selectedDate}
+                                receiverName={previewSenderName}
+                            />
+                        ) : (
+                            <HandoverPreview
+                                data={previewData}
+                                employeeName={selectedEmployee || ''}
+                                date={selectedDate}
+                                reporterName={previewSenderName}
+                                senderPhone={previewSenderPhone}
+                                receiverPhone={previewReceiverPhone}
+                                reportNumber={previewReportNumber}
+                            />
+                        )}
+                    </div>
+                </Box>
+            )}
         </Box >
     );
 };

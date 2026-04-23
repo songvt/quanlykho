@@ -366,11 +366,9 @@ const EmployeeReturns = () => {
 
     // --- Admin Handlers (Delete & Export) ---
     const handleDelete = async () => {
-        if (!window.confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.length} phiếu trả hàng này không?`)) return;
-
         try {
             await dispatch(deleteReturns(selectedIds)).unwrap();
-            success('Đã xóa thành công!');
+            success(`Đã xóa ${selectedIds.length} phiếu trả hàng thành công!`);
             setSelectedIds([]);
         } catch (error: any) {
             notifyError('Lỗi xóa: ' + error.message);

@@ -1,8 +1,8 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
-    Box, Paper, Typography, List, ListItem, ListItemText, Chip, Grid
+    Box, Paper, Typography, List, ListItem, ListItemText, Chip, Grid, IconButton, Tooltip
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import {
@@ -12,18 +12,21 @@ import {
     WarningAmberOutlined as WarningIcon,
     ErrorOutline as ErrorIcon,
     LocalShippingOutlined as ShippingIcon,
+    RefreshOutlined as RefreshIcon,
 } from '@mui/icons-material';
 import {
-    XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+    XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
     PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 import type { RootState, AppDispatch } from '../store';
 import { fetchProducts } from '../store/slices/productsSlice';
 import { fetchTransactions } from '../store/slices/transactionsSlice';
 import { fetchInventory, selectStockMap } from '../store/slices/inventorySlice';
+import { fetchOrders } from '../store/slices/ordersSlice';
 import type { DashboardStats } from '../types';
 import React from 'react';
 import DashboardSkeleton from './DashboardSkeleton';
+import { useTabVisibility } from '../hooks/useTabVisibility';
 
 const MetricCard = ({ title, value, subtitle, icon, color, trend, onClick }: any) => (
     <Paper 
@@ -69,21 +72,41 @@ const MetricCard = ({ title, value, subtitle, icon, color, trend, onClick }: any
     </Paper>
 );
 
+import { fetchEmployees } from '../store/slices/employeesSlice';
+
 const Dashboard = () => {
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
     const { items: products, status: productStatus } = useSelector((state: RootState) => state.products);
     const { items: transactions, status: transactionStatus } = useSelector((state: RootState) => state.transactions);
+    const { items: orders, status: orderStatus } = useSelector((state: RootState) => state.orders);
     const { status: inventoryStatus } = useSelector((state: RootState) => state.inventory);
+    const { items: employees, status: employeeStatus } = useSelector((state: RootState) => state.employees);
     const stockMap = useSelector(selectStockMap);
+    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
     const isLoading = productStatus === 'loading' || transactionStatus === 'loading' || inventoryStatus === 'loading';
+
+    const refreshAll = useCallback(() => {
+        dispatch(fetchProducts());
+        dispatch(fetchTransactions());
+        dispatch(fetchOrders());
+        dispatch(fetchInventory());
+        dispatch(fetchEmployees());
+        setLastUpdated(new Date());
+    }, [dispatch]);
 
     useEffect(() => {
         if (productStatus === 'idle') dispatch(fetchProducts());
         if (transactionStatus === 'idle') dispatch(fetchTransactions());
+        if (orderStatus === 'idle') dispatch(fetchOrders());
         if (inventoryStatus === 'idle') dispatch(fetchInventory());
-    }, [productStatus, transactionStatus, inventoryStatus, dispatch]);
+        if (employeeStatus === 'idle') dispatch(fetchEmployees());
+        setLastUpdated(new Date());
+    }, [productStatus, transactionStatus, inventoryStatus, orderStatus, employeeStatus, dispatch]);
+
+    // Chỉ fetch lại khi tab active và dữ liệu đã stale quá 5 phút
+    useTabVisibility(refreshAll, 5 * 60 * 1000);
 
     const stats = useMemo(() => {
         if (!products.length && !transactions.length) return null;
@@ -91,13 +114,24 @@ const Dashboard = () => {
         let total_inventory = 0;
         let low_stock_items = 0;
         let out_of_stock_items = 0;
+        // Đơn hàng pending/approved đang giữ hàng (chưa xuất thực tế)
+        const reservedByProduct: Record<string, number> = {};
+        orders.forEach(o => {
+            if (o.status === 'pending' || o.status === 'approved') {
+                reservedByProduct[o.product_id] = (reservedByProduct[o.product_id] || 0) + Number(o.quantity || 0);
+            }
+        });
 
         products.forEach(p => {
+            // stockMap đã trừ pending/approved orders rồi (trong inventorySlice)
             const qty = stockMap[p.id] || 0;
-            total_inventory += qty;
+            total_inventory += Math.max(0, qty); // chỉ tính dương
             if (qty <= 0) out_of_stock_items++;
             else if (qty < 10) low_stock_items++;
         });
+
+        // Tổng đang đặt hàng
+        const total_reserved = Object.values(reservedByProduct).reduce((a, b) => a + b, 0);
 
         const recent_transactions = [...transactions]
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -121,9 +155,16 @@ const Dashboard = () => {
             }
         });
 
+        const normalizeCategory = (cat: string) => {
+            const trimmed = cat.trim();
+            if (!trimmed) return 'Khác';
+            // Capitalize first letter, lower case the rest for consistent grouping
+            return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+        };
+
         const catMap: Record<string, number> = {};
         products.forEach(p => {
-            const cat = p.category || 'Khác';
+            const cat = normalizeCategory(p.category || 'Khác');
             catMap[cat] = (catMap[cat] || 0) + 1;
         });
         const category_stats = Object.entries(catMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 5);
@@ -131,14 +172,15 @@ const Dashboard = () => {
         return {
             total_products: products.length,
             total_inventory,
+            total_reserved,
             low_stock_items,
             out_of_stock_items,
             recent_transactions,
             weekly_stats,
             category_stats
-        } as DashboardStats;
+        } as DashboardStats & { total_reserved: number };
 
-    }, [products, transactions, stockMap]);
+    }, [products, transactions, orders, stockMap]);
 
     if (isLoading && !stats) return <DashboardSkeleton />;
 
@@ -166,13 +208,27 @@ const Dashboard = () => {
 
     return (
         <Box sx={{ maxWidth: '1400px', mx: 'auto' }}>
-            <Box mb={4}>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: '#0f172a', letterSpacing: '-1px' }}>
-                    Tổng quan
-                </Typography>
-                <Typography variant="body1" sx={{ color: '#64748b', mt: 0.5 }}>
-                    Cập nhật hiệu suất tồn kho thời gian thực
-                </Typography>
+            <Box mb={4} display="flex" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap={2}>
+                <Box>
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: '#0f172a', letterSpacing: '-1px' }}>
+                        Tổng quan
+                    </Typography>
+                    <Typography variant="body1" sx={{ color: '#64748b', mt: 0.5 }}>
+                        {lastUpdated
+                            ? `Cập nhật lúc ${lastUpdated.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`
+                            : 'Cập nhật hiệu suất tồn kho thời gian thực'
+                        }
+                    </Typography>
+                </Box>
+                <Tooltip title="Làm mới dữ liệu">
+                    <IconButton
+                        onClick={refreshAll}
+                        disabled={isLoading}
+                        sx={{ border: '1px solid #e2e8f0', borderRadius: 2, p: 1.5 }}
+                    >
+                        <RefreshIcon sx={{ fontSize: 20, color: isLoading ? '#94a3b8' : '#475569' }} />
+                    </IconButton>
+                </Tooltip>
             </Box>
 
             <Grid container spacing={2} mb={3}>
@@ -188,11 +244,11 @@ const Dashboard = () => {
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <MetricCard 
-                        title="SỐ LƯỢNG TỒN KHO" 
+                        title="TỒN KHO KHẢ DỤNG" 
                         value={stats.total_inventory.toLocaleString('vi-VN')} 
                         icon={<ShippingIcon />} 
                         color="#10b981"
-                        subtitle="Tổng số lượng hiện có"
+                        subtitle={`Đang giữ: ${(stats as any).total_reserved?.toLocaleString('vi-VN') || 0} (chờ xuất)`}
                         trend="up"
                         onClick={() => navigate('/products')}
                     />
@@ -203,7 +259,7 @@ const Dashboard = () => {
                         value={stats.low_stock_items} 
                         icon={<WarningIcon />} 
                         color="#f59e0b"
-                        subtitle="Cần nhập thêm sản phẩm"
+                        subtitle="Dưới 10 sản phẩm"
                         onClick={() => navigate('/products?filter=low_stock')}
                     />
                 </Grid>
@@ -226,36 +282,38 @@ const Dashboard = () => {
                             <Typography variant="h6" sx={{ fontWeight: 600, color: '#0f172a' }}>Biến động nhập/xuất (7 ngày qua)</Typography>
                             <Chip size="small" label="Hàng ngày" sx={{ bgcolor: '#f1f5f9', color: '#475569', fontWeight: 500 }} />
                         </Box>
-                        <ResponsiveContainer width="100%" height="88%">
-                            <AreaChart data={stats.weekly_stats} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                <defs>
-                                    <linearGradient id="colorIn" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                    </linearGradient>
-                                    <linearGradient id="colorOut" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                                <Tooltip 
-                                    contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', backgroundColor: 'white' }} 
-                                    itemStyle={{ fontWeight: 600 }}
-                                />
-                                <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '13px', color: '#475569' }} iconType="circle" />
-                                <Area type="monotone" dataKey="inbound" name="Nhập kho" stroke="#10b981" fillOpacity={1} fill="url(#colorIn)" strokeWidth={2.5} />
-                                <Area type="monotone" dataKey="outbound" name="Xuất kho" stroke="#3b82f6" fillOpacity={1} fill="url(#colorOut)" strokeWidth={2.5} />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                        <Box sx={{ height: 320, width: '100%' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={stats.weekly_stats} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorIn" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="colorOut" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                                    <RechartsTooltip 
+                                        contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', backgroundColor: 'white' }} 
+                                        itemStyle={{ fontWeight: 600 }}
+                                    />
+                                    <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '13px', color: '#475569' }} iconType="circle" />
+                                    <Area type="monotone" dataKey="inbound" name="Nhập kho" stroke="#10b981" fillOpacity={1} fill="url(#colorIn)" strokeWidth={2.5} />
+                                    <Area type="monotone" dataKey="outbound" name="Xuất kho" stroke="#3b82f6" fillOpacity={1} fill="url(#colorOut)" strokeWidth={2.5} />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </Box>
                     </Paper>
                 </Grid>
                 <Grid size={{ xs: 12, lg: 4 }}>
                     <Paper elevation={0} sx={{ p: 3, borderRadius: 3, height: 420, border: '1px solid #e2e8f0', bgcolor: 'white' }}>
                         <Typography variant="h6" sx={{ fontWeight: 600, color: '#0f172a', mb: 1 }}>Cơ cấu danh mục</Typography>
-                        <Box sx={{ height: '80%', position: 'relative' }}>
+                        <Box sx={{ height: 300, position: 'relative' }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie
@@ -272,7 +330,7 @@ const Dashboard = () => {
                                             <Cell key={`cell-${index}`} fill={entry.color} />
                                         ))}
                                     </Pie>
-                                    <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
+                                    <RechartsTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
                                     <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', color: '#475569' }} />
                                 </PieChart>
                             </ResponsiveContainer>
@@ -301,7 +359,7 @@ const Dashboard = () => {
                                     <ListItemText primary="Không tìm thấy giao dịch gần đây" sx={{ color: '#64748b', textAlign: 'center', py: 3 }} />
                                 </ListItem>
                             ) : stats.recent_transactions.map((t, idx) => (
-                                <ListItem key={t.id || idx} divider sx={{ py: 2, px: 3, '&:hover': { bgcolor: '#f8fafc' }, transition: '0.2s', borderBottom: idx === stats.recent_transactions.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
+                                <ListItem key={t.id ? `tx-${t.id}` : `recent-tx-${idx}`} divider sx={{ py: 2, px: 3, '&:hover': { bgcolor: '#f8fafc' }, transition: '0.2s', borderBottom: idx === stats.recent_transactions.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
                                     <Box sx={{
                                         p: 1.5, borderRadius: '50%', mr: 2.5,
                                         bgcolor: t.type === 'inbound' ? alpha('#10b981', 0.1) : alpha('#3b82f6', 0.1),
@@ -319,8 +377,11 @@ const Dashboard = () => {
                                         <Typography variant="body1" sx={{ fontWeight: 700, color: t.type === 'inbound' ? '#10b981' : '#0f172a' }}>
                                             {t.type === 'inbound' ? '+' : '-'}{t.quantity} sản phẩm
                                         </Typography>
-                                        <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                                        <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}>
                                             {t.group_name || 'Kho chính'}
+                                        </Typography>
+                                        <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.7rem' }}>
+                                            NV: {employees.find(e => e.id === (t as any).created_by || e.auth_user_id === (t as any).created_by)?.full_name || (t as any).created_by || 'Khuyết danh'}
                                         </Typography>
                                     </Box>
                                 </ListItem>

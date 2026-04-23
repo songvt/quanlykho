@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
     Box, Paper, Typography, Button, IconButton, Dialog, DialogTitle, DialogContent, DialogActions,
     TextField, FormControl, InputLabel, Select, MenuItem, Stack, Alert, CircularProgress, Chip,
-    Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Checkbox
+    Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Checkbox, useTheme, useMediaQuery, Card, CardContent, Divider
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -19,12 +19,16 @@ import SearchIcon from '@mui/icons-material/Search';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import PermissionDialog from '../../components/PermissionDialog';
+import ConfirmDialog from '../../components/Common/ConfirmDialog';
+import VoiceSearchButton from '../../components/VoiceSearchButton';
 
 const EmployeeList = () => {
     const dispatch = useDispatch<AppDispatch>();
     const { items: employees, status, error } = useSelector((state: RootState) => state.employees);
     const { profile } = useSelector((state: RootState) => state.auth);
     const isAdmin = profile?.role === 'admin';
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     // Dialog state
     const [open, setOpen] = useState(false);
@@ -39,6 +43,14 @@ const EmployeeList = () => {
 
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [notification, setNotification] = useState<{ type: 'success' | 'error' | 'warning', message: string } | null>(null);
+    const [actionLoading, setActionLoading] = useState(false);
+    const [confirmState, setConfirmState] = useState<{
+        open: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void;
+    }>({ open: false, title: '', message: '', onConfirm: () => {} });
     const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
     useEffect(() => {
@@ -100,10 +112,22 @@ const EmployeeList = () => {
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa nhân viên này?')) {
-            await dispatch(deleteEmployee(id));
-        }
+    const handleDelete = (id: string, name: string) => {
+        setConfirmState({
+            open: true,
+            title: 'Xóa nhân viên',
+            message: `Bạn có chắc muốn xóa nhân viên "${name}"? Hành động này không thể hoàn tác.`,
+            onConfirm: async () => {
+                setActionLoading(true);
+                try {
+                    await dispatch(deleteEmployee(id));
+                    setNotification({ type: 'success', message: 'Đã xóa nhân viên thành công!' });
+                } finally {
+                    setActionLoading(false);
+                    setConfirmState(s => ({ ...s, open: false }));
+                }
+            }
+        });
     };
 
     const handleSelectAll = (checked: boolean) => {
@@ -122,18 +146,26 @@ const EmployeeList = () => {
         }
     };
 
-    const handleBulkDelete = async () => { // import deleteEmployees from slice first (add to imports)
-        if (window.confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.length} nhân viên đã chọn?`)) {
-            try {
-                // @ts-ignore - deleteEmployees thunk needs to be imported
-                await dispatch(deleteEmployees(selectedIds)).unwrap();
-                setSelectedIds([]);
-                alert('Đã xóa thành công!');
-            } catch (err) {
-                console.error('Bulk delete failed:', err);
-                alert('Lỗi khi xóa hàng loạt.');
+    const handleBulkDelete = () => {
+        setConfirmState({
+            open: true,
+            title: `Xóa ${selectedIds.length} nhân viên`,
+            message: `Bạn có chắc muốn xóa ${selectedIds.length} nhân viên đã chọn? Hành động này không thể hoàn tác.`,
+            onConfirm: async () => {
+                setActionLoading(true);
+                try {
+                    // @ts-ignore
+                    await dispatch(deleteEmployees(selectedIds)).unwrap();
+                    setSelectedIds([]);
+                    setNotification({ type: 'success', message: `Đã xóa ${selectedIds.length} nhân viên thành công!` });
+                } catch (err) {
+                    setNotification({ type: 'error', message: 'Lỗi khi xóa hàng loạt.' });
+                } finally {
+                    setActionLoading(false);
+                    setConfirmState(s => ({ ...s, open: false }));
+                }
             }
-        }
+        });
     };
 
     // Permission Dialog Logic
@@ -152,8 +184,7 @@ const EmployeeList = () => {
             setPermEmployee(null);
             // Optionally dispatch fetchEmployees to refresh list if needed, but slice update should suffice
         } catch (err) {
-            console.error('Failed to save permissions:', err);
-            alert('Lỗi khi lưu phân quyền');
+            setNotification({ type: 'error', message: 'Lỗi khi lưu phân quyền.' });
         }
     };
 
@@ -179,7 +210,13 @@ const EmployeeList = () => {
     if (status === 'failed') return <Alert severity="error">{error}</Alert>;
 
     return (
+
         <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: '100%', mx: 'auto', width: '100%', overflowX: 'hidden' }}>
+            {notification && (
+                <Alert severity={notification.type} onClose={() => setNotification(null)} sx={{ mb: 2, borderRadius: 2 }}>
+                    {notification.message}
+                </Alert>
+            )}
             <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} mb={{ xs: 2, sm: 4 }} spacing={2}>
                 <Box>
                     <Typography variant="h4" fontWeight="900" sx={{
@@ -206,6 +243,7 @@ const EmployeeList = () => {
                                     <SearchIcon color="action" />
                                 </InputAdornment>
                             ),
+                            endAdornment: <VoiceSearchButton onResult={setSearchTerm} />,
                             sx: { borderRadius: 2, bgcolor: 'white' }
                         }}
                         sx={{ minWidth: 200 }}
@@ -263,13 +301,12 @@ const EmployeeList = () => {
 
                                                 if (mappedData.length > 0) {
                                                     await dispatch(importEmployees(mappedData)).unwrap();
-                                                    alert(`Đã nhập thành công ${mappedData.length} nhân viên!`);
+                                                    setNotification({ type: 'success', message: `Đã nhập thành công ${mappedData.length} nhân viên!` });
                                                 } else {
-                                                    alert('Không tìm thấy dữ liệu hợp lệ trong file.');
+                                                    setNotification({ type: 'warning', message: 'Không tìm thấy dữ liệu hợp lệ trong file.' });
                                                 }
                                             } catch (error: any) {
-                                                console.error('Import failed:', error);
-                                                alert(`Lỗi khi nhập dữ liệu: ${error.message || JSON.stringify(error)}`);
+                                                setNotification({ type: 'error', message: `Lỗi khi nhập dữ liệu: ${error.message || JSON.stringify(error)}` });
                                             }
                                             e.target.value = '';
                                         }
@@ -291,89 +328,170 @@ const EmployeeList = () => {
                 </Stack>
             </Stack>
 
-            <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)', overflowX: 'auto' }}>
-                <Table size="small" sx={{ minWidth: 800 }}>
-                    <TableHead>
-                        <TableRow>
-                            {isAdmin && (
-                                <TableCell padding="checkbox">
-                                    <Checkbox
-                                        checked={employees.length > 0 && selectedIds.length === employees.length}
-                                        indeterminate={selectedIds.length > 0 && selectedIds.length < employees.length}
-                                        onChange={(e) => handleSelectAll(e.target.checked)}
-                                        size="small"
-                                    />
-                                </TableCell>
-                            )}
-                            <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Họ và tên</TableCell>
-                            <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Tên hiển thị</TableCell>
-                            <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Email</TableCell>
-                            <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>SĐT</TableCell>
-                            <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Vai trò</TableCell>
-                            <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Thao tác</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {filteredEmployees.length === 0 ? (
+            {isMobile ? (
+                <Box>
+                    {filteredEmployees.length === 0 ? (
+                        <Box py={4} textAlign="center">
+                            <Typography color="text.secondary" variant="body1">Chưa có dữ liệu nhân viên</Typography>
+                        </Box>
+                    ) : (
+                        filteredEmployees.map((employee) => {
+                            const isSelected = selectedIds.includes(employee.id);
+                            return (
+                                <Card key={employee.id} sx={{ mb: 2, borderRadius: 3, border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                                        <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                                            <Box display="flex" alignItems="center" gap={1}>
+                                                {isAdmin && (
+                                                    <Checkbox
+                                                        checked={isSelected}
+                                                        onChange={(e) => handleSelectOne(employee.id, e.target.checked)}
+                                                        size="small"
+                                                        sx={{ p: 0 }}
+                                                    />
+                                                )}
+                                                <Typography variant="subtitle1" fontWeight="bold">
+                                                    {employee.full_name}
+                                                </Typography>
+                                            </Box>
+                                            <Box>
+                                                {getRoleLabel(employee.role)}
+                                            </Box>
+                                        </Stack>
+                                        
+                                        <Typography variant="body2" color="text.secondary" mb={1}>
+                                            {employee.username}
+                                        </Typography>
+
+                                        <Divider sx={{ my: 1 }} />
+                                        
+                                        <Stack direction="row" justifyContent="space-between" mb={0.5}>
+                                            <Typography variant="body2" color="text.secondary">Email:</Typography>
+                                            <Typography variant="body2">{employee.email}</Typography>
+                                        </Stack>
+                                        
+                                        <Stack direction="row" justifyContent="space-between" mb={1}>
+                                            <Typography variant="body2" color="text.secondary">SĐT:</Typography>
+                                            <Typography variant="body2">{employee.phone_number || '-'}</Typography>
+                                        </Stack>
+
+                                        <Stack direction="row" spacing={1} justifyContent="flex-end" mt={2}>
+                                            <Button
+                                                size="small"
+                                                variant="outlined"
+                                                color="secondary"
+                                                onClick={() => handleOpenPermissions(employee)}
+                                                startIcon={<VpnKeyIcon />}
+                                                sx={{ minWidth: 0, px: 2, borderRadius: 2 }}
+                                            >
+                                                Phân quyền
+                                            </Button>
+                                            <IconButton
+                                                size="small"
+                                                onClick={() => handleOpen(employee)}
+                                                sx={{ color: 'primary.main', bgcolor: 'primary.50', '&:hover': { bgcolor: 'primary.100' } }}
+                                            >
+                                                <EditIcon fontSize="small" />
+                                            </IconButton>
+                                            <IconButton
+                                                size="small"
+                                                onClick={() => handleDelete(employee.id, employee.full_name)}
+                                                sx={{ color: 'error.main', bgcolor: 'error.50', '&:hover': { bgcolor: 'error.100' } }}
+                                            >
+                                                <DeleteIcon fontSize="small" />
+                                            </IconButton>
+                                        </Stack>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })
+                    )}
+                </Box>
+            ) : (
+                <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)', overflowX: 'auto' }}>
+                    <Table size="small" sx={{ minWidth: 800 }}>
+                        <TableHead>
                             <TableRow>
-                                <TableCell colSpan={isAdmin ? 7 : 6} align="center" sx={{ py: 4, color: 'text.secondary' }}>Chưa có dữ liệu nhân viên</TableCell>
+                                {isAdmin && (
+                                    <TableCell padding="checkbox">
+                                        <Checkbox
+                                            checked={employees.length > 0 && selectedIds.length === employees.length}
+                                            indeterminate={selectedIds.length > 0 && selectedIds.length < employees.length}
+                                            onChange={(e) => handleSelectAll(e.target.checked)}
+                                            size="small"
+                                        />
+                                    </TableCell>
+                                )}
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Họ và tên</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Tên hiển thị</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Email</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>SĐT</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Vai trò</TableCell>
+                                <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Thao tác</TableCell>
                             </TableRow>
-                        ) : (
-                            filteredEmployees.map((employee) => {
-                                const isSelected = selectedIds.includes(employee.id);
-                                return (
-                                    <TableRow key={employee.id} hover sx={{ transition: 'all 0.2s', bgcolor: isSelected ? 'action.selected' : 'inherit' }}>
-                                        {isAdmin && (
-                                            <TableCell padding="checkbox">
-                                                <Checkbox
-                                                    checked={isSelected}
-                                                    onChange={(e) => handleSelectOne(employee.id, e.target.checked)}
-                                                    size="small"
-                                                />
+                        </TableHead>
+                        <TableBody>
+                            {filteredEmployees.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={isAdmin ? 7 : 6} align="center" sx={{ py: 4, color: 'text.secondary' }}>Chưa có dữ liệu nhân viên</TableCell>
+                                </TableRow>
+                            ) : (
+                                filteredEmployees.map((employee) => {
+                                    const isSelected = selectedIds.includes(employee.id);
+                                    return (
+                                        <TableRow key={employee.id} hover sx={{ transition: 'all 0.2s', bgcolor: isSelected ? 'action.selected' : 'inherit' }}>
+                                            {isAdmin && (
+                                                <TableCell padding="checkbox">
+                                                    <Checkbox
+                                                        checked={isSelected}
+                                                        onChange={(e) => handleSelectOne(employee.id, e.target.checked)}
+                                                        size="small"
+                                                    />
+                                                </TableCell>
+                                            )}
+                                            <TableCell>
+                                                <Typography variant="body2" fontWeight="600" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{employee.full_name}</Typography>
                                             </TableCell>
-                                        )}
-                                        <TableCell>
-                                            <Typography variant="body2" fontWeight="600" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{employee.full_name}</Typography>
-                                        </TableCell>
-                                        <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{employee.username}</TableCell>
-                                        <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{employee.email}</TableCell>
-                                        <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{employee.phone_number || '-'}</TableCell>
-                                        <TableCell>{getRoleLabel(employee.role)}</TableCell>
-                                        <TableCell align="right">
-                                            <Stack direction="row" spacing={1} justifyContent="flex-end">
-                                                <IconButton
-                                                    size="small"
-                                                    onClick={() => handleOpenPermissions(employee)}
-                                                    sx={{ color: 'secondary.main', bgcolor: 'secondary.50', '&:hover': { bgcolor: 'secondary.100' } }}
-                                                    title="Phân quyền"
-                                                >
-                                                    <VpnKeyIcon fontSize="small" />
-                                                </IconButton>
-                                                <IconButton
-                                                    size="small"
-                                                    onClick={() => handleOpen(employee)}
-                                                    sx={{ color: 'primary.main', bgcolor: 'primary.50', '&:hover': { bgcolor: 'primary.100' } }}
-                                                    title="Sửa thông tin"
-                                                >
-                                                    <EditIcon fontSize="small" />
-                                                </IconButton>
-                                                <IconButton
-                                                    size="small"
-                                                    onClick={() => handleDelete(employee.id)}
-                                                    sx={{ color: 'error.main', bgcolor: 'error.50', '&:hover': { bgcolor: 'error.100' } }}
-                                                    title="Xóa"
-                                                >
-                                                    <DeleteIcon fontSize="small" />
-                                                </IconButton>
-                                            </Stack>
-                                        </TableCell>
-                                    </TableRow>
-                                )
-                            })
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                                            <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{employee.username}</TableCell>
+                                            <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{employee.email}</TableCell>
+                                            <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{employee.phone_number || '-'}</TableCell>
+                                            <TableCell>{getRoleLabel(employee.role)}</TableCell>
+                                            <TableCell align="right">
+                                                <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => handleOpenPermissions(employee)}
+                                                        sx={{ color: 'secondary.main', bgcolor: 'secondary.50', '&:hover': { bgcolor: 'secondary.100' } }}
+                                                        title="Phân quyền"
+                                                    >
+                                                        <VpnKeyIcon fontSize="small" />
+                                                    </IconButton>
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => handleOpen(employee)}
+                                                        sx={{ color: 'primary.main', bgcolor: 'primary.50', '&:hover': { bgcolor: 'primary.100' } }}
+                                                        title="Sửa thông tin"
+                                                    >
+                                                        <EditIcon fontSize="small" />
+                                                    </IconButton>
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => handleDelete(employee.id, employee.full_name)}
+                                                        sx={{ color: 'error.main', bgcolor: 'error.50', '&:hover': { bgcolor: 'error.100' } }}
+                                                        title="Xóa"
+                                                    >
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Stack>
+                                            </TableCell>
+                                        </TableRow>
+                                    )
+                                })
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            )}
 
             <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
                 <DialogTitle sx={{ borderBottom: '1px solid #e2e8f0', pb: 2 }}>
@@ -453,6 +571,17 @@ const EmployeeList = () => {
                 onClose={() => setPermDialogOpen(false)}
                 employee={permEmployee}
                 onSave={handleSavePermissions}
+            />
+
+            <ConfirmDialog
+                open={confirmState.open}
+                title={confirmState.title}
+                message={confirmState.message}
+                confirmLabel="Xóa ngay"
+                severity="danger"
+                loading={actionLoading}
+                onConfirm={confirmState.onConfirm}
+                onCancel={() => setConfirmState(s => ({ ...s, open: false }))}
             />
         </Box>
     );

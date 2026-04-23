@@ -17,9 +17,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const [severity, setSeverity] = useState<AlertColor>('info');
 
   const notify = useCallback((msg: string, sev: AlertColor = 'info') => {
-    setMessage(msg);
-    setSeverity(sev);
-    setOpen(true);
+    setTimeout(() => {
+        setMessage(msg);
+        setSeverity(sev);
+        setOpen(true);
+    }, 0);
   }, []);
 
   const success = useCallback((msg: string) => notify(msg, 'success'), [notify]);
