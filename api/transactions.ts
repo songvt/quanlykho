@@ -38,17 +38,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const productsSheet = await getSheetByTitle(doc, 'products');
 
         // Ensure headers exist
-        if (inboundSheet.rowCount === 0) {
-            await inboundSheet.setHeaderRow([
+        if (inboundSheet.rowCount === 0 || inboundSheet.headerValues.length === 0) {
+            const headers = [
                 'id', 'product_id', 'serial_code', 'quantity', 'unit_price', 'total_price', 'inbound_date', 'created_by', 'district', 'item_status',
                 'type', 'created_at', 'updated_at', 'date', 'source_id'
-            ]);
+            ];
+            if (inboundSheet.columnCount < headers.length) {
+                await inboundSheet.updateProperties({ gridProperties: { columnCount: headers.length + 2 } });
+            }
+            await inboundSheet.setHeaderRow(headers);
         }
-        if (outboundSheet.rowCount === 0) {
-            await outboundSheet.setHeaderRow([
+        if (outboundSheet.rowCount === 0 || outboundSheet.headerValues.length === 0) {
+            const headers = [
                 'id', 'receiver_group', 'product_id', 'serial_code', 'quantity', 'unit_price', 'total_price', 'outbound_date', 'created_by', 'district', 'item_status',
                 'type', 'group_name', 'created_at', 'updated_at', 'date'
-            ]);
+            ];
+            if (outboundSheet.columnCount < headers.length) {
+                await outboundSheet.updateProperties({ gridProperties: { columnCount: headers.length + 2 } });
+            }
+            await outboundSheet.setHeaderRow(headers);
         }
 
         // Helper to populate product data
@@ -142,6 +150,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                         // Ensure headers exist for tracking
                         if (!inboundSheet.headerValues.includes('source_id')) {
+                            if (inboundSheet.columnCount <= inboundSheet.headerValues.length) {
+                                await inboundSheet.updateProperties({ 
+                                    gridProperties: { columnCount: inboundSheet.headerValues.length + 5 } 
+                                });
+                            }
                             await inboundSheet.setHeaderRow([...inboundSheet.headerValues, 'source_id']);
                         }
 
@@ -274,6 +287,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                         if (toInsert.length > 0) {
                             if (!currentHeaders.includes('source_id')) {
+                                // Resize grid first to prevent "Sheet is not large enough" error
+                                if (inboundSheet.columnCount <= currentHeaders.length) {
+                                    await inboundSheet.updateProperties({ 
+                                        gridProperties: { columnCount: currentHeaders.length + 5 } 
+                                    });
+                                }
                                 await inboundSheet.setHeaderRow([...currentHeaders, 'source_id']);
                             }
                             await inboundSheet.addRows(toInsert);
