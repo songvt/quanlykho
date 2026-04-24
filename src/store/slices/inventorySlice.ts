@@ -66,13 +66,31 @@ export const selectDetailedStockMap = createSelector(
     }
 );
 
+const rawAuth = (state: RootState) => state.auth.profile;
+
 export const selectStockMap = createSelector(
-    selectDetailedStockMap,
-    (detailedMap) => {
+    [selectDetailedStockMap, rawAuth],
+    (detailedMap, profile) => {
+        const isAdmin = profile?.role === 'Admin';
+        const userDistrict = profile?.district || '';
+        
         const simpleMap: Record<string, number> = {};
         Object.keys(detailedMap).forEach(key => {
-            if (key.endsWith('||')) {
-                simpleMap[key.replace('||', '')] = detailedMap[key];
+            const parts = key.split('|');
+            if (parts.length === 3) {
+                const pId = parts[0];
+                const dist = parts[1];
+                const status = parts[2];
+                
+                if (isAdmin || !userDistrict) {
+                    if (dist === '' && status === '') {
+                        simpleMap[pId] = detailedMap[key];
+                    }
+                } else {
+                    if (dist === userDistrict && status === '*ALL*') {
+                        simpleMap[pId] = detailedMap[key];
+                    }
+                }
             }
         });
         return simpleMap;
@@ -80,8 +98,8 @@ export const selectStockMap = createSelector(
 );
 
 export const selectProductStock = (state: RootState, productId: string) => {
-    const map = selectDetailedStockMap(state);
-    return map[`${productId}||`] || 0;
+    const map = selectStockMap(state);
+    return map[productId] || 0;
 };
 
 export const selectDetailedStock = (state: RootState, productId: string, district?: string, itemStatus?: string) => {
