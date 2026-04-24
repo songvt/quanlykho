@@ -7,79 +7,123 @@ interface Props { children?: ReactNode; }
 interface State { hasError: boolean; error: Error | null; errorInfo: ErrorInfo | null; }
 
 /** Kiểm tra lỗi có phải do chunk JS cũ bị xóa sau deploy không */
-function isChunkLoadError(error: Error): boolean {
-    const msg = error?.message || '';
+function isChunkLoadError(error: any): boolean {
+    if (!error) return false;
+    const msg = (typeof error === 'string' ? error : error.message || '').toLowerCase();
+    const stack = (error.stack || '').toLowerCase();
+    
     return (
-        msg.includes('Failed to fetch dynamically imported module') ||
-        msg.includes('Importing a module script failed') ||
-        msg.includes('Loading chunk') ||
-        msg.includes('ChunkLoadError')
+        msg.includes('failed to fetch dynamically imported module') ||
+        msg.includes('importing a module script failed') ||
+        msg.includes('loading chunk') ||
+        msg.includes('chunkloaderror') ||
+        stack.includes('chunkloaderror') ||
+        stack.includes('failed to fetch dynamically imported module')
     );
 }
 
-/** Xóa toàn bộ service worker cache rồi reload trang */
+/** Xóa toàn bộ service worker cache rồi reload trang mạnh mẽ */
 function clearCacheAndReload(): void {
+    console.warn('[ErrorBoundary] Attempting hard reload...');
+    
     try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const c = (window as any).caches;
-        if (c && typeof c.keys === 'function') {
-            c.keys().then((names: string[]) => {
-                Promise.all(names.map((n: string) => c.delete(n))).finally(() => {
-                    window.location.reload();
-                });
-            }).catch(() => {
-                window.location.reload();
+        // Xóa caches (nếu có Service Worker)
+        if ('caches' in window) {
+            window.caches.keys().then((names) => {
+                return Promise.all(names.map((name) => window.caches.delete(name)));
+            }).catch(err => console.error('Cache clear error:', err))
+            .finally(() => {
+                // Thêm query param v=[timestamp] để ép trình duyệt fetch index.html mới từ server
+                const url = new URL(window.location.href);
+                url.searchParams.set('v', Date.now().toString());
+                window.location.replace(url.toString());
             });
-        } else {
-            window.location.reload();
+            return;
         }
-    } catch {
-        window.location.reload();
+    } catch (e) {
+        console.error('Hard reload failed:', e);
     }
+    
+    // Fallback if caches API not available
+    const url = new URL(window.location.href);
+    url.searchParams.set('v', Date.now().toString());
+    window.location.replace(url.toString());
 }
 
 class ErrorBoundary extends Component<Props, State> {
     public state: State = { hasError: false, error: null, errorInfo: null };
 
-    public static getDerivedStateFromError(error: Error): State {
+    public static getDerivedStateFromError(error: any): State {
         return { hasError: true, error, errorInfo: null };
     }
 
-    public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-        console.error('[ErrorBoundary]', error, errorInfo.componentStack);
+    public componentDidCatch(error: any, errorInfo: ErrorInfo) {
+        console.error('[ErrorBoundary] Caught error:', error);
         this.setState({ errorInfo });
 
         // Tự động hard reload khi phát hiện lỗi chunk cũ sau deploy mới
         if (isChunkLoadError(error)) {
-            console.warn('[ErrorBoundary] Stale chunk detected — clearing cache and reloading...');
-            clearCacheAndReload();
+            console.warn('[ErrorBoundary] Stale chunk detected — auto-reloading in 1s...');
+            setTimeout(() => {
+                clearCacheAndReload();
+            }, 1000);
         }
     }
 
     public render() {
         if (this.state.hasError) {
-            const isChunkErr = isChunkLoadError(this.state.error!);
+            const isChunkErr = isChunkLoadError(this.state.error);
+            
             return (
                 <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh" p={3}>
-                    <Paper elevation={0} sx={{ p: 5, maxWidth: 480, width: '100%', textAlign: 'center', borderRadius: 3, border: '1px solid', borderColor: 'error.light' }}>
-                        <ErrorOutlineIcon sx={{ fontSize: 56, color: 'error.main', mb: 2 }} />
-                        <Typography variant="h6" fontWeight={700} gutterBottom color="error.main">
-                            Có lỗi xảy ra
+                    <Paper 
+                        elevation={0} 
+                        sx={{ 
+                            p: 5, 
+                            maxWidth: 480, 
+                            width: '100%', 
+                            textAlign: 'center', 
+                            borderRadius: 4, 
+                            border: '1px solid', 
+                            borderColor: isChunkErr ? 'warning.light' : 'error.light',
+                            bgcolor: isChunkErr ? 'warning.50' : 'inherit',
+                            boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)'
+                        }}
+                    >
+                        <ErrorOutlineIcon sx={{ fontSize: 64, color: isChunkErr ? 'warning.main' : 'error.main', mb: 2 }} />
+                        
+                        <Typography variant="h5" fontWeight={800} gutterBottom color={isChunkErr ? 'warning.dark' : 'error.main'}>
+                            {isChunkErr ? 'Đang cập nhật phiên bản...' : 'Có lỗi xảy ra'}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" mb={3}>
+                        
+                        <Typography variant="body1" color="text.secondary" mb={4} sx={{ lineHeight: 1.6 }}>
                             {isChunkErr
-                                ? 'Ứng dụng vừa được cập nhật. Đang tải lại trang mới nhất...'
-                                : (this.state.error?.message || 'Lỗi không xác định. Vui lòng tải lại trang.')}
+                                ? 'Hệ thống đã có bản cập nhật mới. Chúng tôi đang tải lại dữ liệu mới nhất cho bạn (vui lòng chờ trong giây lát)...'
+                                : (this.state.error?.message || 'Lỗi không xác định. Vui lòng tải lại trang để tiếp tục.')}
                         </Typography>
+                        
                         <Button
                             variant="contained"
-                            color="error"
+                            color={isChunkErr ? 'warning' : 'error'}
                             startIcon={<RefreshIcon />}
                             onClick={clearCacheAndReload}
-                            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
+                            sx={{ 
+                                borderRadius: 2, 
+                                py: 1.5, 
+                                px: 4,
+                                textTransform: 'none', 
+                                fontWeight: 700,
+                                boxShadow: 3
+                            }}
                         >
-                            Tải lại trang
+                            {isChunkErr ? 'Tải lại ngay' : 'Tải lại trang'}
                         </Button>
+                        
+                        {isChunkErr && (
+                            <Typography variant="caption" display="block" color="text.disabled" mt={2}>
+                                Phiên bản: {new Date().toLocaleTimeString()}
+                            </Typography>
+                        )}
                     </Paper>
                 </Box>
             );
