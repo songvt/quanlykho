@@ -1,11 +1,13 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useDispatch, useSelector } from 'react-redux';
 import {
     Box, Paper, Typography, Button, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Dialog,
     DialogTitle, DialogContent, DialogActions, TextField, Stack,
-    CircularProgress, Alert, Chip, Select, MenuItem, FormControl, InputLabel, Checkbox, Autocomplete, useMediaQuery, useTheme, Card, CardContent, Divider
+    CircularProgress, Alert, Chip, Select, MenuItem, FormControl, InputLabel,
+    Checkbox, Autocomplete, useMediaQuery, useTheme, Card, CardContent, Divider,
+    InputAdornment, LinearProgress,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -14,10 +16,9 @@ import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import SearchIcon from '@mui/icons-material/Search';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { InputAdornment } from '@mui/material';
 import ProductSearchDialog from '../../components/ProductSearchDialog';
 import { useNavigate } from 'react-router-dom';
-
+import { useNotification } from '../../contexts/NotificationContext';
 
 import { fetchOrders, addOrder, updateOrderStatus, deleteOrders } from '../../store/slices/ordersSlice';
 import { fetchEmployees } from '../../store/slices/employeesSlice';
@@ -40,6 +41,7 @@ const OrderList = () => {
     const inventory = useSelector(selectStockMap);
     const { profile } = useSelector((state: RootState) => state.auth);
     const { hasPermission } = usePermission();
+    const { success: notifySuccess, error: notifyError } = useNotification();
 
     // Permissions
     const canViewAll = hasPermission('orders.view_all');
@@ -62,7 +64,6 @@ const OrderList = () => {
         requester_group: '',
     });
     const [showProductSearch, setShowProductSearch] = useState(false);
-    const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
     const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
     const [actionLoading, setActionLoading] = useState(false);
@@ -119,17 +120,17 @@ const OrderList = () => {
 
     const handleSave = async () => {
         if (!newOrder.product_id || !newOrder.requester_group) {
-            setNotification({ type: 'error', message: 'Vui lòng điền đầy đủ thông tin' });
+            notifyError('Vui lòng điền đầy đủ thông tin');
             return;
         }
 
         if (newOrder.quantity > stockLimit) {
-            setNotification({ type: 'error', message: `Sản phẩm này chỉ còn ${stockLimit} tồn kho khả dụng. Không thể đặt vượt quá số lượng tồn kho!` });
+            notifyError(`Sản phẩm này chỉ còn ${stockLimit} tồn kho khả dụng. Không thể đặt vượt quá số lượng tồn kho!`);
             return;
         }
 
         if (!isAdmin && policyLimit !== null && newOrder.quantity > policyLimit) {
-            setNotification({ type: 'error', message: `Mặt hàng "${selectedProduct?.name}" chỉ được đặt tối đa ${policyLimit} mỗi lần. Vui lòng điều chỉnh số lượng!` });
+            notifyError(`Mặt hàng "${selectedProduct?.name}" chỉ được đặt tối đa ${policyLimit} mỗi lần. Vui lòng điều chỉnh số lượng!`);
             return;
         }
 
@@ -138,46 +139,44 @@ const OrderList = () => {
                 ...newOrder,
                 status: 'pending',
                 created_by: profile?.id,
-                // Append check note to reason so admin sees it
                 ...(checkNote ? { reason: `[⚠️ CảNH BÁO] ${checkNote}` } : {}),
             })).unwrap();
-            dispatch(fetchInventory());
             setOpenDialog(false);
-            setNotification({ type: 'success', message: 'Tạo đơn đặt hàng thành công!' });
-        } catch (err) {
+            notifySuccess('Tạo đơn đặt hàng thành công!');
+        } catch (err: any) {
             console.error('Failed to add order:', err);
-            setNotification({ type: 'error', message: 'Lỗi khi tạo đơn hàng.' });
+            notifyError(err?.message || 'Lỗi khi tạo đơn hàng.');
         }
     };
 
-    const handleUpdateStatus = async (id: string, status: Order['status']) => {
+    const handleUpdateStatus = useCallback(async (id: string, status: Order['status']) => {
         setApproveLoadingId(id);
         try {
-            const approver = (status === 'approved' || status === 'rejected') ? (profile?.full_name || profile?.username || profile?.email) : undefined;
+            const approver = (status === 'approved' || status === 'rejected')
+                ? (profile?.full_name || profile?.username || profile?.email)
+                : undefined;
             await dispatch(updateOrderStatus({ id, status, approver })).unwrap();
-            dispatch(fetchInventory());
-            setNotification({ type: 'success', message: `Cập nhật trạng thái thành công!` });
-        } catch (err) {
-            setNotification({ type: 'error', message: 'Lỗi khi cập nhật trạng thái.' });
+            notifySuccess('Cập nhật trạng thái thành công!');
+        } catch (err: any) {
+            notifyError(err?.message || 'Lỗi khi cập nhật trạng thái.');
         } finally {
             setApproveLoadingId(null);
         }
-    };
+    }, [dispatch, profile, notifySuccess, notifyError]);
 
-    const handleBulkApprove = async () => {
+    const handleBulkApprove = useCallback(async () => {
         setBulkApproveLoading(true);
         try {
             const approver = profile?.full_name || profile?.username || profile?.email;
             await Promise.all(selectedOrderIds.map(id => dispatch(updateOrderStatus({ id, status: 'approved', approver })).unwrap()));
-            dispatch(fetchInventory());
             setSelectedOrderIds([]);
-            setNotification({ type: 'success', message: `Đã duyệt thành công ${selectedOrderIds.length} đơn hàng!` });
-        } catch (err) {
-            setNotification({ type: 'error', message: 'Có lỗi xảy ra khi duyệt hàng loạt.' });
+            notifySuccess(`Đã duyệt thành công ${selectedOrderIds.length} đơn hàng!`);
+        } catch (err: any) {
+            notifyError(err?.message || 'Có lỗi xảy ra khi duyệt hàng loạt.');
         } finally {
             setBulkApproveLoading(false);
         }
-    };
+    }, [dispatch, profile, selectedOrderIds, notifySuccess, notifyError]);
 
     const getStatusChip = (status: string) => {
         switch (status) {
@@ -245,7 +244,7 @@ const OrderList = () => {
         }
     };
 
-    const handleBulkDelete = () => {
+    const handleBulkDelete = useCallback(() => {
         setConfirmState({
             open: true,
             title: `Xóa ${selectedOrderIds.length} đơn hàng`,
@@ -253,26 +252,28 @@ const OrderList = () => {
             onConfirm: async () => {
                 setActionLoading(true);
                 try {
-                    // @ts-ignore
-                    await dispatch(deleteOrders(selectedOrderIds)).unwrap();
-                    dispatch(fetchInventory());
+                    await dispatch(deleteOrders(selectedOrderIds as any)).unwrap();
                     setSelectedOrderIds([]);
-                    setNotification({ type: 'success', message: 'Đã xóa thành công!' });
-                } catch (err) {
-                    setNotification({ type: 'error', message: 'Lỗi khi xóa đơn hàng.' });
+                    notifySuccess('Đã xóa thành công!');
+                } catch (err: any) {
+                    notifyError(err?.message || 'Lỗi khi xóa đơn hàng.');
                 } finally {
                     setActionLoading(false);
                     setConfirmState(s => ({ ...s, open: false }));
                 }
             }
         });
-    }
+    }, [dispatch, selectedOrderIds, notifySuccess, notifyError]);
 
-    if (orderStatus === 'loading') return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
+    // Show loading bar on top instead of replacing entire component (prevents re-mount flicker)
+    const isLoading = orderStatus === 'loading' || productStatus === 'loading';
+
     if (orderStatus === 'failed') return <Alert severity="error">{error}</Alert>;
 
     return (
         <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: '100%', mx: 'auto' }}>
+            {/* Loading bar - non-blocking, keeps component mounted */}
+            {isLoading && <LinearProgress sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 2000 }} />}
             <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} mb={{ xs: 2, sm: 4 }} spacing={2}>
                 <Box>
                     <Typography variant="h4" fontWeight="900" sx={{
@@ -366,11 +367,7 @@ const OrderList = () => {
                 </Stack>
             </Stack>
 
-            {notification && (
-                <Alert severity={notification.type} onClose={() => setNotification(null)} sx={{ mb: 2, borderRadius: 2 }}>
-                    {notification.message}
-                </Alert>
-            )}
+
 
 
             {isMobile ? (
