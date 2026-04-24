@@ -546,7 +546,15 @@ export const Outbound = () => {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {allApprovedOrders.map(order => (
+                                {allApprovedOrders.map(order => {
+                                    let isExpired = false;
+                                    if (order.approved_at) {
+                                        const approvedTime = new Date(order.approved_at).getTime();
+                                        const now = new Date().getTime();
+                                        isExpired = (now - approvedTime) > 24 * 60 * 60 * 1000;
+                                    }
+
+                                    return (
                                     <TableRow key={order.id}>
                                         <TableCell>{order.requester_group}</TableCell>
                                         <TableCell>
@@ -560,17 +568,22 @@ export const Outbound = () => {
                                             </Typography>
                                         </TableCell>
                                         <TableCell align="center">
-                                            <Button
-                                                variant="contained"
-                                                color="secondary"
-                                                size="small"
-                                                onClick={() => handleOpenFulfill(order)}
-                                            >
-                                                Xuất Kho
-                                            </Button>
+                                            {isExpired ? (
+                                                <Chip label="Hết hạn (24h)" color="error" size="small" />
+                                            ) : (
+                                                <Button
+                                                    variant="contained"
+                                                    color="secondary"
+                                                    size="small"
+                                                    onClick={() => handleOpenFulfill(order)}
+                                                >
+                                                    Xuất Kho
+                                                </Button>
+                                            )}
                                         </TableCell>
                                     </TableRow>
-                                ))}
+                                    );
+                                })}
                             </TableBody>
                         </Table>
                     </TableContainer>

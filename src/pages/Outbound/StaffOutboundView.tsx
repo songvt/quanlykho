@@ -72,6 +72,14 @@ const StaffOutboundView = ({
                         ) : (
                             approvedOrders.map(order => {
                                 const product = products.find(p => p.id === order.product_id);
+                                
+                                let isExpired = false;
+                                if (order.approved_at) {
+                                    const approvedTime = new Date(order.approved_at).getTime();
+                                    const now = new Date().getTime();
+                                    isExpired = (now - approvedTime) > 24 * 60 * 60 * 1000;
+                                }
+
                                 return (
                                     <TableRow key={order.id} hover>
                                         <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
@@ -92,14 +100,19 @@ const StaffOutboundView = ({
                                             {order.quantity}
                                         </TableCell>
                                         <TableCell align="center">
-                                            <Chip label="Đã duyệt" color="success" size="small" icon={<CheckCircleIcon />} sx={{ height: 24, fontSize: '0.75rem' }} />
+                                            {isExpired ? (
+                                                <Chip label="Đã hết hạn" color="error" size="small" sx={{ height: 24, fontSize: '0.75rem' }} />
+                                            ) : (
+                                                <Chip label="Đã duyệt" color="success" size="small" icon={<CheckCircleIcon />} sx={{ height: 24, fontSize: '0.75rem' }} />
+                                            )}
                                         </TableCell>
                                         <TableCell align="center">
                                             <Button
                                                 variant="contained"
-                                                color="secondary"
+                                                color={isExpired ? "inherit" : "secondary"}
                                                 size="small"
                                                 onClick={() => onFulfill(order)}
+                                                disabled={isExpired}
                                                 sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' }, minWidth: 64 }}
                                             >
                                                 Xuất kho

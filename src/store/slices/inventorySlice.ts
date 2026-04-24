@@ -52,6 +52,15 @@ export const selectDetailedStockMap = createSelector(
         if (orders && Array.isArray(orders)) {
             orders.forEach((o: any) => {
                 if (o.status === 'pending' || o.status === 'approved') {
+                    // Check for expiration (24 hours) for approved orders
+                    if (o.status === 'approved' && o.approved_at) {
+                        const approvedTime = new Date(o.approved_at).getTime();
+                        const now = new Date().getTime();
+                        if (now - approvedTime > 24 * 60 * 60 * 1000) {
+                            return; // Expired, do not deduct
+                        }
+                    }
+
                     const qty = Number(o.quantity) || 0;
                     const pId = o.product_id;
                     if (pId) {
