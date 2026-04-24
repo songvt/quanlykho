@@ -121,12 +121,12 @@ const Reports = () => {
     const getHandoverData = () => {
         if (handoverType === 'inbound') {
             return returns.filter(r => {
-                const dateVal = r.return_date || r.date || r.inbound_date;
+                const dateVal = r.return_date || (r as any).date || (r as any).inbound_date;
                 const parsedDate = parseSafeDate(dateVal) || parseSafeDate(r.created_at);
                 if (!parsedDate) return false;
                 
                 const dStr = getLocalYYYYMMDD(parsedDate);
-                const empName = (r.employee?.full_name || r.user_name || '').trim();
+                const empName = (r.employee?.full_name || (r as any).user_name || '').trim();
                 const matchUser = selectedEmployee ? (empName.toLowerCase() === selectedEmployee.toLowerCase()) : true;
                 return dStr === selectedDate && matchUser;
             }).map((r: any) => ({
