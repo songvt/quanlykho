@@ -86,7 +86,7 @@ const OrderList = () => {
     useEffect(() => {
         if (orderStatus === 'idle') dispatch(fetchOrders());
         if (productStatus === 'idle') dispatch(fetchProducts());
-        if (isAdmin && employeeStatus === 'idle') dispatch(fetchEmployees());
+        if (employeeStatus === 'idle') dispatch(fetchEmployees()); // Load for all users to get 'check' field
         if (inventoryStatus === 'idle') dispatch(fetchInventory());
     }, [orderStatus, productStatus, employeeStatus, inventoryStatus, dispatch, isAdmin]);
 
@@ -111,7 +111,11 @@ const OrderList = () => {
         e.full_name === newOrder.requester_group ||
         e.username === newOrder.requester_group
     );
-    const checkNote = requesterEmployee?.check?.trim() || '';
+    // Với nhân viên thường: lấy check từ chính profile họ
+    // Với admin chọn nhân viên: lấy check từ danh sách employees
+    const checkNote = isAdmin
+        ? (requesterEmployee?.check?.trim() || '')
+        : (profile?.check?.trim() || '');
 
     const handleSave = async () => {
         if (!newOrder.product_id || !newOrder.requester_group) {
