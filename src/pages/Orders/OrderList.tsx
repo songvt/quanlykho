@@ -534,7 +534,7 @@ const OrderList = () => {
                                                 <Typography variant="body2" fontWeight="500" sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
                                                     {order.requester_group}
                                                 </Typography>
-                                                {(order as any).reason && (order as any).reason.includes('[') && (
+                                                {order.reason && (
                                                     <Typography
                                                         variant="caption"
                                                         sx={{
@@ -546,9 +546,13 @@ const OrderList = () => {
                                                             borderRadius: 1,
                                                             px: 0.5,
                                                             mt: 0.3,
+                                                            lineHeight: 1.4,
+                                                            maxWidth: 260,
+                                                            whiteSpace: 'normal',
+                                                            wordBreak: 'break-word',
                                                         }}
                                                     >
-                                                        ⚠️ {(order as any).reason.replace('[\u26a0\ufe0f CảNH BÁO] ', '')}
+                                                        ⚠️ {order.reason.replace('[\u26a0\ufe0f C\u1ea3NH B\u00c1O] ', '')}
                                                     </Typography>
                                                 )}
                                             </Box>
@@ -674,11 +678,11 @@ const OrderList = () => {
 
                         {/* Cảnh báo từ cột Check */}
                         {checkNote && (
-                            <Alert severity="warning" icon={false} sx={{ borderRadius: 2, border: '2px solid #f59e0b' }}>
+                            <Alert severity="warning" icon={false} sx={{ borderRadius: 2, border: '2px solid #f59e0b', bgcolor: '#fffbeb' }}>
                                 <Typography fontWeight="bold" variant="body2" color="warning.dark" mb={0.5}>
-                                    ⚠️ CảNH BÁO NỘI BỘ
+                                    ⚠️ Cảnh báo! Nếu còn tồn ĐƠN HÀNG không được duyệt.
                                 </Typography>
-                                <Typography variant="body2">{checkNote}</Typography>
+                                <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>{checkNote}</Typography>
                             </Alert>
                         )}
 

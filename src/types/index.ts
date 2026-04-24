@@ -47,6 +47,8 @@ export interface Order {
     created_by?: string;
     approved_by?: string;
     approved_at?: string;
+    reason?: string;      // Ghi chú / cảnh báo từ cột Check của nhân viên
+    project_name?: string;
     // Join fields
     product?: Product;
 }
