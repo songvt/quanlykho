@@ -55,7 +55,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const getProductsMap = async () => {
             const rows = await productsSheet.getRows();
             const map: Record<string, any> = {};
-            rows.forEach(r => map[r.get('id')] = { name: r.get('name'), item_code: r.get('item_code') });
+            rows.forEach(r => {
+                map[r.get('id')] = {
+                    name: r.get('name'),
+                    item_code: r.get('item_code'),
+                    unit_price: Number(r.get('unit_price') || r.get('price') || 0),
+                };
+            });
             return map;
         };
 
@@ -122,40 +128,52 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     if (!inStockSheet) {
                         return res.status(404).json({ error: 'Sheet in_stock not found' });
                     }
-                    
+
                     const inStockRows = await inStockSheet.getRows();
                     const inboundRows = await inboundSheet.getRows();
+                    const productsMap = await getProductsMap();
 
-                    const existingSerials = new Set(inboundRows.map(r => r.get('serial_code')).filter(Boolean));
+                    // Normalize existing serials as trimmed strings to avoid false duplicates
+                    const existingSerials = new Set(
+                        inboundRows
+                            .map(r => String(r.get('serial_code') || '').trim())
+                            .filter(Boolean)
+                    );
                     const toInsert = [];
 
                     for (const row of inStockRows) {
-                        const serial = row.get('serial_code') || row.get('serial_code1');
-                        if (serial && !existingSerials.has(serial)) {
-                            toInsert.push({
-                                id: randomUUID(),
-                                product_id: row.get('product_id') || row.get('product_id1') || 'UNKNOWN',
-                                serial_code: serial,
-                                quantity: Number(row.get('quantity') || 1),
-                                item_status: row.get('item_status') || row.get('item_status1') || 'Mới',
-                                district: row.get('district') || 'Kho Tổng',
-                                inbound_date: new Date().toISOString(),
-                                created_by: 'system_sync',
-                                type: 'inbound',
-                                created_at: new Date().toISOString(),
-                                updated_at: new Date().toISOString(),
-                                unit_price: 0,
-                                total_price: 0
-                            });
-                            // Add to existing to prevent duplicates within the same batch
-                            existingSerials.add(serial);
-                        }
+                        // Force serial to string to prevent Google Sheets scientific notation (1.00E+81)
+                        const rawSerial = row.get('serial_code') || row.get('serial_code1');
+                        const serial = rawSerial ? String(rawSerial).trim() : '';
+
+                        if (!serial || existingSerials.has(serial)) continue;
+
+                        const productId = row.get('product_id') || row.get('product_id1') || 'UNKNOWN';
+                        const product = productsMap[productId];
+                        const unitPrice = product?.unit_price || 0;
+                        const qty = Number(row.get('quantity') || 1);
+
+                        toInsert.push({
+                            id: randomUUID(),
+                            product_id: productId,
+                            serial_code: serial,          // string đã chuẩn hóa
+                            quantity: qty,
+                            item_status: row.get('item_status') || row.get('item_status1') || 'Mới',
+                            district: row.get('district') || 'Kho Tổng',
+                            inbound_date: new Date().toISOString(),
+                            created_by: 'system_sync',
+                            type: 'inbound',
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                            unit_price: unitPrice,
+                            total_price: unitPrice * qty,
+                        });
+                        existingSerials.add(serial);
                     }
 
                     if (toInsert.length > 0) {
                         await inboundSheet.addRows(toInsert);
-                        
-                        // Also notify via webhook if needed, optional
+
                         const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL || process.env.WEBHOOK_URL;
                         if (webhookUrl) {
                             fetch(webhookUrl, {
