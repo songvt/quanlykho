@@ -123,161 +123,181 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const dateField = type === 'inbound' ? 'inbound_date' : 'outbound_date';
 
                 if (action === 'sync_from_qr') {
-                    const qrSheet = doc.sheetsByTitle['Creat_QRcode'];
-                    if (!qrSheet) {
-                        return res.status(404).json({ error: 'Sheet Creat_QRcode not found' });
-                    }
+                    try {
+                        const qrSheet = doc.sheetsByTitle['Creat_QRcode'];
+                        if (!qrSheet) {
+                            return res.status(404).json({ error: 'Sheet Creat_QRcode không tồn tại trong file Google Sheet' });
+                        }
 
-                    const { product_id } = req.body;
-                    if (!product_id) {
-                        return res.status(400).json({ error: 'Vui lòng chọn sản phẩm trước khi đồng bộ QR Code' });
-                    }
+                        const { product_id } = req.body;
+                        if (!product_id) {
+                            return res.status(400).json({ error: 'Vui lòng chọn sản phẩm trước khi đồng bộ QR Code' });
+                        }
 
-                    const qrRows = await qrSheet.getRows();
-                    const inboundRows = await inboundSheet.getRows();
-                    const productsMap = await getProductsMap();
-                    const product = productsMap[product_id];
-                    const unitPrice = product?.unit_price || 0;
+                        const qrRows = await qrSheet.getRows();
+                        const inboundRows = await inboundSheet.getRows();
+                        const productsMap = await getProductsMap();
+                        const product = productsMap[product_id];
+                        const unitPrice = product?.unit_price || 0;
 
-                    const existingSerials = new Set(
-                        inboundRows
-                            .map(r => String(r.get('serial_code') || '').trim())
-                            .filter(Boolean)
-                    );
-                    const toInsert = [];
+                        // Ensure headers exist for tracking
+                        if (!inboundSheet.headerValues.includes('source_id')) {
+                            await inboundSheet.setHeaderRow([...inboundSheet.headerValues, 'source_id']);
+                        }
 
-                    for (const row of qrRows) {
-                        const rawSerial = row.get('serial_code');
-                        const serial = rawSerial ? String(rawSerial).trim() : '';
+                        const existingSerials = new Set(
+                            inboundRows
+                                .map(r => String(r.get('serial_code') || '').trim())
+                                .filter(Boolean)
+                        );
+                        const toInsert = [];
 
-                        if (!serial || existingSerials.has(serial)) continue;
+                        for (const row of qrRows) {
+                            const rawSerial = row.get('serial_code');
+                            const serial = rawSerial ? String(rawSerial).trim() : '';
 
-                        const thung = row.get('Number_Thung') || '';
-                        const district = row.get('District') || 'Kho Tổng';
-                        // Combine district and box number for better tracking
-                        const finalDistrict = thung ? `${district} - ${thung}` : district;
+                            if (!serial || existingSerials.has(serial)) continue;
 
-                        toInsert.push({
-                            id: randomUUID(),
-                            product_id: product_id,
-                            serial_code: serial,
-                            quantity: 1,
-                            item_status: 'Mới',
-                            district: finalDistrict,
-                            inbound_date: new Date().toISOString(),
-                            created_by: 'sync_qr',
-                            type: 'inbound',
-                            created_at: new Date().toISOString(),
-                            updated_at: new Date().toISOString(),
-                            unit_price: unitPrice,
-                            total_price: unitPrice * 1,
+                            const thung = row.get('Number_Thung') || '';
+                            const district = row.get('District') || 'Kho Tổng';
+                            const finalDistrict = thung ? `${district} - ${thung}` : district;
+
+                            toInsert.push({
+                                id: randomUUID(),
+                                product_id: product_id,
+                                serial_code: serial,
+                                quantity: 1,
+                                item_status: 'Mới',
+                                district: finalDistrict,
+                                inbound_date: new Date().toISOString(),
+                                created_by: 'sync_qr',
+                                type: 'inbound',
+                                created_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString(),
+                                unit_price: unitPrice,
+                                total_price: unitPrice * 1,
+                            });
+                            existingSerials.add(serial);
+                        }
+
+                        if (toInsert.length > 0) {
+                            await inboundSheet.addRows(toInsert);
+                        }
+
+                        return res.status(200).json({ 
+                            message: `Đã đồng bộ ${toInsert.length} mã QR mới vào sản phẩm ${product?.name || product_id}`, 
+                            count: toInsert.length 
                         });
-                        existingSerials.add(serial);
+                    } catch (err: any) {
+                        console.error('[sync_from_qr] Error:', err);
+                        return res.status(500).json({ error: 'Lỗi đồng bộ QR: ' + err.message });
                     }
-
-                    if (toInsert.length > 0) {
-                        await inboundSheet.addRows(toInsert);
-                    }
-
-                    return res.status(200).json({ 
-                        message: `Đã đồng bộ ${toInsert.length} mã QR mới vào sản phẩm ${product?.name || product_id}`, 
-                        count: toInsert.length 
-                    });
                 }
 
                 if (action === 'sync_from_in_stock') {
-                    // Look for the sheet which might have trailing space
-                    const inStockSheet = doc.sheetsByTitle['in_stock '] || doc.sheetsByTitle['in_stock'];
-                    if (!inStockSheet) {
-                        return res.status(404).json({ error: 'Sheet in_stock not found' });
-                    }
+                    try {
+                        const inStockSheet = doc.sheetsByTitle['in_stock '] || doc.sheetsByTitle['in_stock'];
+                        if (!inStockSheet) {
+                            return res.status(404).json({ error: 'Sheet in_stock không tồn tại' });
+                        }
 
-                    const inStockRows = await inStockSheet.getRows();
-                    const inboundRows = await inboundSheet.getRows();
-                    const productsMap = await getProductsMap();
+                        const inStockRows = await inStockSheet.getRows();
+                        const inboundRows = await inboundSheet.getRows();
+                        const productsMap = await getProductsMap();
 
-                    // Normalize existing serials
-                    const existingSerials = new Set(
-                        inboundRows
-                            .map(r => String(r.get('serial_code') || '').trim())
-                            .filter(Boolean)
-                    );
-                    
-                    // Track existing source IDs for non-serialized items
-                    const existingSourceIds = new Set(
-                        inboundRows
-                            .map(r => String(r.get('source_id') || '').trim())
-                            .filter(Boolean)
-                    );
-
-                    const toInsert = [];
-
-                    for (const row of inStockRows) {
-                        const rawSerial = row.get('serial_code') || row.get('serial_code1');
-                        const serial = rawSerial ? String(rawSerial).trim() : '';
-                        const checkLoaiHang = String(row.get('check_loại_hang') || '').trim();
-                        const sourceId = String(row.get('ID') || '').trim();
-
-                        const isSerialized = !!serial;
-                        const isNonSerialTarget = !serial && checkLoaiHang === 'VT-TKM';
-
-                        if (!isSerialized && !isNonSerialTarget) continue;
-
-                        // Skip if already synced
-                        if (isSerialized && existingSerials.has(serial)) continue;
-                        if (!isSerialized && sourceId && existingSourceIds.has(sourceId)) continue;
-
-                        const productId = row.get('product_id') || row.get('product_id1') || 'UNKNOWN';
-                        const product = productsMap[productId];
-                        const unitPrice = product?.unit_price || 0;
-                        const qty = Number(row.get('quantity') || 1);
-
-                        toInsert.push({
-                            id: randomUUID(),
-                            product_id: productId,
-                            serial_code: serial,
-                            quantity: qty,
-                            item_status: row.get('item_status') || row.get('item_status1') || 'Mới',
-                            district: row.get('district') || 'Kho Tổng',
-                            inbound_date: new Date().toISOString(),
-                            created_by: 'system_sync',
-                            type: 'inbound',
-                            created_at: new Date().toISOString(),
-                            updated_at: new Date().toISOString(),
-                            unit_price: unitPrice,
-                            total_price: unitPrice * qty,
-                            source_id: sourceId || undefined
-                        });
-
-                        if (isSerialized) existingSerials.add(serial);
-                        if (!isSerialized && sourceId) existingSourceIds.add(sourceId);
-                    }
-
-                    if (toInsert.length > 0) {
-                        // Ensure header 'source_id' exists if not already there
-                        const headers = inboundSheet.headerValues;
-                        if (!headers.includes('source_id')) {
-                            await inboundSheet.setHeaderRow([...headers, 'source_id']);
+                        // Force load headers if not present
+                        if (!inboundSheet.headerValues || inboundSheet.headerValues.length === 0) {
+                            await inboundSheet.loadHeaderRow();
                         }
                         
-                        await inboundSheet.addRows(toInsert);
+                        const currentHeaders = inboundSheet.headerValues || [];
 
-                        const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL || process.env.WEBHOOK_URL;
-                        if (webhookUrl) {
-                            fetch(webhookUrl, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    type: 'inbound',
-                                    action: 'sync_from_in_stock',
-                                    count: toInsert.length,
-                                    timestamp: new Date().toISOString()
+                        // Normalize existing serials
+                        const existingSerials = new Set(
+                            inboundRows
+                                .map(r => {
+                                    try { return String(r.get('serial_code') || '').trim(); } catch { return ''; }
                                 })
-                            }).catch(e => console.error('[Webhook] Error:', e));
-                        }
-                    }
+                                .filter(Boolean)
+                        );
+                        
+                        // Track existing source IDs
+                        const existingSourceIds = new Set(
+                            inboundRows
+                                .map(r => {
+                                    try { return String(r.get('source_id') || '').trim(); } catch { return ''; }
+                                })
+                                .filter(Boolean)
+                        );
 
-                    return res.status(200).json({ message: `Đã đồng bộ ${toInsert.length} mã mới (bao gồm cả hàng VT-TKM không serial)`, count: toInsert.length });
+                        const toInsert = [];
+
+                        for (const row of inStockRows) {
+                            const rawSerial = row.get('serial_code') || row.get('serial_code1');
+                            const serial = rawSerial ? String(rawSerial).trim() : '';
+                            const checkLoaiHang = String(row.get('check_loại_hang') || '').trim();
+                            const sourceId = String(row.get('ID') || '').trim();
+
+                            const isSerialized = !!serial;
+                            const isNonSerialTarget = !serial && checkLoaiHang === 'VT-TKM';
+
+                            if (!isSerialized && !isNonSerialTarget) continue;
+
+                            if (isSerialized && existingSerials.has(serial)) continue;
+                            if (!isSerialized && sourceId && existingSourceIds.has(sourceId)) continue;
+
+                            const productId = row.get('product_id') || row.get('product_id1') || 'UNKNOWN';
+                            const product = productsMap[productId];
+                            const unitPrice = product?.unit_price || 0;
+                            const qty = Number(row.get('quantity') || 1);
+
+                            toInsert.push({
+                                id: randomUUID(),
+                                product_id: productId,
+                                serial_code: serial,
+                                quantity: qty,
+                                item_status: row.get('item_status') || row.get('item_status1') || 'Mới',
+                                district: row.get('district') || 'Kho Tổng',
+                                inbound_date: new Date().toISOString(),
+                                created_by: 'system_sync',
+                                type: 'inbound',
+                                created_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString(),
+                                unit_price: unitPrice,
+                                total_price: unitPrice * qty,
+                                source_id: sourceId || undefined
+                            });
+
+                            if (isSerialized) existingSerials.add(serial);
+                            if (!isSerialized && sourceId) existingSourceIds.add(sourceId);
+                        }
+
+                        if (toInsert.length > 0) {
+                            if (!currentHeaders.includes('source_id')) {
+                                await inboundSheet.setHeaderRow([...currentHeaders, 'source_id']);
+                            }
+                            await inboundSheet.addRows(toInsert);
+
+                            const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL || process.env.WEBHOOK_URL;
+                            if (webhookUrl) {
+                                fetch(webhookUrl, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        type: 'inbound',
+                                        action: 'sync_from_in_stock',
+                                        count: toInsert.length,
+                                        timestamp: new Date().toISOString()
+                                    })
+                                }).catch(e => console.error('[Webhook] Error:', e));
+                            }
+                        }
+
+                        return res.status(200).json({ message: `Đã đồng bộ ${toInsert.length} mã mới`, count: toInsert.length });
+                    } catch (err: any) {
+                        console.error('[sync_from_in_stock] Error:', err);
+                        return res.status(500).json({ error: 'Lỗi đồng bộ từ kho tổng: ' + err.message });
+                    }
                 }
 
                 if (action === 'bulk_insert') {
