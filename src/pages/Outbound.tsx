@@ -374,7 +374,18 @@ export const Outbound = () => {
         }
     };
 
+    const isOrderExpired = (order: Order | null): boolean => {
+        if (!order) return false;
+        if (!order.approved_at) return false;
+        const approvedTime = new Date(order.approved_at).getTime();
+        return (Date.now() - approvedTime) > 24 * 60 * 60 * 1000;
+    };
+
     const handleOpenFulfill = (order: Order) => {
+        if (isOrderExpired(order)) {
+            notifyError('\u0110\u01a1n h\u00e0ng n\u00e0y \u0111\u00e3 qu\u00e1 24 gi\u1edd k\u1ec3 t\u1eeb khi duy\u1ec7t, kh\u00f4ng th\u1ec3 xu\u1ea5t kho n\u1eefa!');
+            return;
+        }
         setSelectedOrder(order);
         setSerial('');
         setScannedSerials([]);
@@ -428,6 +439,13 @@ export const Outbound = () => {
 
     const handleFulfillOrder = async () => {
         if (!selectedOrder) return;
+
+        // Hard guard: block expired orders even if dialog is open
+        if (isOrderExpired(selectedOrder)) {
+            notifyError('\u0110\u01a1n h\u00e0ng \u0111\u00e3 qu\u00e1 h\u1ea1n 24 gi\u1edd, kh\u00f4ng th\u1ec3 xu\u1ea5t kho!');
+            setOpenFulfillDialog(false);
+            return;
+        }
         const product = products.find(p => p.id === selectedOrder.product_id);
         if (!product) return;
         const isSerialized = product.category?.toLowerCase() === 'hàng hóa';

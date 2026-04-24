@@ -78,6 +78,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         if (approved_by) rowToUpdate.set('approved_by', approved_by);
                         rowToUpdate.set('approved_at', new Date().toISOString());
                     }
+
+                    // Block completion of expired approved orders
+                    if (status === 'completed') {
+                        const currentStatus = rowToUpdate.get('status');
+                        const approvedAt = rowToUpdate.get('approved_at');
+                        if (currentStatus === 'approved' && approvedAt) {
+                            const approvedTime = new Date(approvedAt).getTime();
+                            const elapsed = Date.now() - approvedTime;
+                            if (elapsed > 24 * 60 * 60 * 1000) {
+                                return res.status(403).json({
+                                    error: 'ORDER_EXPIRED',
+                                    message: '\u0110\u01a1n h\u00e0ng \u0111\u00e3 qu\u00e1 h\u1ea1n 24 gi\u1edd k\u1ec3 t\u1eeb khi duy\u1ec7t, kh\u00f4ng th\u1ec3 xu\u1ea5t kho!'
+                                });
+                            }
+                        }
+                    }
                 }
                 rowToUpdate.set('updated_at', new Date().toISOString());
 
