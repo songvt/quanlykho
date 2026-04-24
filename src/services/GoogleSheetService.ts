@@ -148,6 +148,14 @@ export const GoogleSheetService = {
         });
     },
 
+    async syncQRSheet(productId: string) {
+        return apiRequest('transactions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: 'inbound', action: 'sync_from_qr', product_id: productId })
+        });
+    },
+
     async createOutboundTransaction(transaction: Omit<Transaction, 'id' | 'type' | 'total_price' | 'date' | 'product'> & { group_name: string, user_id?: string }) {
         return apiRequest('transactions', {
             method: 'POST',

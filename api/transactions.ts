@@ -122,6 +122,69 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const sheetToUse = type === 'inbound' ? inboundSheet : outboundSheet;
                 const dateField = type === 'inbound' ? 'inbound_date' : 'outbound_date';
 
+                if (action === 'sync_from_qr') {
+                    const qrSheet = doc.sheetsByTitle['Creat_QRcode'];
+                    if (!qrSheet) {
+                        return res.status(404).json({ error: 'Sheet Creat_QRcode not found' });
+                    }
+
+                    const { product_id } = req.body;
+                    if (!product_id) {
+                        return res.status(400).json({ error: 'Vui lòng chọn sản phẩm trước khi đồng bộ QR Code' });
+                    }
+
+                    const qrRows = await qrSheet.getRows();
+                    const inboundRows = await inboundSheet.getRows();
+                    const productsMap = await getProductsMap();
+                    const product = productsMap[product_id];
+                    const unitPrice = product?.unit_price || 0;
+
+                    const existingSerials = new Set(
+                        inboundRows
+                            .map(r => String(r.get('serial_code') || '').trim())
+                            .filter(Boolean)
+                    );
+                    const toInsert = [];
+
+                    for (const row of qrRows) {
+                        const rawSerial = row.get('serial_code');
+                        const serial = rawSerial ? String(rawSerial).trim() : '';
+
+                        if (!serial || existingSerials.has(serial)) continue;
+
+                        const thung = row.get('Number_Thung') || '';
+                        const district = row.get('District') || 'Kho Tổng';
+                        // Combine district and box number for better tracking
+                        const finalDistrict = thung ? `${district} - ${thung}` : district;
+
+                        toInsert.push({
+                            id: randomUUID(),
+                            product_id: product_id,
+                            serial_code: serial,
+                            quantity: 1,
+                            item_status: 'Mới',
+                            district: finalDistrict,
+                            inbound_date: new Date().toISOString(),
+                            created_by: 'sync_qr',
+                            type: 'inbound',
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                            unit_price: unitPrice,
+                            total_price: unitPrice * 1,
+                        });
+                        existingSerials.add(serial);
+                    }
+
+                    if (toInsert.length > 0) {
+                        await inboundSheet.addRows(toInsert);
+                    }
+
+                    return res.status(200).json({ 
+                        message: `Đã đồng bộ ${toInsert.length} mã QR mới vào sản phẩm ${product?.name || product_id}`, 
+                        count: toInsert.length 
+                    });
+                }
+
                 if (action === 'sync_from_in_stock') {
                     // Look for the sheet which might have trailing space
                     const inStockSheet = doc.sheetsByTitle['in_stock '] || doc.sheetsByTitle['in_stock'];

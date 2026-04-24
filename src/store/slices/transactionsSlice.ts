@@ -74,7 +74,18 @@ export const syncInStock = createAsyncThunk(
     async (_, { dispatch }) => {
         const res = await SupabaseService.syncInStockToInbound();
         if (res?.count > 0) {
-            dispatch(fetchTransactions()); // Refresh transactions
+            dispatch(fetchTransactionsForce()); // Refresh transactions
+        }
+        return res;
+    }
+);
+
+export const syncFromQR = createAsyncThunk(
+    'transactions/syncFromQR',
+    async ({ productId }: { productId: string }, { dispatch }) => {
+        const res = await SupabaseService.syncQRSheet(productId);
+        if (res?.count > 0) {
+            dispatch(fetchTransactionsForce());
         }
         return res;
     }

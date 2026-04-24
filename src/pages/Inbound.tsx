@@ -4,7 +4,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts } from '../store/slices/productsSlice';
 import { fetchInventory, selectProductStock, selectStockMap } from '../store/slices/inventorySlice';
-import { addInboundTransaction, fetchTransactions, updateTransaction, deleteTransaction, bulkDeleteTransactions, importInboundTransactions, syncInStock } from '../store/slices/transactionsSlice';
+import { addInboundTransaction, fetchTransactions, updateTransaction, deleteTransaction, bulkDeleteTransactions, importInboundTransactions, syncInStock, syncFromQR } from '../store/slices/transactionsSlice';
 import type { RootState, AppDispatch } from '../store';
 import type { Transaction } from '../types';
 import {
@@ -71,6 +71,7 @@ export const Inbound = () => {
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [isSyncingQR, setIsSyncingQR] = useState(false);
 
     // Edit Dialog State
     const [editDialog, setEditDialog] = useState(false);
