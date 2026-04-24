@@ -30,6 +30,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     }
 
                     const user = userRow.toObject();
+                    // Normalize 'Check' column casing from Google Sheets
+                    if (user.Check !== undefined) {
+                        user.check = user.Check;
+                        delete user.Check;
+                    }
                     // Parse permissions back to array if stored as string
                     if (user.permissions && typeof user.permissions === 'string') {
                         try {
@@ -49,6 +54,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const obj = row.toObject();
                     // Don't send passwords back to the client unnecessarily
                     delete obj.password;
+                    // Normalize 'Check' column (Google Sheets preserves casing) to lowercase 'check'
+                    if (obj.Check !== undefined) {
+                        obj.check = obj.Check;
+                        delete obj.Check;
+                    }
                     if (obj.permissions && typeof obj.permissions === 'string') {
                         try {
                             obj.permissions = JSON.parse(obj.permissions);
