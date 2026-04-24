@@ -80,7 +80,7 @@ const rawAuth = (state: RootState) => state.auth.profile;
 export const selectStockMap = createSelector(
     [selectDetailedStockMap, rawAuth],
     (detailedMap, profile) => {
-        const isAdmin = profile?.role === 'Admin';
+        const isAdmin = profile?.role?.toLowerCase() === 'admin';
         const userDistrict = profile?.district || '';
         
         const simpleMap: Record<string, number> = {};

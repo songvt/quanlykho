@@ -106,6 +106,13 @@ const OrderList = () => {
     const policyLimit = (!isAdmin && selectedProduct) ? getOrderLimit(selectedProduct.name) : null;
     const effectiveMaxQty = policyLimit !== null ? Math.min(stockLimit, policyLimit) : stockLimit;
 
+    // Lấy cảnh báo từ cột 'check' của nhân viên đặt hàng
+    const requesterEmployee = employees.find(e =>
+        e.full_name === newOrder.requester_group ||
+        e.username === newOrder.requester_group
+    );
+    const checkNote = requesterEmployee?.check?.trim() || '';
+
     const handleSave = async () => {
         if (!newOrder.product_id || !newOrder.requester_group) {
             setNotification({ type: 'error', message: 'Vui lòng điền đầy đủ thông tin' });
@@ -126,7 +133,9 @@ const OrderList = () => {
             await dispatch(addOrder({
                 ...newOrder,
                 status: 'pending',
-                created_by: profile?.id
+                created_by: profile?.id,
+                // Append check note to reason so admin sees it
+                ...(checkNote ? { reason: `[⚠️ CảNH BÁO] ${checkNote}` } : {}),
             })).unwrap();
             dispatch(fetchInventory());
             setOpenDialog(false);
@@ -517,7 +526,28 @@ const OrderList = () => {
                                                 {new Date(order.order_date).toLocaleDateString('vi-VN')}
                                             </TableCell>
                                             <TableCell sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>
-                                                <Typography variant="body2" fontWeight="500" sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>{order.requester_group}</Typography>
+                                                <Box>
+                                                <Typography variant="body2" fontWeight="500" sx={{ fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
+                                                    {order.requester_group}
+                                                </Typography>
+                                                {(order as any).reason && (order as any).reason.includes('[') && (
+                                                    <Typography
+                                                        variant="caption"
+                                                        sx={{
+                                                            color: 'warning.dark',
+                                                            fontWeight: 'bold',
+                                                            fontSize: '0.65rem',
+                                                            display: 'block',
+                                                            bgcolor: '#fff8e1',
+                                                            borderRadius: 1,
+                                                            px: 0.5,
+                                                            mt: 0.3,
+                                                        }}
+                                                    >
+                                                        ⚠️ {(order as any).reason.replace('[\u26a0\ufe0f CảNH BÁO] ', '')}
+                                                    </Typography>
+                                                )}
+                                            </Box>
                                             </TableCell>
                                             <TableCell sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>
                                                 <Box>
@@ -636,6 +666,16 @@ const OrderList = () => {
                                 InputProps={{ readOnly: true }}
                                 disabled
                             />
+                        )}
+
+                        {/* Cảnh báo từ cột Check */}
+                        {checkNote && (
+                            <Alert severity="warning" icon={false} sx={{ borderRadius: 2, border: '2px solid #f59e0b' }}>
+                                <Typography fontWeight="bold" variant="body2" color="warning.dark" mb={0.5}>
+                                    ⚠️ CảNH BÁO NỘI BỘ
+                                </Typography>
+                                <Typography variant="body2">{checkNote}</Typography>
+                            </Alert>
                         )}
 
 
