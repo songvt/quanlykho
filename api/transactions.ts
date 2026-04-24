@@ -116,6 +116,64 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const sheetToUse = type === 'inbound' ? inboundSheet : outboundSheet;
                 const dateField = type === 'inbound' ? 'inbound_date' : 'outbound_date';
 
+                if (action === 'sync_from_in_stock') {
+                    // Look for the sheet which might have trailing space
+                    const inStockSheet = doc.sheetsByTitle['in_stock '] || doc.sheetsByTitle['in_stock'];
+                    if (!inStockSheet) {
+                        return res.status(404).json({ error: 'Sheet in_stock not found' });
+                    }
+                    
+                    const inStockRows = await inStockSheet.getRows();
+                    const inboundRows = await inboundSheet.getRows();
+
+                    const existingSerials = new Set(inboundRows.map(r => r.get('serial_code')).filter(Boolean));
+                    const toInsert = [];
+
+                    for (const row of inStockRows) {
+                        const serial = row.get('serial_code') || row.get('serial_code1');
+                        if (serial && !existingSerials.has(serial)) {
+                            toInsert.push({
+                                id: randomUUID(),
+                                product_id: row.get('product_id') || row.get('product_id1') || 'UNKNOWN',
+                                serial_code: serial,
+                                quantity: Number(row.get('quantity') || 1),
+                                item_status: row.get('item_status') || row.get('item_status1') || 'Mới',
+                                district: row.get('district') || 'Kho Tổng',
+                                inbound_date: new Date().toISOString(),
+                                created_by: 'system_sync',
+                                type: 'inbound',
+                                created_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString(),
+                                unit_price: 0,
+                                total_price: 0
+                            });
+                            // Add to existing to prevent duplicates within the same batch
+                            existingSerials.add(serial);
+                        }
+                    }
+
+                    if (toInsert.length > 0) {
+                        await inboundSheet.addRows(toInsert);
+                        
+                        // Also notify via webhook if needed, optional
+                        const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL || process.env.WEBHOOK_URL;
+                        if (webhookUrl) {
+                            fetch(webhookUrl, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    type: 'inbound',
+                                    action: 'sync_from_in_stock',
+                                    count: toInsert.length,
+                                    timestamp: new Date().toISOString()
+                                })
+                            }).catch(e => console.error('[Webhook] Error:', e));
+                        }
+                    }
+
+                    return res.status(200).json({ message: `Đã đồng bộ ${toInsert.length} mã mới`, count: toInsert.length });
+                }
+
                 if (action === 'bulk_insert') {
                     if (!Array.isArray(payload)) return res.status(400).json({ error: 'Payload must be an array' });
 

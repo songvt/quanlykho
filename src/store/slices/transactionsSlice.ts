@@ -69,6 +69,17 @@ export const importInboundTransactions = createAsyncThunk(
     }
 );
 
+export const syncInStock = createAsyncThunk(
+    'transactions/syncInStock',
+    async (_, { dispatch }) => {
+        const res = await SupabaseService.syncInStockToInbound();
+        if (res?.count > 0) {
+            dispatch(fetchTransactions()); // Refresh transactions
+        }
+        return res;
+    }
+);
+
 export const importOutboundTransactions = createAsyncThunk(
     'transactions/importOutbound',
     async (transactions: any[]) => {

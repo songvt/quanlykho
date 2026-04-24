@@ -4,7 +4,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts } from '../store/slices/productsSlice';
 import { fetchInventory, selectProductStock, selectStockMap } from '../store/slices/inventorySlice';
-import { addInboundTransaction, fetchTransactions, updateTransaction, deleteTransaction, bulkDeleteTransactions, importInboundTransactions } from '../store/slices/transactionsSlice';
+import { addInboundTransaction, fetchTransactions, updateTransaction, deleteTransaction, bulkDeleteTransactions, importInboundTransactions, syncInStock } from '../store/slices/transactionsSlice';
 import type { RootState, AppDispatch } from '../store';
 import type { Transaction } from '../types';
 import {
@@ -16,6 +16,7 @@ import {
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import SyncIcon from '@mui/icons-material/Sync';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import SearchIcon from '@mui/icons-material/Search';
@@ -69,6 +70,7 @@ export const Inbound = () => {
     const debouncedSearchTerm = useDebounce(searchTerm, 300);
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [isSyncing, setIsSyncing] = useState(false);
 
     // Edit Dialog State
     const [editDialog, setEditDialog] = useState(false);
@@ -379,6 +381,27 @@ export const Inbound = () => {
 
             {isAdmin && (
                 <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="center" spacing={2} mb={3}>
+                    <Button 
+                        variant="contained" 
+                        color="secondary" 
+                        startIcon={isSyncing ? <CircularProgress size={20} color="inherit" /> : <SyncIcon />} 
+                        onClick={async () => {
+                            try {
+                                setIsSyncing(true);
+                                const res = await dispatch(syncInStock()).unwrap();
+                                success(res.message || 'Đồng bộ thành công!');
+                            } catch (error: any) {
+                                notifyError('Lỗi đồng bộ: ' + (error.message || 'Không xác định'));
+                            } finally {
+                                setIsSyncing(false);
+                            }
+                        }}
+                        disabled={isSyncing}
+                        size="small" 
+                        sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                    >
+                        {isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ từ kho tổng'}
+                    </Button>
                     <Button variant="outlined" startIcon={<FileDownloadIcon />} onClick={generateInboundTemplate} size="small" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                         Tải mẫu Excel
                     </Button>
