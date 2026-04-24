@@ -37,27 +37,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const outboundSheet = await getSheetByTitle(doc, 'outbound_transactions');
         const productsSheet = await getSheetByTitle(doc, 'products');
 
-        // Ensure headers exist
-        if (inboundSheet.rowCount === 0 || inboundSheet.headerValues.length === 0) {
-            const headers = [
-                'id', 'product_id', 'serial_code', 'quantity', 'unit_price', 'total_price', 'inbound_date', 'created_by', 'district', 'item_status',
-                'type', 'created_at', 'updated_at', 'date', 'source_id'
-            ];
-            if (inboundSheet.columnCount < headers.length) {
-                await inboundSheet.updateProperties({ gridProperties: { columnCount: headers.length + 2 } });
+        // Helper to ensure headers exist safely
+        const ensureHeaders = async (sheet: any, defaultHeaders: string[]) => {
+            try {
+                await sheet.loadHeaderRow();
+            } catch (e) {
+                // If it fails, sheet might be empty or have no headers
             }
-            await inboundSheet.setHeaderRow(headers);
-        }
-        if (outboundSheet.rowCount === 0 || outboundSheet.headerValues.length === 0) {
-            const headers = [
-                'id', 'receiver_group', 'product_id', 'serial_code', 'quantity', 'unit_price', 'total_price', 'outbound_date', 'created_by', 'district', 'item_status',
-                'type', 'group_name', 'created_at', 'updated_at', 'date'
-            ];
-            if (outboundSheet.columnCount < headers.length) {
-                await outboundSheet.updateProperties({ gridProperties: { columnCount: headers.length + 2 } });
+            if (!sheet.headerValues || sheet.headerValues.length === 0) {
+                if (sheet.columnCount < defaultHeaders.length) {
+                    await sheet.updateProperties({ gridProperties: { columnCount: defaultHeaders.length + 2 } });
+                }
+                await sheet.setHeaderRow(defaultHeaders);
             }
-            await outboundSheet.setHeaderRow(headers);
-        }
+        };
+
+        await ensureHeaders(inboundSheet, [
+            'id', 'product_id', 'serial_code', 'quantity', 'unit_price', 'total_price', 'inbound_date', 'created_by', 'district', 'item_status',
+            'type', 'created_at', 'updated_at', 'date', 'source_id'
+        ]);
+
+        await ensureHeaders(outboundSheet, [
+            'id', 'receiver_group', 'product_id', 'serial_code', 'quantity', 'unit_price', 'total_price', 'outbound_date', 'created_by', 'district', 'item_status',
+            'type', 'group_name', 'created_at', 'updated_at', 'date'
+        ]);
 
         // Helper to populate product data
         const getProductsMap = async () => {
@@ -66,8 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             rows.forEach(r => {
                 map[r.get('id')] = {
                     name: r.get('name'),
-                    item_code: r.get('item_code'),
-                    unit_price: Number(r.get('unit_price') || r.get('price') || 0),
+                    unit_price: Number(r.get('unit_price') || 0)
                 };
             });
             return map;
