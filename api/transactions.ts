@@ -41,7 +41,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (inboundSheet.rowCount === 0) {
             await inboundSheet.setHeaderRow([
                 'id', 'product_id', 'serial_code', 'quantity', 'unit_price', 'total_price', 'inbound_date', 'created_by', 'district', 'item_status',
-                'type', 'created_at', 'updated_at', 'date'
+                'type', 'created_at', 'updated_at', 'date', 'source_id'
             ]);
         }
         if (outboundSheet.rowCount === 0) {
@@ -196,20 +196,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const inboundRows = await inboundSheet.getRows();
                     const productsMap = await getProductsMap();
 
-                    // Normalize existing serials as trimmed strings to avoid false duplicates
+                    // Normalize existing serials
                     const existingSerials = new Set(
                         inboundRows
                             .map(r => String(r.get('serial_code') || '').trim())
                             .filter(Boolean)
                     );
+                    
+                    // Track existing source IDs for non-serialized items
+                    const existingSourceIds = new Set(
+                        inboundRows
+                            .map(r => String(r.get('source_id') || '').trim())
+                            .filter(Boolean)
+                    );
+
                     const toInsert = [];
 
                     for (const row of inStockRows) {
-                        // Force serial to string to prevent Google Sheets scientific notation (1.00E+81)
                         const rawSerial = row.get('serial_code') || row.get('serial_code1');
                         const serial = rawSerial ? String(rawSerial).trim() : '';
+                        const checkLoaiHang = String(row.get('check_loại_hang') || '').trim();
+                        const sourceId = String(row.get('ID') || '').trim();
 
-                        if (!serial || existingSerials.has(serial)) continue;
+                        const isSerialized = !!serial;
+                        const isNonSerialTarget = !serial && checkLoaiHang === 'VT-TKM';
+
+                        if (!isSerialized && !isNonSerialTarget) continue;
+
+                        // Skip if already synced
+                        if (isSerialized && existingSerials.has(serial)) continue;
+                        if (!isSerialized && sourceId && existingSourceIds.has(sourceId)) continue;
 
                         const productId = row.get('product_id') || row.get('product_id1') || 'UNKNOWN';
                         const product = productsMap[productId];
@@ -219,7 +235,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         toInsert.push({
                             id: randomUUID(),
                             product_id: productId,
-                            serial_code: serial,          // string đã chuẩn hóa
+                            serial_code: serial,
                             quantity: qty,
                             item_status: row.get('item_status') || row.get('item_status1') || 'Mới',
                             district: row.get('district') || 'Kho Tổng',
@@ -230,11 +246,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                             updated_at: new Date().toISOString(),
                             unit_price: unitPrice,
                             total_price: unitPrice * qty,
+                            source_id: sourceId || undefined
                         });
-                        existingSerials.add(serial);
+
+                        if (isSerialized) existingSerials.add(serial);
+                        if (!isSerialized && sourceId) existingSourceIds.add(sourceId);
                     }
 
                     if (toInsert.length > 0) {
+                        // Ensure header 'source_id' exists if not already there
+                        const headers = inboundSheet.headerValues;
+                        if (!headers.includes('source_id')) {
+                            await inboundSheet.setHeaderRow([...headers, 'source_id']);
+                        }
+                        
                         await inboundSheet.addRows(toInsert);
 
                         const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL || process.env.WEBHOOK_URL;
@@ -252,7 +277,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         }
                     }
 
-                    return res.status(200).json({ message: `Đã đồng bộ ${toInsert.length} mã mới`, count: toInsert.length });
+                    return res.status(200).json({ message: `Đã đồng bộ ${toInsert.length} mã mới (bao gồm cả hàng VT-TKM không serial)`, count: toInsert.length });
                 }
 
                 if (action === 'bulk_insert') {
