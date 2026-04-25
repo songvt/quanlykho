@@ -23,7 +23,6 @@ import { fetchProducts } from '../store/slices/productsSlice';
 import { fetchTransactions } from '../store/slices/transactionsSlice';
 import { fetchInventory, selectStockMap } from '../store/slices/inventorySlice';
 import { fetchOrders } from '../store/slices/ordersSlice';
-import type { DashboardStats } from '../types';
 import React from 'react';
 import DashboardSkeleton from './DashboardSkeleton';
 import { useTabVisibility } from '../hooks/useTabVisibility';

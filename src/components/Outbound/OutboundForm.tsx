@@ -1,14 +1,13 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
-    Box, Button, TextField, FormControl, Autocomplete,
-    Paper, Stack, Grid, MenuItem, CircularProgress, Typography, IconButton
+    Box, Button, TextField, Autocomplete,
+    Paper, Stack, Grid, MenuItem, CircularProgress
 } from '@mui/material';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
-import SearchIcon from '@mui/icons-material/Search';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState, AppDispatch } from '../../store';
+import type { RootState, AppDispatch } from '../../store';
 import { addOutboundTransaction, fetchTransactionsForce } from '../../store/slices/transactionsSlice';
-import { fetchInventory, selectProductStock, selectDetailedStock } from '../../store/slices/inventorySlice';
+import { selectProductStock, selectDetailedStock } from '../../store/slices/inventorySlice';
 import { useNotification } from '../../contexts/NotificationContext';
 import { parseSerialInput, filterNewSerials } from '../../utils/serialParser';
 import { playBeep } from '../../utils/audio';
@@ -39,7 +38,7 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
     const [serial, setSerial] = useState('');
     const [receiver, setReceiver] = useState(isAdmin ? '' : (profile?.full_name || ''));
     const [district, setDistrict] = useState(profile?.district || '');
-    const [itemStatus, setItemStatus] = useState('');
+    const [itemStatus, setItemStatus] = useState('Hàng mới');
     const [scannedSerials, setScannedSerials] = useState<string[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [showScanner, setShowScanner] = useState(false);
@@ -165,7 +164,7 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
     return (
         <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
             <Grid container spacing={2}>
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                     <Box display="flex" gap={1}>
                         <Autocomplete
                             fullWidth options={products}
@@ -178,7 +177,7 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
                     {selectedProduct && <Box mt={1}><StockDisplay productId={selectedProduct} /></Box>}
                 </Grid>
 
-                <Grid item xs={12} md={2}>
+                <Grid size={{ xs: 12, md: 2 }}>
                     <TextField
                         fullWidth label="Số lượng" type="number" value={quantity}
                         onChange={e => setQuantity(Number(e.target.value))} size="small"
@@ -186,7 +185,7 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
                     />
                 </Grid>
 
-                <Grid item xs={12} md={5}>
+                <Grid size={{ xs: 12, md: 4 }}>
                     <Autocomplete
                         fullWidth options={employees} freeSolo
                         getOptionLabel={(option: any) => typeof option === 'string' ? option : `${option.full_name} (${option.username || ''})`}
@@ -202,7 +201,7 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
                     />
                 </Grid>
 
-                <Grid item xs={12} md={5}>
+                <Grid size={{ xs: 12, md: 3 }}>
                     <TextField
                         fullWidth select label="Kho xuất (Quận/Huyện)" value={district}
                         onChange={e => setDistrict(e.target.value)} size="small"
@@ -214,8 +213,18 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
                     </TextField>
                 </Grid>
 
+                <Grid size={{ xs: 12, md: 3 }}>
+                    <TextField
+                        fullWidth select label="Trạng thái hàng" value={itemStatus}
+                        onChange={e => setItemStatus(e.target.value)} size="small"
+                    >
+                        <MenuItem value="Hàng mới">Hàng mới</MenuItem>
+                        <MenuItem value="Hàng thu hồi">Hàng thu hồi</MenuItem>
+                    </TextField>
+                </Grid>
+
                 {products.find(p => p.id === selectedProduct)?.category?.toLowerCase() === 'hàng hóa' && (
-                    <Grid item xs={12}>
+                    <Grid size={{ xs: 12 }}>
                         <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
                             <Stack direction="row" spacing={1} mb={1}>
                                 <TextField
@@ -229,7 +238,7 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
                     </Grid>
                 )}
 
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                     <Box display="flex" justifyContent="flex-end">
                         <Button
                             variant="contained" size="large" onClick={handleSave} disabled={isSaving}

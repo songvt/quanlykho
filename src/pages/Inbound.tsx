@@ -2,15 +2,14 @@ import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts } from '../store/slices/productsSlice';
 import { fetchInventory } from '../store/slices/inventorySlice';
-import { fetchTransactions, updateTransaction, deleteTransaction, bulkDeleteTransactions, syncInStock, syncFromQR, importInboundTransactions, fetchTransactionsForce } from '../store/slices/transactionsSlice';
+import { fetchTransactions, updateTransaction, deleteTransaction, bulkDeleteTransactions, syncInStock, importInboundTransactions, fetchTransactionsForce } from '../store/slices/transactionsSlice';
 import type { RootState, AppDispatch } from '../store';
 import type { Transaction } from '../types';
 import {
-    Button, TextField, Typography, Box, CircularProgress, Paper, Stack, Dialog, DialogContent, DialogTitle,
-    IconButton, Tooltip, DialogActions, Grid, MenuItem
+    Button, TextField, Typography, Box, CircularProgress, Dialog, DialogContent, DialogTitle,
+    DialogActions, Stack
 } from '@mui/material';
 import SyncIcon from '@mui/icons-material/Sync';
-import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { generateInboundTemplate, readExcelFile } from '../utils/excelUtils';
@@ -27,7 +26,6 @@ export const Inbound = () => {
     const { success, error: notifyError } = useNotification();
 
     const [isSyncing, setIsSyncing] = useState(false);
-    const [isSyncingQR, setIsSyncingQR] = useState(false);
 
     // Edit Dialog State
     const [editDialog, setEditDialog] = useState(false);

@@ -2,25 +2,20 @@ import React, { useState } from 'react';
 import {
     Box, Typography, TextField, InputAdornment, Paper, Checkbox, 
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
-    TablePagination, Button, Chip, Card, CardContent, Divider, Stack, 
-    IconButton, useMediaQuery, useTheme
+    TablePagination, Card, CardContent, 
+    useMediaQuery, useTheme
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
 import VoiceSearchButton from '../VoiceSearchButton';
-import { useSelector } from 'react-redux';
-import { RootState } from '../../store';
 import { useDebounce } from '../../hooks/useDebounce';
 
 interface OutboundListProps {
     transactions: any[];
     selectedIds: string[];
     onSelectChange: (ids: string[]) => void;
-    onDelete?: (id: string) => void;
 }
 
-const OutboundList: React.FC<OutboundListProps> = ({ transactions, selectedIds, onSelectChange, onDelete }) => {
+const OutboundList: React.FC<OutboundListProps> = ({ transactions, selectedIds, onSelectChange }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [searchTerm, setSearchTerm] = useState('');
@@ -105,7 +100,7 @@ const OutboundList: React.FC<OutboundListProps> = ({ transactions, selectedIds, 
                                             <Checkbox size="small" checked={selectedIds.includes(t.id)} onChange={() => handleToggleSelectOne(t.id)} />
                                         </TableCell>
                                         <TableCell>{new Date(t.date).toLocaleString('vi-VN')}</TableCell>
-                                        <TableCell fontWeight="500">{t.product?.name || t.product_name}</TableCell>
+                                        <TableCell sx={{ fontWeight: '500' }}>{t.product?.name || t.product_name}</TableCell>
                                         <TableCell>{t.serial_code || '-'}</TableCell>
                                         <TableCell>{t.quantity}</TableCell>
                                         <TableCell>{t.group_name || t.receiver_group}</TableCell>

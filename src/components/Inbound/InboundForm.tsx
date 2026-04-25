@@ -5,7 +5,7 @@ import {
 } from '@mui/material';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState, AppDispatch } from '../../store';
+import type { RootState, AppDispatch } from '../../store';
 import { addInboundTransaction, importInboundTransactions, fetchTransactionsForce } from '../../store/slices/transactionsSlice';
 import { selectProductStock, selectStockMap } from '../../store/slices/inventorySlice';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -178,7 +178,7 @@ const InboundForm: React.FC<InboundFormProps> = ({ onSuccess }) => {
     return (
         <Paper elevation={0} sx={{ p: { xs: 2, sm: 4 }, borderRadius: { xs: 2, sm: 5 }, border: '1px solid', borderColor: 'divider', boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }}>
             <Grid container spacing={3}>
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                     <FormControl fullWidth size="small">
                         <Autocomplete
                             options={products}
@@ -209,7 +209,7 @@ const InboundForm: React.FC<InboundFormProps> = ({ onSuccess }) => {
                     </FormControl>
                 </Grid>
 
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                         fullWidth label="Số lượng" type="number" value={quantity}
                         onChange={e => setQuantity(Number(e.target.value))}
@@ -217,14 +217,14 @@ const InboundForm: React.FC<InboundFormProps> = ({ onSuccess }) => {
                         size="small" disabled={isSerializedProduct}
                     />
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                         fullWidth label="Đơn giá nhập" type="number" value={price}
                         onChange={e => setPrice(Number(e.target.value))}
                         inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }} size="small"
                     />
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                         fullWidth select label="Trạng thái hàng" value={itemStatus}
                         onChange={e => setItemStatus(e.target.value)} size="small"
@@ -235,7 +235,7 @@ const InboundForm: React.FC<InboundFormProps> = ({ onSuccess }) => {
                         <MenuItem value="Hàng thu hồi">Hàng thu hồi</MenuItem>
                     </TextField>
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                     <TextField
                         fullWidth select label="Quận/Huyện" value={district}
                         onChange={e => setDistrict(e.target.value)} size="small"
@@ -248,7 +248,7 @@ const InboundForm: React.FC<InboundFormProps> = ({ onSuccess }) => {
                 </Grid>
 
                 {isSerializedProduct && (
-                    <Grid item xs={12}>
+                    <Grid size={{ xs: 12 }}>
                         <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
                             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center" mb={2}>
                                 <TextField
@@ -275,7 +275,7 @@ const InboundForm: React.FC<InboundFormProps> = ({ onSuccess }) => {
                     </Grid>
                 )}
 
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                     <Box display="flex" justifyContent="flex-end" gap={2} mt={2}>
                         <Button
                             variant="outlined" color="inherit" size="large" onClick={resetForm}

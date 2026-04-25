@@ -1,8 +1,8 @@
 import React, { useState, useRef, useCallback } from 'react';
 import {
-    Box, Typography, Paper, Button, TextField, Grid, Stack, Divider,
-    Chip, IconButton, Tooltip, Alert, Table, TableBody, TableCell,
-    TableContainer, TableHead, TableRow, Badge, LinearProgress
+    Box, Typography, Paper, Button, TextField, Grid, Stack,
+    Chip, IconButton, Alert, Table, TableBody, TableCell,
+    TableContainer, TableHead, TableRow
 } from '@mui/material';
 import { QRCodeSVG } from 'qrcode.react';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -300,7 +300,7 @@ const QRGenerator = () => {
 
             <Grid container spacing={3} mb={3}>
                 {/* ── Import Excel Panel ── */}
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                     <Paper elevation={0} sx={{ p: 3, height: '100%', border: '1px solid #e2e8f0', borderRadius: 3 }}>
                         <Typography variant="h6" fontWeight={600} mb={0.5} sx={{ color: '#0f172a' }}>📂 Import từ Excel</Typography>
                         <Typography variant="body2" color="text.secondary" mb={2}>
@@ -331,31 +331,31 @@ const QRGenerator = () => {
                 </Grid>
 
                 {/* ── Manual Input Panel ── */}
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                     <Paper elevation={0} sx={{ p: 3, height: '100%', border: '1px solid #e2e8f0', borderRadius: 3 }}>
                         <Typography variant="h6" fontWeight={600} mb={0.5} sx={{ color: '#0f172a' }}>⌨️ Nhập / Quét trực tiếp</Typography>
                         <Typography variant="body2" color="text.secondary" mb={2}>
                             Mỗi serial 1 dòng hoặc cách bằng dấu phẩy, Enter
                         </Typography>
                         <Grid container spacing={1.5}>
-                            <Grid item xs={6}>
+                            <Grid size={{ xs: 6 }}>
                                 <TextField fullWidth label="Khu vực (District)" size="small"
                                     value={manualDistrict} onChange={e => setManualDistrict(e.target.value)}
                                     placeholder="VD: Q12, Q1..." />
                             </Grid>
-                            <Grid item xs={6}>
+                            <Grid size={{ xs: 6 }}>
                                 <TextField fullWidth label="Số Thùng" size="small"
                                     value={manualBox} onChange={e => setManualBox(e.target.value)}
                                     placeholder="VD: THUNG 01" />
                             </Grid>
-                            <Grid item xs={12}>
+                            <Grid size={{ xs: 12 }}>
                                 <TextField fullWidth label="Serials" size="small" multiline rows={4}
                                     value={manualSerials} onChange={e => setManualSerials(e.target.value)}
                                     onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); handleManualAdd(); } }}
                                     placeholder="SN001&#10;SN002&#10;SN003"
                                 />
                             </Grid>
-                            <Grid item xs={12}>
+                            <Grid size={{ xs: 12 }}>
                                 <Button fullWidth variant="contained" startIcon={<AddCircleOutlineIcon />}
                                     onClick={handleManualAdd}
                                     sx={{ bgcolor: '#0b3d2b', '&:hover': { bgcolor: '#0a3326' } }}>

@@ -67,8 +67,10 @@ export interface Transaction {
     date: string; // DATE or DATETIME from SQL
     // Join fields
     product?: Product;
+    product_name?: string; // Tên sản phẩm (đã join)
     user_name?: string; // Tên nhân viên thực hiện (created_by)
     receiver_group?: string; // Tên nhóm/người nhận
+    receiver_name?: string; // Tên người nhận (đã join)
     outbound_date?: string; // Ngày xuất kho
     inbound_date?: string; // Ngày nhập kho
 }

@@ -3,15 +3,15 @@ import {
     Box, Typography, TextField, InputAdornment, Paper, Checkbox, 
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
     TablePagination, Button, Chip, Card, CardContent, Divider, Stack, 
-    IconButton, useMediaQuery, useTheme, CircularProgress
+    IconButton, useMediaQuery, useTheme, CircularProgress, Grid
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import VoiceSearchButton from '../VoiceSearchButton';
 import TableSkeleton from '../Common/TableSkeleton';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState, AppDispatch } from '../../store';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../store';
 import { useDebounce } from '../../hooks/useDebounce';
 import type { Transaction } from '../../types';
 
@@ -120,15 +120,15 @@ const InboundList: React.FC<InboundListProps> = ({ onEdit, onDelete, onBulkDelet
                                             </Box>
                                             <Divider sx={{ my: 1 }} />
                                             <Grid container spacing={1}>
-                                                <Grid item xs={6}>
+                                                <Grid size={{ xs: 6 }}>
                                                     <Typography variant="caption" color="text.secondary">Serial</Typography>
                                                     <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>{row.serial_code || '-'}</Typography>
                                                 </Grid>
-                                                <Grid item xs={6}>
+                                                <Grid size={{ xs: 6 }}>
                                                     <Typography variant="caption" color="text.secondary">Quận/Huyện</Typography>
                                                     <Typography variant="body2">{row.district || '-'}</Typography>
                                                 </Grid>
-                                                <Grid item xs={12}>
+                                                <Grid size={{ xs: 12 }}>
                                                     <Typography variant="caption" color="text.secondary">Thời gian: {new Date(row.date || row.inbound_date || '').toLocaleString('vi-VN')}</Typography>
                                                 </Grid>
                                             </Grid>
