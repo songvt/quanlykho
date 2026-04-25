@@ -169,6 +169,12 @@ const Dashboard = () => {
         });
         const category_stats = Object.entries(catMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 5);
 
+        const employeeMap: Record<string, string> = {};
+        employees.forEach(e => {
+            if (e.id) employeeMap[e.id] = e.full_name;
+            if (e.auth_user_id) employeeMap[e.auth_user_id] = e.full_name;
+        });
+
         return {
             total_products: products.length,
             total_inventory,
@@ -177,10 +183,10 @@ const Dashboard = () => {
             out_of_stock_items,
             recent_transactions,
             weekly_stats,
-            category_stats
-        } as DashboardStats & { total_reserved: number };
-
-    }, [products, transactions, orders, stockMap]);
+            category_stats,
+            employeeMap
+        };
+    }, [products, transactions, orders, stockMap, employees]);
 
     if (isLoading && !stats) return <DashboardSkeleton />;
 
@@ -381,7 +387,7 @@ const Dashboard = () => {
                                             {t.group_name || 'Kho chính'}
                                         </Typography>
                                         <Typography variant="caption" sx={{ color: '#94a3b8', fontSize: '0.7rem' }}>
-                                            NV: {employees.find(e => e.id === (t as any).created_by || e.auth_user_id === (t as any).created_by)?.full_name || (t as any).created_by || 'Khuyết danh'}
+                                            NV: {stats.employeeMap[(t as any).created_by] || (t as any).created_by || 'Khuyết danh'}
                                         </Typography>
                                     </Box>
                                 </ListItem>

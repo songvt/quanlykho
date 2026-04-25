@@ -44,6 +44,7 @@ import {
     NotificationsNoneOutlined as NotificationsIcon,
     ExpandMore as ExpandMoreIcon,
     Business as BusinessIcon,
+    QrCode2 as QrCode2Icon,
 } from '@mui/icons-material';
 import AIChatbot from '../Chatbot/AIChatbot';
 
@@ -130,6 +131,9 @@ const MainLayout: React.FC = () => {
         ] : []),
         ...(hasPermission('inbound.view') ? [
             { text: 'Nhập kho', icon: <InputIcon />, path: '/inbound' }
+        ] : []),
+        ...(hasPermission('inbound.view') ? [
+            { text: 'Tạo QR code', icon: <QrCode2Icon />, path: '/qr-generator' }
         ] : []),
         ...(hasPermission('orders.create') || hasPermission('orders.view_own') ? [
             { text: 'Đặt hàng', icon: <OrderIcon />, path: '/orders' }

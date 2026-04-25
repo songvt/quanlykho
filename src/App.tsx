@@ -23,6 +23,8 @@ const ChangePassword  = lazy(() => import('./pages/ChangePassword'));
 const UserProfile     = lazy(() => import('./pages/UserProfile'));
 const EmployeeReturns = lazy(() => import('./pages/EmployeeReturns/EmployeeReturns'));
 const Settings        = lazy(() => import('./pages/Settings'));
+const QRGenerator     = lazy(() => import('./pages/QRGenerator'));
+
 
 const NotFound = lazy(() => import('./pages/NotFound').catch(() => ({
     default: () => <Box p={6} textAlign="center" sx={{ color: 'text.secondary', fontSize: 24 }}>404 — Không tìm thấy trang</Box>
@@ -74,6 +76,7 @@ function App() {
 
                                 <Route element={<ProtectedRoute allowedPermissions={['inbound.view', 'inbound.create']} />}>
                                     <Route path="inbound" element={<Inbound />} />
+                                    <Route path="qr-generator" element={<QRGenerator />} />
                                 </Route>
 
                                 <Route element={<ProtectedRoute allowedPermissions={['employees.view', 'employees.manage']} />}>
