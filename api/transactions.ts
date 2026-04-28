@@ -64,13 +64,17 @@ const formatLocalDate = (date: Date | string) => {
     return `${day}/${month}/${year}`;
 };
 
-const parseLocalDate = (dateStr: string) => {
+const parseLocalDate = (dateStr: any) => {
     if (!dateStr) return new Date(0);
-    const parts = dateStr.split('/');
+    if (dateStr instanceof Date) return isNaN(dateStr.getTime()) ? new Date(0) : dateStr;
+    
+    const s = String(dateStr).trim();
+    const parts = s.split('/');
     if (parts.length === 3) {
-        return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+        const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+        return isNaN(d.getTime()) ? new Date(0) : d;
     }
-    const d = new Date(dateStr);
+    const d = new Date(s);
     return isNaN(d.getTime()) ? new Date(0) : d;
 };
 

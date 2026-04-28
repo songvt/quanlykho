@@ -22,20 +22,29 @@ export const formatDate = (date: Date | string | null): string => {
 /**
  * Giải mã chuỗi dd/mm/yyyy thành đối tượng Date
  */
-export const parseDate = (dateStr: string | null): Date => {
+export const parseDate = (dateStr: any): Date => {
     if (!dateStr) return new Date();
     
+    // Nếu đã là đối tượng Date
+    if (dateStr instanceof Date) {
+        return isNaN(dateStr.getTime()) ? new Date() : dateStr;
+    }
+
+    // Đảm bảo là chuỗi
+    const s = String(dateStr).trim();
+    
     // Nếu là định dạng dd/mm/yyyy
-    const parts = dateStr.split('/');
+    const parts = s.split('/');
     if (parts.length === 3) {
         const day = parseInt(parts[0], 10);
         const month = parseInt(parts[1], 10) - 1;
         const year = parseInt(parts[2], 10);
-        return new Date(year, month, day);
+        const d = new Date(year, month, day);
+        return isNaN(d.getTime()) ? new Date() : d;
     }
     
     // Nếu là định dạng khác (ISO, v.v.)
-    const d = new Date(dateStr);
+    const d = new Date(s);
     return isNaN(d.getTime()) ? new Date() : d;
 };
 
