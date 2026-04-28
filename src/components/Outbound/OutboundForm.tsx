@@ -261,11 +261,15 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
                 </Grid>
             </Grid>
 
-            <Dialog open={showScanner} onClose={() => setShowScanner(false)} maxWidth="sm" fullWidth>
-                <DialogTitle>QUÉT MÃ</DialogTitle>
+            <Dialog open={showScanner} onClose={() => setShowScanner(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+                <DialogTitle sx={{ fontWeight: 900, textAlign: 'center', color: 'primary.main' }}>
+                    QUÉT MÃ QR / SERIAL
+                </DialogTitle>
                 <DialogContent sx={{ p: 0 }}>
                     <QRScanner onScanSuccess={handleScanSuccess} onScanFailure={() => {}} height={400} />
-                    <Box p={2} textAlign="center"><Button onClick={() => setShowScanner(false)}>Đóng</Button></Box>
+                    <Box p={2} textAlign="center">
+                        <Button variant="outlined" onClick={() => setShowScanner(false)}>Đóng Camera</Button>
+                    </Box>
                 </DialogContent>
             </Dialog>
         </Paper>

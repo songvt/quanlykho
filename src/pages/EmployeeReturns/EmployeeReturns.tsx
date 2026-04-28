@@ -231,23 +231,26 @@ const EmployeeReturns = () => {
         }
     }, [serials, hasSerials]);
 
+    const handleScanSuccess = useCallback((decodedText: string) => {
+        const newCodes = parseSerialInput(decodedText);
+        if (newCodes.length > 0) {
+            setSerials(prev => {
+                const uniqueNew = filterNewSerials(newCodes, prev);
+                if (uniqueNew.length > 0) {
+                    success(`Đã quét thành công: ${uniqueNew.length} serial`);
+                    return [...prev, ...uniqueNew];
+                } else {
+                    notifyError("Serial này đã có trong danh sách.");
+                    return prev;
+                }
+            });
+            setOpenScanner(false);
+        }
+    }, [success, notifyError]);
+
     const handleAddManualSerial = () => {
         if (!manualSerial.trim()) return;
-
-        const newCodes = parseSerialInput(manualSerial);
-        if (newCodes.length === 0) return;
-
-        setSerials(prev => {
-            const uniqueNew = filterNewSerials(newCodes, prev);
-            if (uniqueNew.length === 0) {
-                notifyError('Tất cả serial này đã được thêm rồi.');
-                return prev;
-            }
-            if (uniqueNew.length < newCodes.length) {
-                success(`Đã thêm ${uniqueNew.length} serial mới. Bỏ qua ${newCodes.length - uniqueNew.length} trùng lặp.`);
-            }
-            return [...prev, ...uniqueNew];
-        });
+        handleScanSuccess(manualSerial);
         setManualSerial('');
     };
 
@@ -702,26 +705,18 @@ const EmployeeReturns = () => {
             </Dialog>
 
             {/* QR Scanner */}
-            <Dialog open={openScanner} onClose={() => setOpenScanner(false)} fullWidth maxWidth="sm">
+            <Dialog open={openScanner} onClose={() => setOpenScanner(false)} fullWidth maxWidth="sm" PaperProps={{ sx: { borderRadius: 3 } }}>
+                <DialogTitle sx={{ fontWeight: 900, textAlign: 'center', color: 'primary.main' }}>
+                    QUÉT MÃ TRẢ KHO
+                </DialogTitle>
                 <DialogContent sx={{ p: 0 }}>
                     <QRScanner
-                        onScanSuccess={(decodedText) => {
-                            const newCodes = parseSerialInput(decodedText);
-                            if (newCodes.length > 0) {
-                                setSerials(prev => {
-                                    const uniqueNew = filterNewSerials(newCodes, prev);
-                                    if (uniqueNew.length > 0) {
-                                        setTimeout(() => setOpenScanner(false), 200);
-                                        return [...prev, ...uniqueNew];
-                                    }
-                                    return prev;
-                                });
-                                setOpenScanner(false);
-                            }
-                        }}
+                        onScanSuccess={handleScanSuccess}
                         onScanFailure={() => { }}
                     />
-                    <Button fullWidth onClick={() => setOpenScanner(false)} sx={{ mt: 1 }}>Đóng (Hoàn tất quét)</Button>
+                    <Box p={2} textAlign="center">
+                        <Button variant="outlined" onClick={() => setOpenScanner(false)}>Đóng Camera</Button>
+                    </Box>
                 </DialogContent>
             </Dialog>
 
