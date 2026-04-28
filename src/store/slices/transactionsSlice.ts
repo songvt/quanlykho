@@ -71,8 +71,12 @@ export const importInboundTransactions = createAsyncThunk(
 
 export const syncInStock = createAsyncThunk(
     'transactions/syncInStock',
-    async (_, { dispatch }) => {
-        const res = await SupabaseService.syncInStockToInbound();
+    async (_, { dispatch, getState }) => {
+        const state = getState() as RootState;
+        const profile = state.auth.profile;
+        const createdBy = profile ? (profile.full_name || profile.username || profile.email) : 'system';
+        
+        const res = await SupabaseService.syncInStockToInbound(createdBy);
         if (res?.count > 0) {
             dispatch(fetchTransactionsForce()); // Refresh transactions
         }
@@ -82,8 +86,12 @@ export const syncInStock = createAsyncThunk(
 
 export const syncFromQR = createAsyncThunk(
     'transactions/syncFromQR',
-    async ({ productId }: { productId: string }, { dispatch }) => {
-        const res = await SupabaseService.syncQRSheet(productId);
+    async ({ productId }: { productId: string }, { dispatch, getState }) => {
+        const state = getState() as RootState;
+        const profile = state.auth.profile;
+        const createdBy = profile ? (profile.full_name || profile.username || profile.email) : 'system';
+
+        const res = await SupabaseService.syncQRSheet(productId, createdBy);
         if (res?.count > 0) {
             dispatch(fetchTransactionsForce());
         }

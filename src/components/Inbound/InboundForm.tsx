@@ -26,6 +26,7 @@ const InboundForm: React.FC<InboundFormProps> = ({ onSuccess }) => {
     const dispatch = useDispatch<AppDispatch>();
     const { items: products } = useSelector((state: RootState) => state.products);
     const stockMap = useSelector(selectStockMap);
+    const { profile } = useSelector((state: RootState) => state.auth);
     const { success, error: notifyError } = useNotification();
 
     // Form state
@@ -141,6 +142,7 @@ const InboundForm: React.FC<InboundFormProps> = ({ onSuccess }) => {
 
         setIsSaving(true);
         try {
+            const creator = profile?.full_name || profile?.username || profile?.email || 'system';
             if (isSerialized) {
                 const bulkData = serialList.map(code => ({
                     product_id: selectedProduct,
@@ -148,7 +150,8 @@ const InboundForm: React.FC<InboundFormProps> = ({ onSuccess }) => {
                     serial_code: code,
                     unit_price: Number(price),
                     district: district.trim() || undefined,
-                    item_status: itemStatus.trim() || undefined
+                    item_status: itemStatus.trim() || undefined,
+                    created_by: creator
                 }));
                 await dispatch(importInboundTransactions(bulkData)).unwrap();
                 success(`Đã nhập kho thành công ${bulkData.length} serial!`);
@@ -159,7 +162,8 @@ const InboundForm: React.FC<InboundFormProps> = ({ onSuccess }) => {
                     serial_code: serial.trim() || undefined,
                     unit_price: Number(price),
                     district: district.trim() || undefined,
-                    item_status: itemStatus.trim() || undefined
+                    item_status: itemStatus.trim() || undefined,
+                    created_by: creator
                 })).unwrap();
                 success('Nhập kho thành công!');
             }

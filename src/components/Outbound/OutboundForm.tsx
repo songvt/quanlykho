@@ -138,7 +138,8 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
                     const res = await dispatch(addOutboundTransaction({
                         product_id: selectedProduct, quantity: 1, serial_code: code,
                         group_name: receiver, unit_price: price, district, item_status: itemStatus,
-                        user_id: profile?.id
+                        user_id: profile?.id,
+                        created_by: profile?.full_name || profile?.username || profile?.email || 'system'
                     })).unwrap();
                     newTransactions.push({ ...res, product_name: productName });
                 }
@@ -146,7 +147,8 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
                 const res = await dispatch(addOutboundTransaction({
                     product_id: selectedProduct, quantity: totalQuantity,
                     group_name: receiver, unit_price: price, district, item_status: itemStatus,
-                    user_id: profile?.id
+                    user_id: profile?.id,
+                    created_by: profile?.full_name || profile?.username || profile?.email || 'system'
                 })).unwrap();
                 newTransactions.push({ ...res, product_name: productName });
             }

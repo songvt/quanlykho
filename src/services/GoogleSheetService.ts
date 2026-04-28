@@ -140,19 +140,19 @@ export const GoogleSheetService = {
         });
     },
 
-    async syncInStockToInbound() {
+    async syncInStockToInbound(createdBy?: string) {
         return apiRequest('transactions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'inbound', action: 'sync_from_in_stock' })
+            body: JSON.stringify({ type: 'inbound', action: 'sync_from_in_stock', created_by: createdBy })
         });
     },
 
-    async syncQRSheet(productId: string) {
+    async syncQRSheet(productId: string, createdBy?: string) {
         return apiRequest('transactions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'inbound', action: 'sync_from_qr', product_id: productId })
+            body: JSON.stringify({ type: 'inbound', action: 'sync_from_qr', product_id: productId, created_by: createdBy })
         });
     },
 

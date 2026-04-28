@@ -131,7 +131,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
 
             case 'POST': {
-                const { type, action, payload } = req.body;
+                const { type, action, payload, created_by } = req.body;
+                const creator = created_by || 'system';
                 if (!['inbound', 'outbound'].includes(type)) return res.status(400).json({ error: 'Invalid type' });
 
                 const sheetToUse = type === 'inbound' ? inboundSheet : outboundSheet;
@@ -169,7 +170,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         return {
                             id: randomUUID(), product_id, serial_code: serial, quantity: 1, item_status: 'Mới',
                             district: thung ? `${district} - ${thung}` : district,
-                            inbound_date: new Date().toISOString(), created_by: 'sync_qr', type: 'inbound',
+                            inbound_date: new Date().toISOString(), created_by: creator, type: 'inbound',
                             created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
                             unit_price: product?.unit_price || 0, total_price: product?.unit_price || 0
                         };
@@ -221,7 +222,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                             item_status: row.get('status') || row.get('TRANG_THAI') || 'Mới',
                             district: row.get('district') || row.get('KHO') || 'Kho Tổng',
                             inbound_date: new Date().toISOString(), 
-                            created_by: 'sync_in_stock', 
+                            created_by: creator, 
                             type: 'inbound',
                             created_at: new Date().toISOString(), 
                             updated_at: new Date().toISOString(),
@@ -245,6 +246,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     [dateField]: p[dateField] || now,
                     created_at: p.created_at || now,
                     updated_at: now,
+                    created_by: p.created_by || p.user_name || p.user_id || creator,
                     total_price: p.total_price || (Number(p.quantity || 0) * Number(p.unit_price || 0)),
                     receiver_group: type === 'outbound' ? (p.receiver_group || p.group_name) : undefined
                 }));
