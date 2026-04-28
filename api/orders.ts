@@ -2,6 +2,29 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets.js';
 import { randomUUID } from 'crypto';
 
+
+// --- Helper to format date as dd/mm/yyyy for storage ---
+const formatLocalDate = (date: Date | string) => {
+    const d = new Date(date);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+};
+
+    return `${day}/${month}/${year}`;
+};
+
+const parseLocalDate = (dateStr: string) => {
+    if (!dateStr) return new Date(0);
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+        return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+    }
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+};
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const allowedMethods = ['GET', 'POST', 'PUT', 'DELETE'];
     if (!allowedMethods.includes(req.method || '')) {
@@ -26,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const obj = row.toObject();
                     if (obj.quantity !== undefined) obj.quantity = Number(obj.quantity);
                     return obj;
-                });
+                }).sort((a, b) => parseLocalDate(b.order_date).getTime() - parseLocalDate(a.order_date).getTime());
                 return res.status(200).json(orders);
             }
 
@@ -40,9 +63,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const toInsert = payload.map(p => ({
                         ...p,
                         id: p.id || randomUUID(),
-                        order_date: p.order_date || new Date().toISOString(),
-                        created_at: p.created_at || new Date().toISOString(),
-                        updated_at: p.updated_at || new Date().toISOString()
+                        order_date: formatLocalDate(p.order_date || new Date()),
+                        created_at: formatLocalDate(p.created_at || new Date()),
+                        updated_at: formatLocalDate(new Date())
                     }));
                     const rowsAdded = await sheet.addRows(toInsert);
                     return res.status(201).json(rowsAdded.map(r => r.toObject()));
@@ -50,9 +73,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const toInsert = {
                         ...payload,
                         id: payload.id || randomUUID(),
-                        order_date: payload.order_date || new Date().toISOString(),
-                        created_at: payload.created_at || new Date().toISOString(),
-                        updated_at: payload.updated_at || new Date().toISOString()
+                        order_date: formatLocalDate(payload.order_date || new Date()),
+                        created_at: formatLocalDate(payload.created_at || new Date()),
+                        updated_at: formatLocalDate(new Date())
                     };
                     const newRow = await sheet.addRow(toInsert);
                     return res.status(201).json(newRow.toObject());
@@ -76,7 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     rowToUpdate.set('status', status);
                     if (status === 'approved' || status === 'rejected') {
                         if (approved_by) rowToUpdate.set('approved_by', approved_by);
-                        rowToUpdate.set('approved_at', new Date().toISOString());
+                        rowToUpdate.set('approved_at', formatLocalDate(new Date()));
                     }
 
                     // Block completion of expired approved orders
@@ -84,7 +107,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         const currentStatus = rowToUpdate.get('status');
                         const approvedAt = rowToUpdate.get('approved_at');
                         if (currentStatus === 'approved' && approvedAt) {
-                            const approvedTime = new Date(approvedAt).getTime();
+                            const approvedTime = parseLocalDate(approvedAt).getTime();
                             const elapsed = Date.now() - approvedTime;
                             if (elapsed > 24 * 60 * 60 * 1000) {
                                 return res.status(403).json({
@@ -95,7 +118,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         }
                     }
                 }
-                rowToUpdate.set('updated_at', new Date().toISOString());
+                rowToUpdate.set('updated_at', formatLocalDate(new Date()));
 
                 await rowToUpdate.save();
                 return res.status(200).json(rowToUpdate.toObject());

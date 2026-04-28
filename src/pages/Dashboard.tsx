@@ -26,6 +26,7 @@ import { fetchOrders } from '../store/slices/ordersSlice';
 import React from 'react';
 import DashboardSkeleton from './DashboardSkeleton';
 import { useTabVisibility } from '../hooks/useTabVisibility';
+import { formatDate, parseDate } from '../utils/dateUtils';
 
 const MetricCard = ({ title, value, subtitle, icon, color, trend, onClick }: any) => (
     <Paper 
@@ -133,7 +134,7 @@ const Dashboard = () => {
         const total_reserved = Object.values(reservedByProduct).reduce((a, b) => a + b, 0);
 
         const recent_transactions = [...transactions]
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+            .sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime())
             .slice(0, 5);
 
         const weekly_stats: { date: string, inbound: number, outbound: number }[] = [];
@@ -141,12 +142,12 @@ const Dashboard = () => {
         for (let i = 6; i >= 0; i--) {
             const d = new Date(today);
             d.setDate(d.getDate() - i);
-            const dateStr = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+            const dateStr = formatDate(d).substring(0, 5); // dd/mm
             weekly_stats.push({ date: dateStr, inbound: 0, outbound: 0 });
         }
 
         transactions.forEach(t => {
-            const tDate = new Date(t.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+            const tDate = formatDate(t.date).substring(0, 5); // dd/mm
             const dayStat = weekly_stats.find(w => w.date === tDate);
             if (dayStat) {
                 if (t.type === 'inbound') dayStat.inbound += t.quantity;
@@ -375,7 +376,7 @@ const Dashboard = () => {
                                     </Box>
                                     <ListItemText
                                         primary={<Typography sx={{ fontWeight: 600, color: '#0f172a', fontSize: '0.95rem' }}>{t.product?.name || (t as any).product_name || `Product #${t.product_id}`}</Typography>}
-                                        secondary={t.date ? new Date(t.date).toLocaleString('vi-VN', { timeStyle: 'short', dateStyle: 'medium' }) : 'N/A'}
+                                        secondary={t.date ? formatDate(t.date) : 'N/A'}
                                         secondaryTypographyProps={{ sx: { color: '#64748b', fontSize: '0.8rem', mt: 0.5 } }}
                                     />
                                     <Box textAlign="right">

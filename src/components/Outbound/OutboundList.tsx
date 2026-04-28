@@ -8,6 +8,7 @@ import {
 import SearchIcon from '@mui/icons-material/Search';
 import VoiceSearchButton from '../VoiceSearchButton';
 import { useDebounce } from '../../hooks/useDebounce';
+import { formatDate } from '../../utils/dateUtils';
 
 interface OutboundListProps {
     transactions: any[];
@@ -99,7 +100,7 @@ const OutboundList: React.FC<OutboundListProps> = ({ transactions, selectedIds, 
                                         <TableCell padding="checkbox">
                                             <Checkbox size="small" checked={selectedIds.includes(t.id)} onChange={() => handleToggleSelectOne(t.id)} />
                                         </TableCell>
-                                        <TableCell>{new Date(t.date).toLocaleString('vi-VN')}</TableCell>
+                                        <TableCell>{formatDate(t.date || t.outbound_date)}</TableCell>
                                         <TableCell sx={{ fontWeight: '500' }}>{t.product?.name || t.product_name}</TableCell>
                                         <TableCell>{t.serial_code || '-'}</TableCell>
                                         <TableCell>{t.quantity}</TableCell>

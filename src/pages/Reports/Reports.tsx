@@ -30,6 +30,7 @@ import type { ReportColumn } from '../../utils/excelUtils';
 import HandoverPreview from '../../components/Reports/HandoverPreview';
 import ReturnsReportPreview from '../../components/Reports/ReturnsReportPreview';
 import { formatCurrency, getLocalYYYYMMDD, matchDistrict } from '../../utils/format';
+import { formatDate, parseDate } from '../../utils/dateUtils';
 
 const Reports = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -107,15 +108,7 @@ const Reports = () => {
 
     const parseSafeDate = (val: any) => {
         if (!val) return null;
-        if (val instanceof Date) return val;
-        const s = String(val).trim();
-        // Check for DD/MM/YYYY or DD-MM-YYYY
-        const match = s.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
-        if (match) {
-            return new Date(`${match[3]}-${match[2]}-${match[1]}T00:00:00`);
-        }
-        const d = new Date(s);
-        return isNaN(d.getTime()) ? null : d;
+        return parseDate(val);
     };
 
     const getHandoverData = () => {
@@ -254,7 +247,7 @@ const Reports = () => {
 
         exportStandardReport(
             data,
-            `Bao_cao_ton_kho_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}`,
+            `Bao_cao_ton_kho_${formatDate(new Date()).replace(/\//g, '-')}`,
             'BÁO CÁO TỒN KHO CHI TIẾT',
             columns,
             reporterName
@@ -283,7 +276,7 @@ const Reports = () => {
         const data = transactions.map(t => ({
             id: t.id.substring(0, 8), // Shorten ID for better display
             type: t.type === 'inbound' ? 'Nhập kho' : 'Xuất kho',
-            date: new Date(t.date).toLocaleString('vi-VN'),
+            date: formatDate(t.date || (t as any).outbound_date || (t as any).inbound_date),
             product: t.product?.name || t.product_id,
             price: formatCurrency(t.unit_price || 0),
             quantity: t.quantity,
@@ -297,7 +290,7 @@ const Reports = () => {
 
         exportStandardReport(
             data,
-            `Lich_su_giao_dich_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}`,
+            `Lich_su_giao_dich_${formatDate(new Date()).replace(/\//g, '-')}`,
             'LỊCH SỬ GIAO DỊCH XUẤT NHẬP KHO',
             columns,
             reporterName
@@ -342,7 +335,7 @@ const Reports = () => {
 
         exportStandardReport(
             data,
-            `Danh_sach_don_hang_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}`,
+            `Danh_sach_don_hang_${formatDate(new Date()).replace(/\//g, '-')}`,
             'DANH SÁCH ĐƠN HÀNG',
             columns,
             reporterName
@@ -464,7 +457,7 @@ const Reports = () => {
 
         exportStandardReport(
             data.map((item, index) => ({ ...item, stt: index + 1 })),
-            `Ton_kho_theo_quan_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}`,
+            `Ton_kho_theo_quan_${formatDate(new Date()).replace(/\//g, '-')}`,
             'BÁO CÁO TỒN KHO THEO KHU VỰC',
             columns,
             reporterName
@@ -751,7 +744,7 @@ const Reports = () => {
             const product = products.find(p => p.id === t.product_id);
             return {
                 stt: index + 1,
-                date: new Date(t.date).toLocaleDateString('vi-VN'),
+                date: formatDate(t.date),
                 type: t.type === 'inbound' ? 'Nhập' : 'Xuất',
                 item_code: product?.item_code || '',
                 name: product?.name || '',

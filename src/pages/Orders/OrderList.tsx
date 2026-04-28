@@ -30,6 +30,7 @@ import { usePermission } from '../../hooks/usePermission';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import VoiceSearchButton from '../../components/VoiceSearchButton';
 import { getOrderLimit } from '../../config/orderLimits';
+import { formatDate, parseDate } from '../../utils/dateUtils';
 
 const OrderList = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -206,10 +207,10 @@ const OrderList = () => {
             const product = productMap[order.product_id];
 
             // Date Filter
-            const d = new Date(order.order_date);
-            const orderDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            if (startDate && orderDate < startDate) return false;
-            if (endDate && orderDate > endDate) return false;
+            const d = parseDate(order.order_date);
+            const orderDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            if (startDate && orderDateStr < startDate) return false;
+            if (endDate && orderDateStr > endDate) return false;
 
             return (
                 (order.requester_group || '').toLowerCase().includes(term) ||
@@ -393,7 +394,7 @@ const OrderList = () => {
                                                     />
                                                 )}
                                                 <Typography variant="subtitle2" fontWeight="bold">
-                                                    {new Date(order.order_date).toLocaleDateString('vi-VN')}
+                                                {formatDate(order.order_date)}
                                                 </Typography>
                                             </Box>
                                             {getStatusChip(order.status)}
@@ -524,7 +525,7 @@ const OrderList = () => {
                                                 </TableCell>
                                             )}
                                             <TableCell sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
-                                                {new Date(order.order_date).toLocaleDateString('vi-VN')}
+                                                {formatDate(order.order_date)}
                                             </TableCell>
                                             <TableCell sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>
                                                 <Box>
@@ -581,7 +582,7 @@ const OrderList = () => {
                                                 </Typography>
                                                 {order.approved_at && (
                                                     <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', display: 'block' }}>
-                                                        {new Date(order.approved_at).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                                        {formatDate(order.approved_at)}
                                                     </Typography>
                                                 )}
                                             </TableCell>

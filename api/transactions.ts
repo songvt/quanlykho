@@ -55,6 +55,25 @@ const sendWebhook = async (type: 'inbound' | 'outbound', data: any) => {
     } catch (e) { console.error('[Webhook] Error:', e); }
 };
 
+// --- Helper to format date as dd/mm/yyyy for storage ---
+const formatLocalDate = (date: Date | string) => {
+    const d = new Date(date);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+};
+
+const parseLocalDate = (dateStr: string) => {
+    if (!dateStr) return new Date(0);
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+        return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+    }
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+};
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const allowedMethods = ['GET', 'POST', 'PUT', 'DELETE'];
     if (!allowedMethods.includes(req.method || '')) return res.status(405).json({ error: 'Method Not Allowed' });
@@ -125,7 +144,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const allLinks = [
                     ...iRows.map(r => mapper(r, 'inbound')),
                     ...oRows.map(r => mapper(r, 'outbound'))
-                ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                ].sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime());
 
                 return res.status(200).json(allLinks);
             }
@@ -170,8 +189,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         return {
                             id: randomUUID(), product_id, serial_code: serial, quantity: 1, item_status: 'Mới',
                             district: thung ? `${district} - ${thung}` : district,
-                            inbound_date: new Date().toISOString(), created_by: creator, type: 'inbound',
-                            created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+                            inbound_date: formatLocalDate(new Date()), created_by: creator, type: 'inbound',
+                            created_at: formatLocalDate(new Date()), updated_at: formatLocalDate(new Date()),
                             unit_price: product?.unit_price || 0, total_price: product?.unit_price || 0
                         };
                     }).filter(Boolean);
@@ -221,11 +240,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                             quantity: 1, 
                             item_status: row.get('status') || row.get('TRANG_THAI') || 'Mới',
                             district: row.get('district') || row.get('KHO') || 'Kho Tổng',
-                            inbound_date: new Date().toISOString(), 
+                            inbound_date: formatLocalDate(new Date()), 
                             created_by: creator, 
                             type: 'inbound',
-                            created_at: new Date().toISOString(), 
-                            updated_at: new Date().toISOString(),
+                            created_at: formatLocalDate(new Date()), 
+                            updated_at: formatLocalDate(new Date()),
                             unit_price: product.unit_price || 0, 
                             total_price: product.unit_price || 0
                         };
@@ -235,16 +254,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     return res.status(200).json({ message: `Đã đồng bộ ${toInsert.length} sản phẩm từ sheet in_stock`, count: toInsert.length });
                 }
 
-                // Batch insert logic
-                if (!payload) return res.status(400).json({ error: 'Payload is required' });
                 const transactions = Array.isArray(payload) ? payload : [payload];
-                const now = new Date().toISOString();
+                const now = formatLocalDate(new Date());
                 const processed = transactions.map(p => ({
                     ...p,
                     id: p.id || randomUUID(),
                     type,
-                    [dateField]: p[dateField] || now,
-                    created_at: p.created_at || now,
+                    [dateField]: p[dateField] ? formatLocalDate(p[dateField]) : now,
+                    created_at: p.created_at ? formatLocalDate(p.created_at) : now,
                     updated_at: now,
                     created_by: p.created_by || p.user_name || p.user_id || creator,
                     total_price: p.total_price || (Number(p.quantity || 0) * Number(p.unit_price || 0)),
@@ -264,7 +281,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                 if (!row) return res.status(404).json({ error: 'Not found' });
 
-                const updated = { ...payload, updated_at: new Date().toISOString() };
+                const updated = { ...payload, updated_at: formatLocalDate(new Date()) };
                 if (type === 'outbound' && payload.group_name) updated.receiver_group = payload.group_name;
                 
                 Object.keys(updated).forEach(k => { if (updated[k] !== undefined) row.set(k, updated[k]); });

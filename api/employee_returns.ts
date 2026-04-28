@@ -2,6 +2,29 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets.js';
 import { randomUUID } from 'crypto';
 
+
+// --- Helper to format date as dd/mm/yyyy for storage ---
+const formatLocalDate = (date: Date | string) => {
+    const d = new Date(date);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+};
+
+    return `${day}/${month}/${year}`;
+};
+
+const parseLocalDate = (dateStr: string) => {
+    if (!dateStr) return new Date(0);
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+        return new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+    }
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? new Date(0) : d;
+};
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const allowedMethods = ['GET', 'POST', 'DELETE'];
     if (!allowedMethods.includes(req.method || '')) {
@@ -52,7 +75,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         product: productsMap[rowObj.product_id] || null,
                         employee: employeesMap[rowObj.employee_id] || null
                     };
-                }).sort((a: any, b: any) => new Date(b.return_date).getTime() - new Date(a.return_date).getTime());
+                }).sort((a: any, b: any) => parseLocalDate(b.return_date).getTime() - parseLocalDate(a.return_date).getTime());
 
                 return res.status(200).json(returns);
             }
@@ -67,13 +90,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const toInsertReturns = payload.map(p => ({
                         ...p,
                         id: p.id || randomUUID(),
-                        return_date: p.return_date || new Date().toISOString(),
-                        created_at: p.created_at || new Date().toISOString(),
-                        updated_at: p.updated_at || new Date().toISOString()
+                        return_date: formatLocalDate(p.return_date || new Date()),
+                        created_at: formatLocalDate(p.created_at || new Date()),
+                        updated_at: formatLocalDate(new Date())
                     }));
-
+ 
                     const toInsertInbound = payload.map(p => ({
-                        id: crypto.randomUUID(),
+                        id: randomUUID(),
                         type: 'inbound',
                         product_id: p.product_id,
                         quantity: p.quantity,
@@ -83,9 +106,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         district: '',
                         item_status: p.reason,
                         created_by: p.created_by,
-                        inbound_date: new Date().toISOString(),
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
+                        inbound_date: formatLocalDate(new Date()),
+                        created_at: formatLocalDate(new Date()),
+                        updated_at: formatLocalDate(new Date())
                     }));
 
                     await returnsSheet.addRows(toInsertReturns);
@@ -96,13 +119,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const toInsertReturn = {
                         ...payload,
                         id: payload.id || randomUUID(),
-                        return_date: payload.return_date || new Date().toISOString(),
-                        created_at: payload.created_at || new Date().toISOString(),
-                        updated_at: payload.updated_at || new Date().toISOString()
+                        return_date: formatLocalDate(payload.return_date || new Date()),
+                        created_at: formatLocalDate(payload.created_at || new Date()),
+                        updated_at: formatLocalDate(new Date())
                     };
-
+ 
                     const toInsertInbound = {
-                        id: crypto.randomUUID(),
+                        id: randomUUID(),
                         type: 'inbound',
                         product_id: payload.product_id,
                         quantity: payload.quantity,
@@ -112,9 +135,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         district: '',
                         item_status: payload.reason,
                         created_by: payload.created_by,
-                        inbound_date: new Date().toISOString(),
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString()
+                        inbound_date: formatLocalDate(new Date()),
+                        created_at: formatLocalDate(new Date()),
+                        updated_at: formatLocalDate(new Date())
                     };
 
                     await returnsSheet.addRow(toInsertReturn);
