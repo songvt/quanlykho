@@ -32,32 +32,31 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
     // Initialization Effect
     useEffect(() => {
         let isMounted = true;
+        let scannerInstance: Html5Qrcode | null = null;
 
         const initScanner = async () => {
-            if (scannerRef.current) {
-                try {
-                    await scannerRef.current.stop();
-                    scannerRef.current.clear();
-                } catch (e) { /* ignore */ }
-                scannerRef.current = null;
+            // Wait for DOM element to be available
+            let retryCount = 0;
+            while (isMounted && !document.getElementById(regionId) && retryCount < 10) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+                retryCount++;
             }
 
-            const scanner = new Html5Qrcode(regionId, {
-                formatsToSupport: [
-                    Html5QrcodeSupportedFormats.QR_CODE,
-                    Html5QrcodeSupportedFormats.DATA_MATRIX,
-                    Html5QrcodeSupportedFormats.CODE_128,
-                    Html5QrcodeSupportedFormats.CODE_39,
-                    Html5QrcodeSupportedFormats.EAN_13
-                ],
-                verbose: false,
-                experimentalFeatures: {
-                    useBarCodeDetectorIfSupported: true
-                }
-            } as any);
-            scannerRef.current = scanner;
+            if (!isMounted || !document.getElementById(regionId)) return;
 
             try {
+                scannerInstance = new Html5Qrcode(regionId, {
+                    formatsToSupport: [
+                        Html5QrcodeSupportedFormats.QR_CODE,
+                        Html5QrcodeSupportedFormats.DATA_MATRIX,
+                        Html5QrcodeSupportedFormats.CODE_128,
+                        Html5QrcodeSupportedFormats.CODE_39,
+                        Html5QrcodeSupportedFormats.EAN_13
+                    ],
+                    verbose: false
+                });
+                scannerRef.current = scannerInstance;
+
                 const devices = await Html5Qrcode.getCameras();
                 if (isMounted) {
                     if (devices && devices.length > 0) {
@@ -65,7 +64,8 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                         const backCamera = devices.find(d =>
                             d.label.toLowerCase().includes('back') ||
                             d.label.toLowerCase().includes('sau') ||
-                            d.label.toLowerCase().includes('environment')
+                            d.label.toLowerCase().includes('environment') ||
+                            d.label.toLowerCase().includes('0')
                         );
                         setSelectedCameraId(backCamera ? backCamera.id : devices[0].id);
                         setError(null);
@@ -75,31 +75,22 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                     setLoading(false);
                 }
             } catch (err: any) {
-                console.error("Error getting cameras", err);
+                console.error("Error initializing scanner", err);
                 if (isMounted) {
-                    if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-                        setError("Không thể truy cập camera. Vui lòng cấp quyền truy cập trong cài đặt trình duyệt.");
-                    } else if (err.name === "NotFoundError") {
-                        setError("Không tìm thấy thiết bị camera nào.");
-                    } else if (err.name === "NotReadableError") {
-                        setError("Camera đang được sử dụng bởi ứng dụng khác hoặc không thể truy cập.");
-                    } else {
-                        setError(`Lỗi khi truy cập camera: ${err.message || err} `);
-                    }
+                    setError(`Lỗi khởi tạo: ${err.message || "Không thể truy cập camera"}`);
                     setLoading(false);
                 }
             }
         };
 
-        const timer = setTimeout(initScanner, 100);
+        initScanner();
 
         return () => {
             isMounted = false;
-            clearTimeout(timer);
-            if (scannerRef.current) {
-                scannerRef.current.stop().catch(() => { }).finally(() => {
-                    scannerRef.current?.clear();
-                });
+            if (scannerInstance && scannerInstance.isScanning) {
+                scannerInstance.stop().then(() => scannerInstance?.clear()).catch(e => console.warn("Cleanup stop failed", e));
+            } else if (scannerInstance) {
+                try { scannerInstance.clear(); } catch(e) {}
             }
         };
     }, []);
@@ -109,36 +100,34 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
         let isCurrent = true;
 
         const start = async () => {
-            if (!selectedCameraId || !scannerRef.current || loading || error) return;
+            const scanner = scannerRef.current;
+            if (!selectedCameraId || !scanner || loading || error) return;
 
             try {
-                if (scannerRef.current.isScanning) {
-                    await scannerRef.current.stop();
+                if (scanner.isScanning) {
+                    await scanner.stop();
                     setIsScanning(false);
-                    setIsTorchOn(false);
                 }
 
-                await scannerRef.current.start(
+                await scanner.start(
                     selectedCameraId,
                     {
-                        fps: 15,
-                        videoConstraints: {
-                            focusMode: "continuous",
-                            facingMode: "environment",
-                            width: { min: 640, ideal: 1280, max: 1920 },
-                            height: { min: 480, ideal: 720, max: 1080 }
-                        } as any
+                        fps: 10,
+                        qrbox: (viewWidth, viewHeight) => {
+                            const minEdge = Math.min(viewWidth, viewHeight);
+                            const size = Math.floor(minEdge * 0.7);
+                            return { width: size, height: size };
+                        },
+                        aspectRatio: 1.0
                     },
-                    (decodedText, _result) => {
+                    (decodedText) => {
                         const now = Date.now();
-                        if (decodedText === lastScanRef.current && (now - lastScanTimeRef.current < 1500)) {
-                            return;
-                        }
+                        if (decodedText === lastScanRef.current && (now - lastScanTimeRef.current < 2000)) return;
 
                         lastScanRef.current = decodedText;
                         lastScanTimeRef.current = now;
                         playBeep();
-                        if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(200);
+                        if (window.navigator?.vibrate) window.navigator.vibrate(100);
                         onScanSuccess(decodedText);
                     },
                     () => { }
@@ -147,45 +136,30 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                 if (isCurrent) {
                     setIsScanning(true);
                     setError(null);
-
-                    // Check capabilities (Torch & Zoom)
                     try {
-                        const caps = (scannerRef.current as any).getRunningTrackCameraCapabilities();
+                        const caps = (scanner as any).getRunningTrackCameraCapabilities();
                         setCapabilities(caps);
                         setHasTorch(!!caps?.torch);
-                        // Initialize zoom if available
-                        if (caps?.zoom) {
-                            setZoom(caps.zoom.min || 1);
-                        }
+                        if (caps?.zoom) setZoom(caps.zoom.min || 1);
                     } catch { setHasTorch(false); }
                 }
-
             } catch (err: any) {
                 console.error("Failed to start scanner", err);
                 if (isCurrent) {
-                    if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-                        setError("Không thể khởi động camera. Vui lòng cấp quyền truy cập.");
-                    } else if (err.name === "NotFoundError") {
-                        setError("Camera đã chọn không tìm thấy hoặc không khả dụng.");
-                    } else if (err.name === "NotReadableError") {
-                        setError("Camera đang được sử dụng bởi ứng dụng khác hoặc không thể truy cập.");
-                    } else {
-                        setError(`Lỗi khởi động camera: ${err.message || err} `);
-                    }
+                    setError(`Lỗi khởi động: ${err.message || "Kiểm tra quyền truy cập camera"}`);
                     setIsScanning(false);
-                    setHasTorch(false);
-                    setIsTorchOn(false);
                     if (onScanFailure) onScanFailure(err);
                 }
             }
         };
 
-        if (selectedCameraId && !loading && !error) {
-            start();
-        }
+        const timer = setTimeout(() => {
+            if (isCurrent) start();
+        }, 300); // Small delay to ensure previous instance is cleared
 
         return () => {
             isCurrent = false;
+            clearTimeout(timer);
         };
     }, [selectedCameraId, loading, error]);
 

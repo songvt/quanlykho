@@ -149,7 +149,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const dateField = type === 'inbound' ? 'inbound_date' : 'outbound_date';
 
                 if (action === 'sync_from_qr') {
-                    const qrSheet = doc.sheetsByTitle['Creat_QRcode'];
+                    const qrSheet = getSheetRobust('Creat_QRcode');
                     if (!qrSheet) return res.status(404).json({ error: 'Sheet Creat_QRcode not found' });
                     await qrSheet.loadHeaderRow();
 
