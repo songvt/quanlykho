@@ -113,9 +113,18 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
         const totalQuantity = isSerialized ? serialList.length : Number(quantity);
 
         if (isSerialized && serialList.length === 0) return notifyError('Vui lòng quét serial');
-        if (totalQuantity > currentTotalStock) return notifyError(`Vượt quá tổng tồn kho (${currentTotalStock})`);
+        
+        if (totalQuantity > currentTotalStock) {
+            if (!isAdmin) {
+                return notifyError(`Vượt quá tổng tồn kho (${currentTotalStock})`);
+            } else {
+                // Admin can proceed but gets a warning
+                success(`⚠️ Tổng tồn kho không đủ (Có: ${currentTotalStock}) — Đang xuất âm!`);
+            }
+        }
+        
         if (isAdmin && district && totalQuantity > currentDetailedStock) {
-             notifyError(`⚠️ Kho "${district}" không đủ tồn (Có: ${currentDetailedStock}) — Đang xuất âm!`);
+             success(`⚠️ Kho "${district}" không đủ tồn (Có: ${currentDetailedStock}) — Đang xuất âm!`);
         }
 
         setIsSaving(true);

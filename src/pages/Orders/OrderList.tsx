@@ -105,7 +105,7 @@ const OrderList = () => {
     const selectedProduct = products.find(p => p.id === newOrder.product_id);
     const stockLimit = inventory[newOrder.product_id] || 0;
     const policyLimit = (!isAdmin && selectedProduct) ? getOrderLimit(selectedProduct.name) : null;
-    const effectiveMaxQty = policyLimit !== null ? Math.min(stockLimit, policyLimit) : stockLimit;
+    const effectiveMaxQty = isAdmin ? 999999 : (policyLimit !== null ? Math.min(stockLimit, policyLimit) : stockLimit);
 
     // Lấy cảnh báo từ cột 'check' của nhân viên đặt hàng
     const requesterEmployee = employees.find(e =>
@@ -124,7 +124,7 @@ const OrderList = () => {
             return;
         }
 
-        if (newOrder.quantity > stockLimit) {
+        if (!isAdmin && newOrder.quantity > stockLimit) {
             notifyError(`Sản phẩm này chỉ còn ${stockLimit} tồn kho khả dụng. Không thể đặt vượt quá số lượng tồn kho!`);
             return;
         }
@@ -717,21 +717,23 @@ const OrderList = () => {
                             value={newOrder.quantity}
                             onChange={(e) => {
                                 const val = Number(e.target.value);
-                                if (val > effectiveMaxQty) {
+                                if (!isAdmin && val > effectiveMaxQty) {
                                     setNewOrder({ ...newOrder, quantity: effectiveMaxQty });
                                 } else {
                                     setNewOrder({ ...newOrder, quantity: Math.max(1, val) });
                                 }
                             }}
-                            inputProps={{ min: 1, max: effectiveMaxQty || 1 }}
+                            inputProps={{ min: 1, max: isAdmin ? undefined : effectiveMaxQty || 1 }}
                             helperText={
                                 newOrder.product_id
-                                    ? policyLimit !== null
-                                        ? `Tồn kho: ${stockLimit} | Giới hạn đặt hàng: ${policyLimit} | Tối đa: ${effectiveMaxQty}`
-                                        : `Tồn kho khả dụng: ${stockLimit}`
+                                    ? isAdmin 
+                                        ? `Tồn kho hiện tại: ${stockLimit} (Admin: Có thể đặt âm)`
+                                        : policyLimit !== null
+                                            ? `Tồn kho: ${stockLimit} | Giới hạn đặt hàng: ${policyLimit} | Tối đa: ${effectiveMaxQty}`
+                                            : `Tồn kho khả dụng: ${stockLimit}`
                                     : 'Chọn sản phẩm trước'
                             }
-                            error={newOrder.product_id !== '' && newOrder.quantity > effectiveMaxQty}
+                            error={!isAdmin && newOrder.product_id !== '' && newOrder.quantity > effectiveMaxQty}
                         />
                     </Stack>
                 </DialogContent>

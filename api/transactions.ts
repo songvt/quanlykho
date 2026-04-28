@@ -28,16 +28,17 @@ const getCachedProductsMap = async (productsSheet: any) => {
 
 // --- Helper to ensure headers exist safely ---
 const ensureHeaders = async (sheet: any, defaultHeaders: string[]) => {
-    // Only load if not already loaded in this instance
+    // Force reload if empty to prevent "Header values not loaded" error
     if (!sheet.headerValues || sheet.headerValues.length === 0) {
-        try { await sheet.loadHeaderRow(); } catch (e) { /* ignore */ }
-    }
-    
-    if (!sheet.headerValues || sheet.headerValues.length === 0) {
-        if (sheet.columnCount < defaultHeaders.length) {
-            await sheet.updateProperties({ gridProperties: { columnCount: defaultHeaders.length + 2 } });
+        try { 
+            await sheet.loadHeaderRow(); 
+        } catch (e) { 
+            console.log(`[Headers] Creating new headers for ${sheet.title}`);
+            if (sheet.columnCount < defaultHeaders.length) {
+                await sheet.updateProperties({ gridProperties: { columnCount: defaultHeaders.length + 2 } });
+            }
+            await sheet.setHeaderRow(defaultHeaders);
         }
-        await sheet.setHeaderRow(defaultHeaders);
     }
 };
 
@@ -60,17 +61,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
         const doc = await getGoogleSheet();
-        const [inboundSheet, outboundSheet, productsSheet] = await Promise.all([
-            getSheetByTitle(doc, 'inbound_transactions'),
-            getSheetByTitle(doc, 'outbound_transactions'),
-            getSheetByTitle(doc, 'products')
-        ]);
+        const getSheetRobust = (title: string) => {
+            const t = title.trim().toLowerCase();
+            return doc.sheetsByIndex.find(s => s.title.trim().toLowerCase() === t);
+        };
 
-        // Optimized header check
-        await Promise.all([
-            ensureHeaders(inboundSheet, ['id', 'product_id', 'serial_code', 'quantity', 'unit_price', 'total_price', 'inbound_date', 'created_by', 'district', 'item_status', 'type', 'created_at', 'updated_at', 'date', 'source_id']),
-            ensureHeaders(outboundSheet, ['id', 'receiver_group', 'product_id', 'serial_code', 'quantity', 'unit_price', 'total_price', 'outbound_date', 'created_by', 'district', 'item_status', 'type', 'group_name', 'created_at', 'updated_at', 'date'])
-        ]);
+        const inboundSheet = getSheetRobust('inbound_transactions');
+        const outboundSheet = getSheetRobust('outbound_transactions');
+        const productsSheet = getSheetRobust('products') || getSheetRobust('product');
+
+        if (!inboundSheet || !outboundSheet || !productsSheet) {
+            const missing = [
+                !inboundSheet ? 'inbound_transactions' : '',
+                !outboundSheet ? 'outbound_transactions' : '',
+                !productsSheet ? 'products' : ''
+            ].filter(Boolean).join(', ');
+            throw new Error(`Thiếu sheet quan trọng: ${missing}. Các sheet hiện có: ${Object.keys(doc.sheetsByTitle).join(', ')}`);
+        }
+
+        // Aggressive header loading for all core sheets
+        try {
+            await Promise.all([
+                inboundSheet.loadHeaderRow().catch(() => inboundSheet.setHeaderRow(['id', 'product_id', 'serial_code', 'quantity', 'unit_price', 'total_price', 'inbound_date', 'created_by', 'district', 'item_status', 'type', 'created_at', 'updated_at', 'date', 'source_id'])),
+                outboundSheet.loadHeaderRow().catch(() => outboundSheet.setHeaderRow(['id', 'receiver_group', 'product_id', 'serial_code', 'quantity', 'unit_price', 'total_price', 'outbound_date', 'created_by', 'district', 'item_status', 'type', 'group_name', 'created_at', 'updated_at', 'date'])),
+                productsSheet.loadHeaderRow()
+            ]);
+        } catch (e) {
+            console.error('[Headers] Error loading core headers:', e);
+        }
 
         switch (req.method) {
             case 'GET': {
@@ -84,19 +102,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 ]);
 
                 const mapper = (r: any, tType: 'inbound' | 'outbound') => {
-                    const t = r.toObject();
-                    const qty = Number(t.quantity || 0);
-                    const price = Number(t.unit_price || 0);
-                    return {
-                        ...t,
-                        quantity: qty,
-                        unit_price: price,
-                        total_price: Number(t.total_price || (qty * price)),
-                        type: tType,
-                        group_name: tType === 'inbound' ? 'N/A' : (t.receiver_group || t.group_name),
-                        date: tType === 'inbound' ? t.inbound_date : t.outbound_date,
-                        product: productsMap[t.product_id] || { name: 'Unknown' }
-                    };
+                    try {
+                        const t = r.toObject();
+                        const qty = Number(t.quantity || 0);
+                        const price = Number(t.unit_price || 0);
+                        return {
+                            ...t,
+                            quantity: qty,
+                            unit_price: price,
+                            total_price: Number(t.total_price || (qty * price)),
+                            type: tType,
+                            group_name: tType === 'inbound' ? 'N/A' : (t.receiver_group || t.group_name),
+                            date: tType === 'inbound' ? t.inbound_date : t.outbound_date,
+                            product: productsMap[t.product_id] || { name: 'Unknown' }
+                        };
+                    } catch (e) {
+                        console.error(`[Mapper Error] Sheet ${tType}:`, e);
+                        throw new Error(`Lỗi đọc dữ liệu từ sheet ${tType}. Có thể thiếu tiêu đề.`);
+                    }
                 };
 
                 const allLinks = [
@@ -118,6 +141,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const qrSheet = doc.sheetsByTitle['Creat_QRcode'];
                     if (!qrSheet) return res.status(404).json({ error: 'Sheet Creat_QRcode not found' });
                     
+                    await qrSheet.loadHeaderRow().catch(e => {
+                        console.error('[Sync QR] Header load failed:', e);
+                        throw new Error('Sheet Creat_QRcode chưa có tiêu đề hoặc bị lỗi.');
+                    });
+
                     const { product_id } = req.body;
                     if (!product_id) return res.status(400).json({ error: 'product_id required' });
 
@@ -151,7 +179,63 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     return res.status(200).json({ message: `Synced ${toInsert.length} QR codes`, count: toInsert.length });
                 }
 
+                if (action === 'sync_from_in_stock') {
+                    // Robust lookup: find sheet by trimmed title
+                    const stockSheet = doc.sheetsByIndex.find(s => s.title.trim() === 'in_stock');
+                    
+                    if (!stockSheet) {
+                        const availableSheets = Object.keys(doc.sheetsByTitle).join(', ');
+                        return res.status(404).json({ 
+                            error: `Sheet 'in_stock' không tìm thấy. Các sheet hiện có: ${availableSheets}` 
+                        });
+                    }
+                    
+                    await stockSheet.loadHeaderRow().catch(e => {
+                        console.error('[Sync Stock] Header load failed:', e);
+                        throw new Error(`Sheet '${stockSheet.title}' chưa có tiêu đề hoặc bị lỗi.`);
+                    });
+                    
+                    const [sRows, inboundRows, productsMap] = await Promise.all([
+                        stockSheet.getRows(),
+                        inboundSheet.getRows(),
+                        getCachedProductsMap(productsSheet)
+                    ]);
+
+                    const existingSerials = new Set(inboundRows.map(r => String(r.get('serial_code') || '').trim()).filter(Boolean));
+                    
+                    const toInsert = sRows.map(row => {
+                        // Support multiple column name formats
+                        const serial = String(row.get('serial_code') || row.get('SERIAL') || row.get('Serial') || '').trim();
+                        if (!serial || existingSerials.has(serial)) return null;
+                        
+                        const pId = row.get('product_id') || row.get('MA_HANG') || row.get('Ma_Hang');
+                        const product = productsMap[pId];
+                        if (!product) return null;
+
+                        existingSerials.add(serial);
+                        return {
+                            id: randomUUID(), 
+                            product_id: pId, 
+                            serial_code: serial, 
+                            quantity: 1, 
+                            item_status: row.get('status') || row.get('TRANG_THAI') || 'Mới',
+                            district: row.get('district') || row.get('KHO') || 'Kho Tổng',
+                            inbound_date: new Date().toISOString(), 
+                            created_by: 'sync_in_stock', 
+                            type: 'inbound',
+                            created_at: new Date().toISOString(), 
+                            updated_at: new Date().toISOString(),
+                            unit_price: product.unit_price || 0, 
+                            total_price: product.unit_price || 0
+                        };
+                    }).filter(Boolean);
+
+                    if (toInsert.length > 0) await inboundSheet.addRows(toInsert);
+                    return res.status(200).json({ message: `Đã đồng bộ ${toInsert.length} sản phẩm từ sheet in_stock`, count: toInsert.length });
+                }
+
                 // Batch insert logic
+                if (!payload) return res.status(400).json({ error: 'Payload is required' });
                 const transactions = Array.isArray(payload) ? payload : [payload];
                 const now = new Date().toISOString();
                 const processed = transactions.map(p => ({
