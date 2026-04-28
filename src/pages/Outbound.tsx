@@ -19,6 +19,7 @@ import StaffOutboundView from './Outbound/StaffOutboundView';
 import OutboundForm from '../components/Outbound/OutboundForm';
 import OutboundList from '../components/Outbound/OutboundList';
 import ApprovedOrdersList from '../components/Outbound/ApprovedOrdersList';
+import QRScanner from '../components/QRScanner';
 
 export const Outbound = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -116,6 +117,18 @@ export const Outbound = () => {
 
     const allApprovedOrders = orders.filter(o => o.status === 'approved');
 
+    const [showScanner, setShowScanner] = useState(false);
+
+    const handleScanSuccess = (decodedText: string) => {
+        const newSerials = decodedText.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+        setScannedSerials(prev => {
+            const unique = newSerials.filter(s => !prev.includes(s));
+            return [...prev, ...unique];
+        });
+        setShowScanner(false);
+        success(`Đã quét thành công: ${decodedText}`);
+    };
+
     return (
         <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: 1200, mx: 'auto' }}>
             <ApprovedOrdersList orders={allApprovedOrders} products={products} onFulfill={handleOpenFulfill} />
@@ -167,8 +180,20 @@ export const Outbound = () => {
                 onSerialChange={setSerialInput}
                 onManualAddSerial={handleManualAddSerial}
                 onRemoveSerial={(code) => setScannedSerials(prev => prev.filter(s => s !== code))}
-                onOpenScanner={() => { /* Implement if needed */ }}
+                onOpenScanner={() => setShowScanner(true)}
             />
+
+            <Dialog open={showScanner} onClose={() => setShowScanner(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+                <DialogTitle sx={{ fontWeight: 900, textAlign: 'center', color: 'primary.main' }}>
+                    QUÉT MÃ SERIAL
+                </DialogTitle>
+                <DialogContent sx={{ p: 0 }}>
+                    <QRScanner onScanSuccess={handleScanSuccess} onScanFailure={() => {}} height={400} />
+                    <Box p={2} textAlign="center">
+                        <Button onClick={() => setShowScanner(false)} variant="outlined">Đóng Camera</Button>
+                    </Box>
+                </DialogContent>
+            </Dialog>
 
             <Dialog open={openPrintPreview} onClose={() => setOpenPrintPreview(false)} maxWidth="lg" fullWidth>
                 <DialogTitle>Xem trước biên bản xuất kho</DialogTitle>
