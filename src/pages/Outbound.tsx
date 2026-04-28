@@ -211,7 +211,10 @@ export const Outbound = () => {
                         }
                         delivererName={resolvedDelivererName}
                         date={new Date().toISOString()}
-                        receiverName={transactions.find(t => selectedPrintIds.includes(t.id))?.receiver_name || 'N/A'}
+                        receiverName={(() => {
+                            const first = transactions.find(t => selectedPrintIds.includes(t.id));
+                            return first?.group_name || first?.receiver_group || 'N/A';
+                        })()}
                         reportNumber={1}
                     />
                 </DialogContent>
