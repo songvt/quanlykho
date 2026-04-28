@@ -16,10 +16,15 @@ const getCachedProductsMap = async (productsSheet: any) => {
     const rows = await productsSheet.getRows();
     const map: Record<string, any> = {};
     rows.forEach((r: any) => {
-        map[r.get('id')] = {
-            name: r.get('name'),
-            unit_price: Number(r.get('unit_price') || 0)
+        const productData = {
+            id: r.get('id'),
+            item_code: r.get('item_code') || r.get('MA_HANG'),
+            name: r.get('name') || r.get('TEN_HANG_HOA'),
+            unit_price: Number(r.get('unit_price') || 0),
+            type: r.get('type') || r.get('LOAI_HANG') || r.get('LOAI_DM')
         };
+        if (productData.id) map[String(productData.id)] = productData;
+        if (productData.item_code) map[String(productData.item_code).trim()] = productData;
     });
     
     productCache = { map, timestamp: now };
@@ -28,7 +33,6 @@ const getCachedProductsMap = async (productsSheet: any) => {
 
 // --- Helper to ensure headers exist safely ---
 const ensureHeaders = async (sheet: any, defaultHeaders: string[]) => {
-    // Force reload if empty to prevent "Header values not loaded" error
     if (!sheet.headerValues || sheet.headerValues.length === 0) {
         try { 
             await sheet.loadHeaderRow(); 
@@ -94,63 +98,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const productsSheet = getSheetRobust('products') || getSheetRobust('product');
 
         if (!inboundSheet || !outboundSheet || !productsSheet) {
-            const missing = [
-                !inboundSheet ? 'inbound_transactions' : '',
-                !outboundSheet ? 'outbound_transactions' : '',
-                !productsSheet ? 'products' : ''
-            ].filter(Boolean).join(', ');
-            throw new Error(`Thiếu sheet quan trọng: ${missing}. Các sheet hiện có: ${Object.keys(doc.sheetsByTitle).join(', ')}`);
+            return res.status(404).json({ error: 'Missing core sheets' });
         }
 
-        // Aggressive header loading for all core sheets
-        try {
-            await Promise.all([
-                inboundSheet.loadHeaderRow().catch(() => inboundSheet.setHeaderRow(['id', 'product_id', 'serial_code', 'quantity', 'unit_price', 'total_price', 'inbound_date', 'created_by', 'district', 'item_status', 'type', 'created_at', 'updated_at', 'date', 'source_id'])),
-                outboundSheet.loadHeaderRow().catch(() => outboundSheet.setHeaderRow(['id', 'receiver_group', 'product_id', 'serial_code', 'quantity', 'unit_price', 'total_price', 'outbound_date', 'created_by', 'district', 'item_status', 'type', 'group_name', 'created_at', 'updated_at', 'date'])),
-                productsSheet.loadHeaderRow()
-            ]);
-        } catch (e) {
-            console.error('[Headers] Error loading core headers:', e);
-        }
+        await Promise.all([
+            inboundSheet.loadHeaderRow().catch(() => {}),
+            outboundSheet.loadHeaderRow().catch(() => {}),
+            productsSheet.loadHeaderRow().catch(() => {})
+        ]);
 
         switch (req.method) {
             case 'GET': {
                 const type = req.query.type as string;
                 const productsMap = await getCachedProductsMap(productsSheet);
-
-                // Fetch rows in parallel
                 const [iRows, oRows] = await Promise.all([
                     (!type || type === 'inbound') ? inboundSheet.getRows() : Promise.resolve([]),
                     (!type || type === 'outbound') ? outboundSheet.getRows() : Promise.resolve([])
                 ]);
 
                 const mapper = (r: any, tType: 'inbound' | 'outbound') => {
-                    try {
-                        const t = r.toObject();
-                        const qty = Number(t.quantity || 0);
-                        const price = Number(t.unit_price || 0);
-                        return {
-                            ...t,
-                            quantity: qty,
-                            unit_price: price,
-                            total_price: Number(t.total_price || (qty * price)),
-                            type: tType,
-                            group_name: tType === 'inbound' ? 'N/A' : (t.receiver_group || t.group_name),
-                            date: tType === 'inbound' ? t.inbound_date : t.outbound_date,
-                            product: productsMap[t.product_id] || { name: 'Unknown' }
-                        };
-                    } catch (e) {
-                        console.error(`[Mapper Error] Sheet ${tType}:`, e);
-                        throw new Error(`Lỗi đọc dữ liệu từ sheet ${tType}. Có thể thiếu tiêu đề.`);
-                    }
+                    const t = r.toObject();
+                    const qty = Number(t.quantity || 0);
+                    const price = Number(t.unit_price || 0);
+                    return {
+                        ...t,
+                        quantity: qty,
+                        unit_price: price,
+                        total_price: Number(t.total_price || (qty * price)),
+                        type: tType,
+                        group_name: tType === 'inbound' ? 'N/A' : (t.receiver_group || t.group_name),
+                        date: tType === 'inbound' ? t.inbound_date : t.outbound_date,
+                        product: productsMap[t.product_id] || { name: 'Unknown' }
+                    };
                 };
 
-                const allLinks = [
+                const all = [
                     ...iRows.map(r => mapper(r, 'inbound')),
                     ...oRows.map(r => mapper(r, 'outbound'))
                 ].sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime());
 
-                return res.status(200).json(allLinks);
+                return res.status(200).json(all);
             }
 
             case 'POST': {
@@ -164,15 +151,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 if (action === 'sync_from_qr') {
                     const qrSheet = doc.sheetsByTitle['Creat_QRcode'];
                     if (!qrSheet) return res.status(404).json({ error: 'Sheet Creat_QRcode not found' });
-                    
-                    await qrSheet.loadHeaderRow().catch(e => {
-                        console.error('[Sync QR] Header load failed:', e);
-                        throw new Error('Sheet Creat_QRcode chưa có tiêu đề hoặc bị lỗi.');
-                    });
+                    await qrSheet.loadHeaderRow();
 
                     const { product_id } = req.body;
-                    if (!product_id) return res.status(400).json({ error: 'product_id required' });
-
                     const [qrRows, inboundRows, productsMap] = await Promise.all([
                         qrSheet.getRows(),
                         inboundSheet.getRows(),
@@ -185,17 +166,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const toInsert = qrRows.map(row => {
                         const serial = String(row.get('serial_code') || '').trim();
                         if (!serial || existingSerials.has(serial)) return null;
-                        
                         existingSerials.add(serial);
-                        const thung = row.get('Number_Thung') || '';
-                        const district = row.get('District') || 'Kho Tổng';
-                        
                         return {
                             id: randomUUID(), product_id, serial_code: serial, quantity: 1, item_status: 'Mới',
-                            district: thung ? `${district} - ${thung}` : district,
-                            inbound_date: formatLocalDate(new Date()), created_by: creator, type: 'inbound',
-                            created_at: formatLocalDate(new Date()), updated_at: formatLocalDate(new Date()),
-                            unit_price: product?.unit_price || 0, total_price: product?.unit_price || 0
+                            district: row.get('District') || 'Kho Tổng', inbound_date: formatLocalDate(new Date()),
+                            created_by: creator, type: 'inbound', created_at: formatLocalDate(new Date()),
+                            updated_at: formatLocalDate(new Date()), unit_price: product?.unit_price || 0,
+                            total_price: product?.unit_price || 0
                         };
                     }).filter(Boolean);
 
@@ -204,20 +181,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 }
 
                 if (action === 'sync_from_in_stock') {
-                    // Robust lookup: find sheet by trimmed title
-                    const stockSheet = doc.sheetsByIndex.find(s => s.title.trim() === 'in_stock');
-                    
-                    if (!stockSheet) {
-                        const availableSheets = Object.keys(doc.sheetsByTitle).join(', ');
-                        return res.status(404).json({ 
-                            error: `Sheet 'in_stock' không tìm thấy. Các sheet hiện có: ${availableSheets}` 
-                        });
-                    }
-                    
-                    await stockSheet.loadHeaderRow().catch(e => {
-                        console.error('[Sync Stock] Header load failed:', e);
-                        throw new Error(`Sheet '${stockSheet.title}' chưa có tiêu đề hoặc bị lỗi.`);
-                    });
+                    const stockSheet = doc.sheetsByIndex.find(s => s.title.trim().toLowerCase() === 'in_stock');
+                    if (!stockSheet) return res.status(404).json({ error: 'Sheet in_stock not found' });
+                    await stockSheet.loadHeaderRow();
                     
                     const [sRows, inboundRows, productsMap] = await Promise.all([
                         stockSheet.getRows(),
@@ -226,36 +192,75 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     ]);
 
                     const existingSerials = new Set(inboundRows.map(r => String(r.get('serial_code') || '').trim()).filter(Boolean));
-                    
-                    const toInsert = sRows.map(row => {
-                        // Support multiple column name formats
-                        const serial = String(row.get('serial_code') || row.get('SERIAL') || row.get('Serial') || '').trim();
-                        if (!serial || existingSerials.has(serial)) return null;
-                        
-                        const pId = row.get('product_id') || row.get('MA_HANG') || row.get('Ma_Hang');
-                        const product = productsMap[pId];
-                        if (!product) return null;
+                    const existingNonSerialMap: Record<string, any> = {};
+                    inboundRows.forEach(r => {
+                        const serial = String(r.get('serial_code') || '').trim();
+                        if (!serial) {
+                            const pId = r.get('product_id');
+                            const dist = String(r.get('district') || 'Kho Tổng').trim();
+                            if (pId) existingNonSerialMap[`${pId}_${dist}`] = r;
+                        }
+                    });
 
-                        existingSerials.add(serial);
-                        return {
-                            id: randomUUID(), 
-                            product_id: pId, 
-                            serial_code: serial, 
-                            quantity: 1, 
-                            item_status: row.get('status') || row.get('TRANG_THAI') || 'Mới',
-                            district: row.get('district') || row.get('KHO') || 'Kho Tổng',
-                            inbound_date: formatLocalDate(new Date()), 
-                            created_by: creator, 
-                            type: 'inbound',
-                            created_at: formatLocalDate(new Date()), 
-                            updated_at: formatLocalDate(new Date()),
-                            unit_price: product.unit_price || 0, 
-                            total_price: product.unit_price || 0
-                        };
-                    }).filter(Boolean);
+                    const toInsert: any[] = [];
+                    const toUpdate: any[] = [];
+
+                    for (const row of sRows) {
+                        const pIdRaw = row.get('product_id') || row.get('MA_HANG') || row.get('Ma_Hang') || row.get('MA_VT');
+                        if (!pIdRaw) continue;
+
+                        const product = productsMap[String(pIdRaw).trim()];
+                        if (!product) continue;
+
+                        const canonicalPId = product.id;
+                        const serial = String(row.get('serial_code') || row.get('SERIAL') || row.get('Serial') || '').trim();
+                        const qty = Number(row.get('quantity') || row.get('SO_LUONG') || row.get('So_Luong') || row.get('TON_KHO') || 0);
+                        const status = row.get('status') || row.get('TRANG_THAI') || 'Mới';
+                        const district = (row.get('district') || row.get('KHO') || 'Kho Tổng').trim();
+                        
+                        // Condition check for non-serialized items
+                        const itemType = (row.get('type') || row.get('LOAI_HANG') || product.type || '').trim();
+
+                        if (serial) {
+                            if (!existingSerials.has(serial)) {
+                                existingSerials.add(serial);
+                                toInsert.push({
+                                    id: randomUUID(), product_id: canonicalPId, serial_code: serial, quantity: 1, 
+                                    item_status: status, district, inbound_date: formatLocalDate(new Date()), 
+                                    created_by: creator, type: 'inbound', created_at: formatLocalDate(new Date()), 
+                                    updated_at: formatLocalDate(new Date()), unit_price: product.unit_price || 0, 
+                                    total_price: product.unit_price || 0, source_id: 'sync_stock'
+                                });
+                            }
+                        } else {
+                            // Non-serialized item: must be 'VT-TKM' to sync
+                            if (itemType !== 'VT-TKM') continue;
+
+                            const key = `${canonicalPId}_${district}`;
+                            const existingRow = existingNonSerialMap[key];
+                            if (existingRow) {
+                                if (Number(existingRow.get('quantity')) !== qty) {
+                                    existingRow.set('quantity', qty);
+                                    existingRow.set('total_price', qty * (product.unit_price || 0));
+                                    existingRow.set('updated_at', formatLocalDate(new Date()));
+                                    toUpdate.push(existingRow);
+                                }
+                            } else {
+                                toInsert.push({
+                                    id: randomUUID(), product_id: canonicalPId, serial_code: '', quantity: qty, 
+                                    item_status: status, district, inbound_date: formatLocalDate(new Date()), 
+                                    created_by: creator, type: 'inbound', created_at: formatLocalDate(new Date()), 
+                                    updated_at: formatLocalDate(new Date()), unit_price: product.unit_price || 0, 
+                                    total_price: qty * (product.unit_price || 0), source_id: 'sync_stock'
+                                });
+                            }
+                        }
+                    }
 
                     if (toInsert.length > 0) await inboundSheet.addRows(toInsert);
-                    return res.status(200).json({ message: `Đã đồng bộ ${toInsert.length} sản phẩm từ sheet in_stock`, count: toInsert.length });
+                    for (const rowToSave of toUpdate) { await rowToSave.save(); }
+
+                    return res.status(200).json({ message: `Đồng bộ hoàn tất: Thêm ${toInsert.length}, Cập nhật ${toUpdate.length}`, count: toInsert.length + toUpdate.length });
                 }
 
                 const transactions = Array.isArray(payload) ? payload : [payload];
@@ -282,12 +287,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const sheet = type === 'inbound' ? inboundSheet : outboundSheet;
                 const rows = await sheet.getRows();
                 const row = rows.find(r => r.get('id') === id);
-
                 if (!row) return res.status(404).json({ error: 'Not found' });
-
                 const updated = { ...payload, updated_at: formatLocalDate(new Date()) };
                 if (type === 'outbound' && payload.group_name) updated.receiver_group = payload.group_name;
-                
                 Object.keys(updated).forEach(k => { if (updated[k] !== undefined) row.set(k, updated[k]); });
                 await row.save();
                 return res.status(200).json(row.toObject());
@@ -298,7 +300,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const sheet = type === 'inbound' ? inboundSheet : outboundSheet;
                 const rows = await sheet.getRows();
                 const targetIds = Array.isArray(ids) ? ids : [id];
-                
                 let count = 0;
                 for (let i = rows.length - 1; i >= 0; i--) {
                     if (targetIds.includes(rows[i].get('id'))) {
