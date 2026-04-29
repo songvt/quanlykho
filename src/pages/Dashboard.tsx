@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -23,7 +23,7 @@ import { fetchProducts } from '../store/slices/productsSlice';
 import { fetchTransactions } from '../store/slices/transactionsSlice';
 import { fetchInventory, selectStockMap } from '../store/slices/inventorySlice';
 import { fetchOrders } from '../store/slices/ordersSlice';
-import React from 'react';
+
 import DashboardSkeleton from './DashboardSkeleton';
 import { useTabVisibility } from '../hooks/useTabVisibility';
 import { formatDate, parseDate } from '../utils/dateUtils';
@@ -33,8 +33,8 @@ const MetricCard = ({ title, value, subtitle, icon, color, trend, onClick }: any
         elevation={0} 
         onClick={onClick}
         sx={{ 
-            p: { xs: 2, sm: 2.5 }, 
-            borderRadius: 2, 
+            p: { xs: 2.5, sm: 3 }, 
+            borderRadius: '20px', 
             border: '1px solid #e2e8f0',
             bgcolor: 'white',
             display: 'flex',
@@ -43,28 +43,43 @@ const MetricCard = ({ title, value, subtitle, icon, color, trend, onClick }: any
             height: '100%',
             position: 'relative',
             cursor: onClick ? 'pointer' : 'default',
-            transition: 'transform 0.2s, box-shadow 0.2s',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             '&:hover': onClick ? {
-                transform: 'translateY(-2px)',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                borderColor: color
+                transform: 'translateY(-6px)',
+                boxShadow: '0 12px 24px -10px rgba(0,0,0,0.1)',
+                borderColor: color,
+                '& .icon-box': {
+                    transform: 'scale(1.1)',
+                    bgcolor: alpha(color, 0.15)
+                }
             } : {}
         }}
     >
-        <Box display="flex" alignItems="center" gap={1} mb={1}>
-            {icon && <Box sx={{ color: color, display: 'flex' }}>{React.cloneElement(icon, { sx: { fontSize: 18 }})}</Box>}
-            <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, letterSpacing: '0.5px' }}>
+        <Box display="flex" alignItems="center" gap={1.5} mb={2}>
+            {icon && (
+                <Box className="icon-box" sx={{ 
+                    color: color, 
+                    display: 'flex', 
+                    p: 1, 
+                    bgcolor: alpha(color, 0.1), 
+                    borderRadius: '12px',
+                    transition: 'all 0.3s'
+                }}>
+                    {React.cloneElement(icon, { sx: { fontSize: 22 }})}
+                </Box>
+            )}
+            <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 800, letterSpacing: '1px' }}>
                 {title.toUpperCase()}
             </Typography>
         </Box>
-        <Typography variant="h4" sx={{ fontWeight: 800, color: color, mb: 1, fontSize: '1.75rem' }}>
+        <Typography variant="h3" sx={{ fontWeight: 800, color: '#0f172a', mb: 1, fontSize: '2.25rem', letterSpacing: '-1px' }}>
             {value}
         </Typography>
         {subtitle && (
             <Box display="flex" alignItems="center" gap={0.5}>
-                {trend === 'up' && <TrendingUpIcon sx={{ color: '#10b981', fontSize: 14 }} />}
-                {trend === 'down' && <TrendingDownIcon sx={{ color: '#ef4444', fontSize: 14 }} />}
-                <Typography variant="caption" sx={{ color: '#94a3b8', fontWeight: 500 }}>
+                {trend === 'up' && <TrendingUpIcon sx={{ color: '#10b981', fontSize: 16 }} />}
+                {trend === 'down' && <TrendingDownIcon sx={{ color: '#ef4444', fontSize: 16 }} />}
+                <Typography variant="body2" sx={{ color: '#94a3b8', fontWeight: 600 }}>
                     {subtitle}
                 </Typography>
             </Box>
@@ -221,13 +236,21 @@ const Dashboard = () => {
         <Box sx={{ maxWidth: '1400px', mx: 'auto' }}>
             <Box mb={4} display="flex" justifyContent="space-between" alignItems="flex-start" flexWrap="wrap" gap={2}>
                 <Box>
-                    <Typography variant="h4" sx={{ fontWeight: 700, color: '#0f172a', letterSpacing: '-1px' }}>
-                        Tổng quan
+                    <Typography variant="h4" sx={{ 
+                        fontWeight: 900, 
+                        color: '#0f172a', 
+                        letterSpacing: '-0.04em',
+                        background: 'linear-gradient(135deg, #0f172a 0%, #334155 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        fontSize: { xs: '1.75rem', md: '2.5rem' }
+                    }}>
+                        Trung tâm điều khiển
                     </Typography>
-                    <Typography variant="body1" sx={{ color: '#64748b', mt: 0.5 }}>
+                    <Typography variant="body1" sx={{ color: '#64748b', mt: 0.5, fontWeight: 500 }}>
                         {lastUpdated
-                            ? `Cập nhật lúc ${lastUpdated.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`
-                            : 'Cập nhật hiệu suất tồn kho thời gian thực'
+                            ? `Dữ liệu được cập nhật lúc ${lastUpdated.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`
+                            : 'Theo dõi hiệu suất vận hành kho thời gian thực'
                         }
                     </Typography>
                 </Box>
@@ -248,7 +271,7 @@ const Dashboard = () => {
                         title="TỔNG SẢN PHẨM" 
                         value={stats.total_products} 
                         icon={<InventoryIcon />} 
-                        color="#0f766e"
+                        color="#2563eb"
                         subtitle="Tất cả danh mục hệ thống"
                         onClick={() => navigate('/products')}
                     />
@@ -288,10 +311,10 @@ const Dashboard = () => {
 
             <Grid container spacing={3} mb={4}>
                 <Grid size={{ xs: 12, lg: 8 }}>
-                    <Paper elevation={0} sx={{ p: 3, borderRadius: 3, height: 420, border: '1px solid #e2e8f0', bgcolor: 'white' }}>
+                    <Paper elevation={0} sx={{ p: 4, borderRadius: '24px', height: 420, border: '1px solid #e2e8f0', bgcolor: 'white', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
                         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-                            <Typography variant="h6" sx={{ fontWeight: 600, color: '#0f172a' }}>Biến động nhập/xuất (7 ngày qua)</Typography>
-                            <Chip size="small" label="Hàng ngày" sx={{ bgcolor: '#f1f5f9', color: '#475569', fontWeight: 500 }} />
+                            <Typography variant="h6" sx={{ fontWeight: 800, color: '#0f172a', letterSpacing: '-0.5px' }}>Biến động giao dịch</Typography>
+                            <Chip size="small" label="7 ngày qua" sx={{ bgcolor: '#eff6ff', color: '#2563eb', fontWeight: 700, borderRadius: '6px' }} />
                         </Box>
                         <Box sx={{ height: 320, width: '100%' }}>
                             <ResponsiveContainer width="100%" height="100%">
@@ -322,8 +345,8 @@ const Dashboard = () => {
                     </Paper>
                 </Grid>
                 <Grid size={{ xs: 12, lg: 4 }}>
-                    <Paper elevation={0} sx={{ p: 3, borderRadius: 3, height: 420, border: '1px solid #e2e8f0', bgcolor: 'white' }}>
-                        <Typography variant="h6" sx={{ fontWeight: 600, color: '#0f172a', mb: 1 }}>Cơ cấu tồn kho</Typography>
+                    <Paper elevation={0} sx={{ p: 4, borderRadius: '24px', height: 420, border: '1px solid #e2e8f0', bgcolor: 'white', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
+                        <Typography variant="h6" sx={{ fontWeight: 800, color: '#0f172a', mb: 1, letterSpacing: '-0.5px' }}>Phân bổ tồn kho</Typography>
                         <Box sx={{ height: 300, position: 'relative' }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
@@ -359,10 +382,10 @@ const Dashboard = () => {
 
             <Grid container spacing={3}>
                 <Grid size={{ xs: 12 }}>
-                    <Paper elevation={0} sx={{ p: 0, borderRadius: 3, overflow: 'hidden', border: '1px solid #e2e8f0', bgcolor: 'white' }}>
-                        <Box sx={{ px: 3, py: 2.5, borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Typography variant="h6" sx={{ fontWeight: 600, color: '#0f172a' }}>Hoạt động gần đây</Typography>
-                            <Chip label="Trực tiếp" size="small" sx={{ bgcolor: alpha('#10b981', 0.1), color: '#10b981', fontWeight: 600, border: 'none' }} />
+                    <Paper elevation={0} sx={{ p: 0, borderRadius: '24px', overflow: 'hidden', border: '1px solid #e2e8f0', bgcolor: 'white', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
+                        <Box sx={{ px: 4, py: 3, borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="h6" sx={{ fontWeight: 800, color: '#0f172a', letterSpacing: '-0.5px' }}>Lịch sử hoạt động</Typography>
+                            <Chip label="Real-time" size="small" sx={{ bgcolor: alpha('#10b981', 0.1), color: '#10b981', fontWeight: 700, borderRadius: '6px' }} />
                         </Box>
                         <List sx={{ p: 0 }}>
                             {stats.recent_transactions.length === 0 ? (

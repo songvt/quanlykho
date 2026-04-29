@@ -4,6 +4,7 @@ import {
     Chip, IconButton, Alert, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import { QRCodeSVG } from 'qrcode.react';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import PrintIcon from '@mui/icons-material/Print';
@@ -251,17 +252,17 @@ const QRGenerator = () => {
             {/* ── Page Header ── */}
             <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
                 <Box display="flex" alignItems="center" gap={1.5}>
-                    <Box sx={{ width: 44, height: 44, borderRadius: 2, background: 'linear-gradient(135deg,#0b3d2b,#1a6b4a)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Box sx={{ width: 44, height: 44, borderRadius: '12px', background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <QrCode2Icon sx={{ color: 'white', fontSize: 26 }} />
                     </Box>
                     <Box>
-                        <Typography variant="h5" fontWeight={700} sx={{ color: '#0f172a', lineHeight: 1.2 }}>Tạo Mã QR Code</Typography>
-                        <Typography variant="body2" sx={{ color: '#64748b' }}>Mỗi mã QR chứa tối đa {MAX_SERIALS_PER_QR} serial</Typography>
+                        <Typography variant="h5" sx={{ fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em' }}>Tạo Mã QR Code</Typography>
+                        <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 500 }}>Mỗi mã QR chứa tối đa {MAX_SERIALS_PER_QR} serial</Typography>
                     </Box>
                 </Box>
                 <Stack direction="row" spacing={1.5} flexWrap="wrap">
                     <Button size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={downloadTemplate}
-                        sx={{ borderColor: '#0b3d2b', color: '#0b3d2b', '&:hover': { bgcolor: '#0b3d2b', color: 'white' } }}>
+                        sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 600 }}>
                         Tải file mẫu
                     </Button>
                     {dataRows.length > 0 && (
@@ -281,7 +282,7 @@ const QRGenerator = () => {
                             </Button>
                             <Button size="small" variant="contained" startIcon={<PrintIcon />}
                                 onClick={() => handlePrint()} disabled={isExporting}
-                                sx={{ bgcolor: '#0b3d2b', '&:hover': { bgcolor: '#0a3326' } }}>
+                                sx={{ bgcolor: '#2563eb', borderRadius: '10px', '&:hover': { bgcolor: '#1d4ed8' }, textTransform: 'none', fontWeight: 600 }}>
                                 In ({totalQRCodes} QR)
                             </Button>
                         </>
@@ -314,17 +315,17 @@ const QRGenerator = () => {
                             onDrop={handleDrop}
                             onClick={() => fileInputRef.current?.click()}
                             sx={{
-                                border: `2px dashed ${isDragOver ? '#0b3d2b' : '#cbd5e1'}`,
-                                borderRadius: 2, p: 4, textAlign: 'center', cursor: 'pointer',
-                                bgcolor: isDragOver ? 'rgba(11,61,43,0.05)' : '#f8fafc',
-                                transition: 'all 0.2s',
-                                '&:hover': { borderColor: '#0b3d2b', bgcolor: 'rgba(11,61,43,0.03)' }
+                                border: `2px dashed ${isDragOver ? '#2563eb' : '#e2e8f0'}`,
+                                borderRadius: '12px', p: 4, textAlign: 'center', cursor: 'pointer',
+                                bgcolor: isDragOver ? alpha('#2563eb', 0.05) : '#f8fafc',
+                                transition: 'all 0.3s ease',
+                                '&:hover': { borderColor: '#2563eb', bgcolor: alpha('#2563eb', 0.02) }
                             }}>
-                            <UploadFileIcon sx={{ fontSize: 48, color: isDragOver ? '#0b3d2b' : '#94a3b8', mb: 1 }} />
-                            <Typography fontWeight={500} color={isDragOver ? '#0b3d2b' : '#475569'}>
+                            <UploadFileIcon sx={{ fontSize: 48, color: isDragOver ? '#2563eb' : '#94a3b8', mb: 1 }} />
+                            <Typography fontWeight={700} color={isDragOver ? '#2563eb' : '#475569'}>
                                 {isDragOver ? 'Thả file vào đây!' : 'Kéo thả file hoặc click để chọn'}
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">.xlsx, .xls</Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>Chấp nhận định dạng .xlsx, .xls</Typography>
                             <input ref={fileInputRef} type="file" hidden accept=".xlsx,.xls" onChange={handleFileChange} />
                         </Box>
                     </Paper>
@@ -358,7 +359,7 @@ const QRGenerator = () => {
                             <Grid size={{ xs: 12 }}>
                                 <Button fullWidth variant="contained" startIcon={<AddCircleOutlineIcon />}
                                     onClick={handleManualAdd}
-                                    sx={{ bgcolor: '#0b3d2b', '&:hover': { bgcolor: '#0a3326' } }}>
+                                    sx={{ bgcolor: '#2563eb', borderRadius: '10px', py: 1.2, '&:hover': { bgcolor: '#1d4ed8' }, textTransform: 'none', fontWeight: 700 }}>
                                     Thêm vào danh sách (Ctrl+Enter)
                                 </Button>
                             </Grid>
@@ -426,12 +427,12 @@ const QRGenerator = () => {
                                 sx={{ width: 140, bgcolor: 'white', '& .MuiOutlinedInput-root': { height: 36 } }} />
                             <Button variant="contained" startIcon={<PictureAsPdfIcon />}
                                 onClick={handleExportPDF} disabled={isExporting}
-                                sx={{ bgcolor: '#d97706', '&:hover': { bgcolor: '#b45309' }, fontWeight: 600, height: 36 }}>
+                                sx={{ bgcolor: '#2563eb', '&:hover': { bgcolor: '#1d4ed8' }, fontWeight: 600, height: 36 }}>
                                 {isExporting ? 'Đang xuất...' : 'Xuất PDF'}
                             </Button>
                             <Button variant="contained" startIcon={<PrintIcon />}
                                 onClick={() => handlePrint()} disabled={isExporting}
-                                sx={{ bgcolor: '#0b3d2b', '&:hover': { bgcolor: '#0a3326' }, fontWeight: 600, height: 36 }}>
+                                sx={{ bgcolor: '#2563eb', borderRadius: '10px', '&:hover': { bgcolor: '#1d4ed8' }, fontWeight: 700, height: 40, textTransform: 'none' }}>
                                 In Trực Tiếp
                             </Button>
                         </Stack>
@@ -467,7 +468,7 @@ const QRGenerator = () => {
                                                             <TableRow>
                                                                 {/* ─ Info Column ─ */}
                                                                 <TableCell sx={{ width: 260, verticalAlign: 'top', p: '0 !important', border: '1px solid #555 !important' }}>
-                                                                    <Box sx={{ borderBottom: '2px solid #1a1a1a', py: 0.8, px: 1.5, bgcolor: '#0b3d2b', color: 'white', fontWeight: 800, fontSize: '1.2rem', textAlign: 'center', letterSpacing: 1 }}>
+                                                                    <Box sx={{ borderBottom: '2px solid #1a1a1a', py: 1, px: 1.5, bgcolor: '#2563eb', color: 'white', fontWeight: 900, fontSize: '1.1rem', textAlign: 'center', letterSpacing: 1 }}>
                                                                         {group.district.toUpperCase()} – {docTitle.toUpperCase()}
                                                                     </Box>
                                                                     <Box sx={{ borderBottom: '1px solid #555', py: 0.3, px: 1.5 }}>

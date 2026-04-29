@@ -89,16 +89,29 @@ const InboundList: React.FC<InboundListProps> = ({ onEdit, onDelete, onBulkDelet
                 )}
             </Box>
 
-            <Paper elevation={0} sx={{ borderRadius: 2, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
-                <Box p={2} borderBottom="1px solid" borderColor="divider" display="flex" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap">
+            <Paper elevation={0} sx={{ 
+                borderRadius: '16px', 
+                border: '1px solid #e2e8f0', 
+                overflow: 'hidden',
+                bgcolor: 'white',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.01)'
+            }}>
+                <Box p={3} borderBottom="1px solid #f1f5f9" display="flex" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap">
                     <TextField
-                        placeholder="Tìm kiếm theo Tên SP, Serial, Quận/Huyện..." size="small"
+                        placeholder="Tìm kiếm SP, Serial, Quận/Huyện..." size="small"
                         value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setPage(0); }}
-                        sx={{ width: { xs: '100%', sm: 350 } }}
+                        sx={{ 
+                            width: { xs: '100%', sm: 350 },
+                            '& .MuiOutlinedInput-root': {
+                                bgcolor: '#f8fafc',
+                                '& fieldset': { border: 'none' },
+                                '&:hover fieldset': { border: 'none' },
+                                '&.Mui-focused fieldset': { border: '1px solid #2563eb' }
+                            }
+                        }}
                         InputProps={{
-                            startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
+                            startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: '#94a3b8' }} /></InputAdornment>,
                             endAdornment: <VoiceSearchButton onResult={setSearchTerm} />,
-                            sx: { borderRadius: 2 }
                         }}
                     />
                 </Box>
@@ -110,32 +123,39 @@ const InboundList: React.FC<InboundListProps> = ({ onEdit, onDelete, onBulkDelet
                         ) : paginatedTransactions.length > 0 ? (
                             <Stack spacing={2}>
                                 {paginatedTransactions.map((row, idx) => (
-                                    <Card key={row.id || `card-${idx}`} variant="outlined" sx={{ borderRadius: 2, borderColor: selectedIds.includes(row.id) ? 'primary.main' : 'divider', bgcolor: selectedIds.includes(row.id) ? 'primary.50' : 'white' }}>
+                                    <Card key={row.id || `card-${idx}`} elevation={0} sx={{ 
+                                        borderRadius: '12px', 
+                                        border: '1px solid #e2e8f0',
+                                        bgcolor: selectedIds.includes(row.id) ? '#eff6ff' : 'white',
+                                        transition: 'all 0.2s'
+                                    }}>
                                         <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                                             <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
                                                 <Box display="flex" alignItems="center" gap={1}>
                                                     <Checkbox size="small" sx={{ p: 0 }} checked={selectedIds.includes(row.id)} onChange={e => handleSelectOne(row.id, e.target.checked)} />
-                                                    <Typography variant="subtitle2" fontWeight="bold" color="primary">{row.product?.name || 'Unknown'}</Typography>
+                                                    <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1e293b' }}>{row.product?.name || 'Unknown'}</Typography>
                                                 </Box>
-                                                <Typography variant="body2" fontWeight="bold">SL: {row.quantity}</Typography>
+                                                <Chip label={`SL: ${row.quantity}`} size="small" sx={{ fontWeight: 700, bgcolor: '#f1f5f9' }} />
                                             </Box>
-                                            <Divider sx={{ my: 1 }} />
-                                            <Grid container spacing={1}>
+                                            <Divider sx={{ my: 1.5, borderColor: '#f1f5f9' }} />
+                                            <Grid container spacing={2}>
                                                 <Grid size={{ xs: 6 }}>
-                                                    <Typography variant="caption" color="text.secondary">Serial</Typography>
-                                                    <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>{row.serial_code || '-'}</Typography>
+                                                    <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block', mb: 0.5 }}>SERIAL</Typography>
+                                                    <Typography variant="body2" sx={{ fontWeight: 500, color: '#0f172a' }}>{row.serial_code || '-'}</Typography>
                                                 </Grid>
                                                 <Grid size={{ xs: 6 }}>
-                                                    <Typography variant="caption" color="text.secondary">Quận/Huyện</Typography>
-                                                    <Typography variant="body2">{row.district || '-'}</Typography>
+                                                    <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, display: 'block', mb: 0.5 }}>QUẬN/HUYỆN</Typography>
+                                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>{row.district || '-'}</Typography>
                                                 </Grid>
                                                 <Grid size={{ xs: 12 }}>
-                                                    <Typography variant="caption" color="text.secondary">Thời gian: {formatDate(row.date || row.inbound_date || null)}</Typography>
+                                                    <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+                                                        Ngày nhập: {formatDate(row.date || row.inbound_date || null)}
+                                                    </Typography>
                                                 </Grid>
                                             </Grid>
-                                            <Box display="flex" justifyContent="flex-end" gap={1} mt={1}>
-                                                <Button size="small" startIcon={<EditIcon />} onClick={() => onEdit(row)}>Sửa</Button>
-                                                <Button size="small" color="error" startIcon={<DeleteIcon />} onClick={() => onDelete(row)}>Xóa</Button>
+                                            <Box display="flex" justifyContent="flex-end" gap={1} mt={2}>
+                                                <IconButton size="small" onClick={() => onEdit(row)} sx={{ bgcolor: '#f8fafc' }}><EditIcon fontSize="small" color="primary" /></IconButton>
+                                                <IconButton size="small" onClick={() => onDelete(row)} sx={{ bgcolor: '#f8fafc' }}><DeleteIcon fontSize="small" color="error" /></IconButton>
                                             </Box>
                                         </CardContent>
                                     </Card>
@@ -148,9 +168,9 @@ const InboundList: React.FC<InboundListProps> = ({ onEdit, onDelete, onBulkDelet
                 ) : (
                     <TableContainer>
                         <Table sx={{ minWidth: 800 }}>
-                            <TableHead sx={{ bgcolor: 'grey.50' }}>
+                            <TableHead sx={{ bgcolor: '#f8fafc' }}>
                                 <TableRow>
-                                    <TableCell padding="checkbox" sx={{ pl: 1.5 }}>
+                                    <TableCell padding="checkbox" sx={{ pl: 3 }}>
                                         <Checkbox
                                             size="small"
                                             indeterminate={selectedIds.length > 0 && selectedIds.length < paginatedTransactions.length}
@@ -158,14 +178,14 @@ const InboundList: React.FC<InboundListProps> = ({ onEdit, onDelete, onBulkDelet
                                             onChange={e => handleSelectAll(e.target.checked)}
                                         />
                                     </TableCell>
-                                    <TableCell sx={{ fontWeight: 600 }}>Thời gian</TableCell>
-                                    <TableCell sx={{ fontWeight: 600 }}>Tên vật tư</TableCell>
-                                    <TableCell sx={{ fontWeight: 600 }}>Serial</TableCell>
-                                    <TableCell sx={{ fontWeight: 600 }}>SL</TableCell>
-                                    <TableCell sx={{ fontWeight: 600 }}>Đơn giá</TableCell>
-                                    <TableCell sx={{ fontWeight: 600 }}>Quận/Huyện</TableCell>
-                                    <TableCell sx={{ fontWeight: 600 }}>Trạng thái</TableCell>
-                                    <TableCell sx={{ fontWeight: 600, align: 'center' }}>Thao tác</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, color: '#475569', py: 2 }}>Thời gian</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, color: '#475569', py: 2 }}>Tên vật tư</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, color: '#475569', py: 2 }}>Serial</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, color: '#475569', py: 2 }}>SL</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, color: '#475569', py: 2 }}>Đơn giá</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, color: '#475569', py: 2 }}>Quận/Huyện</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, color: '#475569', py: 2 }}>Trạng thái</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: 700, color: '#475569', py: 2 }}>Thao tác</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -173,25 +193,45 @@ const InboundList: React.FC<InboundListProps> = ({ onEdit, onDelete, onBulkDelet
                                     <TableSkeleton columns={9} rows={rowsPerPage} />
                                 ) : paginatedTransactions.length > 0 ? (
                                     paginatedTransactions.map((row) => (
-                                        <TableRow key={row.id}>
-                                            <TableCell padding="checkbox" sx={{ pl: 1.5 }}>
+                                        <TableRow 
+                                            key={row.id}
+                                            sx={{ 
+                                                '&:hover': { bgcolor: '#f1f5f9' },
+                                                bgcolor: selectedIds.includes(row.id) ? '#eff6ff' : 'inherit',
+                                                transition: 'background-color 0.2s'
+                                            }}
+                                        >
+                                            <TableCell padding="checkbox" sx={{ pl: 3 }}>
                                                 <Checkbox size="small" checked={selectedIds.includes(row.id)} onChange={e => handleSelectOne(row.id, e.target.checked)} />
                                             </TableCell>
-                                            <TableCell>{formatDate(row.date || row.inbound_date || null)}</TableCell>
-                                            <TableCell sx={{ fontWeight: 500 }}>{row.product?.name}</TableCell>
-                                            <TableCell>{row.serial_code || '-'}</TableCell>
-                                            <TableCell>{row.quantity}</TableCell>
-                                            <TableCell>{Number(row.unit_price || 0).toLocaleString('vi-VN')} đ</TableCell>
+                                            <TableCell sx={{ fontSize: '0.875rem' }}>{formatDate(row.date || row.inbound_date || null)}</TableCell>
+                                            <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>{row.product?.name}</TableCell>
+                                            <TableCell sx={{ color: '#64748b', fontSize: '0.875rem' }}>{row.serial_code || '-'}</TableCell>
+                                            <TableCell sx={{ fontWeight: 700, color: '#2563eb' }}>{row.quantity}</TableCell>
+                                            <TableCell sx={{ fontWeight: 500 }}>{Number(row.unit_price || 0).toLocaleString('vi-VN')} đ</TableCell>
                                             <TableCell>{row.district || '-'}</TableCell>
-                                            <TableCell><Chip label={row.item_status || 'N/A'} size="small" variant="outlined" /></TableCell>
+                                            <TableCell>
+                                                <Chip 
+                                                    label={row.item_status || 'N/A'} 
+                                                    size="small" 
+                                                    sx={{ 
+                                                        fontWeight: 600, 
+                                                        bgcolor: row.item_status === 'Mới' ? '#ecfdf5' : '#fef2f2',
+                                                        color: row.item_status === 'Mới' ? '#10b981' : '#ef4444',
+                                                        border: 'none'
+                                                    }} 
+                                                />
+                                            </TableCell>
                                             <TableCell align="center">
-                                                <IconButton onClick={() => onEdit(row)} size="small" color="primary"><EditIcon fontSize="small" /></IconButton>
-                                                <IconButton onClick={() => onDelete(row)} size="small" color="error"><DeleteIcon fontSize="small" /></IconButton>
+                                                <Stack direction="row" spacing={1} justifyContent="center">
+                                                    <IconButton onClick={() => onEdit(row)} size="small" sx={{ bgcolor: '#f8fafc', '&:hover': { bgcolor: '#e2e8f0' } }}><EditIcon fontSize="small" color="primary" /></IconButton>
+                                                    <IconButton onClick={() => onDelete(row)} size="small" sx={{ bgcolor: '#f8fafc', '&:hover': { bgcolor: '#fee2e2' } }}><DeleteIcon fontSize="small" color="error" /></IconButton>
+                                                </Stack>
                                             </TableCell>
                                         </TableRow>
                                     ))
                                 ) : (
-                                    <TableRow><TableCell colSpan={9} align="center" sx={{ py: 3 }}>Không có dữ liệu</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={9} align="center" sx={{ py: 6 }}>Không có dữ liệu</TableCell></TableRow>
                                 )}
                             </TableBody>
                         </Table>

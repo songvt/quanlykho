@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { IconButton, Tooltip, CircularProgress, InputAdornment } from '@mui/material';
 import MicIcon from '@mui/icons-material/Mic';
 import { useNotification } from '../contexts/NotificationContext';

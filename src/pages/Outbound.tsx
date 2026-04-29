@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts } from '../store/slices/productsSlice';
 import { addOutboundTransaction, fetchTransactions } from '../store/slices/transactionsSlice';
@@ -73,6 +73,7 @@ export const Outbound = () => {
             // Thực hiện xuất kho trước
             const product = products.find(p => p.id === selectedOrder.product_id);
             const isSerialized = product?.category?.toLowerCase() === 'hàng hóa';
+            const price = product?.unit_price || 0;
             
             if (isSerialized) {
                 for (const code of scannedSerials) {
@@ -81,8 +82,13 @@ export const Outbound = () => {
                         quantity: 1,
                         serial_code: code,
                         group_name: selectedOrder.requester_group,
-                        unit_price: product?.unit_price || 0,
-                        user_id: profile?.id
+                        receiver_name: selectedOrder.requester_name || selectedOrder.requester_group,
+                        receiver_group: selectedOrder.requester_group,
+                        unit_price: price,
+                        district: 'Q12',
+                        item_status: 'Hàng mới',
+                        user_id: profile?.id,
+                        created_by: profile?.full_name || profile?.username || profile?.email || 'system'
                     })).unwrap();
                 }
             } else {
@@ -90,8 +96,13 @@ export const Outbound = () => {
                     product_id: selectedOrder.product_id,
                     quantity: selectedOrder.quantity,
                     group_name: selectedOrder.requester_group,
-                    unit_price: product?.unit_price || 0,
-                    user_id: profile?.id
+                    receiver_name: selectedOrder.requester_name || selectedOrder.requester_group,
+                    receiver_group: selectedOrder.requester_group,
+                    unit_price: price,
+                    district: 'Q12',
+                    item_status: 'Hàng mới',
+                    user_id: profile?.id,
+                    created_by: profile?.full_name || profile?.username || profile?.email || 'system'
                 })).unwrap();
             }
 
@@ -133,12 +144,24 @@ export const Outbound = () => {
         <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: 1200, mx: 'auto' }}>
             <ApprovedOrdersList orders={allApprovedOrders} products={products} onFulfill={handleOpenFulfill} />
 
-            <Box mb={3} display="flex" justifyContent="space-between" alignItems="center">
-                <Box>
-                    <Typography variant="h5" fontWeight="700" color="primary">XUẤT HÀNG HÓA KHO</Typography>
-                    <Typography variant="body2" color="text.secondary">Tạo phiếu xuất kho trực tiếp (Admin)</Typography>
-                </Box>
-                <Stack direction="row" spacing={1}>
+            <Box mb={{ xs: 3, md: 5 }} display="flex" flexDirection="column" alignItems="center">
+                <Typography variant="h4" component="h1" sx={{
+                    fontWeight: 900,
+                    fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' },
+                    textTransform: 'uppercase',
+                    background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    letterSpacing: '-0.02em',
+                    mb: 1
+                }}>
+                    XUẤT HÀNG HÓA
+                </Typography>
+                <Typography variant="body1" sx={{ color: '#64748b', textAlign: 'center', fontWeight: 500 }}>
+                    Quản lý phiếu xuất kho, cấp phát thiết bị và in ấn biên bản bàn giao
+                </Typography>
+            </Box>
+                <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="center" spacing={2} mb={4}>
                     <Button
                         variant="contained" color="secondary" startIcon={<PrintIcon />}
                         disabled={selectedPrintIds.length === 0}
@@ -147,7 +170,7 @@ export const Outbound = () => {
                             setResolvedDelivererName(profile?.full_name || 'Admin');
                         }}
                     >
-                        In Biên Bản
+                        In Biên Bản ({selectedPrintIds.length})
                     </Button>
                     <Button variant="contained" component="label" startIcon={<UploadFileIcon />} size="small">
                         Nhập Excel
@@ -156,8 +179,7 @@ export const Outbound = () => {
                         }} />
                     </Button>
                 </Stack>
-            </Box>
-
+            
             <OutboundForm />
 
             <OutboundList 
@@ -213,7 +235,7 @@ export const Outbound = () => {
                         date={new Date().toISOString()}
                         receiverName={(() => {
                             const first = transactions.find(t => selectedPrintIds.includes(t.id));
-                            return first?.group_name || first?.receiver_group || 'N/A';
+                            return first?.receiver_name || first?.full_name || first?.group_name || first?.receiver_group || (first as any)?.receiver || 'Khách hàng';
                         })()}
                         reportNumber={1}
                     />

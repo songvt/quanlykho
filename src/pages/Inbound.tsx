@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts } from '../store/slices/productsSlice';
 import { fetchInventory } from '../store/slices/inventorySlice';
@@ -94,18 +94,20 @@ export const Inbound = () => {
     return (
         <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: '100%', mx: 'auto', width: '100%', overflowX: 'hidden' }}>
             <Box mb={{ xs: 3, md: 5 }} display="flex" flexDirection="column" alignItems="center">
-                <Typography variant="h4" component="h1" fontWeight="900" gutterBottom sx={{
+                <Typography variant="h4" component="h1" sx={{
+                    fontWeight: 900,
                     fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' },
                     textTransform: 'uppercase',
-                    background: 'linear-gradient(45deg, #0288d1 30%, #26c6da 90%)',
+                    background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
-                    letterSpacing: '1px'
+                    letterSpacing: '-0.02em',
+                    mb: 1
                 }}>
                     NHẬP HÀNG HÓA
                 </Typography>
-                <Typography variant="subtitle1" color="text.secondary" sx={{ textAlign: 'center' }}>
-                    Tạo phiếu nhập kho và cập nhật số lượng tồn
+                <Typography variant="body1" sx={{ color: '#64748b', textAlign: 'center', fontWeight: 500 }}>
+                    Quản lý phiếu nhập kho và cập nhật số lượng tồn kho thời gian thực
                 </Typography>
             </Box>
 

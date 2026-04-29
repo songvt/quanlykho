@@ -6,7 +6,7 @@ import {
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState, AppDispatch } from '../../store';
-import { addOutboundTransaction, fetchTransactionsForce } from '../../store/slices/transactionsSlice';
+import { addOutboundTransaction, fetchTransactionsForce, importOutboundTransactions } from '../../store/slices/transactionsSlice';
 import { selectProductStock, selectDetailedStock } from '../../store/slices/inventorySlice';
 import { useNotification } from '../../contexts/NotificationContext';
 import { parseSerialInput, filterNewSerials } from '../../utils/serialParser';
@@ -134,19 +134,31 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
             const productName = product?.name || selectedProduct;
 
             if (isSerialized) {
-                for (const code of serialList) {
-                    const res = await dispatch(addOutboundTransaction({
-                        product_id: selectedProduct, quantity: 1, serial_code: code,
-                        group_name: receiver, unit_price: price, district, item_status: itemStatus,
-                        user_id: profile?.id,
-                        created_by: profile?.full_name || profile?.username || profile?.email || 'system'
-                    })).unwrap();
-                    newTransactions.push({ ...res, product_name: productName });
-                }
+                const txPayloads = serialList.map(code => ({
+                    product_id: selectedProduct, 
+                    quantity: 1, 
+                    serial_code: code,
+                    group_name: receiver,
+                    receiver_name: receiver,
+                    receiver_group: receiver,
+                    unit_price: price, 
+                    district, 
+                    item_status: itemStatus,
+                    user_id: profile?.id,
+                    created_by: profile?.full_name || profile?.username || profile?.email || 'system'
+                }));
+                
+                // Sử dụng bulk thunk để tối ưu hiệu suất
+                const res = await dispatch(importOutboundTransactions(txPayloads)).unwrap();
+                const items = Array.isArray(res) ? res : [res];
+                items.forEach(item => newTransactions.push({ ...item, product_name: productName }));
             } else {
                 const res = await dispatch(addOutboundTransaction({
                     product_id: selectedProduct, quantity: totalQuantity,
-                    group_name: receiver, unit_price: price, district, item_status: itemStatus,
+                    group_name: receiver, 
+                    receiver_name: receiver,
+                    receiver_group: receiver,
+                    unit_price: price, district, item_status: itemStatus,
                     user_id: profile?.id,
                     created_by: profile?.full_name || profile?.username || profile?.email || 'system'
                 })).unwrap();

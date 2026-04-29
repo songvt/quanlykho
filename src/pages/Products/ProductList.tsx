@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -12,6 +12,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
+import SearchIcon from '@mui/icons-material/Search';
 import { fetchProducts, addNewProduct, updateProduct, deleteProduct, deleteProducts, importProducts } from '../../store/slices/productsSlice';
 import { fetchInventory, selectStockMap } from '../../store/slices/inventorySlice';
 import { fetchTransactions } from '../../store/slices/transactionsSlice';
@@ -212,18 +213,21 @@ const ProductList = () => {
         <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: '100%', mx: 'auto' }}>
             <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} mb={{ xs: 2, sm: 4 }} spacing={2}>
                 <Box>
-                    <Typography variant="h4" fontWeight="900" sx={{
+                    <Typography variant="h4" sx={{
+                        fontWeight: 900,
                         fontSize: { xs: '1.5rem', sm: '2.125rem' },
                         textTransform: 'uppercase',
-                        background: 'linear-gradient(45deg, #1e4b9b 30%, #0f2b5b 90%)',
+                        background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
-                        letterSpacing: '0.5px',
-                        textShadow: '0 2px 10px rgba(15, 43, 91, 0.2)'
+                        letterSpacing: '-0.02em',
+                        mb: 0.5
                     }}>
                         DANH SÁCH HÀNG HÓA
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' }, mt: 0.5 }}>Quản lý danh sách sản phẩm và tồn kho</Typography>
+                    <Typography variant="body1" sx={{ color: '#64748b', fontWeight: 500 }}>
+                        Quản lý danh mục sản phẩm và theo dõi tồn kho trực tuyến
+                    </Typography>
                 </Box>
                 <Stack direction="row" spacing={1} width={{ xs: '100%', sm: 'auto' }} flexWrap="wrap" useFlexGap sx={{ gap: 1 }}>
                     {canManage && (
@@ -343,20 +347,37 @@ const ProductList = () => {
                 </Alert>
             )}
 
-            <Paper sx={{ mb: 2, p: 1.5, borderRadius: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
+            <Paper elevation={0} sx={{ 
+                mb: 3, 
+                p: 2, 
+                borderRadius: '16px', 
+                display: 'flex', 
+                gap: 2, 
+                alignItems: 'center',
+                border: '1px solid #e2e8f0',
+                bgcolor: 'white'
+            }}>
                 <TextField
-                    sx={{ flexGrow: 1, '& .MuiOutlinedInput-root': { backgroundColor: '#f8fafc', '& fieldset': { borderColor: '#e2e8f0' }, '&:hover fieldset': { borderColor: '#cbd5e1' } } }}
-                    placeholder="Tìm kiếm sản phẩm..."
+                    sx={{ 
+                        flexGrow: 1, 
+                        '& .MuiOutlinedInput-root': { 
+                            backgroundColor: '#f8fafc', 
+                            '& fieldset': { border: 'none' }, 
+                            '&:hover fieldset': { border: 'none' },
+                            '&.Mui-focused fieldset': { border: '1px solid #2563eb' }
+                        } 
+                    }}
+                    placeholder="Tìm kiếm sản phẩm theo mã SKU, tên..."
                     variant="outlined"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     size="small"
                     InputProps={{
-                        startAdornment: <Box component="span" sx={{ color: 'text.secondary', mr: 1, display: 'flex' }}><svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg></Box>,
+                        startAdornment: <SearchIcon sx={{ color: '#94a3b8', mr: 1, fontSize: 20 }} />,
                         endAdornment: <VoiceSearchButton onResult={setSearchTerm} />
                     }}
                 />
-                <FormControl size="small" sx={{ minWidth: 200, bgcolor: '#f8fafc' }}>
+                <FormControl size="small" sx={{ minWidth: 200 }}>
                     <Select
                         value={filterParam || 'all'}
                         onChange={(e) => {
@@ -368,7 +389,12 @@ const ProductList = () => {
                             setSearchParams(searchParams);
                         }}
                         displayEmpty
-                        sx={{ '& fieldset': { borderColor: '#e2e8f0' } }}
+                        sx={{ 
+                            borderRadius: '10px',
+                            bgcolor: '#f8fafc',
+                            '& fieldset': { border: 'none' },
+                            '&.Mui-focused fieldset': { border: '1px solid #2563eb' }
+                        }}
                     >
                         <MenuItem value="all">Tất cả sản phẩm</MenuItem>
                         <MenuItem value="low_stock">Sắp hết hàng</MenuItem>
@@ -490,7 +516,7 @@ const ProductList = () => {
                         <TableHead sx={{ bgcolor: '#f8fafc' }}>
                             <TableRow>
                                 {canManage && (
-                                    <TableCell padding="checkbox">
+                                    <TableCell padding="checkbox" sx={{ pl: 3 }}>
                                         <Checkbox
                                             checked={filteredProducts.length > 0 && selectedIds.length === filteredProducts.length}
                                             indeterminate={selectedIds.length > 0 && selectedIds.length < filteredProducts.length}
@@ -499,14 +525,14 @@ const ProductList = () => {
                                         />
                                     </TableCell>
                                 )}
-                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 700, color: '#475569', py: 2 }}>Mã SKU</TableCell>
-                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 700, color: '#475569', py: 2 }}>Tên Sản Phẩm</TableCell>
-                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 700, color: '#475569', py: 2 }}>Danh Mục</TableCell>
-                                <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 700, color: '#475569', py: 2 }}>Đơn Giá</TableCell>
-                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 700, color: '#475569', py: 2 }}>ĐVT</TableCell>
-                                <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 700, color: '#475569', py: 2 }}>Tồn Kho</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 800, color: '#475569', py: 2.5 }}>MÃ SKU</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 800, color: '#475569', py: 2.5 }}>TÊN SẢN PHẨM</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 800, color: '#475569', py: 2.5 }}>DANH MỤC</TableCell>
+                                <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 800, color: '#475569', py: 2.5 }}>ĐƠN GIÁ</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 800, color: '#475569', py: 2.5 }}>ĐVT</TableCell>
+                                <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 800, color: '#475569', py: 2.5 }}>TỒN KHO</TableCell>
                                 {canManage && (
-                                    <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 700, color: '#475569', py: 2 }}>Hành Động</TableCell>
+                                    <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 800, color: '#475569', py: 2.5 }}>THAO TÁC</TableCell>
                                 )}
                             </TableRow>
                         </TableHead>
@@ -514,9 +540,16 @@ const ProductList = () => {
                             {filteredProducts.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((product) => {
                                 const isSelected = selectedIds.includes(product.id);
                                 return (
-                                    <TableRow key={product.id} hover sx={{ transition: 'all 0.2s', bgcolor: isSelected ? 'action.selected' : 'inherit' }}>
+                                    <TableRow 
+                                        key={product.id} 
+                                        sx={{ 
+                                            transition: 'all 0.2s', 
+                                            bgcolor: isSelected ? '#eff6ff' : 'inherit',
+                                            '&:hover': { bgcolor: '#f1f5f9' }
+                                        }}
+                                    >
                                         {canManage && (
-                                            <TableCell padding="checkbox">
+                                            <TableCell padding="checkbox" sx={{ pl: 3 }}>
                                                 <Checkbox
                                                     checked={isSelected}
                                                     onChange={(e) => handleSelectOne(product.id, e.target.checked)}
@@ -524,30 +557,35 @@ const ProductList = () => {
                                                 />
                                             </TableCell>
                                         )}
-                                        <TableCell sx={{ py: 1.5 }}>
-                                            <Typography variant="body2" fontWeight="600" color="primary.main" sx={{ fontSize: '14px' }}>{product.item_code}</Typography>
+                                        <TableCell sx={{ py: 2 }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 700, color: '#2563eb', fontSize: '0.875rem' }}>{product.item_code}</Typography>
                                         </TableCell>
-                                        <TableCell sx={{ py: 1.5 }}>
-                                            <Typography variant="body2" fontWeight="500" sx={{ fontSize: '14px' }}>{product.name}</Typography>
+                                        <TableCell sx={{ py: 2 }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b', fontSize: '0.875rem' }}>{product.name}</Typography>
                                         </TableCell>
-                                        <TableCell sx={{ py: 1.5 }}>
-                                            <Box sx={{
-                                                bgcolor: 'primary.50', color: 'primary.700',
-                                                py: 0.25, px: 1, borderRadius: 1.5, display: 'inline-block',
-                                                fontSize: '11px', fontWeight: 700, textTransform: 'uppercase'
-                                            }}>
-                                                {product.category}
-                                            </Box>
+                                        <TableCell sx={{ py: 2 }}>
+                                            <Chip 
+                                                label={product.category} 
+                                                size="small"
+                                                sx={{ 
+                                                    fontWeight: 700, 
+                                                    fontSize: '10px', 
+                                                    bgcolor: product.category === 'Hàng hóa' ? '#f0f9ff' : '#f5f3ff',
+                                                    color: product.category === 'Hàng hóa' ? '#0369a1' : '#6d28d9',
+                                                    border: 'none',
+                                                    borderRadius: '6px'
+                                                }}
+                                            />
                                         </TableCell>
-                                        <TableCell align="right" sx={{ py: 1.5 }}>
-                                            <Typography variant="body2" fontWeight="600" sx={{ fontSize: '14px' }}>
+                                        <TableCell align="right" sx={{ py: 2 }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.875rem', color: '#0f172a' }}>
                                                 {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.unit_price)}
                                             </Typography>
                                         </TableCell>
-                                        <TableCell sx={{ py: 1.5, fontSize: '14px', color: '#64748b' }}>{product.unit}</TableCell>
+                                        <TableCell sx={{ py: 2, fontSize: '0.875rem', color: '#64748b', fontWeight: 500 }}>{product.unit}</TableCell>
                                         <TableCell
                                             align="right"
-                                            sx={{ py: 1.5 }}
+                                            sx={{ py: 2 }}
                                         >
                                             {(() => {
                                                 const qty = stockMap[product.id] || 0;
@@ -557,12 +595,11 @@ const ProductList = () => {
                                                             <Box display="inline-flex" alignItems="center" gap={0.5}
                                                                 sx={{
                                                                     bgcolor: '#fef2f2', color: '#dc2626',
-                                                                    px: 1, py: 0.25, borderRadius: 1,
-                                                                    border: '1px solid #fecaca',
-                                                                    fontWeight: 700, fontSize: '14px', cursor: 'help'
+                                                                    px: 1.25, py: 0.5, borderRadius: '6px',
+                                                                    fontWeight: 800, fontSize: '0.875rem', cursor: 'help'
                                                                 }}
                                                             >
-                                                                <WarningAmberRoundedIcon sx={{ fontSize: 14 }} />
+                                                                <WarningAmberRoundedIcon sx={{ fontSize: 16 }} />
                                                                 {qty}
                                                             </Box>
                                                         </Tooltip>
@@ -571,9 +608,11 @@ const ProductList = () => {
                                                 return (
                                                     <Typography
                                                         variant="body2"
-                                                        fontWeight={700}
-                                                        fontSize="14px"
-                                                        color={qty === 0 ? 'error.main' : qty < 10 ? 'warning.main' : 'success.main'}
+                                                        sx={{ 
+                                                            fontWeight: 800, 
+                                                            fontSize: '0.875rem',
+                                                            color: qty === 0 ? '#ef4444' : qty < 10 ? '#f59e0b' : '#10b981'
+                                                        }}
                                                     >
                                                         {qty}
                                                     </Typography>
@@ -581,26 +620,22 @@ const ProductList = () => {
                                             })()}
                                         </TableCell>
                                         {canManage && (
-                                            <TableCell align="center" sx={{ py: 1.5 }}>
+                                            <TableCell align="center" sx={{ py: 2 }}>
                                                 <Stack direction="row" spacing={1} justifyContent="center">
-                                                    <Tooltip title="Chỉnh sửa">
-                                                        <IconButton
-                                                            size="small"
-                                                            onClick={() => handleOpenEdit(product)}
-                                                            sx={{ color: 'primary.main', bgcolor: '#eff6ff', '&:hover': { bgcolor: '#dbeafe' }, width: 32, height: 32 }}
-                                                        >
-                                                            <EditIcon sx={{ fontSize: '1.2rem' }} />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                    <Tooltip title="Xóa">
-                                                        <IconButton
-                                                            size="small"
-                                                            onClick={() => handleDelete(product.id, product.name)}
-                                                            sx={{ color: 'error.main', bgcolor: '#fef2f2', '&:hover': { bgcolor: '#fee2e2' }, width: 32, height: 32 }}
-                                                        >
-                                                            <DeleteIcon sx={{ fontSize: '1.2rem' }} />
-                                                        </IconButton>
-                                                    </Tooltip>
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => handleOpenEdit(product)}
+                                                        sx={{ color: '#2563eb', bgcolor: '#f8fafc', '&:hover': { bgcolor: '#eff6ff' } }}
+                                                    >
+                                                        <EditIcon fontSize="small" />
+                                                    </IconButton>
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => handleDelete(product.id, product.name)}
+                                                        sx={{ color: '#ef4444', bgcolor: '#f8fafc', '&:hover': { bgcolor: '#fef2f2' } }}
+                                                    >
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
                                                 </Stack>
                                             </TableCell>
                                         )}

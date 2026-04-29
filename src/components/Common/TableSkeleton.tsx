@@ -1,3 +1,4 @@
+import React from 'react';
 import { TableRow, TableCell, Skeleton } from '@mui/material';
 
 interface TableSkeletonProps {

@@ -1,3 +1,4 @@
+import React from 'react';
 import { Chip } from '@mui/material';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../store';
