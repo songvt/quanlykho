@@ -33,6 +33,11 @@ export interface Product {
     unit_price: number; // DON_GIA
     unit: string;      // DON_VI
     type?: string;     // LOAI_HANG
+    description?: string;
+    brand?: string;
+    specifications?: string;
+    image_url?: string;
+    min_stock?: number;
 }
 
 export interface Order {
@@ -65,6 +70,12 @@ export interface Transaction {
     unit_price: number;
     total_price: number;
     date: string; // DATE or DATETIME from SQL
+    // New fields for schema alignment
+    sap_id?: string;
+    tc_id?: string;
+    item_type?: string;
+    warehouse_type?: string;
+    full_name?: string;
     // Join fields
     product?: Product;
     product_name?: string; // Tên sản phẩm (đã join)
@@ -73,6 +84,7 @@ export interface Transaction {
     receiver_name?: string; // Tên người nhận (đã join)
     outbound_date?: string; // Ngày xuất kho
     inbound_date?: string; // Ngày nhập kho
+    created_by?: string;   // Người thực hiện (email hoặc tên)
 }
 
 export interface DashboardStats {

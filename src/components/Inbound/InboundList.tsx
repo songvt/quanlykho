@@ -130,7 +130,7 @@ const InboundList: React.FC<InboundListProps> = ({ onEdit, onDelete, onBulkDelet
                                                     <Typography variant="body2">{row.district || '-'}</Typography>
                                                 </Grid>
                                                 <Grid size={{ xs: 12 }}>
-                                                    <Typography variant="caption" color="text.secondary">Thời gian: {formatDate(row.date || row.inbound_date)}</Typography>
+                                                    <Typography variant="caption" color="text.secondary">Thời gian: {formatDate(row.date || row.inbound_date || null)}</Typography>
                                                 </Grid>
                                             </Grid>
                                             <Box display="flex" justifyContent="flex-end" gap={1} mt={1}>
@@ -177,7 +177,7 @@ const InboundList: React.FC<InboundListProps> = ({ onEdit, onDelete, onBulkDelet
                                             <TableCell padding="checkbox" sx={{ pl: 1.5 }}>
                                                 <Checkbox size="small" checked={selectedIds.includes(row.id)} onChange={e => handleSelectOne(row.id, e.target.checked)} />
                                             </TableCell>
-                                            <TableCell>{formatDate(row.date || row.inbound_date)}</TableCell>
+                                            <TableCell>{formatDate(row.date || row.inbound_date || null)}</TableCell>
                                             <TableCell sx={{ fontWeight: 500 }}>{row.product?.name}</TableCell>
                                             <TableCell>{row.serial_code || '-'}</TableCell>
                                             <TableCell>{row.quantity}</TableCell>

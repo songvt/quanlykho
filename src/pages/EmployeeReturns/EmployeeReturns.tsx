@@ -31,7 +31,7 @@ import { useScanDetection } from '../../hooks/useScanDetection';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { usePermission } from '../../hooks/usePermission';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { GoogleSheetService } from '../../services/GoogleSheetService';
 

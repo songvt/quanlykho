@@ -165,9 +165,14 @@ const Dashboard = () => {
         const catMap: Record<string, number> = {};
         products.forEach(p => {
             const cat = normalizeCategory(p.category || 'Khác');
-            catMap[cat] = (catMap[cat] || 0) + 1;
+            const qty = stockMap[p.id] || 0;
+            catMap[cat] = (catMap[cat] || 0) + Math.max(0, qty);
         });
-        const category_stats = Object.entries(catMap).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 5);
+        const category_stats = Object.entries(catMap)
+            .map(([name, value]) => ({ name, value }))
+            .filter(c => c.value > 0)
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 5);
 
         const employeeMap: Record<string, string> = {};
         employees.forEach(e => {
@@ -318,7 +323,7 @@ const Dashboard = () => {
                 </Grid>
                 <Grid size={{ xs: 12, lg: 4 }}>
                     <Paper elevation={0} sx={{ p: 3, borderRadius: 3, height: 420, border: '1px solid #e2e8f0', bgcolor: 'white' }}>
-                        <Typography variant="h6" sx={{ fontWeight: 600, color: '#0f172a', mb: 1 }}>Cơ cấu danh mục</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 600, color: '#0f172a', mb: 1 }}>Cơ cấu tồn kho</Typography>
                         <Box sx={{ height: 300, position: 'relative' }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
@@ -344,8 +349,8 @@ const Dashboard = () => {
                                 position: 'absolute', top: '45%', left: '50%', transform: 'translate(-50%, -50%)',
                                 textAlign: 'center'
                             }}>
-                                <Typography variant="h3" sx={{ fontWeight: 700, color: '#0f172a' }}>{stats.total_products}</Typography>
-                                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>Sản phẩm</Typography>
+                                <Typography variant="h3" sx={{ fontWeight: 700, color: '#0f172a' }}>{stats.total_inventory.toLocaleString('vi-VN')}</Typography>
+                                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>Tồn kho</Typography>
                             </Box>
                         </Box>
                     </Paper>

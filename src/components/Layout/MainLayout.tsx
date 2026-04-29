@@ -82,11 +82,11 @@ const MainLayout: React.FC = () => {
         setNotificationAnchorEl(null);
     };
 
-    // Auto refresh data every 30s to simulate realtime
+    // Auto refresh data every 5m to reduce Google Sheets API load
     React.useEffect(() => {
         const interval = setInterval(() => {
             dispatch(fetchTransactionsForce());
-        }, 30000);
+        }, 300000); // 5 minutes
         return () => clearInterval(interval);
     }, [dispatch]);
 
@@ -158,39 +158,51 @@ const MainLayout: React.FC = () => {
     const currentMenuItem = menuItems.find(item => item.path === location.pathname);
 
     const drawer = (
-        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: '#0b3d2b', borderRight: 'none' }}>
+        <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            height: '100%', 
+            bgcolor: 'white', 
+            borderRight: '1px solid #e2e8f0',
+            boxShadow: '4px 0 24px rgba(0,0,0,0.02)'
+        }}>
             {/* Standard SaaS Logo Area */}
             <Box sx={{ 
-                p: 2.5, 
+                p: 3, 
                 display: 'flex', 
                 alignItems: 'center', 
-                gap: 1.5,
-                mb: 2,
-                borderBottom: '1px solid rgba(255,255,255,0.1)'
+                gap: 2,
+                mb: 1,
             }}>
                 <Box sx={{ 
-                    width: 32, 
-                    height: 32, 
-                    borderRadius: 2, 
-                    bgcolor: 'transparent',
-                    border: '1px solid rgba(255,255,255,0.3)',
+                    width: 40, 
+                    height: 40, 
+                    borderRadius: 2.5, 
+                    background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
                 }}>
-                    <DashboardIcon sx={{ color: 'white', fontSize: 20 }} />
+                    <DashboardIcon sx={{ color: 'white', fontSize: 24 }} />
                 </Box>
-                <Typography
-                    variant="h6"
-                    sx={{
-                        fontWeight: 700,
-                        color: 'white',
-                        letterSpacing: '-0.5px',
-                        fontSize: '1.0rem'
-                    }}
-                >
-                    Inventory Management System
-                </Typography>
+                <Box>
+                    <Typography
+                        variant="h6"
+                        sx={{
+                            fontWeight: 800,
+                            color: '#0f172a',
+                            letterSpacing: '-0.5px',
+                            fontSize: '1.1rem',
+                            lineHeight: 1.2
+                        }}
+                    >
+                        QUẢN LÝ KHO
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', fontSize: '0.65rem' }}>
+                        Hệ thống quản lý
+                    </Typography>
+                </Box>
             </Box>
 
             <List sx={{ px: 2, flexGrow: 1 }}>
@@ -205,44 +217,53 @@ const MainLayout: React.FC = () => {
                                 }}
                                 selected={isActive}
                                 sx={{
-                                    height: 48,
-                                    borderRadius: '8px',
-                                    color: 'white',
-                                    transition: 'all 0.2s',
+                                    height: 44,
+                                    borderRadius: '10px',
+                                    color: '#64748b',
+                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    px: 2,
                                     '&.Mui-selected': {
-                                        backgroundColor: 'rgba(255,255,255,0.1)',
-                                        color: 'white',
-                                        boxShadow: 'none',
-                                        border: '1px solid rgba(255,255,255,0.15)',
+                                        backgroundColor: '#eff6ff',
+                                        color: '#2563eb',
                                         '&:hover': {
-                                            backgroundColor: 'rgba(255,255,255,0.15)',
+                                            backgroundColor: '#dbeafe',
                                         },
                                         '& .MuiListItemIcon-root': {
-                                            color: 'white',
+                                            color: '#2563eb',
                                         },
+                                        '&::after': {
+                                            content: '""',
+                                            position: 'absolute',
+                                            right: 8,
+                                            width: 4,
+                                            height: 16,
+                                            borderRadius: 2,
+                                            backgroundColor: '#2563eb'
+                                        }
                                     },
                                     '&:hover': {
-                                        backgroundColor: 'rgba(255,255,255,0.05)',
-                                        color: 'white',
+                                        backgroundColor: '#f1f5f9',
+                                        color: '#0f172a',
                                         '& .MuiListItemIcon-root': {
-                                            color: 'white',
+                                            color: '#0f172a',
                                         },
                                     }
                                 }}
                             >
                                 <ListItemIcon sx={{
-                                    minWidth: 36,
-                                    color: 'white',
+                                    minWidth: 32,
+                                    color: isActive ? '#2563eb' : '#94a3b8',
                                     transition: 'color 0.2s'
                                 }}>
-                                    {React.cloneElement(item.icon as React.ReactElement<any>, { fontSize: 'small' })}
+                                    {React.cloneElement(item.icon as React.ReactElement<any>, { 
+                                        sx: { fontSize: 20 } 
+                                    })}
                                 </ListItemIcon>
                                 <ListItemText
                                     primary={item.text}
                                     primaryTypographyProps={{
-                                        fontWeight: isActive ? 600 : 400,
-                                        fontSize: '0.9rem',
-                                        color: 'white'
+                                        fontWeight: isActive ? 700 : 500,
+                                        fontSize: '0.875rem',
                                     }}
                                 />
                             </ListItemButton>
@@ -252,27 +273,37 @@ const MainLayout: React.FC = () => {
             </List>
 
             {/* User Profile at Bottom (Sidebar style) */}
-            <Box sx={{ p: 2, borderTop: '1px solid rgba(255,255,255,0.1)', bgcolor: 'transparent' }}>
+            <Box sx={{ p: 2, borderTop: '1px solid #f1f5f9', bgcolor: '#f8fafc' }}>
                 <ListItemButton
                     onClick={handleMenuOpen}
                     sx={{
-                        borderRadius: '8px',
-                        py: 1,
-                        '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' }
+                        borderRadius: '12px',
+                        py: 1.5,
+                        px: 1.5,
+                        '&:hover': { bgcolor: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }
                     }}
                 >
-                    <Avatar sx={{ width: 32, height: 32, bgcolor: 'rgba(255,255,255,0.2)', color: 'white', fontSize: '0.875rem', fontWeight: 600, mr: 1.5 }}>
+                    <Avatar sx={{ 
+                        width: 36, 
+                        height: 36, 
+                        bgcolor: '#2563eb', 
+                        color: 'white', 
+                        fontSize: '0.875rem', 
+                        fontWeight: 700, 
+                        mr: 1.5,
+                        boxShadow: '0 2px 8px rgba(37, 99, 235, 0.2)'
+                    }}>
                         {profile?.full_name?.charAt(0) || 'A'}
                     </Avatar>
                     <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
-                         <Typography variant="body2" sx={{ fontWeight: 600, color: 'white', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                         <Typography variant="body2" sx={{ fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
                               {profile?.full_name || 'Administrator'}
                          </Typography>
-                         <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', display: 'block' }}>
-                             {profile?.role === 'admin' || profile?.role === 'manager' ? 'Admin' : 'Staff'}
+                         <Typography variant="caption" sx={{ color: '#64748b', display: 'block', fontWeight: 600 }}>
+                             {profile?.role === 'admin' || profile?.role === 'manager' ? 'Administrator' : 'Warehouse Staff'}
                          </Typography>
                     </Box>
-                    <ExpandMoreIcon sx={{ color: 'rgba(255,255,255,0.7)', fontSize: 18 }} />
+                    <ExpandMoreIcon sx={{ color: '#94a3b8', fontSize: 18 }} />
                 </ListItemButton>
             </Box>
         </Box>

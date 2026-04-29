@@ -8,6 +8,7 @@ import {
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
+import VoiceSearchButton from './VoiceSearchButton';
 import type { Product } from '../types';
 
 interface ProductSearchDialogProps {
@@ -54,6 +55,7 @@ const ProductSearchDialog: React.FC<ProductSearchDialogProps> = ({ open, onClose
                                 <SearchIcon />
                             </InputAdornment>
                         ),
+                        endAdornment: <VoiceSearchButton onResult={setSearchTerm} />
                     }}
                     sx={{ mb: 2 }}
                 />

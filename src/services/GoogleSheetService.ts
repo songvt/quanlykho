@@ -1,7 +1,7 @@
 import type { Product, Transaction, DashboardStats, FifoAgingItem, EmployeeReturn } from '../types';
 
 const API_BASE = '/api';
-const REQUEST_TIMEOUT_MS = 15000; // 15 giây timeout
+const REQUEST_TIMEOUT_MS = 60000; // 60 giây timeout (cho dữ liệu lớn)
 const MAX_RETRIES = 2;            // Retry tối đa 2 lần nếu lỗi mạng
 
 /** Delay helper */
@@ -230,8 +230,11 @@ export const GoogleSheetService = {
 
     // --- Authentication & Employees ---
     async login(email: string, password: string) {
-        const query = new URLSearchParams({ email, password }).toString();
-        const user = await apiRequest(`employees?${query}`);
+        const user = await apiRequest('employees', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'login', email, password })
+        });
 
         const session = {
             user: { id: user.id || user.auth_user_id, email: user.email, role: 'authenticated' },

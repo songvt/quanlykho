@@ -1,9 +1,8 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets.js';
+import { supabase } from './utils/supabase.js';
 import { randomUUID } from 'crypto';
 
-
-// --- Helper to format date as dd/mm/yyyy for storage ---
 const formatLocalDate = (date: Date | string) => {
     const d = new Date(date);
     const day = String(d.getDate()).padStart(2, '0');
@@ -15,7 +14,6 @@ const formatLocalDate = (date: Date | string) => {
 const parseLocalDate = (dateStr: any) => {
     if (!dateStr) return new Date(0);
     if (dateStr instanceof Date) return isNaN(dateStr.getTime()) ? new Date(0) : dateStr;
-    
     const s = String(dateStr).trim();
     const parts = s.split('/');
     if (parts.length === 3) {
@@ -28,135 +26,131 @@ const parseLocalDate = (dateStr: any) => {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const allowedMethods = ['GET', 'POST', 'PUT', 'DELETE'];
-    if (!allowedMethods.includes(req.method || '')) {
-        return res.status(405).json({ error: 'Method Not Allowed' });
-    }
+    if (!allowedMethods.includes(req.method || '')) return res.status(405).json({ error: 'Method Not Allowed' });
 
     try {
         const doc = await getGoogleSheet();
         const sheet = await getSheetByTitle(doc, 'orders');
 
-        if (sheet.rowCount === 0) {
-            await sheet.setHeaderRow([
-                'id', 'requester_group', 'product_id', 'quantity', 'status', 'order_date', 'created_by',
-                'project_name', 'reason', 'requester_phone', 'created_at', 'updated_at', 'approved_by', 'approved_at'
-            ]);
-        }
-
         switch (req.method) {
             case 'GET': {
+                // 1. Try Supabase
+                const { data, error } = await supabase.from('orders').select('*, product:products(*)').order('order_date', { ascending: false });
+                if (!error && data) return res.status(200).json(data);
+
+                // 2. Fallback to Sheets
                 const rows = await sheet.getRows();
-                const orders = rows.map(row => {
-                    const obj = row.toObject();
-                    if (obj.quantity !== undefined) obj.quantity = Number(obj.quantity);
-                    return obj;
-                }).sort((a, b) => parseLocalDate(b.order_date).getTime() - parseLocalDate(a.order_date).getTime());
-                return res.status(200).json(orders);
+                return res.status(200).json(rows.map(r => r.toObject()).sort((a, b) => parseLocalDate(b.order_date).getTime() - parseLocalDate(a.order_date).getTime()));
             }
 
             case 'POST': {
                 const { action, payload } = req.body;
+                const items = action === 'bulk_insert' ? payload : [payload];
+                const now = new Date().toISOString();
+                const processed = items.map((p: any) => ({
+                    ...p,
+                    id: p.id || randomUUID(),
+                    created_at: p.created_at || now,
+                    updated_at: now
+                }));
 
-                if (action === 'bulk_insert') {
-                    if (!Array.isArray(payload)) {
-                        return res.status(400).json({ error: 'Payload must be an array for bulk_insert' });
-                    }
-                    const toInsert = payload.map(p => ({
+                let successCount = 0;
+                // 1. Supabase
+                const { data: sbData, error: sbError } = await supabase.from('orders').insert(processed).select();
+                if (!sbError) successCount++;
+
+                // 2. Sheets
+                try {
+                    const nowLocal = formatLocalDate(new Date());
+                    await sheet.addRows(processed.map((p: any) => ({
                         ...p,
-                        id: p.id || randomUUID(),
-                        order_date: formatLocalDate(p.order_date || new Date()),
-                        created_at: formatLocalDate(p.created_at || new Date()),
-                        updated_at: formatLocalDate(new Date())
-                    }));
-                    const rowsAdded = await sheet.addRows(toInsert);
-                    return res.status(201).json(rowsAdded.map(r => r.toObject()));
-                } else {
-                    const toInsert = {
-                        ...payload,
-                        id: payload.id || randomUUID(),
-                        order_date: formatLocalDate(payload.order_date || new Date()),
-                        created_at: formatLocalDate(payload.created_at || new Date()),
-                        updated_at: formatLocalDate(new Date())
-                    };
-                    const newRow = await sheet.addRow(toInsert);
-                    return res.status(201).json(newRow.toObject());
-                }
+                        order_date: p.order_date ? formatLocalDate(p.order_date) : nowLocal,
+                        created_at: nowLocal,
+                        updated_at: nowLocal
+                    })));
+                    successCount++;
+                } catch (e) { console.error('GS Mirror Error:', e); }
+
+                if (successCount === 0) return res.status(500).json({ error: 'Create failed on both databases' });
+                return res.status(201).json(action === 'bulk_insert' ? (sbData || processed) : (sbData ? sbData[0] : processed[0]));
             }
 
             case 'PUT': {
-                const { id, status, approved_by } = req.body;
-                if (!id) {
-                    return res.status(400).json({ error: 'Order ID is required for update' });
-                }
+                const { id, status, approved_by, ...rest } = req.body;
+                if (!id) return res.status(400).json({ error: 'ID required' });
 
-                const rows = await sheet.getRows();
-                const rowToUpdate = rows.find(row => row.get('id') === id);
-
-                if (!rowToUpdate) {
-                    return res.status(404).json({ error: 'Order not found' });
-                }
-
-                if (status) {
-                    rowToUpdate.set('status', status);
-                    if (status === 'approved' || status === 'rejected') {
-                        if (approved_by) rowToUpdate.set('approved_by', approved_by);
-                        rowToUpdate.set('approved_at', formatLocalDate(new Date()));
-                    }
-
-                    // Block completion of expired approved orders
-                    if (status === 'completed') {
-                        const currentStatus = rowToUpdate.get('status');
-                        const approvedAt = rowToUpdate.get('approved_at');
-                        if (currentStatus === 'approved' && approvedAt) {
-                            const approvedTime = parseLocalDate(approvedAt).getTime();
-                            const elapsed = Date.now() - approvedTime;
-                            if (elapsed > 24 * 60 * 60 * 1000) {
-                                return res.status(403).json({
-                                    error: 'ORDER_EXPIRED',
-                                    message: '\u0110\u01a1n h\u00e0ng \u0111\u00e3 qu\u00e1 h\u1ea1n 24 gi\u1edd k\u1ec3 t\u1eeb khi duy\u1ec7t, kh\u00f4ng th\u1ec3 xu\u1ea5t kho!'
-                                });
-                            }
+                // Check expiration
+                if (status === 'completed') {
+                    const { data: currentOrder } = await supabase.from('orders').select('*').eq('id', id).single();
+                    if (currentOrder && currentOrder.status === 'approved' && currentOrder.approved_at) {
+                        const approvedTime = new Date(currentOrder.approved_at).getTime();
+                        if (Date.now() - approvedTime > 24 * 60 * 60 * 1000) {
+                            return res.status(403).json({
+                                error: 'ORDER_EXPIRED',
+                                message: 'Đơn hàng đã quá hạn 24 giờ kể từ khi duyệt, không thể xuất kho!'
+                            });
                         }
                     }
                 }
-                rowToUpdate.set('updated_at', formatLocalDate(new Date()));
 
-                await rowToUpdate.save();
-                return res.status(200).json(rowToUpdate.toObject());
+                const updates: any = { ...rest, updated_at: new Date().toISOString() };
+                if (status) {
+                    updates.status = status;
+                    if (status === 'approved' || status === 'rejected') {
+                        if (approved_by) updates.approved_by = approved_by;
+                        updates.approved_at = new Date().toISOString();
+                    }
+                }
+
+                let successCount = 0;
+                // 1. Supabase
+                const { data: sbData, error: sbError } = await supabase.from('orders').update(updates).eq('id', id).select();
+                if (!sbError) successCount++;
+
+                // 2. Sheets
+                try {
+                    const rows = await sheet.getRows();
+                    const row = rows.find(r => r.get('id') === id);
+                    if (row) {
+                        const gsUpdates = { ...updates };
+                        if (gsUpdates.approved_at) gsUpdates.approved_at = formatLocalDate(gsUpdates.approved_at);
+                        gsUpdates.updated_at = formatLocalDate(new Date());
+                        row.assign(gsUpdates);
+                        await row.save();
+                        successCount++;
+                    }
+                } catch (e) { console.error('GS Mirror Error:', e); }
+
+                if (successCount === 0) return res.status(500).json({ error: 'Update failed on both databases' });
+                return res.status(200).json(sbData ? sbData[0] : updates);
             }
 
             case 'DELETE': {
                 const { id, ids } = req.body;
-                const rows = await sheet.getRows();
-                const deletedIds: string[] = [];
+                const targetIds = Array.isArray(ids) ? ids : [id];
+                let successCount = 0;
 
-                if (ids && Array.isArray(ids)) {
+                // 1. Supabase
+                const { error: sbError } = await supabase.from('orders').delete().in('id', targetIds);
+                if (!sbError) successCount++;
+
+                // 2. Sheets
+                try {
+                    const rows = await sheet.getRows();
                     for (let i = rows.length - 1; i >= 0; i--) {
-                        if (ids.includes(rows[i].get('id'))) {
-                            await rows[i].delete();
-                            deletedIds.push(rows[i].get('id'));
-                        }
+                        if (targetIds.includes(rows[i].get('id'))) await rows[i].delete();
                     }
-                } else if (id) {
-                    const rowToDelete = rows.find(row => row.get('id') === id);
-                    if (rowToDelete) {
-                        await rowToDelete.delete();
-                        deletedIds.push(id);
-                    } else {
-                        return res.status(404).json({ error: 'Order not found' });
-                    }
-                } else {
-                    return res.status(400).json({ error: 'Provide "id" or "ids" array to delete' });
-                }
+                    successCount++;
+                } catch (e) { console.error('GS Mirror Error:', e); }
 
-                return res.status(200).json({ message: 'Deleted successfully', ids: deletedIds });
+                if (successCount === 0) return res.status(500).json({ error: 'Delete failed on both databases' });
+                return res.status(200).json({ message: 'Deleted', ids: targetIds });
             }
 
-            default:
-                return res.status(405).json({ error: 'Method Not Allowed' });
+            default: return res.status(405).json({ error: 'Method Not Allowed' });
         }
     } catch (error: any) {
         console.error('API Error (Orders):', error);
-        return res.status(500).json({ error: 'Internal Server Error', details: error.message });
+        return res.status(500).json({ error: error.message });
     }
 }

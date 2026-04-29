@@ -47,7 +47,7 @@ export const fetchTransactionsForce = createAsyncThunk(
 
 export const addInboundTransaction = createAsyncThunk(
     'transactions/addInbound',
-    async (transaction: Omit<Transaction, 'id' | 'type' | 'group_name' | 'total_price' | 'date' | 'product'>) => {
+    async (transaction: Omit<Transaction, 'id' | 'type' | 'group_name' | 'total_price' | 'date' | 'product'> & { group_name?: string, user_id?: string, created_by?: string }) => {
         const data = await SupabaseService.createInboundTransaction(transaction);
         return data;
     }
@@ -55,7 +55,7 @@ export const addInboundTransaction = createAsyncThunk(
 
 export const addOutboundTransaction = createAsyncThunk(
     'transactions/addOutbound',
-    async (transaction: Omit<Transaction, 'id' | 'type' | 'total_price' | 'date' | 'product'> & { group_name: string, user_id?: string }) => {
+    async (transaction: Omit<Transaction, 'id' | 'type' | 'total_price' | 'date' | 'product'> & { group_name: string, user_id?: string, created_by?: string }) => {
         const data = await SupabaseService.createOutboundTransaction(transaction);
         return data;
     }

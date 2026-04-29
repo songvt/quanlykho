@@ -1,5 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets.js';
+import { supabase } from './utils/supabase.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const allowedMethods = ['GET', 'POST', 'PUT', 'DELETE'];
@@ -11,62 +12,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const doc = await getGoogleSheet();
         const sheet = await getSheetByTitle(doc, 'employees');
 
-
         switch (req.method) {
             case 'GET': {
-                const { email, password } = req.query;
-
-                const rows = await sheet.getRows();
-
-
-                // Login scenario
-                if (email && password) {
-                    const userRow = rows.find(r =>
-                        r.get('email') === email && r.get('password') === password
-                    );
-
-                    if (!userRow) {
-                        return res.status(401).json({ error: 'Email hoặc mật khẩu không chính xác.' });
-                    }
-
-                    const user = userRow.toObject();
-                    // Normalize 'Check' column casing from Google Sheets
-                    if (user.Check !== undefined) {
-                        user.check = user.Check;
-                        delete user.Check;
-                    }
-                    // Parse permissions back to array if stored as string
-                    if (user.permissions && typeof user.permissions === 'string') {
-                        try {
-                            user.permissions = JSON.parse(user.permissions);
-                        } catch (e) {
-                            user.permissions = user.permissions.split(',').map((p: string) => p.trim()).filter(Boolean);
-                        }
-                    } else if (!Array.isArray(user.permissions)) {
-                        user.permissions = [];
-                    }
-
-                    return res.status(200).json(user);
+                // 1. Try Supabase
+                const { data, error } = await supabase.from('employees').select('*');
+                if (!error && data) {
+                    return res.status(200).json(data.map(u => {
+                        const { password, ...rest } = u;
+                        return { ...rest, permissions: typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions };
+                    }));
                 }
 
-                // Fetch all scenario
+                // 2. Fallback to Sheets
+                const rows = await sheet.getRows();
                 const employees = rows.map(row => {
                     const obj = row.toObject();
-                    // Don't send passwords back to the client unnecessarily
                     delete obj.password;
-                    // Normalize 'Check' column (Google Sheets preserves casing) to lowercase 'check'
-                    if (obj.Check !== undefined) {
-                        obj.check = obj.Check;
-                        delete obj.Check;
-                    }
                     if (obj.permissions && typeof obj.permissions === 'string') {
-                        try {
-                            obj.permissions = JSON.parse(obj.permissions);
-                        } catch (e) {
-                            obj.permissions = obj.permissions.split(',').map((p: string) => p.trim()).filter(Boolean);
-                        }
-                    } else if (!Array.isArray(obj.permissions)) {
-                        obj.permissions = [];
+                        try { obj.permissions = JSON.parse(obj.permissions); } catch (e) { obj.permissions = []; }
                     }
                     return obj;
                 });
@@ -74,111 +37,77 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
 
             case 'POST': {
-                const { action, payload } = req.body;
+                const { action, payload, email, password } = req.body;
 
-                if (action === 'bulk_insert') {
-                    if (!Array.isArray(payload)) return res.status(400).json({ error: 'Payload must be an array' });
-
-                    const toInsert = payload.map(p => ({
-                        ...p,
-                        permissions: p.permissions ? JSON.stringify(p.permissions) : '[]'
-                    }));
-
-                    const rowsAdded = await sheet.addRows(toInsert);
-                    const result = rowsAdded.map(r => {
-                        const obj = r.toObject();
-                        if (obj.permissions && typeof obj.permissions === 'string') {
-                            try { obj.permissions = JSON.parse(obj.permissions); }
-                            catch (e) { obj.permissions = obj.permissions.split(',').map((p: string) => p.trim()).filter(Boolean); }
-                        } else if (!Array.isArray(obj.permissions)) {
-                            obj.permissions = [];
-                        }
-                        return obj;
-                    });
-                    return res.status(201).json(result);
-                } else {
-                    const toInsert = {
-                        ...payload,
-                        permissions: payload.permissions ? JSON.stringify(payload.permissions) : '[]'
-                    };
-                    const newRow = await sheet.addRow(toInsert);
-
-                    const result = newRow.toObject();
-                    if (result.permissions && typeof result.permissions === 'string') {
-                        try { result.permissions = JSON.parse(result.permissions); }
-                        catch (e) { result.permissions = result.permissions.split(',').map((p: string) => p.trim()).filter(Boolean); }
-                    } else if (!Array.isArray(result.permissions)) {
-                        result.permissions = [];
+                if (action === 'login') {
+                    const { data, error } = await supabase.from('employees').select('*').eq('email', email).eq('password', password).single();
+                    if (!error && data) {
+                        const { password: _, ...user } = data;
+                        return res.status(200).json({ ...user, permissions: typeof data.permissions === 'string' ? JSON.parse(data.permissions) : data.permissions });
                     }
-
-                    return res.status(201).json(result);
+                    const rows = await sheet.getRows();
+                    const userRow = rows.find(r => r.get('email') === email && r.get('password') === password);
+                    if (!userRow) return res.status(401).json({ error: 'Email hoặc mật khẩu không chính xác.' });
+                    const user = userRow.toObject();
+                    delete user.password;
+                    return res.status(200).json(user);
                 }
+
+                const items = action === 'bulk_insert' ? payload : [payload];
+                const formatted = items.map((p: any) => ({ ...p, permissions: p.permissions ? JSON.stringify(p.permissions) : '[]' }));
+                let successCount = 0;
+
+                const { data: sbData, error: sbError } = await supabase.from('employees').insert(formatted).select();
+                if (!sbError) successCount++;
+
+                try { await sheet.addRows(formatted); successCount++; } catch (e) { console.error('GS Mirror Error:', e); }
+
+                if (successCount === 0) return res.status(500).json({ error: 'Create failed on both databases' });
+                return res.status(201).json(action === 'bulk_insert' ? (sbData || items) : (sbData ? sbData[0] : items[0]));
             }
 
             case 'PUT': {
-                // Update employee or change password
-                const updatedEmployee = req.body;
-                if (!updatedEmployee.id) {
-                    return res.status(400).json({ error: 'Employee ID is required' });
-                }
+                const updates = req.body;
+                if (!updates.id) return res.status(400).json({ error: 'ID required' });
+                let successCount = 0;
+                
+                const dbUpdates = { ...updates };
+                if (dbUpdates.permissions) dbUpdates.permissions = JSON.stringify(dbUpdates.permissions);
 
-                const rows = await sheet.getRows();
-                const rowToUpdate = rows.find(row => row.get('id') === updatedEmployee.id);
+                const { data: sbData, error: sbError } = await supabase.from('employees').update(dbUpdates).eq('id', updates.id).select();
+                if (!sbError) successCount++;
 
-                if (!rowToUpdate) {
-                    return res.status(404).json({ error: 'Employee not found' });
-                }
+                try {
+                    const rows = await sheet.getRows();
+                    const row = rows.find(r => r.get('id') === updates.id);
+                    if (row) { row.assign(dbUpdates); await row.save(); successCount++; }
+                } catch (e) { console.error('GS Mirror Error:', e); }
 
-                const dataToSave = { ...updatedEmployee };
-                if (dataToSave.permissions && Array.isArray(dataToSave.permissions)) {
-                    dataToSave.permissions = JSON.stringify(dataToSave.permissions);
-                }
-
-                rowToUpdate.assign(dataToSave);
-                await rowToUpdate.save();
-
-                const result = rowToUpdate.toObject();
-                delete result.password; // Omit password in response
-
-                if (result.permissions && typeof result.permissions === 'string') {
-                    try {
-                        result.permissions = JSON.parse(result.permissions);
-                    } catch (e) {
-                        result.permissions = result.permissions.split(',').map((p: string) => p.trim()).filter(Boolean);
-                    }
-                } else if (!Array.isArray(result.permissions)) {
-                    result.permissions = [];
-                }
-
-                return res.status(200).json(result);
+                if (successCount === 0) return res.status(500).json({ error: 'Update failed on both databases' });
+                return res.status(200).json(sbData ? sbData[0] : updates);
             }
 
             case 'DELETE': {
                 const { id, ids } = req.body;
-                const rows = await sheet.getRows();
-                const deletedIds: string[] = [];
+                const targetIds = Array.isArray(ids) ? ids : [id];
+                let successCount = 0;
 
-                if (ids && Array.isArray(ids)) {
+                const { error: sbError } = await supabase.from('employees').delete().in('id', targetIds);
+                if (!sbError) successCount++;
+
+                try {
+                    const rows = await sheet.getRows();
                     for (let i = rows.length - 1; i >= 0; i--) {
-                        if (ids.includes(rows[i].get('id'))) {
-                            await rows[i].delete();
-                            deletedIds.push(rows[i].get('id'));
-                        }
+                        if (targetIds.includes(rows[i].get('id'))) await rows[i].delete();
                     }
-                } else if (id) {
-                    const rowToDelete = rows.find(row => row.get('id') === id);
-                    if (rowToDelete) {
-                        await rowToDelete.delete();
-                        deletedIds.push(id);
-                    } else {
-                        return res.status(404).json({ error: 'Employee not found' });
-                    }
-                }
-                return res.status(200).json({ message: 'Deleted successfully', ids: deletedIds });
+                    successCount++;
+                } catch (e) { console.error('GS Mirror Error:', e); }
+
+                if (successCount === 0) return res.status(500).json({ error: 'Delete failed on both databases' });
+                return res.status(200).json({ message: 'Deleted', ids: targetIds });
             }
 
-            default:
-                return res.status(405).json({ error: 'Method Not Allowed' });
+            default: return res.status(405).json({ error: 'Method Not Allowed' });
         }
     } catch (error: any) {
         console.error('API Error (Employees):', error);
