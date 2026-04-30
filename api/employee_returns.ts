@@ -63,6 +63,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         switch (req.method) {
             case 'GET': {
+                try {
+                    const { fetchAll } = await import('./utils/supabase.js');
+                    const data = await fetchAll('employee_returns', '*, product:products(*), employee:employees(*)');
+                    if (data && data.length > 0) {
+                        return res.status(200).json(data);
+                    }
+                } catch (e) {
+                    console.error('Supabase fetch failed, falling back to Google Sheets:', e);
+                }
+
                 const rows = await returnsSheet.getRows();
                 const productsMap = await getProductsMap();
                 const employeesMap = await getEmployeesMap();
