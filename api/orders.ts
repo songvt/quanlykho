@@ -34,13 +34,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         switch (req.method) {
             case 'GET': {
+                const daysParam = parseInt(req.query.days as string, 10) || 60; // Mặc định 60 ngày
+                const limitDate = new Date();
+                limitDate.setDate(limitDate.getDate() - daysParam);
+                const limitDateIso = limitDate.toISOString();
+
                 // 1. Try Supabase
-                const { data, error } = await supabase.from('orders').select('*, product:products(*)').order('order_date', { ascending: false });
+                const { data, error } = await supabase.from('orders')
+                    .select('*, product:products(*)')
+                    .gte('order_date', limitDateIso)
+                    .order('order_date', { ascending: false });
                 if (!error && data) return res.status(200).json(data);
 
                 // 2. Fallback to Sheets
                 const rows = await sheet.getRows();
-                return res.status(200).json(rows.map(r => r.toObject()).sort((a, b) => parseLocalDate(b.order_date).getTime() - parseLocalDate(a.order_date).getTime()));
+                return res.status(200).json(
+                    rows.map(r => r.toObject())
+                        .filter(r => parseLocalDate(r.order_date).getTime() >= limitDate.getTime())
+                        .sort((a, b) => parseLocalDate(b.order_date).getTime() - parseLocalDate(a.order_date).getTime())
+                );
             }
 
             case 'POST': {
@@ -54,24 +66,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     updated_at: now
                 }));
 
-                let successCount = 0;
                 // 1. Supabase
                 const { data: sbData, error: sbError } = await supabase.from('orders').insert(processed).select();
-                if (!sbError) successCount++;
+                const sbSuccess = !sbError;
+                if (sbError) console.error('SB Write Error (Fallback to GS):', sbError);
 
                 // 2. Sheets
                 try {
                     const nowLocal = formatLocalDate(new Date());
-                    await sheet.addRows(processed.map((p: any) => ({
-                        ...p,
-                        order_date: p.order_date ? formatLocalDate(p.order_date) : nowLocal,
-                        created_at: nowLocal,
-                        updated_at: nowLocal
-                    })));
-                    successCount++;
-                } catch (e) { console.error('GS Mirror Error:', e); }
+                    const gsWritePromise = async () => {
+                        await sheet.addRows(processed.map((p: any) => ({
+                            ...p,
+                            order_date: p.order_date ? formatLocalDate(p.order_date) : nowLocal,
+                            created_at: nowLocal,
+                            updated_at: nowLocal
+                        })));
+                    };
+                    if (sbSuccess) {
+                        await Promise.race([
+                            gsWritePromise(),
+                            new Promise((_, reject) => setTimeout(() => reject(new Error('GS Sync Timeout')), 4500))
+                        ]);
+                    } else {
+                        await gsWritePromise();
+                    }
+                } catch (e: any) { 
+                    console.error('GS Mirror Error:', e); 
+                    if (!sbSuccess) {
+                        return res.status(500).json({ error: 'Tạo đơn thất bại trên cả 2 hệ thống' });
+                    } else {
+                        await supabase.from('gs_sync_queue').insert({
+                            table_name: 'orders',
+                            action: 'insert',
+                            payload: processed,
+                            error_message: e.message
+                        });
+                    }
+                }
 
-                if (successCount === 0) return res.status(500).json({ error: 'Create failed on both databases' });
                 return res.status(201).json(action === 'bulk_insert' ? (sbData || processed) : (sbData ? sbData[0] : processed[0]));
             }
 
@@ -102,48 +134,87 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     }
                 }
 
-                let successCount = 0;
                 // 1. Supabase
                 const { data: sbData, error: sbError } = await supabase.from('orders').update(updates).eq('id', id).select();
-                if (!sbError) successCount++;
+                const sbSuccess = !sbError;
+                if (sbError) console.error('SB Update Error (Fallback to GS):', sbError);
 
                 // 2. Sheets
                 try {
-                    const rows = await sheet.getRows();
-                    const row = rows.find(r => r.get('id') === id);
-                    if (row) {
-                        const gsUpdates = { ...updates };
-                        if (gsUpdates.approved_at) gsUpdates.approved_at = formatLocalDate(gsUpdates.approved_at);
-                        gsUpdates.updated_at = formatLocalDate(new Date());
-                        row.assign(gsUpdates);
-                        await row.save();
-                        successCount++;
+                    const updatePromise = async () => {
+                        const rows = await sheet.getRows();
+                        const row = rows.find(r => r.get('id') === id);
+                        if (row) {
+                            const gsUpdates = { ...updates };
+                            if (gsUpdates.approved_at) gsUpdates.approved_at = formatLocalDate(gsUpdates.approved_at);
+                            gsUpdates.updated_at = formatLocalDate(new Date());
+                            row.assign(gsUpdates);
+                            await row.save();
+                        }
+                    };
+                    if (sbSuccess) {
+                        await Promise.race([
+                            updatePromise(),
+                            new Promise((_, reject) => setTimeout(() => reject(new Error('GS Sync Timeout')), 3000))
+                        ]);
+                    } else {
+                        await updatePromise();
                     }
-                } catch (e) { console.error('GS Mirror Error:', e); }
+                } catch (e: any) { 
+                    console.error('GS Mirror Error:', e); 
+                    if (!sbSuccess) {
+                        return res.status(500).json({ error: 'Cập nhật thất bại trên cả 2 hệ thống' });
+                    } else {
+                        await supabase.from('gs_sync_queue').insert({
+                            table_name: 'orders',
+                            action: 'update',
+                            payload: { id, updates },
+                            error_message: e.message
+                        });
+                    }
+                }
 
-                if (successCount === 0) return res.status(500).json({ error: 'Update failed on both databases' });
                 return res.status(200).json(sbData ? sbData[0] : updates);
             }
 
             case 'DELETE': {
                 const { id, ids } = req.body;
                 const targetIds = Array.isArray(ids) ? ids : [id];
-                let successCount = 0;
-
                 // 1. Supabase
                 const { error: sbError } = await supabase.from('orders').delete().in('id', targetIds);
-                if (!sbError) successCount++;
+                const sbSuccess = !sbError;
+                if (sbError) console.error('SB Delete Error (Fallback to GS):', sbError);
 
                 // 2. Sheets
                 try {
-                    const rows = await sheet.getRows();
-                    for (let i = rows.length - 1; i >= 0; i--) {
-                        if (targetIds.includes(rows[i].get('id'))) await rows[i].delete();
+                    const deletePromise = async () => {
+                        const rows = await sheet.getRows();
+                        for (let i = rows.length - 1; i >= 0; i--) {
+                            if (targetIds.includes(rows[i].get('id'))) await rows[i].delete();
+                        }
+                    };
+                    if (sbSuccess) {
+                        await Promise.race([
+                            deletePromise(),
+                            new Promise((_, reject) => setTimeout(() => reject(new Error('GS Sync Timeout')), 3000))
+                        ]);
+                    } else {
+                        await deletePromise();
                     }
-                    successCount++;
-                } catch (e) { console.error('GS Mirror Error:', e); }
+                } catch (e: any) { 
+                    console.error('GS Mirror Error:', e); 
+                    if (!sbSuccess) {
+                        return res.status(500).json({ error: 'Xóa thất bại trên cả 2 hệ thống' });
+                    } else {
+                        await supabase.from('gs_sync_queue').insert({
+                            table_name: 'orders',
+                            action: 'delete',
+                            payload: { ids: targetIds },
+                            error_message: e.message
+                        });
+                    }
+                }
 
-                if (successCount === 0) return res.status(500).json({ error: 'Delete failed on both databases' });
                 return res.status(200).json({ message: 'Deleted', ids: targetIds });
             }
 

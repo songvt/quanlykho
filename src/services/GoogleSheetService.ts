@@ -1,7 +1,7 @@
 import type { Product, Transaction, DashboardStats, FifoAgingItem, EmployeeReturn } from '../types';
 
 const API_BASE = '/api';
-const REQUEST_TIMEOUT_MS = 60000; // 60 giây timeout (cho dữ liệu lớn)
+const REQUEST_TIMEOUT_MS = 12000; // Giảm xuống 12 giây để tránh UI bị treo (Vercel max 10s-15s)
 const MAX_RETRIES = 2;            // Retry tối đa 2 lần nếu lỗi mạng
 
 /** Delay helper */

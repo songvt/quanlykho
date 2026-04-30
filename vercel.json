@@ -1,4 +1,10 @@
 {
+    "crons": [
+        {
+            "path": "/api/cron-sync",
+            "schedule": "*/5 * * * *"
+        }
+    ],
     "headers": [
         {
             "source": "/(.*).html",

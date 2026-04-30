@@ -1,5 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets.js';
+import { supabase } from './utils/supabase.js';
 import { randomUUID } from 'crypto';
 
 
@@ -112,8 +113,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         updated_at: formatLocalDate(new Date())
                     }));
 
-                    await returnsSheet.addRows(toInsertReturns);
-                    await inboundSheet.addRows(toInsertInbound);
+                    const { error: sbReturnError } = await supabase.from('employee_returns').insert(toInsertReturns);
+                    const { error: sbInboundError } = await supabase.from('inbound_transactions').insert(toInsertInbound);
+                    
+                    if (sbReturnError || sbInboundError) {
+                        console.error('Supabase Write Error:', sbReturnError || sbInboundError);
+                        return res.status(500).json({ error: 'Supabase Write Failed', details: sbReturnError || sbInboundError });
+                    }
+
+                    try {
+                        const gsWritePromise = async () => {
+                            await returnsSheet.addRows(toInsertReturns);
+                            await inboundSheet.addRows(toInsertInbound);
+                        };
+                        await Promise.race([
+                            gsWritePromise(),
+                            new Promise((_, reject) => setTimeout(() => reject(new Error('GS Sync Timeout')), 4500))
+                        ]);
+                    } catch (e: any) { 
+                        console.error('GS Mirror Error:', e); 
+                        await supabase.from('gs_sync_queue').insert([
+                            { table_name: 'employee_returns', action: 'insert', payload: toInsertReturns, error_message: e.message },
+                            { table_name: 'inbound_transactions', action: 'insert', payload: toInsertInbound, error_message: e.message }
+                        ]);
+                    }
 
                     return res.status(201).json(toInsertReturns);
                 } else {
@@ -141,8 +164,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         updated_at: formatLocalDate(new Date())
                     };
 
-                    await returnsSheet.addRow(toInsertReturn);
-                    await inboundSheet.addRow(toInsertInbound);
+                    const { error: sbReturnError } = await supabase.from('employee_returns').insert([toInsertReturn]);
+                    const { error: sbInboundError } = await supabase.from('inbound_transactions').insert([toInsertInbound]);
+                    
+                    if (sbReturnError || sbInboundError) {
+                        console.error('Supabase Write Error:', sbReturnError || sbInboundError);
+                        return res.status(500).json({ error: 'Supabase Write Failed', details: sbReturnError || sbInboundError });
+                    }
+
+                    try {
+                        const gsWritePromise = async () => {
+                            await returnsSheet.addRow(toInsertReturn);
+                            await inboundSheet.addRow(toInsertInbound);
+                        };
+                        await Promise.race([
+                            gsWritePromise(),
+                            new Promise((_, reject) => setTimeout(() => reject(new Error('GS Sync Timeout')), 4500))
+                        ]);
+                    } catch (e: any) { 
+                        console.error('GS Mirror Error:', e); 
+                        await supabase.from('gs_sync_queue').insert([
+                            { table_name: 'employee_returns', action: 'insert', payload: toInsertReturn, error_message: e.message },
+                            { table_name: 'inbound_transactions', action: 'insert', payload: toInsertInbound, error_message: e.message }
+                        ]);
+                    }
 
                     return res.status(201).json(toInsertReturn);
                 }
@@ -154,17 +199,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     return res.status(400).json({ error: 'Invalid array of IDs' });
                 }
 
-                const rows = await returnsSheet.getRows();
-                const deletedIds: string[] = [];
-
-                for (let i = rows.length - 1; i >= 0; i--) {
-                    if (ids.includes(rows[i].get('id'))) {
-                        await rows[i].delete();
-                        deletedIds.push(rows[i].get('id'));
-                    }
+                const { error: sbError } = await supabase.from('employee_returns').delete().in('id', ids);
+                if (sbError) {
+                    console.error('SB Delete Error:', sbError);
+                    return res.status(500).json({ error: 'Supabase Delete Failed', details: sbError });
                 }
 
-                return res.status(200).json({ message: 'Deleted successfully', ids: deletedIds });
+                try {
+                    const deletePromise = async () => {
+                        const rows = await returnsSheet.getRows();
+                        for (let i = rows.length - 1; i >= 0; i--) {
+                            if (ids.includes(rows[i].get('id'))) {
+                                await rows[i].delete();
+                            }
+                        }
+                    };
+                    await Promise.race([
+                        deletePromise(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('GS Sync Timeout')), 3000))
+                    ]);
+                } catch (e: any) { 
+                    console.error('GS Mirror Error:', e); 
+                    await supabase.from('gs_sync_queue').insert({
+                        table_name: 'employee_returns',
+                        action: 'delete',
+                        payload: { ids },
+                        error_message: e.message
+                    });
+                }
+
+                return res.status(200).json({ message: 'Deleted successfully', ids: ids });
             }
 
             default:

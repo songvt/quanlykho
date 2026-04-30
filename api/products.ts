@@ -37,42 +37,67 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     id: item.id || item.item_code
                 }));
 
-                let successCount = 0;
-
                 // 1. Supabase
                 const { data: sbData, error: sbError } = await supabase.from('products').insert(itemsToInsert).select();
-                if (!sbError) successCount++;
-                else console.error('SB Write Error:', sbError);
+                if (sbError) {
+                    console.error('SB Write Error:', sbError);
+                    return res.status(500).json({ error: 'Supabase Write Failed' });
+                }
 
                 // 2. Google Sheets
                 try {
-                    if (action === 'bulk_insert') await sheet.addRows(itemsToInsert);
-                    else await sheet.addRow(itemsToInsert[0]);
-                    successCount++;
-                } catch (e) { console.error('GS Write Error:', e); }
+                    const gsWritePromise = async () => {
+                        if (action === 'bulk_insert') await sheet.addRows(itemsToInsert);
+                        else await sheet.addRow(itemsToInsert[0]);
+                    };
+                    await Promise.race([
+                        gsWritePromise(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('GS Sync Timeout')), 4500))
+                    ]);
+                } catch (e: any) { 
+                    console.error('GS Write Error:', e); 
+                    await supabase.from('gs_sync_queue').insert({
+                        table_name: 'products',
+                        action: 'insert',
+                        payload: itemsToInsert,
+                        error_message: e.message
+                    });
+                }
 
-                if (successCount === 0) return res.status(500).json({ error: 'All database writes failed' });
                 return res.status(201).json(action === 'bulk_insert' ? (sbData || itemsToInsert) : (sbData ? sbData[0] : itemsToInsert[0]));
             }
 
             case 'PUT': {
                 const updatedProduct = req.body;
                 if (!updatedProduct.id) return res.status(400).json({ error: 'Product ID required' });
-                let successCount = 0;
-
                 // 1. Supabase
                 const { data: sbData, error: sbError } = await supabase.from('products').update(updatedProduct).eq('id', updatedProduct.id).select();
-                if (!sbError) successCount++;
-                else console.error('SB Update Error:', sbError);
+                if (sbError) {
+                    console.error('SB Update Error:', sbError);
+                    return res.status(500).json({ error: 'Supabase Update Failed' });
+                }
 
                 // 2. Google Sheets
                 try {
-                    const rows = await sheet.getRows();
-                    const row = rows.find(r => r.get('id') === updatedProduct.id);
-                    if (row) { row.assign(updatedProduct); await row.save(); successCount++; }
-                } catch (e) { console.error('GS Update Error:', e); }
+                    const updatePromise = async () => {
+                        const rows = await sheet.getRows();
+                        const row = rows.find(r => r.get('id') === updatedProduct.id);
+                        if (row) { row.assign(updatedProduct); await row.save(); }
+                    };
+                    await Promise.race([
+                        updatePromise(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('GS Sync Timeout')), 3000))
+                    ]);
+                } catch (e: any) { 
+                    console.error('GS Update Error:', e); 
+                    await supabase.from('gs_sync_queue').insert({
+                        table_name: 'products',
+                        action: 'update',
+                        payload: { id: updatedProduct.id, updates: updatedProduct },
+                        error_message: e.message
+                    });
+                }
 
-                if (successCount === 0) return res.status(500).json({ error: 'All database updates failed' });
                 return res.status(200).json(sbData ? sbData[0] : updatedProduct);
             }
 
@@ -80,23 +105,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const { id, ids } = req.body;
                 const targetIds = ids && Array.isArray(ids) ? ids : [id];
                 if (targetIds.length === 0) return res.status(400).json({ error: 'ID required' });
-                let successCount = 0;
-
                 // 1. Supabase
                 const { error: sbError } = await supabase.from('products').delete().in('id', targetIds);
-                if (!sbError) successCount++;
-                else console.error('SB Delete Error:', sbError);
+                if (sbError) {
+                    console.error('SB Delete Error:', sbError);
+                    return res.status(500).json({ error: 'Supabase Delete Failed' });
+                }
 
                 // 2. Google Sheets
                 try {
-                    const rows = await sheet.getRows();
-                    for (let i = rows.length - 1; i >= 0; i--) {
-                        if (targetIds.includes(rows[i].get('id'))) await rows[i].delete();
-                    }
-                    successCount++;
-                } catch (e) { console.error('GS Delete Error:', e); }
+                    const deletePromise = async () => {
+                        const rows = await sheet.getRows();
+                        for (let i = rows.length - 1; i >= 0; i--) {
+                            if (targetIds.includes(rows[i].get('id'))) await rows[i].delete();
+                        }
+                    };
+                    await Promise.race([
+                        deletePromise(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('GS Sync Timeout')), 3000))
+                    ]);
+                } catch (e: any) { 
+                    console.error('GS Delete Error:', e); 
+                    await supabase.from('gs_sync_queue').insert({
+                        table_name: 'products',
+                        action: 'delete',
+                        payload: { ids: targetIds },
+                        error_message: e.message
+                    });
+                }
 
-                if (successCount === 0) return res.status(500).json({ error: 'All database deletes failed' });
                 return res.status(200).json({ message: 'Deleted successfully', ids: targetIds });
             }
 
