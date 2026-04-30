@@ -23,7 +23,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const rows = await sheet.getRows();
                     return res.status(200).json(rows.map(row => row.toObject()));
                 }
-                return res.status(200).json(data);
             }
 
             case 'POST': {

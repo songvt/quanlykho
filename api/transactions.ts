@@ -173,7 +173,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                             await supabase.from('gs_sync_queue').insert({
                                 table_name: table,
                                 action: 'insert',
-                                payload: gsItems,
+                                payload: items,
                                 error_message: e.message
                             });
                             console.log('Queued GS Insert payload to gs_sync_queue');
