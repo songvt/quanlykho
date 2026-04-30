@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets.js';
-import { supabase } from './utils/supabase.js';
+import { supabase, fetchAll } from './utils/supabase.js';
 import { randomUUID } from 'crypto';
 
 // --- Helpers ---
@@ -54,7 +54,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 
                 // 1. Try Supabase first (Fast)
                 try {
-                    const { fetchAll } = await import('./utils/supabase.js');
                     if (!type) {
                         const [inbound, outbound] = await Promise.all([
                             fetchAll('inbound_transactions', '*, product:products(*)', (q) => q.gte('inbound_date', limitDateIso)),
@@ -220,7 +219,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const stockSheet = doc.sheetsByTitle['in_stock'];
                     if (!stockSheet) return res.status(404).json({ error: 'Sheet in_stock not found' });
                     
-                    const { fetchAll } = await import('./utils/supabase.js');
+
                     const [sRows, existingRows, products] = await Promise.all([
                         stockSheet.getRows(),
                         fetchAll('inbound_transactions', 'serial_code'),

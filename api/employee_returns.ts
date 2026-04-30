@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets.js';
-import { supabase } from './utils/supabase.js';
+import { supabase, fetchAll } from './utils/supabase.js';
 import { randomUUID } from 'crypto';
 
 
@@ -64,7 +64,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         switch (req.method) {
             case 'GET': {
                 try {
-                    const { fetchAll } = await import('./utils/supabase.js');
+
                     const data = await fetchAll('employee_returns', '*, product:products(*), employee:employees(*)');
                     if (data && data.length > 0) {
                         return res.status(200).json(data);

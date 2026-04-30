@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets.js';
-import { supabase } from './utils/supabase.js';
+import { supabase, fetchAll } from './utils/supabase.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const allowedMethods = ['GET', 'POST', 'PUT', 'DELETE'];
@@ -16,7 +16,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             case 'GET': {
                 // High performance fetch from Supabase (paginated to handle >1000 items)
                 try {
-                    const { fetchAll } = await import('./utils/supabase.js');
                     const data = await fetchAll('products', '*', (q) => q.order('name'));
                     return res.status(200).json(data);
                 } catch (error: any) {
