@@ -119,15 +119,6 @@ export const Outbound = () => {
 
     if (status === 'loading') return <Box display="flex" justifyContent="center" p={8}><CircularProgress /></Box>;
 
-    if (!isAdmin) {
-        const staffName = profile?.full_name || '';
-        const myApproved = orders.filter(o => o.status === 'approved' && o.requester_group === staffName);
-        const myCompleted = orders.filter(o => o.status === 'completed' && o.requester_group === staffName);
-        return <StaffOutboundView approvedOrders={myApproved} completedOrders={myCompleted} products={products} onFulfill={handleOpenFulfill} />;
-    }
-
-    const allApprovedOrders = orders.filter(o => o.status === 'approved');
-
     const [showScanner, setShowScanner] = useState(false);
 
     const handleScanSuccess = (decodedText: string) => {
@@ -140,9 +131,20 @@ export const Outbound = () => {
         success(`Đã quét thành công: ${decodedText}`);
     };
 
+    const staffName = profile?.full_name || '';
+    const myApproved = orders.filter(o => o.status === 'approved' && o.requester_group === staffName);
+    const myCompleted = orders.filter(o => o.status === 'completed' && o.requester_group === staffName);
+    const allApprovedOrders = orders.filter(o => o.status === 'approved');
+
     return (
         <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: 1200, mx: 'auto' }}>
-            <ApprovedOrdersList orders={allApprovedOrders} products={products} onFulfill={handleOpenFulfill} />
+            {!isAdmin && (
+                <StaffOutboundView approvedOrders={myApproved} completedOrders={myCompleted} products={products} onFulfill={handleOpenFulfill} />
+            )}
+            
+            {isAdmin && (
+                <>
+                    <ApprovedOrdersList orders={allApprovedOrders} products={products} onFulfill={handleOpenFulfill} />
 
             <Box mb={{ xs: 3, md: 5 }} display="flex" flexDirection="column" alignItems="center">
                 <Typography variant="h4" component="h1" sx={{
@@ -187,6 +189,8 @@ export const Outbound = () => {
                 selectedIds={selectedPrintIds}
                 onSelectChange={setSelectedPrintIds}
             />
+                </>
+            )}
 
             {/* Dialogs */}
             <FulfillOrderDialog
