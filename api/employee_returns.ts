@@ -101,13 +101,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 if (action === 'bulk_insert') {
                     if (!Array.isArray(payload)) return res.status(400).json({ error: 'Payload must be an array' });
 
-                    const toInsertReturns = payload.map(p => ({
-                        ...p,
-                        id: p.id || randomUUID(),
-                        return_date: formatLocalDate(p.return_date || new Date()),
-                        created_at: formatLocalDate(p.created_at || new Date()),
-                        updated_at: formatLocalDate(new Date())
-                    }));
+                    const toInsertReturns = payload.map(p => {
+                        const { total_price, ...rest } = p;
+                        return {
+                            ...rest,
+                            id: p.id || randomUUID(),
+                            return_date: p.return_date || new Date().toISOString(),
+                            created_at: p.created_at || new Date().toISOString(),
+                            updated_at: new Date().toISOString()
+                        };
+                    });
  
                     const toInsertInbound = payload.map(p => ({
                         id: randomUUID(),
@@ -116,13 +119,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         quantity: p.quantity,
                         serial_code: p.serial_code,
                         unit_price: p.unit_price,
-                        total_price: p.total_price || (Number(p.quantity || 0) * Number(p.unit_price || 0)),
                         district: '',
                         item_status: p.reason,
                         created_by: p.created_by,
-                        inbound_date: formatLocalDate(new Date()),
-                        created_at: formatLocalDate(new Date()),
-                        updated_at: formatLocalDate(new Date())
+                        inbound_date: new Date().toISOString(),
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
                     }));
 
                     const { error: sbReturnError } = await supabase.from('employee_returns').insert(toInsertReturns);
@@ -152,12 +154,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                     return res.status(201).json(toInsertReturns);
                 } else {
+                    const { total_price, ...restPayload } = payload;
                     const toInsertReturn = {
-                        ...payload,
+                        ...restPayload,
                         id: payload.id || randomUUID(),
-                        return_date: formatLocalDate(payload.return_date || new Date()),
-                        created_at: formatLocalDate(payload.created_at || new Date()),
-                        updated_at: formatLocalDate(new Date())
+                        return_date: payload.return_date || new Date().toISOString(),
+                        created_at: payload.created_at || new Date().toISOString(),
+                        updated_at: new Date().toISOString()
                     };
  
                     const toInsertInbound = {
@@ -167,13 +170,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         quantity: payload.quantity,
                         serial_code: payload.serial_code,
                         unit_price: payload.unit_price,
-                        total_price: payload.total_price || (Number(payload.quantity || 0) * Number(payload.unit_price || 0)),
                         district: '',
                         item_status: payload.reason,
                         created_by: payload.created_by,
-                        inbound_date: formatLocalDate(new Date()),
-                        created_at: formatLocalDate(new Date()),
-                        updated_at: formatLocalDate(new Date())
+                        inbound_date: new Date().toISOString(),
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
                     };
 
                     const { error: sbReturnError } = await supabase.from('employee_returns').insert([toInsertReturn]);

@@ -283,8 +283,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                 const processed = transactions.map(p => {
                     const dateField = type === 'inbound' ? 'inbound_date' : 'outbound_date';
+                    const { total_price, ...rest } = p;
                     return {
-                        ...p,
+                        ...rest,
                         id: p.id || randomUUID(),
                         [dateField]: p[dateField] || now,
                         created_at: p.created_at || now,
