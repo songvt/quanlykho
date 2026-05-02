@@ -281,13 +281,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const transactions = Array.isArray(payload) ? payload : [payload];
                 const now = new Date().toISOString();
 
-                const processed = transactions.map(p => ({
-                    ...p,
-                    id: p.id || randomUUID(),
-                    created_at: p.created_at || now,
-                    updated_at: now,
-                    created_by: p.created_by || creator
-                }));
+                const processed = transactions.map(p => {
+                    const dateField = type === 'inbound' ? 'inbound_date' : 'outbound_date';
+                    return {
+                        ...p,
+                        id: p.id || randomUUID(),
+                        [dateField]: p[dateField] || now,
+                        created_at: p.created_at || now,
+                        updated_at: now,
+                        created_by: p.created_by || creator
+                    };
+                });
 
                 await performWrite(table, processed);
                 if (type === 'outbound') sendWebhook(type, processed);
