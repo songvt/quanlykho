@@ -34,6 +34,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
+        if (req.method === 'GET') {
+            try {
+                const data = await fetchAll('employee_returns', '*, product:products(*), employee:employees(*)');
+                if (data && data.length > 0) {
+                    return res.status(200).json(data);
+                }
+            } catch (e) {
+                console.warn('Supabase fetch failed, falling back to Google Sheets:', e);
+            }
+        }
+
         const doc = await getGoogleSheet();
         const returnsSheet = await getSheetByTitle(doc, 'employee_returns');
         const inboundSheet = await getSheetByTitle(doc, 'inbound_transactions');
@@ -63,15 +74,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         switch (req.method) {
             case 'GET': {
-                try {
-
-                    const data = await fetchAll('employee_returns', '*, product:products(*), employee:employees(*)');
-                    if (data && data.length > 0) {
-                        return res.status(200).json(data);
-                    }
-                } catch (e) {
-                    console.error('Supabase fetch failed, falling back to Google Sheets:', e);
-                }
 
                 const rows = await returnsSheet.getRows();
                 const productsMap = await getProductsMap();

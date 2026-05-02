@@ -9,12 +9,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
-        const doc = await getGoogleSheet();
-        const sheet = await getSheetByTitle(doc, 'employees');
-
-        switch (req.method) {
-            case 'GET': {
-                // 1. Try Supabase
+        if (req.method === 'GET') {
+            try {
                 const { data, error } = await supabase.from('employees').select('*');
                 if (!error && data) {
                     return res.status(200).json(data.map(u => {
@@ -22,8 +18,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         return { ...rest, permissions: typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions };
                     }));
                 }
+            } catch (e) {
+                console.warn('Supabase fetch failed, falling back to GS');
+            }
+        }
 
-                // 2. Fallback to Sheets
+        const doc = await getGoogleSheet();
+        const sheet = await getSheetByTitle(doc, 'employees');
+
+        switch (req.method) {
+            case 'GET': {
                 const rows = await sheet.getRows();
                 const employees = rows.map(row => {
                     const obj = row.toObject();

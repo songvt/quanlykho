@@ -29,24 +29,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!allowedMethods.includes(req.method || '')) return res.status(405).json({ error: 'Method Not Allowed' });
 
     try {
+        if (req.method === 'GET') {
+            try {
+                const daysParam = parseInt(req.query.days as string, 10) || 60;
+                const limitDate = new Date();
+                limitDate.setDate(limitDate.getDate() - daysParam);
+                const limitDateIso = limitDate.toISOString();
+                
+                const { data, error } = await supabase.from('orders')
+                    .select('*, product:products(*)')
+                    .gte('order_date', limitDateIso)
+                    .order('order_date', { ascending: false });
+                
+                if (!error && data) return res.status(200).json(data);
+            } catch (e) {
+                console.warn('Supabase fetch failed, falling back to GS');
+            }
+        }
+
         const doc = await getGoogleSheet();
         const sheet = await getSheetByTitle(doc, 'orders');
 
         switch (req.method) {
             case 'GET': {
-                const daysParam = parseInt(req.query.days as string, 10) || 60; // Mặc định 60 ngày
+                const daysParam = parseInt(req.query.days as string, 10) || 60;
                 const limitDate = new Date();
                 limitDate.setDate(limitDate.getDate() - daysParam);
-                const limitDateIso = limitDate.toISOString();
-
-                // 1. Try Supabase
-                const { data, error } = await supabase.from('orders')
-                    .select('*, product:products(*)')
-                    .gte('order_date', limitDateIso)
-                    .order('order_date', { ascending: false });
-                if (!error && data) return res.status(200).json(data);
-
-                // 2. Fallback to Sheets
                 const rows = await sheet.getRows();
                 return res.status(200).json(
                     rows.map(r => r.toObject())
@@ -62,6 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const processed = items.map((p: any) => ({
                     ...p,
                     id: p.id || randomUUID(),
+                    order_date: p.order_date || now,
                     created_at: p.created_at || now,
                     updated_at: now
                 }));

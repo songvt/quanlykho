@@ -9,20 +9,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
+        if (req.method === 'GET') {
+            try {
+                const data = await fetchAll('products', '*', (q) => q.order('name'));
+                return res.status(200).json(data);
+            } catch (error: any) {
+                console.warn('Supabase fetch failed, falling back to Google Sheets:', error);
+            }
+        }
+
         const doc = await getGoogleSheet();
         const sheet = await getSheetByTitle(doc, 'products');
 
         switch (req.method) {
             case 'GET': {
-                // High performance fetch from Supabase (paginated to handle >1000 items)
-                try {
-                    const data = await fetchAll('products', '*', (q) => q.order('name'));
-                    return res.status(200).json(data);
-                } catch (error: any) {
-                    console.warn('Supabase fetch failed, falling back to Google Sheets:', error);
-                    const rows = await sheet.getRows();
-                    return res.status(200).json(rows.map(row => row.toObject()));
-                }
+                const rows = await sheet.getRows();
+                return res.status(200).json(rows.map(row => row.toObject()));
             }
 
             case 'POST': {

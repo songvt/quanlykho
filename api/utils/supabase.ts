@@ -1,16 +1,35 @@
 import { createClient } from '@supabase/supabase-js';
-import * as dotenv from 'dotenv';
 
-dotenv.config();
-
-const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase credentials missing in .env');
+  console.warn('Supabase credentials missing in process.env');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const finalSupabaseUrl = supabaseUrl || 'https://placeholder.supabase.co';
+
+// Ensure it doesn't crash during build if env vars are missing
+export const supabase = createClient(finalSupabaseUrl, supabaseAnonKey || 'placeholder', {
+  global: {
+    fetch: (url, options) => {
+      if (finalSupabaseUrl === 'https://placeholder.supabase.co') {
+        return Promise.reject(new Error('Supabase URL not configured in environment variables'));
+      }
+      // Add a 4-second timeout to prevent exhausting Vercel's 10s limit
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), 4000);
+      return fetch(url, { ...options, signal: controller.signal as any })
+        .catch(err => {
+            if (err.name === 'AbortError') {
+                throw new Error('Supabase request timed out after 4000ms');
+            }
+            throw err;
+        })
+        .finally(() => clearTimeout(id));
+    }
+  }
+});
 
 /**
  * Helper to fetch all rows from a Supabase table handling the 1000-row limit.

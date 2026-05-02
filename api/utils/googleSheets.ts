@@ -26,7 +26,12 @@ export const getGoogleSheet = async () => {
             throw new Error(`Server Configuration Error: Missing ${missingInfo}`);
         }
 
-        // Handle private key format from env var (replace literal \n with actual newlines)
+        // Handle private key format from env var
+        // 1. Remove surrounding quotes if they exist
+        if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+            privateKey = privateKey.slice(1, -1);
+        }
+        // 2. Replace literal \n with actual newlines
         privateKey = privateKey.replace(/\\n/g, '\n');
 
         const serviceAccountAuth = new JWT({

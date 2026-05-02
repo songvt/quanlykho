@@ -1,6 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+
+// Load environment variables BEFORE importing any handlers
+dotenv.config();
+
 import productsHandler from './api/products.js';
 import employeesHandler from './api/employees.js';
 import transactionsHandler from './api/transactions.js';
@@ -8,8 +12,6 @@ import returnsHandler from './api/employee_returns.js';
 import ordersHandler from './api/orders.js';
 import districtStorekeepersHandler from './api/district_storekeepers.js';
 import telegramHandler from './api/telegram.js';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
