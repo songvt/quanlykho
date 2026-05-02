@@ -20,6 +20,7 @@ import OutboundForm from '../components/Outbound/OutboundForm';
 import OutboundList from '../components/Outbound/OutboundList';
 import ApprovedOrdersList from '../components/Outbound/ApprovedOrdersList';
 import QRScanner from '../components/QRScanner';
+import { sendTelegramNotification } from './Outbound/outboundTelegram';
 
 export const Outbound = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -74,10 +75,12 @@ export const Outbound = () => {
             const product = products.find(p => p.id === selectedOrder.product_id);
             const isSerialized = product?.category?.toLowerCase() === 'hàng hóa';
             const price = product?.unit_price || 0;
+
+            const createdTransactions: any[] = [];
             
             if (isSerialized) {
                 for (const code of scannedSerials) {
-                    await dispatch(addOutboundTransaction({
+                    const tx = await dispatch(addOutboundTransaction({
                         product_id: selectedOrder.product_id,
                         quantity: 1,
                         serial_code: code,
@@ -90,9 +93,10 @@ export const Outbound = () => {
                         user_id: profile?.id,
                         created_by: profile?.full_name || profile?.username || profile?.email || 'system'
                     })).unwrap();
+                    createdTransactions.push(tx);
                 }
             } else {
-                await dispatch(addOutboundTransaction({
+                const tx = await dispatch(addOutboundTransaction({
                     product_id: selectedOrder.product_id,
                     quantity: selectedOrder.quantity,
                     group_name: selectedOrder.requester_group,
@@ -104,10 +108,21 @@ export const Outbound = () => {
                     user_id: profile?.id,
                     created_by: profile?.full_name || profile?.username || profile?.email || 'system'
                 })).unwrap();
+                createdTransactions.push(tx);
             }
 
             // Cập nhật trạng thái đơn hàng
             await dispatch(updateOrderStatus({ id: selectedOrder.id, status: 'completed' })).unwrap();
+
+            // Gửi thông báo Telegram
+            const productsMap: Record<string, string> = {};
+            products.forEach(p => productsMap[p.id] = p.name);
+            sendTelegramNotification(
+                'XUẤT KHO THÀNH CÔNG',
+                createdTransactions,
+                productsMap,
+                selectedOrder.requester_group
+            );
             
             setOpenFulfillDialog(false);
             success('Đã hoàn tất xuất kho và cập nhật đơn hàng!');
