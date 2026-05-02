@@ -76,7 +76,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 }));
 
                 // 1. Supabase
-                const { data: sbData, error: sbError } = await supabase.from('orders').insert(processed).select();
+                const { data: sbData, error: sbError } = await supabase
+                    .from('orders')
+                    .upsert(processed, { onConflict: 'id', ignoreDuplicates: true })
+                    .select();
                 const sbSuccess = !sbError;
                 if (sbError) console.error('SB Write Error (Fallback to GS):', sbError);
 

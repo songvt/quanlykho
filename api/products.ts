@@ -38,7 +38,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 }));
 
                 // 1. Supabase
-                const { data: sbData, error: sbError } = await supabase.from('products').insert(itemsToInsert).select();
+                const { data: sbData, error: sbError } = await supabase
+                    .from('products')
+                    .upsert(itemsToInsert, { onConflict: 'id', ignoreDuplicates: true })
+                    .select();
                 if (sbError) {
                     console.error('SB Write Error:', sbError);
                     return res.status(500).json({ error: 'Supabase Write Failed' });

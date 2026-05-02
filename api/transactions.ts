@@ -125,7 +125,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         const chunkSize = 1000;
                         for (let i = 0; i < items.length; i += chunkSize) {
                             const chunk = items.slice(i, i + chunkSize);
-                            const { error: sbError } = await supabase.from(table).insert(chunk);
+                            // Dùng upsert với ignoreDuplicates: true để tránh lỗi 409 khi retry
+                            const { error: sbError } = await supabase
+                                .from(table)
+                                .upsert(chunk, { onConflict: 'id', ignoreDuplicates: true });
                             if (sbError) throw sbError;
                         }
                         sbSuccess = true;
@@ -205,7 +208,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         return {
                             id: randomUUID(), product_id, serial_code: serial, quantity: 1, item_status: 'Mới',
                             district: row.get('District') || 'Kho Tổng', inbound_date: new Date().toISOString(),
-                            created_by: creator, unit_price: product?.unit_price || 0, total_price: product?.unit_price || 0
+                            created_by: creator, unit_price: product?.unit_price || 0
                         };
                     }).filter(Boolean);
 

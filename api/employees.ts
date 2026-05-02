@@ -61,7 +61,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const formatted = items.map((p: any) => ({ ...p, permissions: p.permissions ? JSON.stringify(p.permissions) : '[]' }));
                 let successCount = 0;
 
-                const { data: sbData, error: sbError } = await supabase.from('employees').insert(formatted).select();
+                const { data: sbData, error: sbError } = await supabase
+                    .from('employees')
+                    .upsert(formatted, { onConflict: 'id', ignoreDuplicates: true })
+                    .select();
                 if (!sbError) successCount++;
 
                 try { await sheet.addRows(formatted); successCount++; } catch (e) { console.error('GS Mirror Error:', e); }
