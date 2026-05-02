@@ -133,13 +133,23 @@ export const Outbound = () => {
 
     const staffName = profile?.full_name || '';
     const myApproved = orders.filter(o => o.status === 'approved' && o.requester_group === staffName);
-    const myCompleted = orders.filter(o => o.status === 'completed' && o.requester_group === staffName);
     const allApprovedOrders = orders.filter(o => o.status === 'approved');
 
     return (
         <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: 1200, mx: 'auto' }}>
             {!isAdmin && (
-                <StaffOutboundView approvedOrders={myApproved} completedOrders={myCompleted} products={products} onFulfill={handleOpenFulfill} />
+                <StaffOutboundView 
+                    approvedOrders={myApproved} 
+                    transactions={transactions.filter(t => t.type === 'outbound' && t.created_by === profile?.auth_user_id)}
+                    products={products} 
+                    onFulfill={handleOpenFulfill} 
+                    selectedPrintIds={selectedPrintIds}
+                    onSelectChange={setSelectedPrintIds}
+                    onPrint={() => {
+                        setOpenPrintPreview(true);
+                        setResolvedDelivererName(profile?.full_name || 'Staff');
+                    }}
+                />
             )}
             
             {isAdmin && (

@@ -8,11 +8,17 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import StockDisplay from './StockDisplay';
 import type { Order, Product } from '../../types';
 
+import OutboundList from '../../components/Outbound/OutboundList';
+import PrintIcon from '@mui/icons-material/Print';
+
 interface StaffOutboundViewProps {
     approvedOrders: Order[];
-    completedOrders: Order[];
+    transactions: any[];
     products: Product[];
     onFulfill: (order: Order) => void;
+    selectedPrintIds: string[];
+    onSelectChange: (ids: string[]) => void;
+    onPrint: () => void;
 }
 
 /**
@@ -21,9 +27,12 @@ interface StaffOutboundViewProps {
  */
 const StaffOutboundView = ({
     approvedOrders,
-    completedOrders,
+    transactions,
     products,
     onFulfill,
+    selectedPrintIds,
+    onSelectChange,
+    onPrint,
 }: StaffOutboundViewProps) => {
     return (
         <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: '100%', overflowX: 'hidden', minHeight: '100vh' }}>
@@ -129,60 +138,26 @@ const StaffOutboundView = ({
 
             {/* --- Lịch sử đã xuất --- */}
             <Box mt={6} mb={{ xs: 2, sm: 4 }} textAlign="center">
-                <Typography variant="h5" color="text.secondary" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' } }}>
-                    Lịch Sử Đơn Hàng Đã Xuất
+                <Typography variant="h5" color="text.secondary" sx={{ fontSize: { xs: '1.2rem', sm: '1.5rem' }, mb: 2 }}>
+                    Lịch Sử Xuất Kho Của Bạn
                 </Typography>
+                <Button
+                    variant="contained" color="secondary" startIcon={<PrintIcon />}
+                    disabled={selectedPrintIds.length === 0}
+                    onClick={onPrint}
+                    sx={{ mb: 2 }}
+                >
+                    In Biên Bản ({selectedPrintIds.length})
+                </Button>
             </Box>
-            <TableContainer
-                component={Paper}
-                elevation={0}
-                sx={{ border: '1px solid', borderColor: 'divider', maxWidth: 1200, mx: 'auto', borderRadius: 3, overflowX: 'auto', mb: 4 }}
-            >
-                <Table size="small" sx={{ minWidth: 800 }}>
-                    <TableHead sx={{ bgcolor: 'grey.50' }}>
-                        <TableRow>
-                            <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Ngày đặt</TableCell>
-                            <TableCell sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Sản phẩm</TableCell>
-                            <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>SL Đã xuất</TableCell>
-                            <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Trạng thái</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {completedOrders.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={4} align="center" sx={{ py: 4, color: 'text.secondary' }}>
-                                    Chưa có đơn hàng nào đã xuất xong.
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            completedOrders.map(order => {
-                                const product = products.find(p => p.id === order.product_id);
-                                return (
-                                    <TableRow key={order.id} hover>
-                                        <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                                            {new Date(order.order_date).toLocaleDateString('vi-VN')}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Typography variant="subtitle2" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                                                {product?.name || 'Unknown'}
-                                            </Typography>
-                                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
-                                                {product?.item_code}
-                                            </Typography>
-                                        </TableCell>
-                                        <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                                            {order.quantity}
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            <Chip label="Đã xuất" color="primary" size="small" icon={<CheckCircleIcon />} sx={{ height: 24, fontSize: '0.75rem' }} />
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+            
+            <Box sx={{ maxWidth: 1200, mx: 'auto', mb: 4 }}>
+                <OutboundList 
+                    transactions={transactions}
+                    selectedIds={selectedPrintIds}
+                    onSelectChange={onSelectChange}
+                />
+            </Box>
         </Box>
     );
 };
