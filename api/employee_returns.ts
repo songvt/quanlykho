@@ -127,12 +127,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         updated_at: new Date().toISOString()
                     }));
 
-                    const { error: sbReturnError } = await supabase.from('employee_returns').insert(toInsertReturns);
-                    const { error: sbInboundError } = await supabase.from('inbound_transactions').insert(toInsertInbound);
+                    const { error: sbReturnError } = await supabase
+                        .from('employee_returns')
+                        .upsert(toInsertReturns, { onConflict: 'id', ignoreDuplicates: true });
+                    const { error: sbInboundError } = await supabase
+                        .from('inbound_transactions')
+                        .upsert(toInsertInbound, { onConflict: 'id', ignoreDuplicates: true });
                     
                     if (sbReturnError || sbInboundError) {
-                        console.error('Supabase Write Error:', sbReturnError || sbInboundError);
-                        return res.status(500).json({ error: 'Supabase Write Failed', details: sbReturnError || sbInboundError });
+                        const err = sbReturnError || sbInboundError;
+                        console.error('Supabase Write Error:', JSON.stringify(err));
+                        return res.status(500).json({ error: 'Supabase Write Failed', details: err?.message || err });
                     }
 
                     try {
@@ -178,12 +183,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         updated_at: new Date().toISOString()
                     };
 
-                    const { error: sbReturnError } = await supabase.from('employee_returns').insert([toInsertReturn]);
-                    const { error: sbInboundError } = await supabase.from('inbound_transactions').insert([toInsertInbound]);
+                    const { error: sbReturnError } = await supabase
+                        .from('employee_returns')
+                        .upsert([toInsertReturn], { onConflict: 'id', ignoreDuplicates: true });
+                    const { error: sbInboundError } = await supabase
+                        .from('inbound_transactions')
+                        .upsert([toInsertInbound], { onConflict: 'id', ignoreDuplicates: true });
                     
                     if (sbReturnError || sbInboundError) {
-                        console.error('Supabase Write Error:', sbReturnError || sbInboundError);
-                        return res.status(500).json({ error: 'Supabase Write Failed', details: sbReturnError || sbInboundError });
+                        const err = sbReturnError || sbInboundError;
+                        console.error('Supabase Write Error:', JSON.stringify(err));
+                        return res.status(500).json({ error: 'Supabase Write Failed', details: err?.message || err });
                     }
 
                     try {
