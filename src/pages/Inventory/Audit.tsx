@@ -75,7 +75,7 @@ const Audit: React.FC = () => {
     useEffect(() => {
         if (products.length > 0) {
             // Recalculate everything when district changes or data loads
-            const newAuditItems = products.map(p => {
+            const newAuditItems: AuditItem[] = products.map(p => {
                 const sysQty = getSystemQty(p.id);
                 return {
                     product_id: p.id,
@@ -86,7 +86,7 @@ const Audit: React.FC = () => {
                     actual_qty: '',
                     discrepancy: 0,
                     notes: '',
-                    scanned_serials: []
+                    scanned_serials: [] as string[]
                 };
             }).filter(item => item.system_qty > 0); // CHỈ HIỂN THỊ CÁC MẶT HÀNG CÓ TỒN KHO > 0
             
