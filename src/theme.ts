@@ -53,13 +53,9 @@ const theme = createTheme({
     },
     typography: {
         fontFamily: [
-            '"Plus Jakarta Sans"',
-            '"Inter"',
-            '-apple-system',
-            'BlinkMacSystemFont',
-            '"Segoe UI"',
-            'Roboto',
-            'sans-serif',
+            '"Times New Roman"',
+            'Times',
+            'serif',
         ].join(','),
         h1: { fontWeight: 800, letterSpacing: '-0.03em', color: '#09090b' },
         h2: { fontWeight: 700, letterSpacing: '-0.028em', color: '#09090b' },
