@@ -259,7 +259,7 @@ const QRGeneratorHCM = () => {
 
     const totalQRCodes = groupedBoxes.reduce((sum, g) => sum + g.qrChunks.length, 0);
 
-    const handlePrint = useCallback(() => {
+    const handlePrint = useCallback(async () => {
         const el = printRef.current;
         if (!el) { notifyError('Không tìm thấy nội dung để in'); return; }
         setIsPrinting(true);

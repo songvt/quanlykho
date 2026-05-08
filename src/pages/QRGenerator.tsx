@@ -209,7 +209,7 @@ const QRGenerator = () => {
         return pairs;
     }, [groupedBoxes]);
 
-    const handlePrint = useCallback(() => {
+    const handlePrint = useCallback(async () => {
         const el = printRef.current;
         if (!el) { notifyError('Không tìm thấy nội dung để in'); return; }
         setIsPrinting(true);
@@ -256,7 +256,7 @@ const QRGenerator = () => {
         }, 100);
 
         try {
-            GoogleSheetService.saveQRLog({
+            await GoogleSheetService.saveQRLog({
                 action: 'PRINT',
                 doc_title: docTitle,
                 total_serials: dataRows.length,
