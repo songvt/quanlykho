@@ -23,7 +23,7 @@ interface AuditItem {
     name: string;
     category: string;
     system_qty: number;
-    actual_qty: number | '';
+    actual_qty: number | string;
     discrepancy: number;
     notes: string;
     scanned_serials: string[];

@@ -107,7 +107,7 @@ const downloadTemplate = async () => {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const QRGenerator = () => {
-    const currentUser = useSelector((state: RootState) => state.auth.user);
+    const { profile: currentUser } = useSelector((state: RootState) => state.auth);
     const { success, error: notifyError } = useNotification();
     const [dataRows, setDataRows] = useState<QRDataRow[]>([]);
     const [manualDistrict, setManualDistrict] = useState('Q12');

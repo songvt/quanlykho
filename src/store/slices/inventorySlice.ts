@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { createSelector } from 'reselect';
+import type { Transaction, Order } from '../../types';
 import type { RootState } from '../index';
 
 interface InventoryState {
@@ -27,10 +28,10 @@ const rawOrders = (state: RootState) => state.orders.items;
 
 export const selectDetailedStockMap = createSelector(
     [rawTransactions, rawOrders],
-    (transactions, orders) => {
+    (transactions: Transaction[], orders: Order[]) => {
         const detailedStockMap: Record<string, number> = {};
 
-        transactions.forEach((t: any) => {
+        transactions.forEach((t) => {
             const qty = t.type === 'inbound' ? Number(t.quantity) : -Number(t.quantity);
             const pId = t.product_id;
             const dist = t.district || '';
@@ -50,7 +51,7 @@ export const selectDetailedStockMap = createSelector(
 
         // Deduct pending and approved orders from available stock
         if (orders && Array.isArray(orders)) {
-            orders.forEach((o: any) => {
+            orders.forEach((o) => {
                 if (o.status === 'pending' || o.status === 'approved') {
                     // Check for expiration (24 hours) for approved orders
                     if (o.status === 'approved' && o.approved_at) {
