@@ -521,7 +521,7 @@ const QRGeneratorHCM = () => {
 
             <Grid container spacing={3} mb={3}>
                 {/* Import */}
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                     <Paper elevation={0} sx={{ p: 3, border: '1px solid #e2e8f0', borderRadius: 3 }}>
                         <Typography variant="h6" fontWeight={600} mb={1}>📂 Import Excel</Typography>
                         <Box
@@ -543,7 +543,7 @@ const QRGeneratorHCM = () => {
                 </Grid>
 
                 {/* Manual */}
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                     <Paper elevation={0} sx={{ p: 3, border: '1px solid #e2e8f0', borderRadius: 3 }}>
                         <Typography variant="h6" fontWeight={600} mb={1}>⌨️ Nhập thủ công</Typography>
                         <Grid container spacing={2}>

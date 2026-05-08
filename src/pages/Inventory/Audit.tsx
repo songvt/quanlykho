@@ -372,7 +372,7 @@ const Audit: React.FC = () => {
 
             <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
                 <Grid container spacing={2}>
-                    <Grid item xs={12} md={isAdmin ? 8 : 12}>
+                    <Grid size={{ xs: 12, md: isAdmin ? 8 : 12 }}>
                         <TextField 
                             label="Tên phiếu kiểm kê" 
                             variant="outlined" 
@@ -382,7 +382,7 @@ const Audit: React.FC = () => {
                         />
                     </Grid>
                     {isAdmin && (
-                        <Grid item xs={12} md={4}>
+                        <Grid size={{ xs: 12, md: 4 }}>
                             <Autocomplete
                                 fullWidth
                                 options={employees}
