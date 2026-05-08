@@ -39,7 +39,7 @@ const theme = createTheme({
             contrastText: '#ffffff',
         },
         background: {
-            default: '#fbfbfb', // 5F Style Background
+            default: '#f1f5f9',
             paper: '#ffffff',
         },
         text: {
@@ -53,25 +53,26 @@ const theme = createTheme({
     },
     typography: {
         fontFamily: [
+            '"Plus Jakarta Sans"',
             '"Inter"',
-            '"Public Sans"',
             '-apple-system',
             'BlinkMacSystemFont',
             '"Segoe UI"',
             'Roboto',
             'sans-serif',
         ].join(','),
-        h1: { fontWeight: 800, letterSpacing: '-0.025em', color: '#09090b' },
-        h2: { fontWeight: 700, letterSpacing: '-0.025em', color: '#09090b' },
+        h1: { fontWeight: 800, letterSpacing: '-0.03em', color: '#09090b' },
+        h2: { fontWeight: 700, letterSpacing: '-0.028em', color: '#09090b' },
         h3: { fontWeight: 700, letterSpacing: '-0.025em', color: '#09090b' },
-        h4: { fontWeight: 700, letterSpacing: '-0.02em', color: '#09090b' },
-        h5: { fontWeight: 600, letterSpacing: '-0.015em', color: '#09090b' },
-        h6: { fontWeight: 600, letterSpacing: '-0.01em', color: '#09090b' },
-        subtitle1: { fontWeight: 500, letterSpacing: '0em', color: '#27272a' },
-        subtitle2: { fontWeight: 600, letterSpacing: '0em', color: '#27272a' },
-        body1: { fontSize: '0.9375rem', lineHeight: 1.6, color: '#3f3f46' },
-        body2: { fontSize: '0.875rem', lineHeight: 1.5, color: '#71717a' },
-        button: { fontWeight: 600, textTransform: 'none', letterSpacing: '0.01em' },
+        h4: { fontWeight: 700, letterSpacing: '-0.022em', color: '#09090b' },
+        h5: { fontWeight: 600, letterSpacing: '-0.018em', color: '#09090b' },
+        h6: { fontWeight: 600, letterSpacing: '-0.015em', color: '#09090b' },
+        subtitle1: { fontWeight: 500, letterSpacing: '-0.01em', color: '#27272a' },
+        subtitle2: { fontWeight: 600, letterSpacing: '-0.008em', color: '#27272a' },
+        body1: { fontSize: '0.9375rem', lineHeight: 1.65, color: '#3f3f46' },
+        body2: { fontSize: '0.875rem', lineHeight: 1.57, color: '#71717a' },
+        caption: { letterSpacing: '0.01em' },
+        button: { fontWeight: 600, textTransform: 'none', letterSpacing: '0.02em' },
     },
     shape: {
         borderRadius: 12, // 5F Style Large Radius
@@ -86,6 +87,13 @@ const theme = createTheme({
         ...Array(19).fill('none') 
     ] as any,
     components: {
+        MuiCssBaseline: {
+            styleOverrides: {
+                body: {
+                    letterSpacing: '-0.011em',
+                },
+            },
+        },
         MuiButton: {
             defaultProps: {
                 disableElevation: true,

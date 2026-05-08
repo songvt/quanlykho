@@ -47,7 +47,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         switch (req.method) {
             case 'GET': {
                 const type = req.query.type as string;
-                const daysParam = parseInt(req.query.days as string, 10) || 60;
+                const daysParam = parseInt(req.query.days as string, 10) || 30; // Reduce default from 60 to 30 days for faster load
                 const limitDate = new Date();
                 limitDate.setDate(limitDate.getDate() - daysParam);
                 const limitDateIso = limitDate.toISOString();
@@ -56,8 +56,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 try {
                     if (!type) {
                         const [inbound, outbound] = await Promise.all([
-                            fetchAll('inbound_transactions', '*, product:products(*)', (q) => q.gte('inbound_date', limitDateIso)),
-                            fetchAll('outbound_transactions', '*, product:products(*)', (q) => q.gte('outbound_date', limitDateIso))
+                            fetchAll('inbound_transactions', '*, product:products(name, item_code, unit)', (q) => q.gte('inbound_date', limitDateIso)),
+                            fetchAll('outbound_transactions', '*, product:products(name, item_code, unit)', (q) => q.gte('outbound_date', limitDateIso))
                         ]);
                         const merged = [
                             ...inbound.map(t => ({ ...t, type: 'inbound', date: t.inbound_date })),
@@ -68,7 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     } else {
                         const table = type === 'outbound' ? 'outbound_transactions' : 'inbound_transactions';
                         const dateField = type === 'inbound' ? 'inbound_date' : 'outbound_date';
-                        const data = await fetchAll(table, '*, product:products(*)', (q) => q.gte(dateField, limitDateIso).order(dateField, { ascending: false }));
+                        const data = await fetchAll(table, '*, product:products(name, item_code, unit)', (q) => q.gte(dateField, limitDateIso).order(dateField, { ascending: false }));
                         return res.status(200).json(data.map(t => ({ ...t, type, date: type === 'inbound' ? t.inbound_date : t.outbound_date })));
                     }
                 } catch (e) {

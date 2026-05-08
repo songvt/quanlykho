@@ -36,6 +36,13 @@ const PERMISSION_GROUPS = [
         ]
     },
     {
+        title: 'Tạo QR Code',
+        permissions: [
+            { code: 'qr.view', label: 'Tạo QR Code (Chuẩn)' },
+            { code: 'qr_hcm.view', label: 'Tạo QR Code (HCM)' },
+        ]
+    },
+    {
         title: 'Đặt Hàng (Orders)',
         permissions: [
             { code: 'orders.create', label: 'Tạo yêu cầu' },
@@ -43,6 +50,13 @@ const PERMISSION_GROUPS = [
             { code: 'orders.view_all', label: 'Xem tất cả đơn (Quản lý)' },
             { code: 'orders.approve', label: 'Phê duyệt đơn hàng' },
             { code: 'orders.delete', label: 'Xóa đơn hàng' },
+        ]
+    },
+    {
+        title: 'Kiểm Kê Kho (Audit)',
+        permissions: [
+            { code: 'audit.view', label: 'Xem lịch sử kiểm kê' },
+            { code: 'audit.create', label: 'Thực hiện kiểm kê' },
         ]
     },
     {

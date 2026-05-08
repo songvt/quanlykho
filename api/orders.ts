@@ -32,12 +32,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (req.method === 'GET') {
             // 1. Supabase với pagination đầy đủ — fallback chỉ khi có lỗi thật
             try {
-                const daysParam = parseInt(req.query.days as string, 10) || 60;
+                const daysParam = parseInt(req.query.days as string, 10) || 30; // Reduce from 60 to 30 days
                 const limitDate = new Date();
                 limitDate.setDate(limitDate.getDate() - daysParam);
                 const limitDateIso = limitDate.toISOString();
 
-                const data = await fetchAll('orders', '*, product:products(*)', (q) =>
+                const data = await fetchAll('orders', '*, product:products(name, item_code, unit)', (q) =>
                     q.gte('order_date', limitDateIso).order('order_date', { ascending: false })
                 );
                 return res.status(200).json(data);

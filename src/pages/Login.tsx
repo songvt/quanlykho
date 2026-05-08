@@ -39,23 +39,50 @@ const Login = () => {
             justifyContent="center"
             alignItems="center"
             minHeight="100vh"
-            bgcolor="#f5f5f5"
+            sx={{
+                bgcolor: 'background.default',
+                backgroundImage: (t) =>
+                    `radial-gradient(1200px 600px at 20% 0%, ${t.palette.primary.main}12, transparent 55%), radial-gradient(800px 400px at 100% 100%, ${t.palette.info.main}10, transparent 50%)`,
+            }}
         >
-            <Paper elevation={3} sx={{ p: { xs: 3, sm: 4 }, width: '100%', maxWidth: 400, textAlign: 'center' }}>
-                <Box bgcolor="primary.main" p={2} borderRadius="50%" display="inline-flex" mb={2}>
-                    <LockOutlinedIcon style={{ color: 'white', fontSize: 30 }} />
+            <Paper
+                elevation={0}
+                sx={{
+                    p: { xs: 3, sm: 4.5 },
+                    width: '100%',
+                    maxWidth: 420,
+                    textAlign: 'center',
+                    borderRadius: 3,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    boxShadow: (t) => t.shadows[3],
+                }}
+            >
+                <Box
+                    sx={{
+                        bgcolor: 'primary.main',
+                        p: 1.75,
+                        borderRadius: 2.5,
+                        display: 'inline-flex',
+                        mb: 2.5,
+                        boxShadow: (t) => `0 8px 24px ${t.palette.primary.main}40`,
+                    }}
+                >
+                    <LockOutlinedIcon sx={{ color: 'common.white', fontSize: 28 }} />
                 </Box>
-                <Typography variant="h5" gutterBottom sx={{
-                    fontWeight: 900,
-                    textTransform: 'uppercase',
-                    background: 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    mb: 1
-                }}>
-                    ĐĂNG NHẬP HỆ THỐNG
+                <Typography
+                    variant="h5"
+                    gutterBottom
+                    sx={{
+                        fontWeight: 800,
+                        letterSpacing: '-0.02em',
+                        color: 'text.primary',
+                        mb: 0.5,
+                    }}
+                >
+                    Đăng nhập
                 </Typography>
-                <Typography variant="body2" color="textSecondary" mb={3}>
+                <Typography variant="body2" color="text.secondary" mb={3} sx={{ fontWeight: 500 }}>
                     Vui lòng đăng nhập để tiếp tục
                 </Typography>
 

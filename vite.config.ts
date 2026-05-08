@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => ({
         name: 'Quản Lý Kho GGS',
         short_name: 'QL Kho',
         description: 'Hệ thống Quản lý Kho GGS',
-        theme_color: '#0b3d2b',
+        theme_color: '#2563eb',
         background_color: '#f1f5f9',
         display: 'standalone',
         icons: []

@@ -35,27 +35,30 @@ export const supabase = createClient(finalSupabaseUrl, supabaseAnonKey || 'place
  * Helper to fetch all rows from a Supabase table handling the 1000-row limit.
  */
 export const fetchAll = async (table: string, select: string = '*', queryModifier?: (query: any) => any) => {
-    let allData: any[] = [];
-    let from = 0;
-    const step = 1000;
-    let hasMore = true;
+    // Get total count first for parallel fetching
+    let countQuery = supabase.from(table).select('*', { count: 'exact', head: true });
+    if (queryModifier) countQuery = queryModifier(countQuery);
+    
+    const { count, error: countError } = await countQuery;
+    if (countError) throw countError;
+    if (!count || count === 0) return [];
 
-    while (hasMore) {
+    const step = 1000;
+    const promises = [];
+    
+    for (let from = 0; from < count; from += step) {
         let query = supabase.from(table).select(select).range(from, from + step - 1);
         if (queryModifier) query = queryModifier(query);
-        
-        const { data, error } = await query;
-        if (error) throw error;
-        if (!data || data.length === 0) {
-            hasMore = false;
-        } else {
-            allData = [...allData, ...data];
-            if (data.length < step) {
-                hasMore = false;
-            } else {
-                from += step;
-            }
-        }
+        promises.push(query);
     }
+    
+    const results = await Promise.all(promises);
+    let allData: any[] = [];
+    
+    for (const res of results) {
+        if (res.error) throw res.error;
+        if (res.data) allData = allData.concat(res.data);
+    }
+    
     return allData;
 };

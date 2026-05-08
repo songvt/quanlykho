@@ -22,6 +22,9 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../store';
+import { GoogleSheetService } from '../services/GoogleSheetService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface QRDataRow {
@@ -104,6 +107,7 @@ const downloadTemplate = async () => {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const QRGenerator = () => {
+    const currentUser = useSelector((state: RootState) => state.auth.user);
     const { success, error: notifyError } = useNotification();
     const [dataRows, setDataRows] = useState<QRDataRow[]>([]);
     const [manualDistrict, setManualDistrict] = useState('Q12');
@@ -116,6 +120,33 @@ const QRGenerator = () => {
     const [isPrinting, setIsPrinting] = useState(false);
     const printRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const groupedBoxes = React.useMemo<GroupedBox[]>(() => {
+        const map = new Map<string, GroupedBox>();
+        dataRows.forEach(row => {
+            const key = `${row.District}__${row.Number_Thung}`;
+            if (!map.has(key)) {
+                map.set(key, { key, boxNumber: row.Number_Thung, district: row.District, totalQuantity: 0, serials: [], qrChunks: [] });
+            }
+            const g = map.get(key)!;
+            if (!g.serials.includes(row.serial_code)) {
+                g.serials.push(row.serial_code);
+                g.totalQuantity++;
+            }
+        });
+        map.forEach(g => { g.qrChunks = buildQRChunks(g.serials); });
+        return Array.from(map.values()).sort((a, b) => a.boxNumber.localeCompare(b.boxNumber));
+    }, [dataRows]);
+
+    const totalQRCodes = groupedBoxes.reduce((sum, g) => sum + g.qrChunks.length, 0);
+
+    const pairedBoxes = React.useMemo(() => {
+        const pairs = [];
+        for (let i = 0; i < groupedBoxes.length; i += 2) {
+            pairs.push(groupedBoxes.slice(i, i + 2));
+        }
+        return pairs;
+    }, [groupedBoxes]);
 
     const handlePrint = useCallback(() => {
         const el = printRef.current;
@@ -175,7 +206,21 @@ const QRGenerator = () => {
                 setIsPrinting(false);
             }
         }, 100);
-    }, [notifyError]);
+
+        // Lưu log in
+        try {
+            GoogleSheetService.saveQRLog({
+                action: 'PRINT',
+                doc_title: docTitle,
+                total_serials: dataRows.length,
+                total_qrs: totalQRCodes,
+                created_by: currentUser?.email || currentUser?.id,
+                details: groupedBoxes.map(g => ({ box: g.boxNumber, district: g.district, count: g.totalQuantity }))
+            });
+        } catch (e) {
+            console.error('Lỗi lưu log:', e);
+        }
+    }, [notifyError, docTitle, dataRows.length, totalQRCodes, groupedBoxes, currentUser]);
 
     const handleExportPDF = async () => {
         setIsExporting(true);
@@ -203,6 +248,20 @@ const QRGenerator = () => {
             
             pdf.save("Ma_QR_Code.pdf");
             success("Xuất PDF thành công!");
+
+            // Lưu log xuất PDF
+            try {
+                GoogleSheetService.saveQRLog({
+                    action: 'EXPORT_PDF',
+                    doc_title: docTitle,
+                    total_serials: dataRows.length,
+                    total_qrs: totalQRCodes,
+                    created_by: currentUser?.email || currentUser?.id,
+                    details: groupedBoxes.map(g => ({ box: g.boxNumber, district: g.district, count: g.totalQuantity }))
+                });
+            } catch (e) {
+                console.error('Lỗi lưu log:', e);
+            }
         } catch (error) {
             console.error(error);
             notifyError("Lỗi khi xuất PDF. Vui lòng thử lại.");
@@ -271,33 +330,7 @@ const QRGenerator = () => {
     };
 
     // ─── Grouped + QR chunks ───────────────────────────────────────────────
-    const groupedBoxes = React.useMemo<GroupedBox[]>(() => {
-        const map = new Map<string, GroupedBox>();
-        dataRows.forEach(row => {
-            const key = `${row.District}__${row.Number_Thung}`;
-            if (!map.has(key)) {
-                map.set(key, { key, boxNumber: row.Number_Thung, district: row.District, totalQuantity: 0, serials: [], qrChunks: [] });
-            }
-            const g = map.get(key)!;
-            if (!g.serials.includes(row.serial_code)) {
-                g.serials.push(row.serial_code);
-                g.totalQuantity++;
-            }
-        });
-        // Build QR chunks per box
-        map.forEach(g => { g.qrChunks = buildQRChunks(g.serials); });
-        return Array.from(map.values()).sort((a, b) => a.boxNumber.localeCompare(b.boxNumber));
-    }, [dataRows]);
 
-    const totalQRCodes = groupedBoxes.reduce((sum, g) => sum + g.qrChunks.length, 0);
-
-    const pairedBoxes = React.useMemo(() => {
-        const pairs = [];
-        for (let i = 0; i < groupedBoxes.length; i += 2) {
-            pairs.push(groupedBoxes.slice(i, i + 2));
-        }
-        return pairs;
-    }, [groupedBoxes]);
 
     // ─── Remove a specific row ─────────────────────────────────────────────
     const removeSerial = (serial: string) => setDataRows(prev => prev.filter(r => r.serial_code !== serial));

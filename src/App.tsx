@@ -4,7 +4,6 @@ import { useDispatch } from 'react-redux';
 import { Box, CircularProgress } from '@mui/material';
 
 import MainLayout from './components/Layout/MainLayout';
-import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import { checkAuthSession } from './store/slices/authSlice';
@@ -12,6 +11,7 @@ import type { AppDispatch } from './store';
 import { NotificationProvider } from './contexts/NotificationContext';
 
 // ── Lazy load tất cả pages để giảm initial bundle size ────────────────────
+const Login           = lazy(() => import('./pages/Login'));
 const Dashboard       = lazy(() => import('./pages/Dashboard'));
 const ProductList     = lazy(() => import('./pages/Products/ProductList'));
 const Inbound         = lazy(() => import('./pages/Inbound').then(m => ({ default: m.Inbound })));
@@ -24,6 +24,9 @@ const UserProfile     = lazy(() => import('./pages/UserProfile'));
 const EmployeeReturns = lazy(() => import('./pages/EmployeeReturns/EmployeeReturns'));
 const Settings        = lazy(() => import('./pages/Settings'));
 const QRGenerator     = lazy(() => import('./pages/QRGenerator'));
+const QRGeneratorHCM  = lazy(() => import('./pages/QRGeneratorHCM'));
+const ActionHistory   = lazy(() => import('./pages/Reports/ActionHistory'));
+const Audit           = lazy(() => import('./pages/Inventory/Audit'));
 
 
 const NotFound = lazy(() => import('./pages/NotFound').catch(() => ({
@@ -64,6 +67,7 @@ function App() {
 
                                 <Route element={<ProtectedRoute allowedPermissions={['reports.view_all', 'reports.handover']} />}>
                                     <Route path="reports" element={<Reports />} />
+                                    <Route path="action-history" element={<ActionHistory />} />
                                 </Route>
 
                                 <Route element={<ProtectedRoute allowedPermissions={['outbound.view', 'outbound.create']} />}>
@@ -74,9 +78,20 @@ function App() {
                                     <Route path="products" element={<ProductList />} />
                                 </Route>
 
+                                <Route element={<ProtectedRoute allowedPermissions={['audit.view', 'audit.create']} />}>
+                                    <Route path="audit" element={<Audit />} />
+                                </Route>
+
                                 <Route element={<ProtectedRoute allowedPermissions={['inbound.view', 'inbound.create']} />}>
                                     <Route path="inbound" element={<Inbound />} />
+                                </Route>
+                                
+                                <Route element={<ProtectedRoute allowedPermissions={['qr.view']} />}>
                                     <Route path="qr-generator" element={<QRGenerator />} />
+                                </Route>
+
+                                <Route element={<ProtectedRoute allowedPermissions={['qr_hcm.view']} />}>
+                                    <Route path="qr-generator-hcm" element={<QRGeneratorHCM />} />
                                 </Route>
 
                                 <Route element={<ProtectedRoute allowedPermissions={['employees.view', 'employees.manage']} />}>

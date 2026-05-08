@@ -17,8 +17,13 @@ export const usePermission = () => {
         // Check for wildcard access
         if (permissions.includes('*')) return true;
 
-        // Automatically grant Returns permissions to staff
-        if (profile.role === 'staff' && (code === 'returns.view' || code === 'returns.create')) {
+        // Automatically grant Returns and Audit permissions to staff
+        if (profile.role === 'staff' && (
+            code === 'returns.view' || 
+            code === 'returns.create' || 
+            code === 'audit.view' || 
+            code === 'audit.create'
+        )) {
             return true;
         }
 

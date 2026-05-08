@@ -1,9 +1,6 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
-
-// Load environment variables BEFORE importing any handlers
-dotenv.config();
 
 import productsHandler from './api/products.js';
 import employeesHandler from './api/employees.js';

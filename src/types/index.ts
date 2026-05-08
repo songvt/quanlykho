@@ -2,7 +2,9 @@
 export type PermissionCode =
     | 'inventory.view' | 'inventory.manage'
     | 'inbound.view' | 'inbound.create'
+    | 'qr.view' | 'qr_hcm.view'
     | 'outbound.view' | 'outbound.create'
+    | 'audit.view' | 'audit.create'
     | 'orders.create' | 'orders.view_own' | 'orders.view_all' | 'orders.approve' | 'orders.delete'
     | 'reports.view_all' | 'reports.handover'
     | 'employees.view' | 'employees.manage'

@@ -47,6 +47,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const { data, error } = await supabase.from('employees').select('*').eq('email', email).eq('password', password).single();
                     if (!error && data) {
                         const { password: _, ...user } = data;
+                        
+                        // Ghi log đăng nhập
+                        await supabase.from('qr_logs').insert([{
+                            action: 'LOGIN',
+                            doc_title: 'Đăng nhập hệ thống',
+                            created_by: email,
+                            total_serials: 0,
+                            total_qrs: 0,
+                            details: JSON.stringify({ ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'Unknown' })
+                        }]);
+
                         return res.status(200).json({ ...user, permissions: typeof data.permissions === 'string' ? JSON.parse(data.permissions) : data.permissions });
                     }
                     const rows = await sheet.getRows();
@@ -54,6 +65,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     if (!userRow) return res.status(401).json({ error: 'Email hoặc mật khẩu không chính xác.' });
                     const user = userRow.toObject();
                     delete user.password;
+                    
+                    // Ghi log đăng nhập (Sheet fallback)
+                    await supabase.from('qr_logs').insert([{
+                        action: 'LOGIN',
+                        doc_title: 'Đăng nhập hệ thống (GS)',
+                        created_by: email,
+                        total_serials: 0,
+                        total_qrs: 0,
+                        details: JSON.stringify({ ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'Unknown' })
+                    }]);
+
                     return res.status(200).json(user);
                 }
 

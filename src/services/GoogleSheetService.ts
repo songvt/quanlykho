@@ -403,5 +403,27 @@ export const GoogleSheetService = {
     async getReportNumber(_dateObj?: Date, _employeeName?: string) {
         // Mock returning 1 to satisfy frontend logic for now
         return 1;
+    },
+
+    // --- QR Logs ---
+    async saveQRLog(logData: {
+        action: string;
+        doc_title: string;
+        total_serials: number;
+        total_qrs: number;
+        created_by?: string;
+        details?: any;
+    }) {
+        return apiRequest('qr_logs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(logData)
+        });
+    },
+
+    async getActionLogs() {
+        return apiRequest('qr_logs', {
+            method: 'GET'
+        });
     }
 };

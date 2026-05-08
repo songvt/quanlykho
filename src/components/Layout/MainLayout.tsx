@@ -45,6 +45,8 @@ import {
     ExpandMore as ExpandMoreIcon,
     Business as BusinessIcon,
     QrCode2 as QrCode2Icon,
+    HistoryOutlined as HistoryIcon,
+    FactCheckOutlined as FactCheckIcon,
 } from '@mui/icons-material';
 import AIChatbot from '../Chatbot/AIChatbot';
 
@@ -129,11 +131,17 @@ const MainLayout: React.FC = () => {
         ...(hasPermission('inventory.view') ? [
             { text: 'Hàng hóa', icon: <InventoryIcon />, path: '/products' }
         ] : []),
+        ...(hasAnyPermission(['audit.view', 'audit.create']) ? [
+            { text: 'Kiểm kê kho', icon: <FactCheckIcon />, path: '/audit' }
+        ] : []),
         ...(hasPermission('inbound.view') ? [
             { text: 'Nhập kho', icon: <InputIcon />, path: '/inbound' }
         ] : []),
-        ...(hasPermission('inbound.view') ? [
+        ...(hasPermission('qr.view') ? [
             { text: 'Tạo QR code', icon: <QrCode2Icon />, path: '/qr-generator' }
+        ] : []),
+        ...(hasPermission('qr_hcm.view') ? [
+            { text: 'Tạo QR code CN_HCM', icon: <QrCode2Icon sx={{ color: '#1e4b9b' }} />, path: '/qr-generator-hcm' }
         ] : []),
         ...(hasPermission('orders.create') || hasPermission('orders.view_own') ? [
             { text: 'Đặt hàng', icon: <OrderIcon />, path: '/orders' }
@@ -145,7 +153,8 @@ const MainLayout: React.FC = () => {
             { text: 'Trả hàng', icon: <ReturnIcon />, path: '/employee-returns' }
         ] : []),
         ...(hasAnyPermission(['reports.view_all', 'reports.handover']) ? [
-            { text: 'Báo cáo', icon: <AssessmentIcon />, path: '/reports' }
+            { text: 'Báo cáo', icon: <AssessmentIcon />, path: '/reports' },
+            { text: 'Lịch sử tác động', icon: <HistoryIcon />, path: '/action-history' }
         ] : []),
         ...(hasPermission('employees.view') ? [
             { text: 'Nhân viên', icon: <PeopleIcon />, path: '/employees' }
@@ -341,8 +350,8 @@ const MainLayout: React.FC = () => {
                         {/* Breadcrumbs / Page Title */}
                         <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
                              <Breadcrumbs aria-label="breadcrumb" sx={{ '& .MuiBreadcrumbs-separator': { margin: '0 4px' } }}>
-                                 <Typography color="inherit" sx={{ fontSize: '0.875rem', color: '#64748b' }}>
-                                    Inventory Management System
+                                 <Typography color="inherit" sx={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 500 }}>
+                                    Quản lý kho
                                  </Typography>
                                  <Typography sx={{ color: '#0f172a', fontWeight: 600, fontSize: '0.875rem' }}>
                                      {currentMenuItem?.text || 'Dashboard'}
@@ -561,11 +570,11 @@ const MainLayout: React.FC = () => {
                 component="main"
                 sx={{
                     flexGrow: 1,
-                    p: { xs: 2, sm: 4 }, 
+                    p: { xs: 2, sm: 3, md: 4 },
                     width: { sm: `calc(100% - ${drawerWidth}px)` },
                     minHeight: '100vh',
-                    bgcolor: '#f1f5f9', // Very light grey bg for SaaS look
-                    overflowX: 'hidden'
+                    bgcolor: 'background.default',
+                    overflowX: 'hidden',
                 }}
             >
                 <Toolbar sx={{ minHeight: '64px !important' }} /> {/* Spacer */}
