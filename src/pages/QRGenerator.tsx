@@ -297,7 +297,7 @@ const QRGenerator = () => {
             success("Xuất PDF thành công!");
 
             try {
-                GoogleSheetService.saveQRLog({
+                await GoogleSheetService.saveQRLog({
                     action: 'EXPORT_PDF',
                     doc_title: docTitle,
                     total_serials: dataRows.length,

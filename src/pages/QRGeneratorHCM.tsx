@@ -302,7 +302,7 @@ const QRGeneratorHCM = () => {
 
         // Lưu log in
         try {
-            GoogleSheetService.saveQRLog({
+            await GoogleSheetService.saveQRLog({
                 action: 'PRINT_HCM',
                 doc_title: dataRows[0]?.tieu_de || 'TEM_HCM',
                 total_serials: dataRows.length,
@@ -386,7 +386,7 @@ const QRGeneratorHCM = () => {
 
             // Lưu log xuất PDF
             try {
-                GoogleSheetService.saveQRLog({
+                await GoogleSheetService.saveQRLog({
                     action: 'EXPORT_PDF_HCM',
                     doc_title: dataRows[0]?.tieu_de || 'TEM_HCM',
                     total_serials: dataRows.length,
