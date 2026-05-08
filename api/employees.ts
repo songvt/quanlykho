@@ -1,6 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets.js';
 import { supabase } from './utils/supabase.js';
+import crypto from 'crypto';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const allowedMethods = ['GET', 'POST', 'PUT', 'DELETE'];
@@ -9,35 +10,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
-        if (req.method === 'GET') {
-            try {
-                const { data, error } = await supabase.from('employees').select('*');
-                if (!error && data) {
-                    return res.status(200).json(data.map(u => {
-                        const { password, ...rest } = u;
-                        return { ...rest, permissions: typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions };
-                    }));
-                }
-            } catch (e) {
-                console.warn('Supabase fetch failed, falling back to GS');
-            }
-        }
-
         const doc = await getGoogleSheet();
         const sheet = await getSheetByTitle(doc, 'employees');
 
         switch (req.method) {
             case 'GET': {
+                const { data: sbData, error: sbError } = await supabase.from('employees').select('*');
                 const rows = await sheet.getRows();
-                const employees = rows.map(row => {
-                    const obj = row.toObject();
-                    delete obj.password;
+                const gsEmployees = rows.map(r => {
+                    const obj = r.toObject();
                     if (obj.permissions && typeof obj.permissions === 'string') {
                         try { obj.permissions = JSON.parse(obj.permissions); } catch (e) { obj.permissions = []; }
                     }
                     return obj;
                 });
-                return res.status(200).json(employees);
+
+                if (!sbError && sbData && sbData.length > 0) {
+                    const sbIds = new Set(sbData.map(e => e.id));
+                    const missingInSb = gsEmployees.filter(e => e.id && !sbIds.has(e.id));
+                    const combined = [...sbData, ...missingInSb].map(u => {
+                        const { password, ...rest } = u;
+                        return { ...rest, permissions: typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions };
+                    });
+                    return res.status(200).json(combined);
+                }
+                return res.status(200).json(gsEmployees);
             }
 
             case 'POST': {
@@ -47,8 +44,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const { data, error } = await supabase.from('employees').select('*').eq('email', email).eq('password', password).single();
                     if (!error && data) {
                         const { password: _, ...user } = data;
-                        
-                        // Ghi log đăng nhập
                         await supabase.from('qr_logs').insert([{
                             action: 'LOGIN',
                             doc_title: 'Đăng nhập hệ thống',
@@ -57,7 +52,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                             total_qrs: 0,
                             details: JSON.stringify({ ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'Unknown' })
                         }]);
-
                         return res.status(200).json({ ...user, permissions: typeof data.permissions === 'string' ? JSON.parse(data.permissions) : data.permissions });
                     }
                     const rows = await sheet.getRows();
@@ -65,8 +59,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     if (!userRow) return res.status(401).json({ error: 'Email hoặc mật khẩu không chính xác.' });
                     const user = userRow.toObject();
                     delete user.password;
-                    
-                    // Ghi log đăng nhập (Sheet fallback)
                     await supabase.from('qr_logs').insert([{
                         action: 'LOGIN',
                         doc_title: 'Đăng nhập hệ thống (GS)',
@@ -75,14 +67,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         total_qrs: 0,
                         details: JSON.stringify({ ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'Unknown' })
                     }]);
-
-                    return res.status(200).json(user);
+                    return res.status(200).json({ ...user, permissions: typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions });
                 }
 
                 const items = action === 'bulk_insert' ? payload : [payload];
-                const formatted = items.map((p: any) => ({ ...p, permissions: p.permissions ? JSON.stringify(p.permissions) : '[]' }));
-                let successCount = 0;
+                const formatted = items.map((p: any) => ({
+                    ...p,
+                    id: p.id || crypto.randomUUID(),
+                    permissions: p.permissions ? (typeof p.permissions === 'string' ? p.permissions : JSON.stringify(p.permissions)) : '[]',
+                    created_at: p.created_at || new Date().toISOString()
+                }));
 
+                let successCount = 0;
                 const { data: sbData, error: sbError } = await supabase
                     .from('employees')
                     .upsert(formatted, { onConflict: 'id', ignoreDuplicates: true })
@@ -92,7 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 try { await sheet.addRows(formatted); successCount++; } catch (e) { console.error('GS Mirror Error:', e); }
 
                 if (successCount === 0) return res.status(500).json({ error: 'Create failed on both databases' });
-                return res.status(201).json(action === 'bulk_insert' ? (sbData || items) : (sbData ? sbData[0] : items[0]));
+                return res.status(201).json(action === 'bulk_insert' ? (sbData || formatted) : (sbData ? sbData[0] : formatted[0]));
             }
 
             case 'PUT': {

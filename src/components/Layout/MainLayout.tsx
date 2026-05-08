@@ -127,7 +127,9 @@ const MainLayout: React.FC = () => {
     const { hasPermission, hasAnyPermission } = usePermission();
 
     const menuItems = [
-        { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
+        ...(profile?.role === 'admin' || (profile?.role === 'staff' && (!profile.permissions || profile.permissions.length === 0)) ? [
+            { text: 'Dashboard', icon: <DashboardIcon />, path: '/' }
+        ] : []),
         ...(hasPermission('inventory.view') ? [
             { text: 'Hàng hóa', icon: <InventoryIcon />, path: '/products' }
         ] : []),
@@ -163,6 +165,14 @@ const MainLayout: React.FC = () => {
             { text: 'Thiết lập', icon: <SettingsIcon />, path: '/settings' }
         ] : []),
     ];
+
+    // Redirect if current path is hidden for this user (e.g. Dashboard)
+    React.useEffect(() => {
+        if (location.pathname === '/' && menuItems.length > 0 && !menuItems.find(i => i.path === '/')) {
+            const firstAvailable = menuItems[0].path;
+            navigate(firstAvailable, { replace: true });
+        }
+    }, [location.pathname, menuItems, navigate]);
 
     const currentMenuItem = menuItems.find(item => item.path === location.pathname);
 

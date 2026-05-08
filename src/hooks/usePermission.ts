@@ -8,8 +8,7 @@ export const usePermission = () => {
     const hasPermission = (code: PermissionCode) => {
         if (!profile) return false;
 
-        // Admin and Manager usually have full access, or at least Admin does
-        // Based on requirements, Admin has full power. 
+        // Admin has full power
         if (profile.role === 'admin') return true;
 
         const permissions = profile.permissions || [];
@@ -17,8 +16,9 @@ export const usePermission = () => {
         // Check for wildcard access
         if (permissions.includes('*')) return true;
 
-        // Automatically grant Returns and Audit permissions to staff
-        if (profile.role === 'staff' && (
+        // Automatically grant Returns and Audit permissions to staff ONLY if they have no other explicit permissions
+        // This allows creating restricted accounts by assigning specific permissions.
+        if (profile.role === 'staff' && permissions.length === 0 && (
             code === 'returns.view' || 
             code === 'returns.create' || 
             code === 'audit.view' || 

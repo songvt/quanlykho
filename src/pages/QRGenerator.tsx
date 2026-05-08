@@ -105,6 +105,67 @@ const downloadTemplate = async () => {
     saveAs(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'QR_Import_Template.xlsx');
 };
 
+const QR_STYLES = `
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { 
+        font-family: 'Times New Roman', Times, serif; 
+        background: white; 
+        padding: 5mm;
+    }
+    @page { size: A4 landscape; margin: 5mm; }
+    .label-wrapper { 
+        width: 100%;
+        border: 2px solid #1a1a1a;
+        margin-bottom: 15px;
+        display: flex;
+        background: white;
+        page-break-inside: avoid;
+    }
+    .info-col {
+        width: 280px;
+        border-right: 2px solid #1a1a1a;
+        display: flex;
+        flex-direction: column;
+    }
+    .blue-header {
+        background-color: #2563eb !important;
+        color: white !important;
+        padding: 10px;
+        font-weight: 900;
+        font-size: 1.2rem;
+        text-align: center;
+        border-bottom: 2px solid #1a1a1a;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .info-row {
+        padding: 6px 12px;
+        border-bottom: 1px solid #555;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .info-row:last-child { border-bottom: none; }
+    .label-text { font-size: 0.85rem; color: #444; text-transform: uppercase; margin-bottom: 2px; }
+    .value-text { font-size: 1.3rem; font-weight: 800; }
+    .qr-col {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border-right: 1px solid #555;
+        padding: 10px;
+    }
+    .qr-col:last-child { border-right: none; }
+    @media print {
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .label-wrapper { margin-bottom: 12mm; border: 2px solid black !important; }
+        .label-wrapper:last-child { margin-bottom: 0; }
+    }
+`;
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 const QRGenerator = () => {
     const { profile: currentUser } = useSelector((state: RootState) => state.auth);
@@ -152,7 +213,6 @@ const QRGenerator = () => {
         const el = printRef.current;
         if (!el) { notifyError('Không tìm thấy nội dung để in'); return; }
         setIsPrinting(true);
-        // Chờ một tick để UI cập nhật trạng thái loading trước
         setTimeout(() => {
             try {
                 const printWindow = window.open('', '_blank', 'width=1200,height=800');
@@ -167,22 +227,11 @@ const QRGenerator = () => {
 <head>
   <meta charset="UTF-8" />
   <title>Mã QR Code</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, sans-serif; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    @page { size: A4 landscape; margin: 8mm; }
-    @media print {
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    }
-    table { border-collapse: collapse; width: 100%; }
-    td, th { border: 1px solid #555; padding: 8px 12px; }
-    svg { display: block; }
-  </style>
+  <style>${QR_STYLES}</style>
 </head>
 <body>${htmlContent}</body>
 </html>`);
                 printWindow.document.close();
-                // Chờ tài nguyên (SVG QR) load xong rồi mới in
                 printWindow.onload = () => {
                     setTimeout(() => {
                         printWindow.focus();
@@ -191,7 +240,6 @@ const QRGenerator = () => {
                         setIsPrinting(false);
                     }, 500);
                 };
-                // Fallback nếu onload không kích hoạt
                 setTimeout(() => {
                     if (!printWindow.closed) {
                         printWindow.focus();
@@ -207,7 +255,6 @@ const QRGenerator = () => {
             }
         }, 100);
 
-        // Lưu log in
         try {
             GoogleSheetService.saveQRLog({
                 action: 'PRINT',
@@ -249,7 +296,6 @@ const QRGenerator = () => {
             pdf.save("Ma_QR_Code.pdf");
             success("Xuất PDF thành công!");
 
-            // Lưu log xuất PDF
             try {
                 GoogleSheetService.saveQRLog({
                     action: 'EXPORT_PDF',
@@ -328,9 +374,6 @@ const QRGenerator = () => {
         });
         setManualSerials('');
     };
-
-    // ─── Grouped + QR chunks ───────────────────────────────────────────────
-
 
     // ─── Remove a specific row ─────────────────────────────────────────────
     const removeSerial = (serial: string) => setDataRows(prev => prev.filter(r => r.serial_code !== serial));
@@ -531,79 +574,69 @@ const QRGenerator = () => {
                     {/* Printable Area */}
                     <Paper elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
                         <Box ref={printRef} sx={{ p: { xs: 1, md: 3 }, bgcolor: 'white' }}>
-                            <style type="text/css" media="print">{`
-                                @page { size: A4 landscape; margin: 8mm; }
-                                @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-                            `}</style>
+                            <style type="text/css">{QR_STYLES}</style>
 
-                            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                 {pairedBoxes.map((pair, pageIndex) => (
-                                    <Box key={pageIndex} className="pdf-page"
-                                        sx={{ 
+                                    <div key={pageIndex} className="pdf-page"
+                                        style={{ 
                                             display: 'flex', 
                                             flexDirection: 'column', 
-                                            gap: 8, 
-                                            p: 2, // Padding for PDF capture border
-                                            bgcolor: 'white',
+                                            gap: '15mm', 
+                                            padding: '5mm',
+                                            backgroundColor: 'white',
                                             pageBreakAfter: pageIndex < pairedBoxes.length - 1 ? 'always' : 'auto',
-                                            ...(pageIndex < pairedBoxes.length - 1 && { mb: 4 })
+                                            marginBottom: pageIndex < pairedBoxes.length - 1 ? '20mm' : '0'
                                         }}>
                                         {pair.map((group) => {
                                             const boxLabel = group.boxNumber.replace(/THUNG/i, '').trim();
                                             return (
-                                                <TableContainer key={group.key} component={Paper} elevation={0}
-                                                    sx={{ border: '2px solid #1a1a1a', pageBreakInside: 'avoid', mb: pair.length === 1 ? 'auto' : 0 }}>
-                                                    <Table sx={{ '& td, & th': { border: '1px solid #555', padding: '8px 12px' } }}>
-                                                        <TableBody>
-                                                            <TableRow>
-                                                                {/* ─ Info Column ─ */}
-                                                                <TableCell sx={{ width: 260, verticalAlign: 'top', p: '0 !important', border: '1px solid #555 !important' }}>
-                                                                    <Box sx={{ borderBottom: '2px solid #1a1a1a', py: 1, px: 1.5, bgcolor: '#2563eb', color: 'white', fontWeight: 900, fontSize: '1.1rem', textAlign: 'center', letterSpacing: 1 }}>
-                                                                        {group.district.toUpperCase()} – {docTitle.toUpperCase()}
-                                                                    </Box>
-                                                                    <Box sx={{ borderBottom: '1px solid #555', py: 0.3, px: 1.5 }}>
-                                                                        <Typography fontSize="0.8rem" color="text.secondary" display="block">SỐ THÙNG</Typography>
-                                                                        <Typography fontWeight={700} fontSize="1.2rem">{boxLabel || group.boxNumber}</Typography>
-                                                                    </Box>
-                                                                    <Box sx={{ borderBottom: '1px solid #555', py: 0.3, px: 1.5 }}>
-                                                                        <Typography fontSize="0.8rem" color="text.secondary" display="block">SỐ LƯỢNG</Typography>
-                                                                        <Typography fontWeight={700} fontSize="1.2rem">{group.totalQuantity} serial</Typography>
-                                                                    </Box>
-                                                                    <Box sx={{ borderBottom: '1px solid #555', py: 0.3, px: 1.5 }}>
-                                                                        <Typography fontSize="0.8rem" color="text.secondary" display="block">SỐ MÃ QR</Typography>
-                                                                        <Typography fontWeight={700} fontSize="1.2rem">{group.qrChunks.length} mã</Typography>
-                                                                    </Box>
-                                                                    <Box sx={{ py: 0.3, px: 1.5 }}>
-                                                                        <Typography fontSize="0.8rem" color="text.secondary" display="block">GHI CHÚ</Typography>
-                                                                        <Typography fontSize="1.1rem" fontWeight={600}>SỐ PHIẾU: ________</Typography>
-                                                                    </Box>
-                                                                </TableCell>
+                                                <div key={group.key} className="label-wrapper">
+                                                    {/* ─ Info Column ─ */}
+                                                    <div className="info-col">
+                                                        <div className="blue-header">
+                                                            {group.district.toUpperCase()} – {docTitle.toUpperCase()}
+                                                        </div>
+                                                        <div className="info-row">
+                                                            <div className="label-text">SỐ THÙNG</div>
+                                                            <div className="value-text">{boxLabel || group.boxNumber}</div>
+                                                        </div>
+                                                        <div className="info-row">
+                                                            <div className="label-text">SỐ LƯỢNG</div>
+                                                            <div className="value-text">{group.totalQuantity} serial</div>
+                                                        </div>
+                                                        <div className="info-row">
+                                                            <div className="label-text">SỐ MÃ QR</div>
+                                                            <div className="value-text">{group.qrChunks.length} mã</div>
+                                                        </div>
+                                                        <div className="info-row">
+                                                            <div className="label-text">GHI CHÚ</div>
+                                                            <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>SỐ PHIẾU: ________</div>
+                                                        </div>
+                                                    </div>
 
-                                                                {/* ─ QR Code Columns ─ */}
-                                                                {group.qrChunks.map((chunk) => (
-                                                                    <TableCell key={chunk.label} sx={{ textAlign: 'center', verticalAlign: 'middle', minWidth: 200, py: 1 }}>
-                                                                        <Box sx={{ mb: 0.5, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-                                                                            <Typography fontWeight={800} fontSize="0.9rem" color="#0b3d2b">
-                                                                                {chunk.label}
-                                                                            </Typography>
-                                                                            <Chip label={`${chunk.serials.length}/${MAX_SERIALS_PER_QR}`} size="small"
-                                                                                sx={{ fontSize: '0.7rem', height: 18, bgcolor: chunk.serials.length === MAX_SERIALS_PER_QR ? '#dcfce7' : '#fef9c3' }} />
-                                                                        </Box>
-                                                                        <Box display="flex" justifyContent="center">
-                                                                            <QRCodeSVG value={chunk.qrValue} size={110} level="M" includeMargin={false} />
-                                                                        </Box>
-                                                                    </TableCell>
-                                                                ))}
-
-                                                            </TableRow>
-                                                        </TableBody>
-                                                    </Table>
-                                                </TableContainer>
+                                                    {/* ─ QR Code Columns ─ */}
+                                                    {group.qrChunks.map((chunk) => (
+                                                        <div key={chunk.label} className="qr-col">
+                                                            <div style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                                                                <div style={{ fontWeight: 900, fontSize: '1rem' }}>
+                                                                    {chunk.label}
+                                                                </div>
+                                                                <div style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '10px', backgroundColor: '#f1f5f9', fontWeight: 700 }}>
+                                                                    {chunk.serials.length}/{MAX_SERIALS_PER_QR}
+                                                                </div>
+                                                            </div>
+                                                            <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                                                <QRCodeSVG value={chunk.qrValue} size={125} level="M" includeMargin={false} />
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             );
                                         })}
-                                    </Box>
+                                    </div>
                                 ))}
-                            </Box>
+                            </div>
                         </Box>
                     </Paper>
                 </>
