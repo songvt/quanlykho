@@ -343,7 +343,7 @@ export const generateOutboundTemplate = () => {
     generateTemplateFromHeaders(headers, [15, 10, 30, 20, 30, 15, 20], "OutboundTemplate", "OutboundImportTemplate.xlsx");
 };
 
-export const readExcelFile = async (file: File): Promise<any[]> => {
+export const readExcelFile = async (file: File, headerRow: number = 1): Promise<any[]> => {
     const workbook = new ExcelJS.Workbook();
     const arrayBuffer = await file.arrayBuffer();
     await workbook.xlsx.load(arrayBuffer);
@@ -353,13 +353,14 @@ export const readExcelFile = async (file: File): Promise<any[]> => {
     if (!worksheet) return json;
     
     const headers: string[] = [];
-    worksheet.getRow(1).eachCell((cell, colNumber) => {
-        headers[colNumber] = cell.text;
+    worksheet.getRow(headerRow).eachCell((cell, colNumber) => {
+        headers[colNumber] = cell.text?.trim() || '';
     });
     
     worksheet.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return; // skip header
+        if (rowNumber <= headerRow) return; // skip header row(s) above
         const obj: any = {};
+        let hasData = false;
         row.eachCell((cell, colNumber) => {
             const header = headers[colNumber];
             if (header) {
@@ -372,12 +373,81 @@ export const readExcelFile = async (file: File): Promise<any[]> => {
                     }
                 }
                 obj[header] = val;
+                if (val !== null && val !== undefined && val !== '') hasData = true;
             }
         });
-        json.push(obj);
+        if (hasData) json.push(obj);
     });
     return json;
 };
+
+// Auto-detect header row by scanning for "Mã tài sản" keyword
+export const readAssetExcelFile = async (file: File): Promise<any[]> => {
+    const workbook = new ExcelJS.Workbook();
+    const arrayBuffer = await file.arrayBuffer();
+    await workbook.xlsx.load(arrayBuffer);
+    const worksheet = workbook.worksheets[0];
+    
+    if (!worksheet) return [];
+
+    // Scan first 10 rows to find the header row
+    let detectedHeaderRow = 1;
+    for (let r = 1; r <= 10; r++) {
+        const row = worksheet.getRow(r);
+        let foundHeader = false;
+        row.eachCell((cell) => {
+            const text = cell.text?.trim() || '';
+            if (text === 'Mã tài sản' || text === 'Tên tài sản' || text === 'asset_code') {
+                foundHeader = true;
+            }
+        });
+        if (foundHeader) {
+            detectedHeaderRow = r;
+            break;
+        }
+    }
+
+    // Read headers from detected row
+    const headers: string[] = [];
+    worksheet.getRow(detectedHeaderRow).eachCell((cell, colNumber) => {
+        // Strip parenthetical hints like "(dd/mm/yyyy)" or "(TRUE/FALSE)"
+        const text = (cell.text?.trim() || '').replace(/\s*\(.*?\)\s*$/, '').trim();
+        headers[colNumber] = text;
+    });
+
+    const json: any[] = [];
+    const sampleValues = Object.values({
+        'Mã tài sản': 'TS-2024-001',
+        'Tên tài sản': 'Máy tính xách tay Dell Latitude 5540',
+    });
+
+    worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber <= detectedHeaderRow) return;
+
+        const obj: any = {};
+        let hasData = false;
+        row.eachCell((cell, colNumber) => {
+            const header = headers[colNumber];
+            if (!header) return;
+
+            let val = cell.value;
+            if (val && typeof val === 'object') {
+                if ('formula' in val) {
+                    val = (val as ExcelJS.CellFormulaValue).result;
+                } else if ('richText' in val) {
+                    val = (val as ExcelJS.CellRichTextValue).richText.map(t => t.text).join('');
+                }
+            }
+            obj[header] = val;
+            if (val !== null && val !== undefined && val !== '') hasData = true;
+        });
+
+        if (hasData) json.push(obj);
+    });
+
+    return json;
+};
+
 
 // --- NEW EXCELJS HANDOVER EXPORT ---
 export const exportHandoverMinutesV2 = async (
@@ -706,4 +776,226 @@ export const exportHandoverMinutesV2 = async (
 
 export const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+};
+
+// ── ASSET IMPORT TEMPLATE ─────────────────────────────────────────────────────
+export const generateAssetTemplate = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Danh_Sach_Tai_San', {
+        pageSetup: {
+            paperSize: 9,
+            orientation: 'landscape',
+            fitToPage: true,
+            fitToWidth: 1,
+            fitToHeight: 0,
+            margins: { left: 0.3, right: 0.3, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 }
+        }
+    });
+
+    // ── Column definitions: [fieldKey, headerVietnamese, width, isRequired]
+    const columns: [string, string, number, boolean][] = [
+        ['Mã tài sản',                      'Mã tài sản',                               18, true],
+        ['Tên tài sản',                      'Tên tài sản',                              35, true],
+        ['Mã loại tài sản',                  'Mã loại tài sản',                          18, false],
+        ['Loại tài sản',                     'Loại tài sản',                             25, false],
+        ['Nhóm tài sản',                     'Nhóm tài sản',                             25, false],
+        ['Bộ tài sản',                       'Bộ tài sản',                               20, false],
+        ['Số lượng',                         'Số lượng',                                 12, true],
+        ['Đơn vị tính',                      'Đơn vị tính',                              14, false],
+        ['Đơn giá',                          'Đơn giá',                                  18, false],
+        ['Giá trị',                          'Giá trị',                                  18, false],
+        ['Tình trạng',                       'Tình trạng',                               20, false],
+        ['Mã NQL',                           'Mã NQL',                                   15, false],
+        ['Người quản lý',                    'Người quản lý',                            25, false],
+        ['Mã ĐVQL',                          'Mã ĐVQL',                                  15, false],
+        ['Đơn vị quản lý',                   'Đơn vị quản lý',                           25, false],
+        ['Mã vị trí TS',                     'Mã vị trí TS',                             15, false],
+        ['Vị trí tài sản',                   'Vị trí tài sản',                           25, false],
+        ['Ngày nhận',                        'Ngày nhận (dd/mm/yyyy)',                    22, false],
+        ['Đối tượng sử dụng',               'Đối tượng sử dụng',                        22, false],
+        ['Mã nhân viên SD',                  'Mã nhân viên SD',                          18, false],
+        ['Nhân viên sử dụng',               'Nhân viên sử dụng',                        28, false],
+        ['Mã phòng ban SD',                  'Mã phòng ban SD',                          18, false],
+        ['Phòng ban sử dụng',               'Phòng ban sử dụng',                        28, false],
+        ['Mã người ĐD',                      'Mã người ĐD',                              15, false],
+        ['Người đại diện',                   'Người đại diện',                           25, false],
+        ['Lần đầu sử dụng',                 'Lần đầu sử dụng (dd/mm/yyyy)',             28, false],
+        ['Số serial',                        'Số serial',                                20, false],
+        ['Quy cách tài sản',                'Quy cách tài sản',                         30, false],
+        ['Linh kiện đính kèm',              'Linh kiện đính kèm',                       30, false],
+        ['Nội dung bảo dưỡng',             'Nội dung bảo dưỡng',                       30, false],
+        ['Xác định BD theo',               'Xác định BD theo',                          22, false],
+        ['Thời điểm bắt đầu BD',           'Thời điểm bắt đầu BD',                    25, false],
+        ['Bảo dưỡng lặp lại theo',         'Bảo dưỡng lặp lại theo',                  25, false],
+        ['Công suất bắt đầu BD',           'Công suất bắt đầu BD',                    22, false],
+        ['BD lại sau',                       'BD lại sau',                               15, false],
+        ['Nguồn gốc',                        'Nguồn gốc',                                20, false],
+        ['Mã NCC',                           'Mã NCC',                                   15, false],
+        ['Nhà cung cấp',                     'Nhà cung cấp',                             30, false],
+        ['Ngày mua',                         'Ngày mua (dd/mm/yyyy)',                    22, false],
+        ['Số hợp đồng',                      'Số hợp đồng',                              20, false],
+        ['Ghi chú',                          'Ghi chú',                                  30, false],
+        ['Giá trị tính KH/PB',              'Giá trị tính KH/PB',                       22, false],
+        ['Kỳ KH/PB',                         'Kỳ KH/PB',                                 15, false],
+        ['Ngày bắt đầu tính KH/PB',        'Ngày bắt đầu tính KH/PB (dd/mm/yyyy)',    35, false],
+        ['KH/PB lũy kế',                     'KH/PB lũy kế',                             18, false],
+        ['Thời gian còn lại',               'Thời gian còn lại',                        22, false],
+        ['Giá trị còn lại',                 'Giá trị còn lại',                          20, false],
+        ['Là tài sản cố định',             'Là tài sản cố định (TRUE/FALSE)',          30, false],
+        ['Mang ra ngoài',                   'Mang ra ngoài (TRUE/FALSE)',               25, false],
+        ['Là tài sản dùng chung',          'Là tài sản dùng chung (TRUE/FALSE)',       30, false],
+        ['Loại hình quản lý TS',           'Loại hình quản lý TS',                    25, false],
+        ['Là TS thuê ngoài',               'Là TS thuê ngoài (TRUE/FALSE)',            28, false],
+        ['Loại thuê',                        'Loại thuê',                                18, false],
+    ];
+
+    // ── Styles
+    const borderThin: Partial<ExcelJS.Borders> = {
+        top: { style: 'thin' }, left: { style: 'thin' },
+        bottom: { style: 'thin' }, right: { style: 'thin' }
+    };
+
+    // ── Row 1: Title
+    sheet.mergeCells(1, 1, 1, columns.length);
+    const titleCell = sheet.getCell(1, 1);
+    titleCell.value = 'MẪU NHẬP LIỆU DANH SÁCH TÀI SẢN';
+    titleCell.font = { name: 'Times New Roman', size: 16, bold: true, color: { argb: 'FF1e4b9b' } };
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFdbeafe' } };
+    sheet.getRow(1).height = 30;
+
+    // ── Row 2: Instructions
+    sheet.mergeCells(2, 1, 2, columns.length);
+    const noteCell = sheet.getCell(2, 1);
+    noteCell.value = '⚠️  Cột màu ĐỎ là bắt buộc (Mã tài sản, Tên tài sản, Số lượng). Cột màu XANH là tùy chọn. Không xóa hoặc thay đổi tiêu đề cột. Ngày tháng nhập theo định dạng dd/mm/yyyy.';
+    noteCell.font = { name: 'Times New Roman', size: 10, italic: true, color: { argb: 'FF7c3aed' } };
+    noteCell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+    noteCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFf5f3ff' } };
+    sheet.getRow(2).height = 28;
+
+    // ── Row 3: Column number row (1, 2, 3...)
+    const numRow = sheet.getRow(3);
+    columns.forEach((_, i) => {
+        const cell = numRow.getCell(i + 1);
+        cell.value = i + 1;
+        cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF555555' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
+        cell.border = borderThin;
+    });
+    numRow.height = 18;
+
+    // ── Row 4: Headers
+    const headerRow = sheet.getRow(4);
+    columns.forEach(([, header, , isRequired], i) => {
+        const cell = headerRow.getCell(i + 1);
+        cell.value = header;
+        cell.font = {
+            name: 'Times New Roman', size: 10, bold: true,
+            color: { argb: isRequired ? 'FFCC0000' : 'FF1e4b9b' }
+        };
+        cell.fill = {
+            type: 'pattern', pattern: 'solid',
+            fgColor: { argb: isRequired ? 'FFFFEBEB' : 'FFdbeafe' }
+        };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = borderThin;
+    });
+    headerRow.height = 40;
+
+    // ── Row 5: Sample data row
+    const sampleData: Record<string, any> = {
+        'Mã tài sản':                   'TS-2024-001',
+        'Tên tài sản':                   'Máy tính xách tay Dell Latitude 5540',
+        'Mã loại tài sản':              'MTXT',
+        'Loại tài sản':                  'Thiết bị CNTT',
+        'Nhóm tài sản':                  'Máy tính',
+        'Bộ tài sản':                    '',
+        'Số lượng':                      1,
+        'Đơn vị tính':                   'Cái',
+        'Đơn giá':                       25000000,
+        'Giá trị':                       25000000,
+        'Tình trạng':                    'Đang sử dụng',
+        'Mã NQL':                        'NV001',
+        'Người quản lý':                 'Nguyễn Văn A',
+        'Mã ĐVQL':                       'PHONG-IT',
+        'Đơn vị quản lý':               'Phòng Công nghệ thông tin',
+        'Mã vị trí TS':                 'VP-Q12-T2',
+        'Vị trí tài sản':               'Văn phòng Quận 12 - Tầng 2',
+        'Ngày nhận':                     '15/01/2024',
+        'Đối tượng sử dụng':           'Nhân viên',
+        'Mã nhân viên SD':              'NV002',
+        'Nhân viên sử dụng':           'Trần Thị B',
+        'Mã phòng ban SD':             'PHONG-IT',
+        'Phòng ban sử dụng':          'Phòng Công nghệ thông tin',
+        'Mã người ĐD':                  'NV001',
+        'Người đại diện':              'Nguyễn Văn A',
+        'Lần đầu sử dụng':            '20/01/2024',
+        'Số serial':                     'DELL-SN-20240115',
+        'Quy cách tài sản':            'Intel Core i7, RAM 16GB, SSD 512GB',
+        'Linh kiện đính kèm':         'Sạc pin, túi đựng',
+        'Nội dung bảo dưỡng':        'Vệ sinh, kiểm tra phần cứng',
+        'Xác định BD theo':           'Thời gian',
+        'Thời điểm bắt đầu BD':      '01/01/2024',
+        'Bảo dưỡng lặp lại theo':    'Năm',
+        'Công suất bắt đầu BD':      '',
+        'BD lại sau':                   '12 tháng',
+        'Nguồn gốc':                    'Mua mới',
+        'Mã NCC':                        'NCC-DELL-VN',
+        'Nhà cung cấp':                 'Công ty Dell Việt Nam',
+        'Ngày mua':                      '10/01/2024',
+        'Số hợp đồng':                  'HĐ-2024-001',
+        'Ghi chú':                       'Bảo hành 3 năm',
+        'Giá trị tính KH/PB':         25000000,
+        'Kỳ KH/PB':                      '36 tháng',
+        'Ngày bắt đầu tính KH/PB':  '01/02/2024',
+        'KH/PB lũy kế':                 0,
+        'Thời gian còn lại':          '36 tháng',
+        'Giá trị còn lại':             25000000,
+        'Là tài sản cố định':         'TRUE',
+        'Mang ra ngoài':               'FALSE',
+        'Là tài sản dùng chung':    'FALSE',
+        'Loại hình quản lý TS':      'Tự có',
+        'Là TS thuê ngoài':          'FALSE',
+        'Loại thuê':                     '',
+    };
+
+    const sampleRow = sheet.getRow(5);
+    columns.forEach(([key], i) => {
+        const cell = sampleRow.getCell(i + 1);
+        cell.value = sampleData[key] ?? '';
+        cell.font = { name: 'Times New Roman', size: 10, italic: true, color: { argb: 'FF444444' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFDE7' } };
+        cell.alignment = { vertical: 'middle', wrapText: true };
+        cell.border = borderThin;
+        // Format number cells
+        if (typeof sampleData[key] === 'number') {
+            cell.numFmt = '#,##0';
+            cell.alignment.horizontal = 'right';
+        }
+    });
+    sampleRow.height = 22;
+
+    // ── Row 6+: Empty data rows (ready to fill in)
+    for (let r = 6; r <= 106; r++) {
+        const row = sheet.getRow(r);
+        columns.forEach((_, i) => {
+            const cell = row.getCell(i + 1);
+            cell.border = borderThin;
+            cell.font = { name: 'Times New Roman', size: 10 };
+            cell.alignment = { vertical: 'middle', wrapText: true };
+        });
+        row.height = 18;
+    }
+
+    // ── Set column widths
+    columns.forEach(([, , width], i) => {
+        sheet.getColumn(i + 1).width = width;
+    });
+
+    // ── Freeze header rows
+    sheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 4 }];
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    downloadAsDataUri(buffer, 'Mau_Import_Tai_San.xlsx');
 };

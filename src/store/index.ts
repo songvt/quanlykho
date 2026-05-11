@@ -6,7 +6,7 @@ import authReducer from './slices/authSlice';
 import employeesReducer from './slices/employeesSlice';
 import ordersReducer from './slices/ordersSlice';
 import returnsReducer from './slices/returnsSlice';
-
+import assetsReducer from './slices/assetsSlice';
 export const store = configureStore({
     reducer: {
         products: productsReducer,
@@ -16,6 +16,7 @@ export const store = configureStore({
         employees: employeesReducer,
         orders: ordersReducer,
         returns: returnsReducer,
+        assets: assetsReducer,
     },
 });
 

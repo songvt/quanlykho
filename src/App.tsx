@@ -27,6 +27,9 @@ const QRGenerator     = lazy(() => import('./pages/QRGenerator'));
 const QRGeneratorHCM  = lazy(() => import('./pages/QRGeneratorHCM'));
 const ActionHistory   = lazy(() => import('./pages/Reports/ActionHistory'));
 const Audit           = lazy(() => import('./pages/Inventory/Audit'));
+const AssetList          = lazy(() => import('./pages/Assets/AssetList'));
+const AssetMonthlyReport = lazy(() => import('./pages/Assets/AssetMonthlyReport'));
+const AssetDetailReport  = lazy(() => import('./pages/Assets/AssetDetailReport'));
 
 
 const NotFound = lazy(() => import('./pages/NotFound').catch(() => ({
@@ -80,6 +83,14 @@ function App() {
 
                                 <Route element={<ProtectedRoute allowedPermissions={['audit.view', 'audit.create']} />}>
                                     <Route path="audit" element={<Audit />} />
+                                </Route>
+
+                                <Route element={<ProtectedRoute allowedPermissions={['assets.view', 'assets.manage', '*']} />}>
+                                    <Route path="assets" element={<AssetList />} />
+                                    <Route path="assets/report-ccdc" element={<AssetMonthlyReport reportType="CCDC" />} />
+                                    <Route path="assets/report-tbvp" element={<AssetMonthlyReport reportType="TBVP" />} />
+                                    <Route path="assets/detail-ccdc" element={<AssetDetailReport reportType="CCDC" />} />
+                                    <Route path="assets/detail-tbvp" element={<AssetDetailReport reportType="TBVP" />} />
                                 </Route>
 
                                 <Route element={<ProtectedRoute allowedPermissions={['inbound.view', 'inbound.create']} />}>

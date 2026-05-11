@@ -84,3 +84,72 @@ CREATE POLICY "Allow read access for all authenticated users" ON outbound_transa
 CREATE POLICY "Allow insert for all authenticated users" ON orders FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Allow insert for all authenticated users" ON inbound_transactions FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "Allow insert for all authenticated users" ON outbound_transactions FOR INSERT TO authenticated WITH CHECK (true);
+
+-- 6. Bảng ASSETS (TÀI SẢN)
+CREATE TABLE assets (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  stt SERIAL,
+  asset_code TEXT UNIQUE NOT NULL,
+  asset_name TEXT NOT NULL,
+  asset_type_code TEXT,
+  asset_type TEXT,
+  asset_group TEXT,
+  asset_set TEXT,
+  quantity INTEGER DEFAULT 1,
+  unit TEXT,
+  unit_price NUMERIC DEFAULT 0,
+  total_value NUMERIC DEFAULT 0,
+  status TEXT,
+  manager_code TEXT,
+  manager_name TEXT,
+  management_unit_code TEXT,
+  management_unit_name TEXT,
+  location_code TEXT,
+  location_name TEXT,
+  receipt_date DATE,
+  user_type TEXT,
+  user_employee_code TEXT,
+  user_employee_name TEXT,
+  user_department_code TEXT,
+  user_department_name TEXT,
+  representative_code TEXT,
+  representative_name TEXT,
+  first_use_date DATE,
+  serial_number TEXT,
+  specifications TEXT,
+  attached_components TEXT,
+  maintenance_content TEXT,
+  maintenance_basis TEXT,
+  maintenance_start_time DATE,
+  maintenance_cycle TEXT,
+  maintenance_start_capacity NUMERIC,
+  next_maintenance_after TEXT,
+  origin TEXT,
+  supplier_code TEXT,
+  supplier_name TEXT,
+  purchase_date DATE,
+  contract_number TEXT,
+  notes TEXT,
+  depreciation_value NUMERIC,
+  depreciation_period TEXT,
+  depreciation_start_date DATE,
+  accumulated_depreciation NUMERIC,
+  remaining_time TEXT,
+  remaining_value NUMERIC,
+  is_fixed_asset BOOLEAN DEFAULT FALSE,
+  brought_outside BOOLEAN DEFAULT FALSE,
+  is_shared_asset BOOLEAN DEFAULT FALSE,
+  asset_management_type TEXT,
+  is_rented_asset BOOLEAN DEFAULT FALSE,
+  rented_type TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS
+ALTER TABLE assets ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow read access for all authenticated users" ON assets FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Allow insert for all authenticated users" ON assets FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "Allow update for all authenticated users" ON assets FOR UPDATE TO authenticated USING (true);
+CREATE POLICY "Allow delete for all authenticated users" ON assets FOR DELETE TO authenticated USING (true);
+

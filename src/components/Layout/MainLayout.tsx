@@ -25,7 +25,8 @@ import {
     Divider,
     InputBase,
     Badge,
-    Breadcrumbs
+    Breadcrumbs,
+    Collapse,
 } from '@mui/material';
 import {
     Menu as MenuIcon,
@@ -47,6 +48,10 @@ import {
     QrCode2 as QrCode2Icon,
     HistoryOutlined as HistoryIcon,
     FactCheckOutlined as FactCheckIcon,
+    DevicesOther as DevicesOtherIcon,
+    ExpandLess as ExpandLessIcon,
+    ChevronRight as ChevronRightIcon,
+    BarChart as BarChartIcon,
 } from '@mui/icons-material';
 import AIChatbot from '../Chatbot/AIChatbot';
 
@@ -55,6 +60,7 @@ const drawerWidth = 260;
 const MainLayout: React.FC = () => {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const [expandAssets, setExpandAssets] = useState(() => window.location.pathname.startsWith('/assets'));
     const [notificationAnchorEl, setNotificationAnchorEl] = useState<null | HTMLElement>(null);
 
     const navigate = useNavigate();
@@ -129,6 +135,9 @@ const MainLayout: React.FC = () => {
     const menuItems = [
         ...(profile?.role === 'admin' || (profile?.role === 'staff' && (!profile.permissions || profile.permissions.length === 0)) ? [
             { text: 'Dashboard', icon: <DashboardIcon />, path: '/' }
+        ] : []),
+        ...(hasAnyPermission(['assets.view', 'assets.manage', '*']) ? [
+            { text: 'Tài sản', icon: <DevicesOtherIcon />, path: '/assets' }
         ] : []),
         ...(hasPermission('inventory.view') ? [
             { text: 'Hàng hóa', icon: <InventoryIcon />, path: '/products' }
@@ -227,6 +236,78 @@ const MainLayout: React.FC = () => {
             <List sx={{ px: 2, flexGrow: 1 }}>
                 {menuItems.map((item) => {
                     const isActive = location.pathname === item.path;
+
+                    // ── Special: expandable "Tài sản" group
+                    if (item.path === '/assets') {
+                        const assetSubItems = [
+                            { text: 'Danh sách tài sản', path: '/assets' },
+                            { text: 'Báo cáo tổng hợp CCDC-TSNT', path: '/assets/report-ccdc' },
+                            { text: 'Chi tiết tài sản CCDC-TSNT', path: '/assets/detail-ccdc' },
+                            { text: 'Báo cáo tổng hợp TBVP', path: '/assets/report-tbvp' },
+                            { text: 'Chi tiết tài sản TBVP', path: '/assets/detail-tbvp' },
+                        ];
+                        const isGroupActive = location.pathname.startsWith('/assets');
+                        return (
+                            <React.Fragment key="assets-group">
+                                <ListItem disablePadding sx={{ mb: 0.5 }}>
+                                    <ListItemButton
+                                        onClick={() => setExpandAssets(p => !p)}
+                                        selected={isGroupActive}
+                                        sx={{
+                                            height: 44, borderRadius: '10px', color: '#64748b',
+                                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', px: 2,
+                                            '&.Mui-selected': {
+                                                backgroundColor: '#eff6ff', color: '#2563eb',
+                                                '&:hover': { backgroundColor: '#dbeafe' },
+                                                '& .MuiListItemIcon-root': { color: '#2563eb' },
+                                            },
+                                            '&:hover': { backgroundColor: '#f1f5f9', color: '#0f172a' },
+                                        }}
+                                    >
+                                        <ListItemIcon sx={{ minWidth: 32, color: isGroupActive ? '#2563eb' : '#94a3b8' }}>
+                                            {React.cloneElement(item.icon as React.ReactElement<any>, { sx: { fontSize: 20 } })}
+                                        </ListItemIcon>
+                                        <ListItemText primary={item.text}
+                                            primaryTypographyProps={{ fontWeight: isGroupActive ? 700 : 500, fontSize: '0.875rem' }}
+                                        />
+                                        {expandAssets ? <ExpandLessIcon sx={{ fontSize: 18, color: '#94a3b8' }} /> : <ChevronRightIcon sx={{ fontSize: 18, color: '#94a3b8' }} />}
+                                    </ListItemButton>
+                                </ListItem>
+                                <Collapse in={expandAssets} timeout="auto" unmountOnExit>
+                                    <List disablePadding sx={{ pl: 2 }}>
+                                        {assetSubItems.map(sub => {
+                                            const subActive = location.pathname === sub.path;
+                                            return (
+                                                <ListItem key={sub.path} disablePadding sx={{ mb: 0.5 }}>
+                                                    <ListItemButton
+                                                        onClick={() => { navigate(sub.path); if (mobileOpen) setMobileOpen(false); }}
+                                                        selected={subActive}
+                                                        sx={{
+                                                            height: 38, borderRadius: '8px', color: '#64748b', px: 1.5,
+                                                            '&.Mui-selected': {
+                                                                backgroundColor: '#eff6ff', color: '#2563eb',
+                                                                '& .MuiListItemIcon-root': { color: '#2563eb' },
+                                                            },
+                                                            '&:hover': { backgroundColor: '#f1f5f9' },
+                                                        }}
+                                                    >
+                                                        <ListItemIcon sx={{ minWidth: 26, color: subActive ? '#2563eb' : '#cbd5e1' }}>
+                                                            <BarChartIcon sx={{ fontSize: 16 }} />
+                                                        </ListItemIcon>
+                                                        <ListItemText primary={sub.text}
+                                                            primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: subActive ? 700 : 400 }}
+                                                        />
+                                                    </ListItemButton>
+                                                </ListItem>
+                                            );
+                                        })}
+                                    </List>
+                                </Collapse>
+                            </React.Fragment>
+                        );
+                    }
+
+                    // ── Default menu item
                     return (
                         <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
                             <ListItemButton
@@ -529,16 +610,16 @@ const MainLayout: React.FC = () => {
             >
                 <MenuItem onClick={() => { handleMenuClose(); navigate('/profile'); }} sx={{ fontSize: '0.875rem', py: 1 }}>
                     <ListItemIcon><PersonIcon fontSize="small" sx={{ color: '#64748b' }} /></ListItemIcon>
-                    My Profile
+                    Hồ sơ
                 </MenuItem>
                 <MenuItem disabled sx={{ fontSize: '0.875rem', py: 1 }}>
                     <ListItemIcon><SettingsIcon fontSize="small" sx={{ color: '#64748b' }} /></ListItemIcon>
-                    Account Settings
+                    Cài đặt tài khoản
                 </MenuItem>
                 <Divider sx={{ my: 1 }} />
                 <MenuItem onClick={handleLogout} sx={{ color: '#ef4444', fontSize: '0.875rem', py: 1 }}>
                     <ListItemIcon><LogoutIcon fontSize="small" sx={{ color: '#ef4444' }} /></ListItemIcon>
-                    Sign out
+                    Đăng xuất
                 </MenuItem>
             </Menu>
 

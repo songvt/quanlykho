@@ -47,29 +47,32 @@ export const checkAuthSession = createAsyncThunk(
     'auth/checkSession',
     async (_, { rejectWithValue }) => {
         try {
-            // Check for existing session in localStorage via Service
             const sessionStr = localStorage.getItem('qlkho_session');
             if (sessionStr) {
                 const session = JSON.parse(sessionStr);
 
-                // CRITICAL FIX: Always fetch the latest profile from the database
-                // Do not rely on the stale profile in localStorage
+                // Try to fetch fresh profile but with a 5-second timeout
+                // so the spinner never blocks the app indefinitely
                 try {
-                    const freshProfile = await SupabaseService.getEmployeeProfile(session.profile.auth_user_id || session.profile.id);
+                    const fetchProfilePromise = SupabaseService.getEmployeeProfile(
+                        session.profile.auth_user_id || session.profile.id
+                    );
+                    const timeoutPromise = new Promise<null>((_, reject) =>
+                        setTimeout(() => reject(new Error('Timeout')), 5000)
+                    );
 
-                    // Verify if the user is really authenticated (exists in DB)
+                    const freshProfile = await Promise.race([fetchProfilePromise, timeoutPromise]);
+
                     if (freshProfile) {
-                        // Update localStorage with fresh profile so subsequent reads are newer
                         const newSession = { ...session, profile: freshProfile };
                         localStorage.setItem('qlkho_session', JSON.stringify(newSession));
-
                         return { user: session.user, profile: freshProfile };
                     }
                 } catch (err) {
                     console.warn('Failed to fetch fresh profile, falling back to local storage', err);
                 }
 
-                // Fallback (or if fetch failed but we want to keep them logged in)
+                // Fallback: use cached session
                 return { user: session.user, profile: session.profile };
             }
 
@@ -79,6 +82,7 @@ export const checkAuthSession = createAsyncThunk(
         }
     }
 );
+
 
 const authSlice = createSlice({
     name: 'auth',

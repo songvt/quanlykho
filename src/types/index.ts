@@ -10,6 +10,7 @@ export type PermissionCode =
     | 'employees.view' | 'employees.manage'
     | 'returns.view' | 'returns.create'
     | 'storekeepers.manage'
+    | 'assets.view' | 'assets.manage'
     | '*'; // Admin full access
 
 export interface Employee {
@@ -125,3 +126,64 @@ export interface EmployeeReturn {
     product?: Product;
     employee?: Employee;
 }
+
+export interface Asset {
+    id: string;
+    stt?: number;
+    asset_code: string;
+    asset_name: string;
+    asset_type_code?: string;
+    asset_type?: string;
+    asset_group?: string;
+    asset_set?: string;
+    quantity: number;
+    unit?: string;
+    unit_price?: number;
+    total_value?: number;
+    status?: string;
+    manager_code?: string;
+    manager_name?: string;
+    management_unit_code?: string;
+    management_unit_name?: string;
+    location_code?: string;
+    location_name?: string;
+    receipt_date?: string;
+    user_type?: string;
+    user_employee_code?: string;
+    user_employee_name?: string;
+    user_department_code?: string;
+    user_department_name?: string;
+    representative_code?: string;
+    representative_name?: string;
+    first_use_date?: string;
+    serial_number?: string;
+    specifications?: string;
+    attached_components?: string;
+    maintenance_content?: string;
+    maintenance_basis?: string;
+    maintenance_start_time?: string;
+    maintenance_cycle?: string;
+    maintenance_start_capacity?: number;
+    next_maintenance_after?: string;
+    origin?: string;
+    supplier_code?: string;
+    supplier_name?: string;
+    purchase_date?: string;
+    contract_number?: string;
+    notes?: string;
+    depreciation_value?: number;
+    depreciation_period?: string;
+    depreciation_start_date?: string;
+    accumulated_depreciation?: number;
+    remaining_time?: string;
+    remaining_value?: number;
+    is_fixed_asset?: boolean;
+    brought_outside?: boolean;
+    is_shared_asset?: boolean;
+    asset_management_type?: string;
+    is_rented_asset?: boolean;
+    rented_type?: string;
+    created_at?: string;
+    updated_at?: string;
+}
+

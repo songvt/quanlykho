@@ -18,11 +18,27 @@ body {
   display: block;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #f1f5f9;
+  /* Premium modern animated background */
+  background: linear-gradient(-45deg, #e0e7ff, #dbeafe, #f3e8ff, #f8fafc) !important;
+  background-size: 400% 400%;
+  animation: gradientBG 15s ease infinite;
+  background-attachment: fixed;
   overflow-x: hidden;
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
+}
+
+@keyframes gradientBG {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 /* Scrollbar styling */
