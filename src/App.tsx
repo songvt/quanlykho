@@ -61,7 +61,6 @@ function App() {
                             <Route path="/change-password" element={<ChangePassword />} />
 
                             <Route path="/" element={<MainLayout />}>
-                                {/* ... rest remains same ... */}
                                 <Route index element={<Dashboard />} />
                                 
                                 <Route element={<ProtectedRoute allowedPermissions={['orders.create', 'orders.view_own', 'orders.view_all']} />}>

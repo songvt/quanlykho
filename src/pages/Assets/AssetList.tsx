@@ -12,11 +12,11 @@ import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import UndoIcon from '@mui/icons-material/Undo';
 import TransferWithinAStationIcon from '@mui/icons-material/TransferWithinAStation';
 import EditIcon from '@mui/icons-material/Edit';
+import PrintIcon from '@mui/icons-material/Print';
 
 import { fetchAssets, deleteAsset, importAssets, updateAsset } from '../../store/slices/assetsSlice';
 import { useNotification } from '../../contexts/NotificationContext';
-import PrintIcon from '@mui/icons-material/Print';
-import { readAssetExcelFile, exportHandoverMinutesV2, generateAssetTemplate } from '../../utils/excelUtils';
+import { readAssetExcelFile, generateAssetTemplate } from '../../utils/excelUtils';
 import type { RootState, AppDispatch } from '../../store';
 import type { Asset } from '../../types';
 import TableSkeleton from '../../components/Common/TableSkeleton';
@@ -202,7 +202,7 @@ const AssetList = () => {
 
                 // 1. Filter out duplicates (check if asset_code already exists in current state)
                 const existingCodes = new Set(assets.map(a => a.asset_code));
-                const newAssets = mappedData.filter(a => !existingCodes.has(a.asset_code));
+                const newAssets = mappedData.filter(a => !existingCodes.has(a.asset_code as string));
                 const duplicateCount = mappedData.length - newAssets.length;
 
                 if (newAssets.length > 0) {
@@ -281,7 +281,21 @@ const AssetList = () => {
     return (
         <Box p={{ xs: 1, sm: 3 }}>
             <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" mb={3} spacing={2}>
-                <Typography variant="h4" fontWeight={900} color="primary">QUẢN LÝ TÀI SẢN</Typography>
+                <Typography 
+                    variant="h4" 
+                    fontWeight={900} 
+                    color="primary"
+                    sx={{ 
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        background: 'linear-gradient(45deg, #1e3a8a 30%, #3b82f6 90%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        textShadow: '0px 2px 4px rgba(0,0,0,0.1)'
+                    }}
+                >
+                    QUẢN LÝ TÀI SẢN
+                </Typography>
                 
                 <Stack direction="row" spacing={1} flexWrap="wrap">
                     <Button

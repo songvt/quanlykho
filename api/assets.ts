@@ -1,7 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets.js';
 import { supabase, fetchAll } from './utils/supabase.js';
-import crypto from 'crypto';
+import { randomUUID } from 'crypto';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const allowedMethods = ['GET', 'POST', 'PUT', 'DELETE'];
@@ -29,8 +29,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
 
             case 'POST': {
-                const { action, payload } = req.body;
-                let itemsToInsert: any[] = action === 'bulk_insert' ? payload : [payload];
+                const { action } = req.body;
+                const itemsToInsert = (req.body.payload as any[]).map(item => ({
+                    ...item,
+                    id: item.id || randomUUID()
+                }));
 
                 // Get current max stt to auto-increment
                 const { data: maxSttRow } = await supabase
@@ -40,15 +43,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     .limit(1);
                 let nextStt = (maxSttRow && maxSttRow[0]?.stt) ? (maxSttRow[0].stt + 1) : 1;
 
-                // Ensure required fields: id (uuid) and stt (auto-increment)
-                itemsToInsert = itemsToInsert.map((item: any) => {
-                    // Generate UUID if not present
-                    const id = item.id || crypto.randomUUID();
-                    // Clean undefined/null fields to avoid DB type errors
-                    const cleaned: any = { id, stt: nextStt++ };
+                const processedItems = itemsToInsert.map((item: any) => {
+                    const cleaned: any = { ...item, stt: nextStt++ };
                     for (const [k, v] of Object.entries(item)) {
-                        if (v !== undefined && v !== null && v !== '') {
-                            cleaned[k] = v;
+                        if (v === undefined || v === null || v === '') {
+                            delete cleaned[k];
                         }
                     }
                     return cleaned;
@@ -57,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 // 1. Supabase upsert
                 const { data: sbData, error: sbError } = await supabase
                     .from('assets')
-                    .upsert(itemsToInsert, { onConflict: 'asset_code', ignoreDuplicates: false })
+                    .upsert(processedItems, { onConflict: 'asset_code', ignoreDuplicates: false })
                     .select();
                 if (sbError) {
                     console.error('SB Write Error:', JSON.stringify(sbError));
@@ -67,8 +66,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 // 2. Google Sheets (non-blocking, fire-and-forget with timeout)
                 try {
                     const gsWritePromise = async () => {
-                        if (action === 'bulk_insert') await sheet.addRows(itemsToInsert);
-                        else await sheet.addRow(itemsToInsert[0]);
+                        if (action === 'bulk_insert') await sheet.addRows(processedItems);
+                        else await sheet.addRow(processedItems[0]);
                     };
                     await Promise.race([
                         gsWritePromise(),
@@ -79,12 +78,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     await supabase.from('gs_sync_queue').insert({
                         table_name: 'assets',
                         action: 'insert',
-                        payload: itemsToInsert,
+                        payload: processedItems,
                         error_message: e.message
                     });
                 }
 
-                return res.status(201).json(action === 'bulk_insert' ? (sbData || itemsToInsert) : (sbData ? sbData[0] : itemsToInsert[0]));
+                return res.status(201).json(action === 'bulk_insert' ? (sbData || processedItems) : (sbData ? sbData[0] : processedItems[0]));
             }
 
 

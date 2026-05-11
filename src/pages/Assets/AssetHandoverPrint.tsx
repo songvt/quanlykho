@@ -64,7 +64,7 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                     .republic { font-size: 10.5pt; font-weight: bold; text-align: center; }
                     .motto { font-size: 10.5pt; font-weight: bold; text-decoration: underline; text-align: center; }
                     .date-line { text-align: right; font-style: italic; font-size: 10.5pt; margin: 10px 0 6px; }
-                    .title { text-align: center; font-size: 15pt; font-weight: bold; color: #cc0000; margin: 14px 0 18px; text-transform: uppercase; }
+                    .title { text-align: center; font-size: 16pt; font-weight: bold; color: #000; margin: 14px 0 18px; text-transform: uppercase; }
                     .section-label { font-weight: bold; font-size: 10.5pt; margin: 6px 0 2px; color: #003087; }
                     .person-row { display: flex; font-size: 10.5pt; margin: 3px 0; }
                     .person-label { width: 120px; font-weight: bold; }
@@ -126,7 +126,7 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                     </div>
 
                     {/* Title */}
-                    <div style={{ textAlign: 'center', fontSize: '15pt', fontWeight: 'bold', color: '#cc0000', margin: '14px 0 18px', textTransform: 'uppercase' }}>
+                    <div style={{ textAlign: 'center', fontSize: '16pt', fontWeight: 'bold', color: '#000', margin: '14px 0 18px', textTransform: 'uppercase' }}>
                         {title}
                     </div>
 
