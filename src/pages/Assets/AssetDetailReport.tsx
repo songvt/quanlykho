@@ -95,7 +95,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                 a.user_employee_code||'-', a.user_employee_name||'-',
                 a.manager_code||'-', a.manager_name||'-',
                 a.receipt_date ? new Date(a.receipt_date).toLocaleDateString('vi-VN') : '-',
-                0, 0, a.management_unit_code||'-', a.management_unit_name||'-', reportType
+                0, 0, a.location_code||'-', a.location_name||'-', reportType
             ]);
             r.eachCell(c => { c.border = border; c.font = { size:9, name:'Times New Roman' }; c.alignment = { vertical:'middle', wrapText:true }; });
         });
@@ -234,8 +234,8 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                                 <td style={colStyle}>{a.receipt_date ? new Date(a.receipt_date).toLocaleDateString('vi-VN') : '-'}</td>
                                 <td style={colStyle}>0</td>
                                 <td style={colStyle}>0</td>
-                                <td style={colStyle}>{a.management_unit_code || '-'}</td>
-                                <td style={{ ...colStyle, textAlign: 'left', fontSize: '8pt' }}>{a.management_unit_name || '-'}</td>
+                                <td style={colStyle}>{a.location_code || '-'}</td>
+                                <td style={{ ...colStyle, textAlign: 'left', fontSize: '8pt' }}>{a.location_name || '-'}</td>
                                 <td style={colStyle}>{reportType}</td>
                             </tr>
                         ))}
