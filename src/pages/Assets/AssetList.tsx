@@ -206,7 +206,7 @@ const AssetList = () => {
                 const duplicateCount = mappedData.length - newAssets.length;
 
                 if (newAssets.length > 0) {
-                    await dispatch(importAssets(newAssets as Asset[])).unwrap();
+                    await dispatch(importAssets(newAssets as Omit<Asset, 'id'>[])).unwrap();
                     let msg = `Đã nhập thành công ${newAssets.length} tài sản mới!`;
                     if (duplicateCount > 0) {
                         msg += ` (Đã bỏ qua ${duplicateCount} mã đã tồn tại)`;
