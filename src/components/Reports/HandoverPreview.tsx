@@ -3,6 +3,7 @@ import { Box, Typography, Table, TableBody, TableCell, TableHead, TableRow } fro
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import { readMoney } from '../../utils/excelUtils';
 import { createPortal } from 'react-dom';
+import { formatPhone } from '../../utils/format';
 
 interface HandoverPreviewProps {
     data: any[];
@@ -64,7 +65,7 @@ const HandoverTemplate = ({ data, employeeName, date, reporterName, senderPhone,
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                         <Typography sx={{ fontSize: '10pt' }}>Họ tên: <b>{reporterName}</b></Typography>
                         <Typography sx={{ fontSize: '10pt' }}>Bộ phận: <b>Kho Trung Tâm</b></Typography>
-                        <Typography sx={{ fontSize: '10pt' }}>Điện thoại: {senderPhone || '-'}</Typography>
+                        <Typography sx={{ fontSize: '10pt' }}>Điện thoại: {formatPhone(senderPhone) || '-'}</Typography>
                     </Box>
                 </Box>
 
@@ -73,7 +74,7 @@ const HandoverTemplate = ({ data, employeeName, date, reporterName, senderPhone,
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                         <Typography sx={{ fontSize: '10pt' }}>Họ tên: <b>{employeeName}</b></Typography>
                         <Typography sx={{ fontSize: '10pt' }}>Bộ phận: <b>Kỹ thuật CĐBR</b></Typography>
-                        <Typography sx={{ fontSize: '10pt' }}>Điện thoại: {receiverPhone || '-'}</Typography>
+                        <Typography sx={{ fontSize: '10pt' }}>Điện thoại: {formatPhone(receiverPhone) || '-'}</Typography>
                     </Box>
                 </Box>
             </Box>

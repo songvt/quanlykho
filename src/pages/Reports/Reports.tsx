@@ -29,7 +29,7 @@ import { exportHandoverMinutesV2, exportStandardReport } from '../../utils/excel
 import type { ReportColumn } from '../../utils/excelUtils';
 import HandoverPreview from '../../components/Reports/HandoverPreview';
 import ReturnsReportPreview from '../../components/Reports/ReturnsReportPreview';
-import { formatCurrency, getLocalYYYYMMDD, matchDistrict } from '../../utils/format';
+import { formatCurrency, getLocalYYYYMMDD, matchDistrict, formatPhone } from '../../utils/format';
 import { formatDate, parseDate } from '../../utils/dateUtils';
 
 const Reports = () => {
@@ -543,7 +543,7 @@ const Reports = () => {
         const reportNumber = num.toString();
 
         try {
-            await exportHandoverMinutesV2(formattedData, selectedEmployee || 'N/A', selectedDate, resolvedSenderName, senderPhone, receiverPhone, reportNumber);
+            await exportHandoverMinutesV2(formattedData, selectedEmployee || 'N/A', selectedDate, resolvedSenderName, formatPhone(senderPhone), formatPhone(receiverPhone), reportNumber);
         } catch (error: any) {
             console.error(error);
             setNotification({ type: 'error', message: "Lỗi xuất báo cáo: " + (error?.message || JSON.stringify(error)) });
@@ -595,8 +595,8 @@ const Reports = () => {
 
         const num = calculateReportNumber(selectedDate, selectedEmployee || '');
         setPreviewSenderName(resolvedSenderName);
-        setPreviewSenderPhone(senderPh);
-        setPreviewReceiverPhone(receiverPh);
+        setPreviewSenderPhone(formatPhone(senderPh));
+        setPreviewReceiverPhone(formatPhone(receiverPh));
         setPreviewReportNumber(num);
 
         setPreviewData(formattedData);
@@ -645,8 +645,8 @@ const Reports = () => {
 
         const num = calculateReportNumber(selectedDate, selectedEmployee || '');
         setPreviewSenderName(resolvedSenderName);
-        setPreviewSenderPhone(senderPh);
-        setPreviewReceiverPhone(receiverPh);
+        setPreviewSenderPhone(formatPhone(senderPh));
+        setPreviewReceiverPhone(formatPhone(receiverPh));
         setPreviewReportNumber(num);
         setPreviewData(formattedData);
         setIsExportingPDF(true);

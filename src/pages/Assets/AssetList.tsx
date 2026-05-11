@@ -575,10 +575,10 @@ const AssetList = () => {
                 handoverInfo={{
                     giverName: 'NGUYỄN HẢI SƠN',
                     giverTitle: 'GĐ TTKV BSG',
-                    giverPhone: '988.855.186',
+                    giverPhone: '0988855186',
                     giverName2: 'VÕ THANH SONG',
                     giverTitle2: 'NV QLTS-KHO',
-                    giverPhone2: '988.229.082',
+                    giverPhone2: '0988229082',
                     receiverName: handoverPrint.receiverName,
                     receiverDept: handoverPrint.receiverDept,
                 }}

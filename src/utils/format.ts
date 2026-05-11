@@ -44,3 +44,14 @@ export const matchDistrict = (search: string, config: string): boolean => {
     
     return nSearch === nConfig || nSearch.includes(nConfig) || nConfig.includes(nSearch);
 };
+
+export const formatPhone = (phone: string | undefined | null): string => {
+    if (!phone) return '';
+    // Remove dots and spaces
+    let clean = phone.toString().replace(/[.\s]/g, '');
+    // If it doesn't start with 0, prepend it (assuming it's a valid number missing leading zero)
+    if (clean && !clean.startsWith('0')) {
+        clean = '0' + clean;
+    }
+    return clean;
+};

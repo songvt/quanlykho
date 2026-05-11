@@ -6,6 +6,7 @@ import {
 import PrintIcon from '@mui/icons-material/Print';
 import CloseIcon from '@mui/icons-material/Close';
 import type { Asset } from '../../types';
+import { formatPhone } from '../../utils/format';
 
 interface HandoverInfo {
     giverName?: string;
@@ -138,7 +139,7 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                             <span style={{ flex: 1, fontWeight: 'bold', textTransform: 'uppercase' }}>{handoverInfo.giverName}</span>
                             <span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span>
                             <span style={{ flex: 1 }}>{handoverInfo.giverTitle}</span>
-                            <span style={{ width: 110, textAlign: 'right' }}>{handoverInfo.giverPhone}</span>
+                            <span style={{ width: 110, textAlign: 'right' }}>{formatPhone(handoverInfo.giverPhone)}</span>
                         </div>
                     )}
                     {handoverInfo.giverName2 && (
@@ -147,7 +148,7 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                             <span style={{ flex: 1, fontWeight: 'bold', textTransform: 'uppercase' }}>{handoverInfo.giverName2}</span>
                             <span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span>
                             <span style={{ flex: 1 }}>{handoverInfo.giverTitle2}</span>
-                            <span style={{ width: 110, textAlign: 'right' }}>{handoverInfo.giverPhone2}</span>
+                            <span style={{ width: 110, textAlign: 'right' }}>{formatPhone(handoverInfo.giverPhone2)}</span>
                         </div>
                     )}
 
