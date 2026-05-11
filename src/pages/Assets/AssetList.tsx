@@ -48,7 +48,8 @@ const AssetList = () => {
         receiverName: string;
         receiverCode: string;
         receiverDept: string;
-    }>({ open: false, type: null, assets: [], receiverName: '', receiverCode: '', receiverDept: '' });
+        receiverTitle: string;
+    }>({ open: false, type: null, assets: [], receiverName: '', receiverCode: '', receiverDept: '', receiverTitle: '' });
 
     const [editStatusModal, setEditStatusModal] = useState<{
         open: boolean;
@@ -100,7 +101,8 @@ const AssetList = () => {
             assets: filteredAssets,
             receiverName: searchEmployee.trim(),
             receiverCode: filteredAssets[0]?.user_employee_code || '',
-            receiverDept: filteredAssets[0]?.user_department_name || '',
+            receiverDept: filteredAssets[0]?.location_name || '',
+            receiverTitle: filteredAssets[0]?.user_type || '',
         });
     };
 
@@ -581,6 +583,7 @@ const AssetList = () => {
                     giverPhone2: '0988229082',
                     receiverName: handoverPrint.receiverName,
                     receiverDept: handoverPrint.receiverDept,
+                    receiverTitle: handoverPrint.receiverTitle,
                 }}
             />
         </Box>

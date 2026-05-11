@@ -78,7 +78,8 @@ const AssetBrokenReport = () => {
             { header: 'Người sử dụng', key: 'user_employee_name', width: 25 },
             { header: 'Tình trạng', key: 'status', width: 15, align: 'center' as const },
             { header: 'Mô tả chi tiết', key: 'status_description', width: 30 },
-            { header: 'Phòng ban', key: 'user_department_name', width: 20 },
+            { header: 'Chức vụ', key: 'user_type', width: 15 },
+            { header: 'Đơn vị', key: 'location_name', width: 20 },
         ];
 
         try {
@@ -187,7 +188,8 @@ const AssetBrokenReport = () => {
                                 <TableCell sx={{ fontWeight: 700 }}>NGƯỜI SỬ DỤNG</TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>TÌNH TRẠNG</TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>MÔ TẢ CHI TIẾT</TableCell>
-                                <TableCell sx={{ fontWeight: 700 }}>PHÒNG BAN</TableCell>
+                                <TableCell sx={{ fontWeight: 700 }}>CHỨC VỤ</TableCell>
+                                <TableCell sx={{ fontWeight: 700 }}>ĐƠN VỊ</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -224,7 +226,8 @@ const AssetBrokenReport = () => {
                                         </Box>
                                     </TableCell>
                                     <TableCell sx={{ fontSize: '0.875rem' }}>{asset.status_description || '-'}</TableCell>
-                                    <TableCell>{asset.user_department_name || '-'}</TableCell>
+                                    <TableCell>{asset.user_type || '-'}</TableCell>
+                                    <TableCell>{asset.location_name || '-'}</TableCell>
                                 </TableRow>
                             ))}
                             {filteredAssets.length === 0 && (

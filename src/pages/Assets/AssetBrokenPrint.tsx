@@ -198,8 +198,10 @@ const AssetBrokenPrint: React.FC<Props> = ({ open, onClose, assets }) => {
                                 <th style={{ width: '40px', border: '1px solid black', padding: '6px 4px', backgroundColor: '#f2f2f2' }}>ĐV</th>
                                 <th style={{ width: '110px', border: '1px solid black', padding: '6px 4px', backgroundColor: '#f2f2f2' }}>Người sử dụng</th>
                                 <th style={{ width: '80px', border: '1px solid black', padding: '6px 4px', backgroundColor: '#f2f2f2' }}>Tình trạng</th>
-                                <th style={{ width: '130px', border: '1px solid black', padding: '6px 4px', backgroundColor: '#f2f2f2' }}>Mô tả chi tiết tình trạng</th>
-                                <th style={{ width: '80px', border: '1px solid black', padding: '6px 4px', backgroundColor: '#f2f2f2' }}>Ghi chú</th>
+                                <th style={{ width: '130px', border: '1px solid black', padding: '6px 4px', backgroundColor: '#f2f2f2' }}>Mô tả chi tiết</th>
+                                <th style={{ width: '80px', border: '1px solid black', padding: '6px 4px', backgroundColor: '#f2f2f2' }}>Chức vụ</th>
+                                <th style={{ width: '100px', border: '1px solid black', padding: '6px 4px', backgroundColor: '#f2f2f2' }}>Đơn vị</th>
+                                <th style={{ width: '70px', border: '1px solid black', padding: '6px 4px', backgroundColor: '#f2f2f2' }}>Ghi chú</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -213,6 +215,8 @@ const AssetBrokenPrint: React.FC<Props> = ({ open, onClose, assets }) => {
                                     <td style={{ border: '1px solid black', padding: '6px 4px' }}>{asset.user_employee_name || ''}</td>
                                     <td style={{ textAlign: 'center', border: '1px solid black', padding: '6px 4px' }}>{asset.status}</td>
                                     <td style={{ border: '1px solid black', padding: '6px 4px' }}>{asset.status_description || ''}</td>
+                                    <td style={{ border: '1px solid black', padding: '6px 4px' }}>{asset.user_type || ''}</td>
+                                    <td style={{ border: '1px solid black', padding: '6px 4px' }}>{asset.location_name || ''}</td>
                                     <td style={{ border: '1px solid black', padding: '6px 4px' }}>{asset.notes || ''}</td>
                                 </tr>
                             ))}

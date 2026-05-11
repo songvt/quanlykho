@@ -77,7 +77,8 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
             else if (STATUS_REPAIR.some(prefix => s.includes(prefix))) groups[key].repairQty += qty;
             else groups[key].usingQty += qty;
             
-            if (a.user_department_name) groups[key].departments.add(a.user_department_name);
+            if (a.location_name) groups[key].departments.add(a.location_name);
+            else if (a.user_department_name) groups[key].departments.add(a.user_department_name);
             else if (a.management_unit_name) groups[key].departments.add(a.management_unit_name);
         });
 
