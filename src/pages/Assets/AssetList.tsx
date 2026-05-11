@@ -263,6 +263,7 @@ const AssetList = () => {
                 receiverName: actionModal.type === 'revoke' ? 'Kho ACT' : employeeName,
                 receiverCode: actionModal.type === 'revoke' ? '' : employeeCode,
                 receiverDept: actionModal.type === 'revoke' ? '' : department,
+                receiverTitle: '', // Placeholder or we can add a state for this if needed
             });
 
             setActionModal({ open: false, type: null, assetIds: [] });
