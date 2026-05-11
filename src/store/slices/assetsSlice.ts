@@ -26,7 +26,7 @@ export const fetchAssets = createAsyncThunk('assets/fetchAssets', async () => {
 });
 
 export const fetchAssetLogs = createAsyncThunk('assets/fetchAssetLogs', async () => {
-    const response = await fetch('/api/asset_logs');
+    const response = await fetch('/api/assets?type=logs');
     if (!response.ok) {
         const err = await response.json().catch(() => ({}));
         throw new Error(err.error || 'Failed to fetch asset logs');

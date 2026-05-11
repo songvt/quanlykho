@@ -12,7 +12,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
         if (req.method === 'GET') {
             try {
-                const data = await fetchAll('assets', '*', (q) => q.order('created_at', { ascending: false }));
+                const { type } = req.query;
+                if (type === 'logs') {
+                    const data = await fetchAll('asset_logs', '*', (q) => q.order('created_at', { ascending: false }));
+                    return res.status(200).json(data);
+                }
+                const data = await fetchAll('assets', '*', (q) => q.order('stt', { ascending: true }));
                 return res.status(200).json(data);
             } catch (error: any) {
                 console.warn('Supabase fetch failed, falling back to Google Sheets:', error);
