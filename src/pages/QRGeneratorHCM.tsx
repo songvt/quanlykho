@@ -52,26 +52,27 @@ interface GroupedBox {
     qrChunks: QRChunk[];
 }
 
-const MAX_SERIALS_PER_QR = 140;
+const MAX_SERIALS_PER_QR = 60;
+const MAX_SERIALS_TOTAL  = 140; // hard cap per box
 
-// ─── Helper: split serials ───────────────────────────────────────────────────
+// ─── Helper: split serials into max 2 QR chunks ─────────────────────────────
 const buildQRChunks = (serials: string[]): QRChunk[] => {
     if (serials.length === 0) return [];
-    
-    // Tối đa 140 serial cho 1 thùng
-    const limitedSerials = serials.slice(0, MAX_SERIALS_PER_QR);
-    const qrValue = limitedSerials.join('\n');
-    
-    // Log if data is very large
-    if (qrValue.length > 2000) {
-        console.warn('QR data length is very large:', qrValue.length);
+
+    const limited = serials.slice(0, MAX_SERIALS_TOTAL);
+
+    if (limited.length <= MAX_SERIALS_PER_QR) {
+        // Single QR
+        return [{ label: 'Mã QR', serials: limited, qrValue: limited.join('\n') }];
     }
-    
-    return [{
-        label: 'Mã QR',
-        serials: limitedSerials,
-        qrValue: qrValue,
-    }];
+
+    // Two QR codes
+    const chunk1 = limited.slice(0, MAX_SERIALS_PER_QR);
+    const chunk2 = limited.slice(MAX_SERIALS_PER_QR);
+    return [
+        { label: 'QR 1', serials: chunk1, qrValue: chunk1.join('\n') },
+        { label: 'QR 2', serials: chunk2, qrValue: chunk2.join('\n') },
+    ];
 };
 
 // ─── Helper: generate sample Excel template ───────────────────────────────────
@@ -220,13 +221,27 @@ const QRGeneratorHCM = () => {
             justify-content: center;
         }
         .qr-container {
-            width: 220px;
             display: flex;
+            flex-direction: row;
             justify-content: center;
             align-items: center;
-            padding: 6px;
+            gap: 6px;
+            padding: 4px 6px;
             background: white;
             border-left: 2px solid #334155;
+            min-width: 160px;
+        }
+        .qr-single {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+        .qr-label {
+            font-size: 7pt;
+            font-weight: bold;
+            color: #475569;
+            text-align: center;
         }
     `;
 
@@ -598,14 +613,15 @@ const QRGeneratorHCM = () => {
                                         const group = groupedBoxes[groupIdx];
                                         if (!group) return null;
 
-                                        return group.qrChunks.map((chunk, chunkIdx) => (
-                                            <div className="label-wrapper" key={`${groupIdx}-${chunkIdx}`}>
+                                        // 1 tem = 1 group, hiển thị tất cả QR codes của box này
+                                        return (
+                                            <div className="label-wrapper" key={groupIdx}>
                                                 {/* Header */}
                                                 <div className="header-text-print">
                                                     {group.tieu_de || 'TIÊU ĐỀ'}
                                                 </div>
 
-                                                {/* Body Row 1: Thùng & QR */}
+                                                {/* Body Row 1: Thùng & QR (tất cả chunk trong 1 container) */}
                                                 <div className="row-print" style={{ flex: '3' }}>
                                                     <div className="label-cell-print">
                                                         THÙNG
@@ -614,17 +630,28 @@ const QRGeneratorHCM = () => {
                                                         {group.thung}
                                                     </div>
                                                     <div className="qr-container">
-                                                        <QRCodeSVG value={chunk.qrValue} size={120} level="L" />
+                                                        {group.qrChunks.map((qc, qi) => (
+                                                            <div className="qr-single" key={qi}>
+                                                                {group.qrChunks.length > 1 && (
+                                                                    <div className="qr-label">{qc.label}</div>
+                                                                )}
+                                                                <QRCodeSVG
+                                                                    value={qc.qrValue}
+                                                                    size={group.qrChunks.length > 1 ? 88 : 110}
+                                                                    level="L"
+                                                                />
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 </div>
 
-                                                {/* Body Row 2: Số lượng */}
+                                                {/* Body Row 2: Số lượng tổng */}
                                                 <div className="row-print">
                                                     <div className="label-cell-print">
                                                         Số lượng
                                                     </div>
                                                     <div className="value-cell-print-lg">
-                                                        {chunk.serials.length}
+                                                        {group.totalQuantity}
                                                     </div>
                                                 </div>
 
@@ -648,7 +675,7 @@ const QRGeneratorHCM = () => {
                                                     </div>
                                                 </div>
                                             </div>
-                                        ));
+                                        );
                                     })}
                                     {pageIdx < Math.ceil(groupedBoxes.length / 2) - 1 && <div className="page-break" />}
                                 </div>
