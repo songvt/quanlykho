@@ -10,7 +10,7 @@ export type PermissionCode =
     | 'employees.view' | 'employees.manage'
     | 'returns.view' | 'returns.create'
     | 'storekeepers.manage'
-    | 'assets.view' | 'assets.manage'
+    | 'assets.view' | 'assets.manage' | 'assets.list_only'
     | '*'; // Admin full access
 
 export interface Employee {

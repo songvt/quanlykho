@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
     Box, Paper, Typography, Button, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Checkbox, TablePagination,
-    Stack, TextField, InputAdornment
+    Stack, TextField, InputAdornment, useMediaQuery, useTheme, Chip, Divider
 } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
 import SearchIcon from '@mui/icons-material/Search';
@@ -18,6 +18,8 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { useNotification } from '../../contexts/NotificationContext';
 
 const AssetBrokenReport = () => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const dispatch = useDispatch<AppDispatch>();
     const { items: assets, status } = useSelector((state: RootState) => state.assets);
     const { success, error: notifyError } = useNotification();
@@ -97,10 +99,10 @@ const AssetBrokenReport = () => {
 
     return (
         <Box p={{ xs: 1, sm: 3 }}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" mb={3} spacing={2} alignItems="center">
+            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" mb={2} spacing={1.5} alignItems={{ sm: 'center' }}>
                 <Box>
                     <Typography 
-                        variant="h4" 
+                        variant={isMobile ? 'h6' : 'h5'}
                         fontWeight={900} 
                         color="error"
                         sx={{ 
@@ -108,15 +110,17 @@ const AssetBrokenReport = () => {
                             letterSpacing: '0.02em',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 1.5
+                            gap: 1
                         }}
                     >
-                        <FilterListIcon sx={{ fontSize: 32 }} />
-                        BÁO CÁO CCDC-TBVP HỎNG
+                        <FilterListIcon sx={{ fontSize: isMobile ? 22 : 28 }} />
+                        {isMobile ? 'CCDC-TBVP HỎNG' : 'BÁO CÁO CCDC-TBVP HỎNG'}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 500 }}>
-                        Danh sách các tài sản có tình trạng là "Hỏng" trong hệ thống
-                    </Typography>
+                    {!isMobile && (
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 500 }}>
+                            Danh sách các tài sản có tình trạng là "Hỏng" trong hệ thống
+                        </Typography>
+                    )}
                 </Box>
                 
                 <Stack direction="row" spacing={1}>
@@ -125,9 +129,10 @@ const AssetBrokenReport = () => {
                         color="success"
                         startIcon={<FileDownloadIcon />}
                         onClick={handleExportExcel}
+                        size={isMobile ? 'small' : 'medium'}
                         sx={{ borderRadius: 2 }}
                     >
-                        Xuất Excel
+                        {isMobile ? 'Excel' : 'Xuất Excel'}
                     </Button>
                     <Button
                         variant="contained"
@@ -135,22 +140,20 @@ const AssetBrokenReport = () => {
                         startIcon={<PrintIcon />}
                         onClick={() => setPrintModalOpen(true)}
                         disabled={selectedIds.length === 0}
-                        sx={{ 
-                            borderRadius: 2, 
-                            px: 3,
-                            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
-                        }}
+                        size={isMobile ? 'small' : 'medium'}
+                        sx={{ borderRadius: 2 }}
                     >
-                        In biên bản ({selectedIds.length})
+                        In ({selectedIds.length})
                     </Button>
                 </Stack>
             </Stack>
 
-            <Paper sx={{ p: 2, mb: 3, borderRadius: 3, display: 'flex', gap: 2, alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <Paper sx={{ p: 1.5, mb: 2, borderRadius: 2, display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
                 <TextField
-                    placeholder="Tìm theo mã, tên tài sản hoặc người sử dụng..."
+                    placeholder="Tìm theo mã, tên TS, người sử dụng..."
                     size="small"
-                    fullWidth
+                    fullWidth={isMobile}
+                    sx={{ flex: isMobile ? 'none' : 1, width: isMobile ? '100%' : undefined, bgcolor: '#f8fafc' }}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     InputProps={{
@@ -160,15 +163,73 @@ const AssetBrokenReport = () => {
                             </InputAdornment>
                         ),
                     }}
-                    sx={{ bgcolor: '#f8fafc', '& .MuiOutlinedInput-notchedOutline': { borderColor: '#e2e8f0' } }}
                 />
-                <Typography variant="body2" sx={{ whiteSpace: 'nowrap', fontWeight: 600, color: 'text.secondary' }}>
-                    Tổng số: {filteredAssets.length} bản ghi
-                </Typography>
+                <Chip label={`${filteredAssets.length} bản ghi`} size="small" variant="outlined" />
             </Paper>
 
             {status === 'loading' ? (
                 <TableSkeleton columns={7} rows={10} />
+            ) : isMobile ? (
+                <Box>
+                    <Paper sx={{ px: 2, py: 1, mb: 1, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Checkbox
+                            checked={filteredAssets.length > 0 && selectedIds.length === filteredAssets.length}
+                            indeterminate={selectedIds.length > 0 && selectedIds.length < filteredAssets.length}
+                            onChange={(e) => handleSelectAll(e.target.checked)}
+                            size="small"
+                        />
+                        <Typography variant="body2" color="text.secondary">Chọn tất cả</Typography>
+                    </Paper>
+                    <Stack spacing={1.5}>
+                        {filteredAssets.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((asset, index) => (
+                            <Paper
+                                key={asset.id}
+                                elevation={selectedIds.includes(asset.id) ? 3 : 1}
+                                onClick={() => handleSelectOne(asset.id, !selectedIds.includes(asset.id))}
+                                sx={{
+                                    borderRadius: 3,
+                                    border: selectedIds.includes(asset.id) ? '2px solid #ef4444' : '1px solid #fee2e2',
+                                    overflow: 'hidden', cursor: 'pointer', transition: 'all 0.2s',
+                                }}
+                            >
+                                <Box sx={{ px: 2, py: 1, bgcolor: selectedIds.includes(asset.id) ? '#fef2f2' : '#fff5f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Stack direction="row" alignItems="center" spacing={1}>
+                                        <Checkbox checked={selectedIds.includes(asset.id)} size="small" onClick={(e) => e.stopPropagation()} onChange={(e) => handleSelectOne(asset.id, e.target.checked)} />
+                                        <Typography variant="caption" fontWeight={700} color="text.secondary">#{page * rowsPerPage + index + 1}</Typography>
+                                        <Typography variant="body2" fontWeight={700} color="primary.main">{asset.asset_code}</Typography>
+                                    </Stack>
+                                    <Box sx={{ px: 1, py: 0.25, borderRadius: 1, bgcolor: '#fee2e2', color: '#ef4444', fontSize: '0.7rem', fontWeight: 700 }}>
+                                        HỎNG
+                                    </Box>
+                                </Box>
+                                <Divider />
+                                <Box sx={{ px: 2, py: 1.5 }}>
+                                    <Typography variant="body2" fontWeight={600} sx={{ mb: 0.75 }}>{asset.asset_name}</Typography>
+                                    <Stack spacing={0.25}>
+                                        {asset.status_description && (
+                                            <Typography variant="caption" color="error.main">⚠️ {asset.status_description}</Typography>
+                                        )}
+                                        {asset.user_employee_name && (
+                                            <Typography variant="caption" color="text.secondary">👤 {asset.user_employee_name} {asset.user_type ? `- ${asset.user_type}` : ''}</Typography>
+                                        )}
+                                        {asset.location_name && (
+                                            <Typography variant="caption" color="text.secondary">🏢 {asset.location_name}</Typography>
+                                        )}
+                                    </Stack>
+                                </Box>
+                            </Paper>
+                        ))}
+                        {filteredAssets.length === 0 && (
+                            <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
+                                <Typography color="text.secondary">Không tìm thấy tài sản nào có tình trạng "Hỏng".</Typography>
+                            </Paper>
+                        )}
+                    </Stack>
+                    <TablePagination component="div" count={filteredAssets.length} rowsPerPage={rowsPerPage} page={page}
+                        onPageChange={(_, p) => setPage(p)}
+                        onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+                        rowsPerPageOptions={[10, 25]} labelRowsPerPage="" />
+                </Box>
             ) : (
                 <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', overflow: 'hidden' }}>
                     <Table size="small">
@@ -194,21 +255,13 @@ const AssetBrokenReport = () => {
                         </TableHead>
                         <TableBody>
                             {filteredAssets.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((asset, index) => (
-                                <TableRow 
-                                    key={asset.id} 
-                                    hover 
-                                    selected={selectedIds.includes(asset.id)}
+                                <TableRow key={asset.id} hover selected={selectedIds.includes(asset.id)}
                                     onClick={() => handleSelectOne(asset.id, !selectedIds.includes(asset.id))}
                                     sx={{ cursor: 'pointer' }}
                                 >
                                     <TableCell padding="checkbox">
-                                        <Checkbox
-                                            checked={selectedIds.includes(asset.id)}
-                                            onChange={(e) => {
-                                                e.stopPropagation();
-                                                handleSelectOne(asset.id, e.target.checked);
-                                            }}
-                                        />
+                                        <Checkbox checked={selectedIds.includes(asset.id)}
+                                            onChange={(e) => { e.stopPropagation(); handleSelectOne(asset.id, e.target.checked); }} />
                                     </TableCell>
                                     <TableCell>{page * rowsPerPage + index + 1}</TableCell>
                                     <TableCell sx={{ fontWeight: 600, color: 'primary.main' }}>{asset.asset_code}</TableCell>
@@ -216,12 +269,7 @@ const AssetBrokenReport = () => {
                                     <TableCell>{asset.quantity || 1}</TableCell>
                                     <TableCell>{asset.user_employee_name || '-'}</TableCell>
                                     <TableCell>
-                                        <Box component="span" sx={{ 
-                                            px: 1, py: 0.5, borderRadius: 1, 
-                                            bgcolor: '#fee2e2', color: '#ef4444', 
-                                            fontSize: '0.75rem', fontWeight: 700,
-                                            textTransform: 'uppercase'
-                                        }}>
+                                        <Box component="span" sx={{ px: 1, py: 0.5, borderRadius: 1, bgcolor: '#fee2e2', color: '#ef4444', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>
                                             {asset.status}
                                         </Box>
                                     </TableCell>
@@ -232,24 +280,17 @@ const AssetBrokenReport = () => {
                             ))}
                             {filteredAssets.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={8} align="center" sx={{ py: 8 }}>
-                                        <Typography variant="body1" color="text.secondary">
-                                            Không tìm thấy tài sản nào có tình trạng "Hỏng".
-                                        </Typography>
+                                    <TableCell colSpan={10} align="center" sx={{ py: 8 }}>
+                                        <Typography variant="body1" color="text.secondary">Không tìm thấy tài sản nào có tình trạng "Hỏng".</Typography>
                                     </TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
                     </Table>
-                    <TablePagination
-                        component="div"
-                        count={filteredAssets.length}
-                        rowsPerPage={rowsPerPage}
-                        page={page}
-                        onPageChange={(e, newPage) => setPage(newPage)}
+                    <TablePagination component="div" count={filteredAssets.length} rowsPerPage={rowsPerPage} page={page}
+                        onPageChange={(_, p) => setPage(p)}
                         onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
-                        labelRowsPerPage="Số dòng mỗi trang:"
-                    />
+                        labelRowsPerPage="Số dòng mỗi trang:" />
                 </TableContainer>
             )}
 

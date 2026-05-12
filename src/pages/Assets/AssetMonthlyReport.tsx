@@ -2,7 +2,8 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import {
     Box, Typography, Button, Select, MenuItem, FormControl,
-    InputLabel, Paper, Chip, Divider, Stack, CircularProgress
+    InputLabel, Paper, Chip, Divider, Stack, CircularProgress,
+    useMediaQuery, useTheme
 } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -24,6 +25,8 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 const YEARS = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - 2 + i);
 
 const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const dispatch = useDispatch<AppDispatch>();
     const { items: allAssets, logs: allLogs, status } = useSelector((s: RootState) => s.assets);
 
@@ -236,28 +239,31 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
     const headerStyle: React.CSSProperties = { ...colStyle, backgroundColor: '#e0e0e0', fontWeight: 'bold' };
 
     return (
-        <Box sx={{ p: 3 }}>
-            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }} className="no-print">
-                <Typography variant="h6" fontWeight={700} sx={{ flexGrow: 1 }}>
+        <Box sx={{ p: { xs: 1, sm: 3 } }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }} sx={{ mb: 3 }} className="no-print">
+                <Typography variant={isMobile ? 'body1' : 'h6'} fontWeight={700} sx={{ flexGrow: 1 }}>
                     Báo cáo {reportType === 'CCDC' ? 'CCDC-TSNT' : 'TBVP'}
                 </Typography>
-                <FormControl size="small" sx={{ width: 100 }}><InputLabel>Tháng</InputLabel>
-                    <Select value={month} label="Tháng" onChange={e => setMonth(Number(e.target.value))}>
-                        {MONTHS.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}
-                    </Select>
-                </FormControl>
-                <FormControl size="small" sx={{ width: 100 }}><InputLabel>Năm</InputLabel>
-                    <Select value={year} label="Năm" onChange={e => setYear(Number(e.target.value))}>
-                        {YEARS.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
-                    </Select>
-                </FormControl>
-                <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>In</Button>
-                <Button variant="contained" color="success" startIcon={<DownloadIcon />} onClick={handleExportExcel}>Excel</Button>
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    <FormControl size="small" sx={{ width: 90 }}><InputLabel>Tháng</InputLabel>
+                        <Select value={month} label="Tháng" onChange={e => setMonth(Number(e.target.value))}>
+                            {MONTHS.map(m => <MenuItem key={m} value={m}>{m}</MenuItem>)}
+                        </Select>
+                    </FormControl>
+                    <FormControl size="small" sx={{ width: 95 }}><InputLabel>Năm</InputLabel>
+                        <Select value={year} label="Năm" onChange={e => setYear(Number(e.target.value))}>
+                            {YEARS.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
+                        </Select>
+                    </FormControl>
+                    {!isMobile && <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>In</Button>}
+                    <Button variant="contained" color="success" startIcon={<DownloadIcon />} onClick={handleExportExcel}>Excel</Button>
+                </Stack>
             </Stack>
 
             {status === 'loading' && <CircularProgress sx={{ display: 'block', mx: 'auto', my: 4 }} />}
 
-            <Paper elevation={0} sx={{ p: 4, border: '1px solid #ddd', minHeight: '210mm' }} ref={printRef}>
+            <Box sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <Paper elevation={0} sx={{ p: { xs: 1.5, sm: 4 }, border: '1px solid #ddd', minWidth: '800px' }} ref={printRef}>
                 <div className="print-header" style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'Times New Roman', width: '100%' }}>
                     <div className="print-header-side" style={{ textAlign: 'center', width: '45%' }}>
                         <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>CÔNG TY CỔ PHẦN VIỄN THÔNG ACT</div>
@@ -349,6 +355,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                     </div>
                 </div>
             </Paper>
+            </Box>
         </Box>
     );
 };

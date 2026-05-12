@@ -4,7 +4,7 @@ import {
     Box, Paper, Typography, Button, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, IconButton, Dialog,
     DialogTitle, DialogContent, DialogActions, TextField, Stack,
-    Checkbox, TablePagination
+    Checkbox, TablePagination, useMediaQuery, useTheme, Chip, Divider
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -23,6 +23,8 @@ import TableSkeleton from '../../components/Common/TableSkeleton';
 import AssetHandoverPrint from './AssetHandoverPrint';
 
 const AssetList = () => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const dispatch = useDispatch<AppDispatch>();
     const { items: assets, status } = useSelector((state: RootState) => state.assets);
     const { profile } = useSelector((state: RootState) => state.auth);
@@ -311,12 +313,22 @@ const AssetList = () => {
         }
     };
 
+    // Mobile status chip color helper
+    const getStatusColor = (status: string) => {
+        if (!status) return 'default';
+        if (status.includes('Hỏng') || status.includes('Mất')) return 'error';
+        if (status.includes('Đã cấp phát') || status.includes('Đang sử dụng')) return 'success';
+        if (status.includes('Điều chuyển')) return 'warning';
+        return 'info';
+    };
+
     return (
 
         <Box p={{ xs: 1, sm: 3 }}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" mb={3} spacing={2}>
+            {/* Header */}
+            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" mb={2} spacing={1.5}>
                 <Typography 
-                    variant="h4" 
+                    variant={isMobile ? 'h5' : 'h4'}
                     fontWeight={900} 
                     color="primary"
                     sx={{ 
@@ -325,20 +337,20 @@ const AssetList = () => {
                         background: 'linear-gradient(45deg, #1e3a8a 30%, #3b82f6 90%)',
                         WebkitBackgroundClip: 'text',
                         WebkitTextFillColor: 'transparent',
-                        textShadow: '0px 2px 4px rgba(0,0,0,0.1)'
                     }}
                 >
                     QUẢN LÝ TÀI SẢN
                 </Typography>
                 
-                <Stack direction="row" spacing={1} flexWrap="wrap">
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                     <Button
                         variant="outlined"
                         component="label"
                         startIcon={<UploadFileIcon />}
                         size="small"
+                        sx={{ minWidth: isMobile ? 'auto' : undefined }}
                     >
-                        Nhập Excel
+                        {isMobile ? 'Nhập' : 'Nhập Excel'}
                         <input type="file" hidden accept=".xlsx, .xls" onChange={handleImportExcel} />
                     </Button>
                     <Button
@@ -347,7 +359,7 @@ const AssetList = () => {
                         size="small"
                         onClick={() => generateAssetTemplate()}
                     >
-                        📥 Tải mẫu
+                        {isMobile ? '📥' : '📥 Tải mẫu'}
                     </Button>
                     {selectedIds.length > 0 && (
                         <>
@@ -357,7 +369,7 @@ const AssetList = () => {
                                 size="small" 
                                 startIcon={<AssignmentIndIcon />}
                                 onClick={() => setActionModal({ open: true, type: 'allocate', assetIds: selectedIds })}
-                            >Cấp phát</Button>
+                            >{isMobile ? 'Cấp' : 'Cấp phát'}</Button>
                             <Button 
                                 variant="contained" 
                                 color="warning" 
@@ -371,7 +383,7 @@ const AssetList = () => {
                                 size="small" 
                                 startIcon={<TransferWithinAStationIcon />}
                                 onClick={() => setActionModal({ open: true, type: 'transfer', assetIds: selectedIds })}
-                            >Điều chuyển</Button>
+                            >{isMobile ? 'Chuyển' : 'Điều chuyển'}</Button>
                         </>
                     )}
                     <Button
@@ -382,24 +394,151 @@ const AssetList = () => {
                         onClick={handlePrintByEmployee}
                         disabled={!searchEmployee.trim()}
                     >
-                        In biên bản (NV)
+                        {isMobile ? 'In BB' : 'In biên bản (NV)'}
                     </Button>
                 </Stack>
             </Stack>
 
-            <Stack direction="row" spacing={2} mb={2}>
+            {/* Search + selection info */}
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} mb={2} alignItems={{ sm: 'center' }}>
                 <TextField
                     placeholder="Tìm theo tên TS, tình trạng, nhân viên..."
                     size="small"
-                    sx={{ width: 350, bgcolor: 'white' }}
+                    fullWidth={isMobile}
+                    sx={{ width: isMobile ? '100%' : 350, bgcolor: 'white' }}
                     value={searchEmployee}
                     onChange={(e) => setSearchEmployee(e.target.value)}
                 />
+                {selectedIds.length > 0 && (
+                    <Chip 
+                        label={`Đã chọn: ${selectedIds.length}`} 
+                        color="primary" 
+                        size="small" 
+                        onDelete={() => setSelectedIds([])}
+                    />
+                )}
             </Stack>
 
             {status === 'loading' ? (
                 <TableSkeleton columns={7} rows={10} />
+            ) : isMobile ? (
+                /* ── MOBILE: Card list ── */
+                <Box>
+                    {/* Select all bar */}
+                    <Paper sx={{ px: 2, py: 1, mb: 1, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Checkbox
+                            checked={filteredAssets.length > 0 && selectedIds.length === filteredAssets.length}
+                            indeterminate={selectedIds.length > 0 && selectedIds.length < filteredAssets.length}
+                            onChange={(e) => handleSelectAll(e.target.checked)}
+                            size="small"
+                        />
+                        <Typography variant="body2" color="text.secondary">
+                            Chọn tất cả ({filteredAssets.length} tài sản)
+                        </Typography>
+                    </Paper>
+
+                    <Stack spacing={1.5}>
+                        {filteredAssets.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((asset) => (
+                            <Paper
+                                key={asset.id}
+                                elevation={selectedIds.includes(asset.id) ? 3 : 1}
+                                sx={{
+                                    borderRadius: 3,
+                                    border: selectedIds.includes(asset.id) ? '2px solid #3b82f6' : '1px solid #e2e8f0',
+                                    overflow: 'hidden',
+                                    transition: 'all 0.2s',
+                                }}
+                            >
+                                {/* Card header */}
+                                <Box
+                                    sx={{
+                                        px: 2, py: 1,
+                                        bgcolor: selectedIds.includes(asset.id) ? '#eff6ff' : '#f8fafc',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                    }}
+                                >
+                                    <Stack direction="row" alignItems="center" spacing={1}>
+                                        <Checkbox
+                                            checked={selectedIds.includes(asset.id)}
+                                            onChange={(e) => handleSelectOne(asset.id, e.target.checked)}
+                                            size="small"
+                                        />
+                                        <Typography variant="body2" fontWeight={700} color="primary.main">
+                                            {asset.asset_code}
+                                        </Typography>
+                                    </Stack>
+                                    <Stack direction="row" spacing={0.5}>
+                                        <IconButton
+                                            size="small"
+                                            color="primary"
+                                            onClick={() => setEditStatusModal({
+                                                open: true,
+                                                assetId: asset.id,
+                                                status: asset.status || '',
+                                                description: asset.status_description || ''
+                                            })}
+                                        >
+                                            <EditIcon fontSize="small" />
+                                        </IconButton>
+                                        <IconButton
+                                            size="small"
+                                            color="error"
+                                            onClick={() => setDeleteConfirm({ open: true, id: asset.id })}
+                                        >
+                                            <DeleteIcon fontSize="small" />
+                                        </IconButton>
+                                    </Stack>
+                                </Box>
+                                <Divider />
+                                {/* Card body */}
+                                <Box sx={{ px: 2, py: 1.5 }}>
+                                    <Typography variant="body1" fontWeight={600} sx={{ mb: 1, lineHeight: 1.3 }}>
+                                        {asset.asset_name}
+                                    </Typography>
+                                    <Stack direction="row" flexWrap="wrap" gap={1} alignItems="center">
+                                        <Chip
+                                            label={asset.status || 'Không rõ'}
+                                            size="small"
+                                            color={getStatusColor(asset.status || '') as any}
+                                            sx={{ fontWeight: 600, fontSize: '0.7rem' }}
+                                        />
+                                        {asset.user_employee_name && (
+                                            <Typography variant="caption" color="text.secondary">
+                                                👤 {asset.user_employee_name}
+                                            </Typography>
+                                        )}
+                                        {asset.user_department_name && (
+                                            <Typography variant="caption" color="text.secondary">
+                                                🏢 {asset.user_department_name}
+                                            </Typography>
+                                        )}
+                                    </Stack>
+                                </Box>
+                            </Paper>
+                        ))}
+                        {filteredAssets.length === 0 && (
+                            <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
+                                <Typography color="text.secondary">Chưa có tài sản nào.</Typography>
+                            </Paper>
+                        )}
+                    </Stack>
+
+                    <TablePagination
+                        component="div"
+                        count={filteredAssets.length}
+                        rowsPerPage={rowsPerPage}
+                        page={page}
+                        onPageChange={(_, p) => setPage(p)}
+                        onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+                        rowsPerPageOptions={[10, 25, 50]}
+                        labelRowsPerPage=""
+                        sx={{ '.MuiTablePagination-selectLabel': { display: 'none' } }}
+                    />
+                </Box>
             ) : (
+                /* ── DESKTOP: Table ── */
                 <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
                     <Table size="small">
                         <TableHead sx={{ bgcolor: '#f8fafc' }}>
@@ -453,7 +592,6 @@ const AssetList = () => {
                                             >
                                                 <DeleteIcon fontSize="small" />
                                             </IconButton>
-
                                         </Stack>
                                     </TableCell>
                                 </TableRow>
@@ -467,11 +605,12 @@ const AssetList = () => {
                     </Table>
                     <TablePagination
                         component="div"
-                        count={assets.length}
+                        count={filteredAssets.length}
                         rowsPerPage={rowsPerPage}
                         page={page}
-                        onPageChange={(e, newPage) => setPage(newPage)}
+                        onPageChange={(_, p) => setPage(p)}
                         onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+                        labelRowsPerPage="Số dòng:"
                     />
                 </TableContainer>
             )}

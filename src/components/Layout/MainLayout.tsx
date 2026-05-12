@@ -136,7 +136,7 @@ const MainLayout: React.FC = () => {
         ...(profile?.role === 'admin' || (profile?.role === 'staff' && (!profile.permissions || profile.permissions.length === 0)) ? [
             { text: 'Dashboard', icon: <DashboardIcon />, path: '/' }
         ] : []),
-        ...(hasAnyPermission(['assets.view', 'assets.manage', '*']) ? [
+        ...(hasAnyPermission(['assets.view', 'assets.manage', 'assets.list_only', '*']) ? [
             { text: 'Tài sản', icon: <DevicesOtherIcon />, path: '/assets' }
         ] : []),
         ...(hasPermission('inventory.view') ? [
@@ -239,13 +239,16 @@ const MainLayout: React.FC = () => {
 
                     // ── Special: expandable "Tài sản" group
                     if (item.path === '/assets') {
+                        const canViewReports = hasAnyPermission(['assets.view', 'assets.manage', '*']);
                         const assetSubItems = [
                             { text: 'Danh sách tài sản', path: '/assets' },
-                            { text: 'Báo cáo tổng hợp CCDC-TSNT', path: '/assets/report-ccdc' },
-                            { text: 'Chi tiết tài sản CCDC-TSNT', path: '/assets/detail-ccdc' },
-                            { text: 'Báo cáo tổng hợp TBVP', path: '/assets/report-tbvp' },
-                            { text: 'Chi tiết tài sản TBVP', path: '/assets/detail-tbvp' },
-                            { text: 'Báo cáo CCDC-TBVP hỏng', path: '/assets/broken-report' },
+                            ...(canViewReports ? [
+                                { text: 'Báo cáo tổng hợp CCDC-TSNT', path: '/assets/report-ccdc' },
+                                { text: 'Chi tiết tài sản CCDC-TSNT', path: '/assets/detail-ccdc' },
+                                { text: 'Báo cáo tổng hợp TBVP', path: '/assets/report-tbvp' },
+                                { text: 'Chi tiết tài sản TBVP', path: '/assets/detail-tbvp' },
+                                { text: 'Báo cáo CCDC-TBVP hỏng', path: '/assets/broken-report' },
+                            ] : []),
                         ];
                         const isGroupActive = location.pathname.startsWith('/assets');
                         return (

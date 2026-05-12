@@ -86,14 +86,16 @@ function App() {
                                     <Route path="audit" element={<Audit />} />
                                 </Route>
 
-                                <Route element={<ProtectedRoute allowedPermissions={['assets.view', 'assets.manage', '*']} />}>
+                                <Route element={<ProtectedRoute allowedPermissions={['assets.view', 'assets.manage', 'assets.list_only', '*']} />}>
                                     <Route path="assets" element={<AssetList />} />
+                                </Route>
+
+                                <Route element={<ProtectedRoute allowedPermissions={['assets.view', 'assets.manage', '*']} />}>
                                     <Route path="assets/report-ccdc" element={<AssetMonthlyReport reportType="CCDC" />} />
                                     <Route path="assets/report-tbvp" element={<AssetMonthlyReport reportType="TBVP" />} />
                                     <Route path="assets/detail-ccdc" element={<AssetDetailReport reportType="CCDC" />} />
                                     <Route path="assets/detail-tbvp" element={<AssetDetailReport reportType="TBVP" />} />
                                     <Route path="assets/broken-report" element={<AssetBrokenReport />} />
-
                                 </Route>
 
                                 <Route element={<ProtectedRoute allowedPermissions={['inbound.view', 'inbound.create']} />}>
