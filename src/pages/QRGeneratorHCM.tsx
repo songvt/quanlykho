@@ -160,17 +160,18 @@ const QRGeneratorHCM = () => {
             .label-wrapper { box-shadow: none; border-color: black; }
         }
         .header-text-print { 
-            font-size: 18pt; 
+            font-size: 28pt; 
             font-weight: bold; 
             text-align: center; 
             text-transform: uppercase;
             line-height: 1.4;
             margin-bottom: 0;
             letter-spacing: 1px;
-            background-color: #1e293b !important;
-            color: white !important;
-            padding: 8px 0;
+            background-color: #facc15 !important;
+            color: black !important;
+            padding: 10px 0;
             border-radius: 4px 4px 0 0;
+            text-decoration: underline;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
@@ -184,12 +185,12 @@ const QRGeneratorHCM = () => {
             border-bottom: none;
         }
         .label-cell-print { 
-            font-size: 15pt; 
+            font-size: 22pt; 
             font-weight: bold; 
-            background-color: #f8fafc !important;
-            width: 180px;
-            color: #475569;
-            text-transform: uppercase;
+            background-color: #ffffff !important;
+            width: 50%;
+            color: #000;
+            text-transform: none;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -199,26 +200,32 @@ const QRGeneratorHCM = () => {
             print-color-adjust: exact;
         }
         .value-cell-print { 
-            font-size: 20pt; 
+            font-size: 24pt; 
             font-weight: bold; 
             text-align: center;
-            color: #0f172a;
+            background-color: #facc15 !important;
+            color: #000;
             flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 0 15px;
             word-break: break-all;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
         .value-cell-print-lg { 
-            font-size: 38pt; 
+            font-size: 28pt; 
             font-weight: bold; 
             text-align: center;
+            background-color: #facc15 !important;
             color: #000;
             flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
         }
         .qr-container {
             /* unused - kept for compat */
@@ -239,7 +246,7 @@ const QRGeneratorHCM = () => {
             display: flex;
             flex-direction: column;
             border-left: 2px solid #334155;
-            width: 180px;
+            width: 33.33%;
             flex-shrink: 0;
         }
         .qr-cell {
