@@ -178,99 +178,61 @@ const QRGeneratorHCM = () => {
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .row-print {
-            display: flex;
-            border-bottom: 2px solid #334155;
-            flex: 1;
-            min-height: 0;
-        }
-        .row-print:last-child {
-            border-bottom: none;
-        }
-        .label-cell-print { 
-            font-size: 28pt; 
-            font-weight: bold; 
-            background-color: #ffffff !important;
-            width: 50%;
-            color: #000;
-            text-transform: none;
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            border-right: 2px solid #334155;
-            padding-left: 20mm;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-        }
-        .value-cell-print { 
-            font-size: 28pt; 
-            font-weight: bold; 
-            text-align: center;
-            background-color: #facc15 !important;
-            color: #000;
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0 10px;
-            word-break: break-all;
-            line-height: 1.2;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-        }
-        .value-cell-print-lg { 
-            font-size: 42pt; 
-            font-weight: bold; 
-            text-align: center;
-            background-color: #facc15 !important;
-            color: #000;
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-        }
-        .qr-container {
-            /* unused - kept for compat */
-        }
         .label-body {
-            display: flex;
-            flex-direction: row;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: repeat(4, 1fr);
             flex: 1;
             min-height: 0;
-        }
-        .label-rows {
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-            min-width: 0;
-        }
-        .qr-column {
-            display: flex;
-            flex-direction: column;
-            border-left: 2px solid #334155;
-            width: 33.33%;
-            flex-shrink: 0;
-        }
-        .qr-cell {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            flex: 1;
-            padding: 4px;
-            background: white;
-        }
-        .qr-cell + .qr-cell {
             border-top: 2px solid #334155;
         }
-        .qr-label {
-            font-size: 7pt;
+        .grid-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 2px solid #334155;
+            border-right: 2px solid #334155;
+            overflow: hidden;
+            background: white;
+        }
+        .grid-cell:nth-child(3n) {
+            border-right: none;
+        }
+        .grid-cell-label {
+            justify-content: flex-start;
+            padding-left: 20mm;
+            font-size: 26pt;
             font-weight: bold;
-            color: #475569;
+        }
+        .grid-cell-value {
+            background-color: #facc15 !important;
+            font-size: 28pt;
+            font-weight: bold;
             text-align: center;
-            margin-bottom: 2px;
+            padding: 0 10px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .grid-cell-value-lg {
+            background-color: #facc15 !important;
+            font-size: 38pt;
+            font-weight: bold;
+            text-align: center;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .grid-cell-qr {
+            flex-direction: column;
+            padding: 10px;
+        }
+        /* No bottom border on the last row cells */
+        .label-body > .grid-cell:nth-last-child(-n+3) {
+            border-bottom: none;
+        }
+        .qr-label-small {
+            font-size: 8pt;
+            font-weight: bold;
+            margin-bottom: 4px;
         }
     `;
 
@@ -643,49 +605,41 @@ const QRGeneratorHCM = () => {
                                             {group.tieu_de || 'TIÊU ĐỀ'}
                                         </div>
 
-                                        {/* Label body: left rows + right QR column */}
+                                        {/* Label body: 4 rows x 3 cols grid */}
                                         <div className="label-body">
-                                            <div className="label-rows">
-                                                {/* Row 1: THÙNG */}
-                                                <div className="row-print" style={{ flex: '1' }}>
-                                                    <div className="label-cell-print">THÙNG</div>
-                                                    <div className="value-cell-print-lg">{group.thung}</div>
-                                                </div>
-
-                                                {/* Row 2: Số lượng */}
-                                                <div className="row-print" style={{ flex: '1' }}>
-                                                    <div className="label-cell-print">Số lượng</div>
-                                                    <div className="value-cell-print-lg">{group.totalQuantity}</div>
-                                                </div>
-
-                                                {/* Row 3: Thiết bị */}
-                                                <div className="row-print" style={{ flex: '1' }}>
-                                                    <div className="label-cell-print">Thiết bị</div>
-                                                    <div className="value-cell-print">{group.thiet_bi}</div>
-                                                </div>
-
-                                                {/* Row 4: Tình trạng */}
-                                                <div className="row-print" style={{ flex: '1' }}>
-                                                    <div className="label-cell-print">Tình trạng</div>
-                                                    <div className="value-cell-print">{group.tinh_trang}</div>
-                                                </div>
+                                            {/* Row 1 */}
+                                            <div className="grid-cell grid-cell-label">THÙNG</div>
+                                            <div className="grid-cell grid-cell-value-lg">{group.thung}</div>
+                                            <div className="grid-cell grid-cell-qr" style={{ gridRow: group.qrChunks.length > 1 ? 'span 2' : 'span 4' }}>
+                                                {group.qrChunks[0] && (
+                                                    <>
+                                                        {group.qrChunks.length > 1 && <div className="qr-label-small">{group.qrChunks[0].label}</div>}
+                                                        <QRCodeSVG value={group.qrChunks[0].qrValue} size={group.qrChunks.length > 1 ? 180 : 300} level="L" />
+                                                    </>
+                                                )}
                                             </div>
 
-                                            {/* Right QR column: 1 or 2 stacked cells */}
-                                            <div className="qr-column">
-                                                {group.qrChunks.map((qc, qi) => (
-                                                    <div className="qr-cell" key={qi}>
-                                                        {group.qrChunks.length > 1 && (
-                                                            <div className="qr-label">{qc.label}</div>
-                                                        )}
-                                                        <QRCodeSVG
-                                                            value={qc.qrValue}
-                                                            size={group.qrChunks.length > 1 ? 220 : 320}
-                                                            level="L"
-                                                        />
-                                                    </div>
-                                                ))}
-                                            </div>
+                                            {/* Row 2 */}
+                                            <div className="grid-cell grid-cell-label">Số lượng</div>
+                                            <div className="grid-cell grid-cell-value-lg">{group.totalQuantity}</div>
+                                            {/* Col 3 is spanned from Row 1 */}
+
+                                            {/* Row 3 */}
+                                            <div className="grid-cell grid-cell-label">Thiết bị</div>
+                                            <div className="grid-cell grid-cell-value">{group.thiet_bi}</div>
+                                            {group.qrChunks.length > 1 ? (
+                                                <div className="grid-cell grid-cell-qr" style={{ gridRow: 'span 2' }}>
+                                                    <div className="qr-label-small">{group.qrChunks[1].label}</div>
+                                                    <QRCodeSVG value={group.qrChunks[1].qrValue} size={180} level="L" />
+                                                </div>
+                                            ) : (
+                                                null // Spanned from Row 1
+                                            )}
+
+                                            {/* Row 4 */}
+                                            <div className="grid-cell grid-cell-label">Tình trạng</div>
+                                            <div className="grid-cell grid-cell-value">{group.tinh_trang}</div>
+                                            {/* Col 3 is spanned if length is 1, otherwise Row 3 span covers it */}
                                         </div>
                                     </div>
                                     {groupIdx < groupedBoxes.length - 1 && <div className="page-break" />}
