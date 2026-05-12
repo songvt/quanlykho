@@ -181,7 +181,7 @@ const QRGeneratorHCM = () => {
         .label-body {
             display: grid;
             grid-template-columns: 95mm 95mm 95mm;
-            grid-template-rows: repeat(4, 50mm);
+            grid-template-rows: repeat(4, 45mm);
             flex: 1;
             min-height: 0;
             border-top: 2px solid #334155;
@@ -200,7 +200,7 @@ const QRGeneratorHCM = () => {
         }
         .grid-cell-label {
             justify-content: flex-start;
-            padding-left: 15mm;
+            padding-left: 20mm;
             font-size: 26pt;
             font-weight: bold;
             border-right: 2px solid #334155;
