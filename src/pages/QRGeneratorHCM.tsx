@@ -5,7 +5,7 @@ import {
     TableContainer, TableHead, TableRow, CircularProgress
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeCanvas } from 'qrcode.react';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import PrintIcon from '@mui/icons-material/Print';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -193,6 +193,8 @@ const QRGeneratorHCM = () => {
             overflow: hidden;
             background: white;
             border-bottom: 2px solid #334155;
+            position: relative;
+            contain: paint;
         }
         .grid-cell-label {
             justify-content: flex-start;
@@ -200,30 +202,35 @@ const QRGeneratorHCM = () => {
             font-size: 26pt;
             font-weight: bold;
             border-right: 2px solid #334155;
+            z-index: 1;
         }
         .grid-cell-value {
             background-color: #facc15 !important;
-            font-size: 28pt;
-            font-weight: bold;
+            font-size: 26pt; 
+            font-weight: bold; 
             text-align: center;
             padding: 0 10px;
             border-right: 2px solid #334155;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+            z-index: 10;
         }
         .grid-cell-value-lg {
             background-color: #facc15 !important;
-            font-size: 38pt;
-            font-weight: bold;
+            font-size: 36pt; 
+            font-weight: bold; 
             text-align: center;
             border-right: 2px solid #334155;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+            z-index: 10;
         }
         .grid-cell-qr {
             flex-direction: column;
             padding: 10px;
             border-right: none;
+            background: white !important;
+            z-index: 1;
         }
         /* Last row specific: remove bottom border */
         .label-body > .grid-cell:nth-last-child(-n+2) {
@@ -614,7 +621,7 @@ const QRGeneratorHCM = () => {
                                                 {group.qrChunks[0] && (
                                                     <>
                                                         {group.qrChunks.length > 1 && <div className="qr-label-small">{group.qrChunks[0].label}</div>}
-                                                        <QRCodeSVG value={group.qrChunks[0].qrValue} size={group.qrChunks.length > 1 ? 200 : 340} level="H" />
+                                                        <QRCodeCanvas value={group.qrChunks[0].qrValue} size={group.qrChunks.length > 1 ? 200 : 340} level="H" />
                                                     </>
                                                 )}
                                             </div>
@@ -630,7 +637,7 @@ const QRGeneratorHCM = () => {
                                             {group.qrChunks.length > 1 ? (
                                                 <div className="grid-cell grid-cell-qr" style={{ gridRow: 'span 2', borderBottom: 'none' }}>
                                                     <div className="qr-label-small">{group.qrChunks[1].label}</div>
-                                                    <QRCodeSVG value={group.qrChunks[1].qrValue} size={200} level="H" />
+                                                    <QRCodeCanvas value={group.qrChunks[1].qrValue} size={200} level="H" />
                                                 </div>
                                             ) : (
                                                 null // Spanned from Row 1
