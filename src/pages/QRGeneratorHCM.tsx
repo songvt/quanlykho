@@ -239,7 +239,7 @@ const QRGeneratorHCM = () => {
             display: flex;
             flex-direction: column;
             border-left: 2px solid #334155;
-            width: 150px;
+            width: 180px;
             flex-shrink: 0;
         }
         .qr-cell {
@@ -676,7 +676,7 @@ const QRGeneratorHCM = () => {
                                                                 )}
                                                                 <QRCodeSVG
                                                                     value={qc.qrValue}
-                                                                    size={group.qrChunks.length > 1 ? 78 : 110}
+                                                                    size={group.qrChunks.length > 1 ? 110 : 140}
                                                                     level="L"
                                                                 />
                                                             </div>
