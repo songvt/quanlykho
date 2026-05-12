@@ -141,9 +141,9 @@ const QRGeneratorHCM = () => {
         }
         .label-wrapper { 
             width: 100%; 
-            height: 98mm; 
-            border: 4px solid #1e293b; 
-            margin-bottom: 4mm; 
+            height: 200mm; 
+            border: 5px solid #1e293b; 
+            margin-bottom: 0; 
             background: white;
             display: flex;
             flex-direction: column;
@@ -160,11 +160,11 @@ const QRGeneratorHCM = () => {
             .label-wrapper { box-shadow: none; border-color: black; }
         }
         .header-text-print { 
-            font-size: 28pt; 
+            font-size: 32pt; 
             font-weight: bold; 
             text-align: center; 
             text-transform: uppercase;
-            line-height: 1.4;
+            line-height: 1.3;
             margin-bottom: 0;
             letter-spacing: 1px;
             background-color: #facc15 !important;
@@ -174,6 +174,9 @@ const QRGeneratorHCM = () => {
             text-decoration: underline;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .row-print {
             display: flex;
@@ -185,7 +188,7 @@ const QRGeneratorHCM = () => {
             border-bottom: none;
         }
         .label-cell-print { 
-            font-size: 22pt; 
+            font-size: 28pt; 
             font-weight: bold; 
             background-color: #ffffff !important;
             width: 50%;
@@ -193,14 +196,14 @@ const QRGeneratorHCM = () => {
             text-transform: none;
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             border-right: 2px solid #334155;
-            padding: 0 10px;
+            padding-left: 20mm;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
         .value-cell-print { 
-            font-size: 24pt; 
+            font-size: 28pt; 
             font-weight: bold; 
             text-align: center;
             background-color: #facc15 !important;
@@ -209,13 +212,14 @@ const QRGeneratorHCM = () => {
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 0 15px;
+            padding: 0 10px;
             word-break: break-all;
+            line-height: 1.2;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
         .value-cell-print-lg { 
-            font-size: 28pt; 
+            font-size: 42pt; 
             font-weight: bold; 
             text-align: center;
             background-color: #facc15 !important;
@@ -630,70 +634,61 @@ const QRGeneratorHCM = () => {
                     >
                         <Box ref={printRef} sx={{ bgcolor: 'white', p: 0, mx: 'auto', width: 'fit-content' }}>
                             <style>{printStyles}</style>
-                            {/* We split groupedBoxes into pages of 2 labels each */}
-                            {Array.from({ length: Math.ceil(groupedBoxes.length / 2) }).map((_, pageIdx) => (
-                                <div className="print-container" key={pageIdx}>
-                                    {[0, 1].map(offset => {
-                                        const groupIdx = pageIdx * 2 + offset;
-                                        const group = groupedBoxes[groupIdx];
-                                        if (!group) return null;
+                            {/* 1 label per page */}
+                            {groupedBoxes.map((group, groupIdx) => (
+                                <div className="print-container" key={groupIdx}>
+                                    <div className="label-wrapper">
+                                        {/* Header */}
+                                        <div className="header-text-print">
+                                            {group.tieu_de || 'TIÊU ĐỀ'}
+                                        </div>
 
-                                        // 1 tem = 1 group, hiển thị tất cả QR codes của box này
-                                        return (
-                                            <div className="label-wrapper" key={groupIdx}>
-                                                {/* Header */}
-                                                <div className="header-text-print">
-                                                    {group.tieu_de || 'TIÊU ĐỀ'}
+                                        {/* Label body: left rows + right QR column */}
+                                        <div className="label-body">
+                                            <div className="label-rows">
+                                                {/* Row 1: THÙNG */}
+                                                <div className="row-print" style={{ flex: '1' }}>
+                                                    <div className="label-cell-print">THÙNG</div>
+                                                    <div className="value-cell-print-lg">{group.thung}</div>
                                                 </div>
 
-                                                {/* Label body: left rows + right QR column */}
-                                                <div className="label-body">
-                                                    <div className="label-rows">
-                                                        {/* Row 1: THÙNG */}
-                                                        <div className="row-print" style={{ flex: '3' }}>
-                                                            <div className="label-cell-print">THÙNG</div>
-                                                            <div className="value-cell-print-lg">{group.thung}</div>
-                                                        </div>
+                                                {/* Row 2: Số lượng */}
+                                                <div className="row-print" style={{ flex: '1' }}>
+                                                    <div className="label-cell-print">Số lượng</div>
+                                                    <div className="value-cell-print-lg">{group.totalQuantity}</div>
+                                                </div>
 
-                                                        {/* Row 2: Số lượng */}
-                                                        <div className="row-print">
-                                                            <div className="label-cell-print">Số lượng</div>
-                                                            <div className="value-cell-print-lg">{group.totalQuantity}</div>
-                                                        </div>
+                                                {/* Row 3: Thiết bị */}
+                                                <div className="row-print" style={{ flex: '1' }}>
+                                                    <div className="label-cell-print">Thiết bị</div>
+                                                    <div className="value-cell-print">{group.thiet_bi}</div>
+                                                </div>
 
-                                                        {/* Row 3: Thiết bị */}
-                                                        <div className="row-print">
-                                                            <div className="label-cell-print">Thiết bị</div>
-                                                            <div className="value-cell-print">{group.thiet_bi}</div>
-                                                        </div>
-
-                                                        {/* Row 4: Tình trạng */}
-                                                        <div className="row-print">
-                                                            <div className="label-cell-print">Tình trạng</div>
-                                                            <div className="value-cell-print">{group.tinh_trang}</div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Right QR column: 1 or 2 stacked cells */}
-                                                    <div className="qr-column">
-                                                        {group.qrChunks.map((qc, qi) => (
-                                                            <div className="qr-cell" key={qi}>
-                                                                {group.qrChunks.length > 1 && (
-                                                                    <div className="qr-label">{qc.label}</div>
-                                                                )}
-                                                                <QRCodeSVG
-                                                                    value={qc.qrValue}
-                                                                    size={group.qrChunks.length > 1 ? 110 : 140}
-                                                                    level="L"
-                                                                />
-                                                            </div>
-                                                        ))}
-                                                    </div>
+                                                {/* Row 4: Tình trạng */}
+                                                <div className="row-print" style={{ flex: '1' }}>
+                                                    <div className="label-cell-print">Tình trạng</div>
+                                                    <div className="value-cell-print">{group.tinh_trang}</div>
                                                 </div>
                                             </div>
-                                        );
-                                    })}
-                                    {pageIdx < Math.ceil(groupedBoxes.length / 2) - 1 && <div className="page-break" />}
+
+                                            {/* Right QR column: 1 or 2 stacked cells */}
+                                            <div className="qr-column">
+                                                {group.qrChunks.map((qc, qi) => (
+                                                    <div className="qr-cell" key={qi}>
+                                                        {group.qrChunks.length > 1 && (
+                                                            <div className="qr-label">{qc.label}</div>
+                                                        )}
+                                                        <QRCodeSVG
+                                                            value={qc.qrValue}
+                                                            size={group.qrChunks.length > 1 ? 220 : 320}
+                                                            level="L"
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {groupIdx < groupedBoxes.length - 1 && <div className="page-break" />}
                                 </div>
                             ))}
                         </Box>
