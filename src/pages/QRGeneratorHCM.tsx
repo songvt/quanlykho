@@ -208,7 +208,7 @@ const QRGeneratorHCM = () => {
         }
         .grid-cell-value {
             background-color: #facc15 !important;
-            font-size: 26pt; 
+            font-size: 30pt; 
             font-weight: bold; 
             text-align: center;
             padding: 0 10px;
@@ -216,16 +216,18 @@ const QRGeneratorHCM = () => {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
             z-index: 10;
+            white-space: nowrap;
         }
         .grid-cell-value-lg {
             background-color: #facc15 !important;
-            font-size: 36pt; 
+            font-size: 42pt; 
             font-weight: bold; 
             text-align: center;
             border-right: 2px solid #334155;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
             z-index: 10;
+            white-space: nowrap;
         }
         .grid-cell-qr {
             flex-direction: column;
@@ -619,42 +621,60 @@ const QRGeneratorHCM = () => {
                                             {group.tieu_de || 'TIÊU ĐỀ'}
                                         </div>
 
-                                        {/* Label body: 4 rows x 3 cols grid */}
-                                        <div className="label-body">
-                                            {/* Row 1 */}
-                                            <div className="grid-cell grid-cell-label">THÙNG</div>
-                                            <div className="grid-cell grid-cell-value-lg">{group.thung}</div>
-                                            <div className="grid-cell grid-cell-qr" style={{ gridRow: group.qrChunks.length > 1 ? 'span 2' : 'span 4', borderBottom: group.qrChunks.length > 1 ? '2px solid #334155' : 'none' }}>
-                                                {group.qrChunks[0] && (
-                                                    <>
-                                                        {group.qrChunks.length > 1 && <div className="qr-label-small">{group.qrChunks[0].label}</div>}
-                                                        <QRCodeSVG value={group.qrChunks[0].qrValue} size={group.qrChunks.length > 1 ? 180 : 280} level="M" includeMargin={false} />
-                                                    </>
-                                                )}
-                                            </div>
+                                        {/* Helper for auto-shrink font size */}
+                                        {(() => {
+                                            const getShrinkFontSize = (text: string | number, baseSize: number) => {
+                                                const str = String(text);
+                                                if (str.length > 20) return `${Math.floor(baseSize * 0.55)}pt`;
+                                                if (str.length > 15) return `${Math.floor(baseSize * 0.75)}pt`;
+                                                if (str.length > 10) return `${Math.floor(baseSize * 0.85)}pt`;
+                                                return `${baseSize}pt`;
+                                            };
+                                            return (
+                                                <div className="label-body">
+                                                    {/* Row 1 */}
+                                                    <div className="grid-cell grid-cell-label">THÙNG</div>
+                                                    <div className="grid-cell grid-cell-value-lg" style={{ fontSize: getShrinkFontSize(group.thung, 42) }}>
+                                                        {group.thung}
+                                                    </div>
+                                                    <div className="grid-cell grid-cell-qr" style={{ gridRow: group.qrChunks.length > 1 ? 'span 2' : 'span 4', borderBottom: group.qrChunks.length > 1 ? '2px solid #334155' : 'none' }}>
+                                                        {group.qrChunks[0] && (
+                                                            <>
+                                                                {group.qrChunks.length > 1 && <div className="qr-label-small">{group.qrChunks[0].label}</div>}
+                                                                <QRCodeSVG value={group.qrChunks[0].qrValue} size={group.qrChunks.length > 1 ? 180 : 280} level="M" includeMargin={false} />
+                                                            </>
+                                                        )}
+                                                    </div>
 
-                                            {/* Row 2 */}
-                                            <div className="grid-cell grid-cell-label">Số lượng</div>
-                                            <div className="grid-cell grid-cell-value-lg">{group.totalQuantity}</div>
-                                            {/* Col 3 is spanned from Row 1 */}
+                                                    {/* Row 2 */}
+                                                    <div className="grid-cell grid-cell-label">Số lượng</div>
+                                                    <div className="grid-cell grid-cell-value-lg" style={{ fontSize: getShrinkFontSize(group.totalQuantity, 42) }}>
+                                                        {group.totalQuantity}
+                                                    </div>
+                                                    {/* Col 3 is spanned from Row 1 */}
 
-                                            {/* Row 3 */}
-                                            <div className="grid-cell grid-cell-label">Thiết bị</div>
-                                            <div className="grid-cell grid-cell-value">{group.thiet_bi}</div>
-                                            {group.qrChunks.length > 1 ? (
-                                                <div className="grid-cell grid-cell-qr" style={{ gridRow: 'span 2', borderBottom: 'none' }}>
-                                                    <div className="qr-label-small">{group.qrChunks[1].label}</div>
-                                                    <QRCodeSVG value={group.qrChunks[1].qrValue} size={180} level="M" includeMargin={false} />
+                                                    {/* Row 3 */}
+                                                    <div className="grid-cell grid-cell-label">Thiết bị</div>
+                                                    <div className="grid-cell grid-cell-value" style={{ fontSize: getShrinkFontSize(group.thiet_bi, 30) }}>
+                                                        {group.thiet_bi}
+                                                    </div>
+                                                    {group.qrChunks.length > 1 ? (
+                                                        <div className="grid-cell grid-cell-qr" style={{ gridRow: 'span 2', borderBottom: 'none' }}>
+                                                            <div className="qr-label-small">{group.qrChunks[1].label}</div>
+                                                            <QRCodeSVG value={group.qrChunks[1].qrValue} size={180} level="M" includeMargin={false} />
+                                                        </div>
+                                                    ) : (
+                                                        null // Spanned from Row 1
+                                                    )}
+
+                                                    {/* Row 4 */}
+                                                    <div className="grid-cell grid-cell-label">Tình trạng</div>
+                                                    <div className="grid-cell grid-cell-value" style={{ fontSize: getShrinkFontSize(group.tinh_trang, 30) }}>
+                                                        {group.tinh_trang}
+                                                    </div>
                                                 </div>
-                                            ) : (
-                                                null // Spanned from Row 1
-                                            )}
-
-                                            {/* Row 4 */}
-                                            <div className="grid-cell grid-cell-label">Tình trạng</div>
-                                            <div className="grid-cell grid-cell-value">{group.tinh_trang}</div>
-                                            {/* Col 3 is spanned if length is 1, otherwise Row 3 span covers it */}
-                                        </div>
+                                            );
+                                        })()}
                                     </div>
                                     {groupIdx < groupedBoxes.length - 1 && <div className="page-break" />}
                                 </div>
