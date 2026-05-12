@@ -144,13 +144,13 @@ const QRGeneratorHCM = () => {
             height: 98mm; 
             border: 4px solid #1e293b; 
             margin-bottom: 4mm; 
-            padding: 4mm 8mm;
             background: white;
             display: flex;
             flex-direction: column;
             page-break-inside: avoid;
             position: relative;
             box-shadow: 0 0 10px rgba(0,0,0,0.05);
+            overflow: hidden;
         }
         .label-wrapper:last-child {
             margin-bottom: 0;
@@ -221,27 +221,45 @@ const QRGeneratorHCM = () => {
             justify-content: center;
         }
         .qr-container {
+            /* unused - kept for compat */
+        }
+        .label-body {
             display: flex;
             flex-direction: row;
-            justify-content: center;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 6px;
-            background: white;
-            border-left: 2px solid #334155;
-            min-width: 160px;
+            flex: 1;
+            min-height: 0;
         }
-        .qr-single {
+        .label-rows {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-width: 0;
+        }
+        .qr-column {
+            display: flex;
+            flex-direction: column;
+            border-left: 2px solid #334155;
+            width: 150px;
+            flex-shrink: 0;
+        }
+        .qr-cell {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 2px;
+            justify-content: center;
+            flex: 1;
+            padding: 4px;
+            background: white;
+        }
+        .qr-cell + .qr-cell {
+            border-top: 2px solid #334155;
         }
         .qr-label {
             font-size: 7pt;
             font-weight: bold;
             color: #475569;
             text-align: center;
+            margin-bottom: 2px;
         }
     `;
 
@@ -621,57 +639,48 @@ const QRGeneratorHCM = () => {
                                                     {group.tieu_de || 'TIÊU ĐỀ'}
                                                 </div>
 
-                                                {/* Body Row 1: Thùng & QR (tất cả chunk trong 1 container) */}
-                                                <div className="row-print" style={{ flex: '3' }}>
-                                                    <div className="label-cell-print">
-                                                        THÙNG
+                                                {/* Label body: left rows + right QR column */}
+                                                <div className="label-body">
+                                                    <div className="label-rows">
+                                                        {/* Row 1: THÙNG */}
+                                                        <div className="row-print" style={{ flex: '3' }}>
+                                                            <div className="label-cell-print">THÙNG</div>
+                                                            <div className="value-cell-print-lg">{group.thung}</div>
+                                                        </div>
+
+                                                        {/* Row 2: Số lượng */}
+                                                        <div className="row-print">
+                                                            <div className="label-cell-print">Số lượng</div>
+                                                            <div className="value-cell-print-lg">{group.totalQuantity}</div>
+                                                        </div>
+
+                                                        {/* Row 3: Thiết bị */}
+                                                        <div className="row-print">
+                                                            <div className="label-cell-print">Thiết bị</div>
+                                                            <div className="value-cell-print">{group.thiet_bi}</div>
+                                                        </div>
+
+                                                        {/* Row 4: Tình trạng */}
+                                                        <div className="row-print">
+                                                            <div className="label-cell-print">Tình trạng</div>
+                                                            <div className="value-cell-print">{group.tinh_trang}</div>
+                                                        </div>
                                                     </div>
-                                                    <div className="value-cell-print-lg">
-                                                        {group.thung}
-                                                    </div>
-                                                    <div className="qr-container">
+
+                                                    {/* Right QR column: 1 or 2 stacked cells */}
+                                                    <div className="qr-column">
                                                         {group.qrChunks.map((qc, qi) => (
-                                                            <div className="qr-single" key={qi}>
+                                                            <div className="qr-cell" key={qi}>
                                                                 {group.qrChunks.length > 1 && (
                                                                     <div className="qr-label">{qc.label}</div>
                                                                 )}
                                                                 <QRCodeSVG
                                                                     value={qc.qrValue}
-                                                                    size={group.qrChunks.length > 1 ? 88 : 110}
+                                                                    size={group.qrChunks.length > 1 ? 78 : 110}
                                                                     level="L"
                                                                 />
                                                             </div>
                                                         ))}
-                                                    </div>
-                                                </div>
-
-                                                {/* Body Row 2: Số lượng tổng */}
-                                                <div className="row-print">
-                                                    <div className="label-cell-print">
-                                                        Số lượng
-                                                    </div>
-                                                    <div className="value-cell-print-lg">
-                                                        {group.totalQuantity}
-                                                    </div>
-                                                </div>
-
-                                                {/* Body Row 3: Thiết bị */}
-                                                <div className="row-print">
-                                                    <div className="label-cell-print">
-                                                        Thiết bị
-                                                    </div>
-                                                    <div className="value-cell-print">
-                                                        {group.thiet_bi}
-                                                    </div>
-                                                </div>
-
-                                                {/* Body Row 4: Tình trạng */}
-                                                <div className="row-print">
-                                                    <div className="label-cell-print">
-                                                        Tình trạng
-                                                    </div>
-                                                    <div className="value-cell-print">
-                                                        {group.tinh_trang}
                                                     </div>
                                                 </div>
                                             </div>
