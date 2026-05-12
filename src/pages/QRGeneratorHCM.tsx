@@ -190,19 +190,16 @@ const QRGeneratorHCM = () => {
             display: flex;
             align-items: center;
             justify-content: center;
-            border-bottom: 2px solid #334155;
-            border-right: 2px solid #334155;
             overflow: hidden;
             background: white;
-        }
-        .grid-cell:nth-child(3n) {
-            border-right: none;
+            border-bottom: 2px solid #334155;
         }
         .grid-cell-label {
             justify-content: flex-start;
             padding-left: 20mm;
             font-size: 26pt;
             font-weight: bold;
+            border-right: 2px solid #334155;
         }
         .grid-cell-value {
             background-color: #facc15 !important;
@@ -210,6 +207,7 @@ const QRGeneratorHCM = () => {
             font-weight: bold;
             text-align: center;
             padding: 0 10px;
+            border-right: 2px solid #334155;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
@@ -218,15 +216,17 @@ const QRGeneratorHCM = () => {
             font-size: 38pt;
             font-weight: bold;
             text-align: center;
+            border-right: 2px solid #334155;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
         .grid-cell-qr {
             flex-direction: column;
             padding: 10px;
+            border-right: none;
         }
-        /* No bottom border on the last row cells */
-        .label-body > .grid-cell:nth-last-child(-n+3) {
+        /* Last row specific: remove bottom border */
+        .label-body > .grid-cell:nth-last-child(-n+2) {
             border-bottom: none;
         }
         .qr-label-small {
@@ -610,11 +610,11 @@ const QRGeneratorHCM = () => {
                                             {/* Row 1 */}
                                             <div className="grid-cell grid-cell-label">THÙNG</div>
                                             <div className="grid-cell grid-cell-value-lg">{group.thung}</div>
-                                            <div className="grid-cell grid-cell-qr" style={{ gridRow: group.qrChunks.length > 1 ? 'span 2' : 'span 4' }}>
+                                            <div className="grid-cell grid-cell-qr" style={{ gridRow: group.qrChunks.length > 1 ? 'span 2' : 'span 4', borderBottom: group.qrChunks.length > 1 ? '2px solid #334155' : 'none' }}>
                                                 {group.qrChunks[0] && (
                                                     <>
                                                         {group.qrChunks.length > 1 && <div className="qr-label-small">{group.qrChunks[0].label}</div>}
-                                                        <QRCodeSVG value={group.qrChunks[0].qrValue} size={group.qrChunks.length > 1 ? 180 : 300} level="L" />
+                                                        <QRCodeSVG value={group.qrChunks[0].qrValue} size={group.qrChunks.length > 1 ? 200 : 340} level="H" />
                                                     </>
                                                 )}
                                             </div>
@@ -628,9 +628,9 @@ const QRGeneratorHCM = () => {
                                             <div className="grid-cell grid-cell-label">Thiết bị</div>
                                             <div className="grid-cell grid-cell-value">{group.thiet_bi}</div>
                                             {group.qrChunks.length > 1 ? (
-                                                <div className="grid-cell grid-cell-qr" style={{ gridRow: 'span 2' }}>
+                                                <div className="grid-cell grid-cell-qr" style={{ gridRow: 'span 2', borderBottom: 'none' }}>
                                                     <div className="qr-label-small">{group.qrChunks[1].label}</div>
-                                                    <QRCodeSVG value={group.qrChunks[1].qrValue} size={180} level="L" />
+                                                    <QRCodeSVG value={group.qrChunks[1].qrValue} size={200} level="H" />
                                                 </div>
                                             ) : (
                                                 null // Spanned from Row 1
