@@ -10,6 +10,12 @@ import ordersHandler from './api/orders.js';
 import districtStorekeepersHandler from './api/district_storekeepers.js';
 import telegramHandler from './api/telegram.js';
 import assetsHandler from './api/assets.js';
+import settlementHistoryHandler from './api/settlement_history.js';
+import settlementInventoryHandler from './api/settlement_inventory.js';
+import settlementOutboundHandler from './api/settlement_outbound.js';
+import auditsHandler from './api/audits.js';
+import statsHandler from './api/stats.js';
+import assetHandoversHandler from './api/asset_handovers.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -42,6 +48,12 @@ app.all('/api/orders', createVercelHandler(ordersHandler));
 app.all('/api/district_storekeepers', createVercelHandler(districtStorekeepersHandler));
 app.all('/api/telegram', createVercelHandler(telegramHandler));
 app.all('/api/assets', createVercelHandler(assetsHandler));
+app.all('/api/settlement_history', createVercelHandler(settlementHistoryHandler));
+app.all('/api/settlement_inventory', createVercelHandler(settlementInventoryHandler));
+app.all('/api/settlement_outbound', createVercelHandler(settlementOutboundHandler));
+app.all('/api/audits', createVercelHandler(auditsHandler));
+app.all('/api/stats', createVercelHandler(statsHandler));
+app.all('/api/asset_handovers', createVercelHandler(assetHandoversHandler));
 
 // Setup Drive Upload endpoint (Base64 JSON)
 app.post('/api/drive_upload', async (req, res) => {

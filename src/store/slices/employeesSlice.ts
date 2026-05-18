@@ -55,7 +55,7 @@ const employeesSlice = createSlice({
             })
             .addCase(fetchEmployees.fulfilled, (state, action) => {
                 state.status = 'succeeded';
-                state.items = action.payload;
+                state.items = Array.isArray(action.payload) ? action.payload : [];
             })
             .addCase(fetchEmployees.rejected, (state, action) => {
                 state.status = 'failed';

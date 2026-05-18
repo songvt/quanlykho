@@ -3,6 +3,38 @@ import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets.js';
 import { supabase, fetchAll } from './utils/supabase.js';
 import { randomUUID } from 'crypto';
 
+const logAssetFluctuation = async (doc: any, logEntries: any | any[]) => {
+    const entries = Array.isArray(logEntries) ? logEntries : [logEntries];
+    const formattedEntries = entries.map(entry => ({
+        ...entry,
+        id: entry.id || randomUUID(),
+        created_at: entry.created_at || new Date().toISOString()
+    }));
+    
+    // 1. Supabase
+    await supabase.from('asset_logs').insert(formattedEntries);
+    
+    // 2. Google Sheets
+    try {
+        const logSheet = await getSheetByTitle(doc, 'asset_logs');
+        const gsWritePromise = async () => {
+            await logSheet.addRows(formattedEntries);
+        };
+        await Promise.race([
+            gsWritePromise(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('GS Sync Timeout')), 3000))
+        ]);
+    } catch (e: any) {
+        console.warn('GS Log Write fallback to queue:', e.message);
+        await supabase.from('gs_sync_queue').insert({
+            table_name: 'asset_logs',
+            action: 'insert',
+            payload: formattedEntries,
+            error_message: e.message
+        });
+    }
+};
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const allowedMethods = ['GET', 'POST', 'PUT', 'DELETE'];
     if (!allowedMethods.includes(req.method || '')) {
@@ -102,7 +134,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         department: item.user_department_name || '',
                         performed_by: creator
                     }));
-                    await supabase.from('asset_logs').insert(logEntries);
+                    await logAssetFluctuation(doc, logEntries);
                 } catch (logErr) {
                     console.error('Logging increase failed:', logErr);
                 }
@@ -149,7 +181,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         logDetails = `Thay đổi người sử dụng: ${oldUser} -> ${newUser}`;
                     }
 
-                    await supabase.from('asset_logs').insert({
+                    await logAssetFluctuation(doc, {
                         asset_code: finalAsset.asset_code || oldData.asset_code,
                         asset_name: finalAsset.asset_name || oldData.asset_name,
                         asset_type: finalAsset.asset_type || oldData.asset_type,
@@ -214,7 +246,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                             action: 'Giảm',
                             performed_by: remover
                         }));
-                        await supabase.from('asset_logs').insert(logEntries);
+                        await logAssetFluctuation(doc, logEntries);
                     } catch (logErr) {
                         console.error('Logging decrease failed:', logErr);
                     }

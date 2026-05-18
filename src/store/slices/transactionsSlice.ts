@@ -148,7 +148,7 @@ const transactionsSlice = createSlice({
             })
             .addCase(fetchTransactions.fulfilled, (state, action) => {
                 state.status = 'succeeded';
-                state.items = action.payload;
+                state.items = Array.isArray(action.payload) ? action.payload : [];
                 state.lastFetched = Date.now();
             })
             .addCase(fetchTransactions.rejected, (state, action) => {
@@ -159,7 +159,7 @@ const transactionsSlice = createSlice({
             .addCase(fetchTransactionsForce.pending, (state) => { state.status = 'loading'; })
             .addCase(fetchTransactionsForce.fulfilled, (state, action) => {
                 state.status = 'succeeded';
-                state.items = action.payload;
+                state.items = Array.isArray(action.payload) ? action.payload : [];
                 state.lastFetched = Date.now();
             })
             .addCase(fetchTransactionsForce.rejected, (state, action) => {

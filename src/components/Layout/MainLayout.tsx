@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import type { RootState, AppDispatch } from '../../store';
@@ -58,69 +58,45 @@ import AIChatbot from '../Chatbot/AIChatbot';
 const drawerWidth = 260; 
 
 const MainLayout: React.FC = () => {
-    const [mobileOpen, setMobileOpen] = useState(false);
-    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-    const [expandAssets, setExpandAssets] = useState(() => window.location.pathname.startsWith('/assets'));
-    const [notificationAnchorEl, setNotificationAnchorEl] = useState<null | HTMLElement>(null);
-
     const navigate = useNavigate();
     const location = useLocation();
     const dispatch = useDispatch<AppDispatch>();
     const { profile } = useSelector((state: RootState) => state.auth);
     const { items: transactions } = useSelector((state: RootState) => state.transactions);
-    const { items: employees, status: empStatus } = useSelector((state: RootState) => state.employees);
 
-    const handleDrawerToggle = () => {
-        setMobileOpen(!mobileOpen);
-    };
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const [expandAssets, setExpandAssets] = useState(false);
+    const [expandSettlement, setExpandSettlement] = useState(false);
+    const [notificationAnchorEl, setNotificationAnchorEl] = useState<null | HTMLElement>(null);
 
-    const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-        setAnchorEl(event.currentTarget);
-    };
-
-    const handleMenuClose = () => {
-        setAnchorEl(null);
-    };
-
-    const handleNotificationOpen = (event: React.MouseEvent<HTMLElement>) => {
-        setNotificationAnchorEl(event.currentTarget);
-    };
-
-    const handleNotificationClose = () => {
-        setNotificationAnchorEl(null);
-    };
-
-    // Auto refresh data every 5m to reduce Google Sheets API load
-    React.useEffect(() => {
-        const interval = setInterval(() => {
-            dispatch(fetchTransactionsForce());
-        }, 300000); // 5 minutes
-        return () => clearInterval(interval);
-    }, [dispatch]);
-
-    React.useEffect(() => {
-        if (empStatus === 'idle') {
-            dispatch(fetchEmployees());
+    // Auto-expand menu groups based on current URL
+    useEffect(() => {
+        if (location.pathname.startsWith('/assets')) {
+            setExpandAssets(true);
         }
-    }, [empStatus, dispatch]);
+        if (['/inventory-report', '/detailed-outbound-report', '/monthly-settlement'].includes(location.pathname)) {
+            setExpandSettlement(true);
+        }
+    }, [location.pathname]);
 
-    const recentNotifications = React.useMemo(() => {
-        return [...transactions]
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-            .slice(0, 5);
-    }, [transactions]);
+    const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
+    const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget);
+    const handleMenuClose = () => setAnchorEl(null);
 
-    const notificationsCount = React.useMemo(() => {
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        return transactions.filter(t => new Date(t.date || t.inbound_date || t.outbound_date || new Date()) >= todayStart).length;
-    }, [transactions]);
+    const handleNotificationOpen = (event: React.MouseEvent<HTMLElement>) => setNotificationAnchorEl(event.currentTarget);
+    const handleNotificationClose = () => setNotificationAnchorEl(null);
 
-    // Force Change Password Check
-    React.useEffect(() => {
-        const needsChange = profile?.must_change_password === true || (profile?.must_change_password as any) === 'TRUE';
-        if (needsChange) {
-            navigate('/change-password');
+    const recentNotifications = (Array.isArray(transactions) ? transactions : []).slice(0, 5).map(t => ({
+        id: t.id,
+        text: `${t.type === 'inbound' ? 'Nhập' : 'Xuất'} ${t.quantity} ${t.product_name}`,
+        time: new Date(t.created_at || t.date || '').toLocaleTimeString('vi-VN'),
+    }));
+
+    // Check if user has required profile to see anything
+    useEffect(() => {
+        if (!profile) {
+            navigate('/login');
         }
     }, [profile, navigate]);
 
@@ -144,6 +120,9 @@ const MainLayout: React.FC = () => {
         ] : []),
         ...(hasAnyPermission(['audit.view', 'audit.create']) ? [
             { text: 'Kiểm kê kho', icon: <FactCheckIcon />, path: '/audit' }
+        ] : []),
+        ...(hasAnyPermission(['audit.view', 'audit.create']) ? [
+            { text: 'Quyết toán', icon: <AssessmentIcon />, path: '/settlement' }
         ] : []),
         ...(hasPermission('inbound.view') ? [
             { text: 'Nhập kho', icon: <InputIcon />, path: '/inbound' }
@@ -176,7 +155,7 @@ const MainLayout: React.FC = () => {
     ];
 
     // Redirect if current path is hidden for this user (e.g. Dashboard)
-    React.useEffect(() => {
+    useEffect(() => {
         if (location.pathname === '/' && menuItems.length > 0 && !menuItems.find(i => i.path === '/')) {
             const firstAvailable = menuItems[0].path;
             navigate(firstAvailable, { replace: true });
@@ -242,6 +221,7 @@ const MainLayout: React.FC = () => {
                         const canViewReports = hasAnyPermission(['assets.view', 'assets.manage', '*']);
                         const assetSubItems = [
                             { text: 'Danh sách tài sản', path: '/assets' },
+                            { text: 'Bàn giao CCDC-BHLĐ', path: '/assets/handover-bhl' },
                             ...(canViewReports ? [
                                 { text: 'Báo cáo tổng hợp CCDC-TSNT', path: '/assets/report-ccdc' },
                                 { text: 'Chi tiết tài sản CCDC-TSNT', path: '/assets/detail-ccdc' },
@@ -280,6 +260,75 @@ const MainLayout: React.FC = () => {
                                 <Collapse in={expandAssets} timeout="auto" unmountOnExit>
                                     <List disablePadding sx={{ pl: 2 }}>
                                         {assetSubItems.map(sub => {
+                                            const subActive = location.pathname === sub.path;
+                                            return (
+                                                <ListItem key={sub.path} disablePadding sx={{ mb: 0.5 }}>
+                                                    <ListItemButton
+                                                        onClick={() => { navigate(sub.path); if (mobileOpen) setMobileOpen(false); }}
+                                                        selected={subActive}
+                                                        sx={{
+                                                            height: 38, borderRadius: '8px', color: '#64748b', px: 1.5,
+                                                            '&.Mui-selected': {
+                                                                backgroundColor: '#eff6ff', color: '#2563eb',
+                                                                '& .MuiListItemIcon-root': { color: '#2563eb' },
+                                                            },
+                                                            '&:hover': { backgroundColor: '#f1f5f9' },
+                                                        }}
+                                                    >
+                                                        <ListItemIcon sx={{ minWidth: 26, color: subActive ? '#2563eb' : '#cbd5e1' }}>
+                                                            <BarChartIcon sx={{ fontSize: 16 }} />
+                                                        </ListItemIcon>
+                                                        <ListItemText primary={sub.text}
+                                                            primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: subActive ? 700 : 400 }}
+                                                        />
+                                                    </ListItemButton>
+                                                </ListItem>
+                                            );
+                                        })}
+                                    </List>
+                                </Collapse>
+                            </React.Fragment>
+                        );
+                    }
+
+                    // ── Special: expandable "Quyết toán" group
+                    if (item.path === '/settlement') {
+                        const settlementSubItems = [
+                            { text: 'Báo cáo 17 - XNT', path: '/inventory-report' },
+                            { text: 'Báo cáo Xuất trong kỳ', path: '/detailed-outbound-report' },
+                            { text: 'Quyết toán vật tư', path: '/monthly-settlement' },
+                            { text: 'Quyết toán hàng hóa', path: '/goods-settlement' },
+                        ];
+                        const isGroupActive = ['/inventory-report', '/detailed-outbound-report', '/monthly-settlement'].includes(location.pathname);
+                        return (
+                            <React.Fragment key="settlement-group">
+                                <ListItem disablePadding sx={{ mb: 0.5 }}>
+                                    <ListItemButton
+                                        onClick={() => setExpandSettlement(p => !p)}
+                                        selected={isGroupActive}
+                                        sx={{
+                                            height: 44, borderRadius: '10px', color: '#64748b',
+                                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', px: 2,
+                                            '&.Mui-selected': {
+                                                backgroundColor: '#eff6ff', color: '#2563eb',
+                                                '&:hover': { backgroundColor: '#dbeafe' },
+                                                '& .MuiListItemIcon-root': { color: '#2563eb' },
+                                            },
+                                            '&:hover': { backgroundColor: '#f1f5f9', color: '#0f172a' },
+                                        }}
+                                    >
+                                        <ListItemIcon sx={{ minWidth: 32, color: isGroupActive ? '#2563eb' : '#94a3b8' }}>
+                                            {React.isValidElement(item.icon) ? React.cloneElement(item.icon as React.ReactElement<any>, { sx: { fontSize: 20 } }) : item.icon}
+                                        </ListItemIcon>
+                                        <ListItemText primary={item.text}
+                                            primaryTypographyProps={{ fontWeight: isGroupActive ? 700 : 500, fontSize: '0.875rem' }}
+                                        />
+                                        {expandSettlement ? <ExpandLessIcon sx={{ fontSize: 18, color: '#94a3b8' }} /> : <ChevronRightIcon sx={{ fontSize: 18, color: '#94a3b8' }} />}
+                                    </ListItemButton>
+                                </ListItem>
+                                <Collapse in={expandSettlement} timeout="auto" unmountOnExit>
+                                    <List disablePadding sx={{ pl: 2 }}>
+                                        {settlementSubItems.map(sub => {
                                             const subActive = location.pathname === sub.path;
                                             return (
                                                 <ListItem key={sub.path} disablePadding sx={{ mb: 0.5 }}>
@@ -376,15 +425,15 @@ const MainLayout: React.FC = () => {
                 })}
             </List>
 
-            {/* User Profile at Bottom (Sidebar style) */}
-            <Box sx={{ p: 2, borderTop: '1px solid #f1f5f9', bgcolor: '#f8fafc' }}>
-                <ListItemButton
+            {/* Bottom User Profile Section */}
+            <Box sx={{ p: 2, borderTop: '1px solid #f1f5f9', mt: 'auto' }}>
+                <ListItemButton 
                     onClick={handleMenuOpen}
-                    sx={{
+                    sx={{ 
                         borderRadius: '12px',
-                        py: 1.5,
-                        px: 1.5,
-                        '&:hover': { bgcolor: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }
+                        py: 1,
+                        px: 1,
+                        '&:hover': { bgcolor: '#f8fafc' }
                     }}
                 >
                     <Avatar sx={{ 
@@ -426,7 +475,8 @@ const MainLayout: React.FC = () => {
                     bgcolor: 'white',
                     color: '#0f172a',
                     borderBottom: '1px solid #e2e8f0',
-                    zIndex: (theme) => theme.zIndex.drawer + 1
+                    zIndex: (theme) => theme.zIndex.drawer + 1,
+                    '@media print': { display: 'none' }
                 }}
                 elevation={0}
             >
@@ -490,99 +540,19 @@ const MainLayout: React.FC = () => {
                             <Typography sx={{ fontSize: '0.875rem', fontWeight: 500, color: '#475569' }}>Main HQ</Typography>
                             <ExpandMoreIcon sx={{ color: '#94a3b8', fontSize: 16 }} />
                         </Box>
-
-                        <Divider orientation="vertical" flexItem sx={{ my: 1.5 }} />
-
-                        {/* Notifications */}
-                        <IconButton sx={{ color: '#64748b' }} onClick={handleNotificationOpen}>
-                            <Badge badgeContent={notificationsCount} color="error" sx={{ '& .MuiBadge-badge': { height: 16, minWidth: 16, fontSize: '0.65rem' } }}>
-                                <NotificationsIcon sx={{ fontSize: 22 }} />
-                            </Badge>
-                        </IconButton>
                     </Box>
                 </Toolbar>
             </AppBar>
-            
-            {/* Notification Menu */}
-            <Menu
-                sx={{ mt: '10px' }}
-                anchorEl={notificationAnchorEl}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                keepMounted
-                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-                open={Boolean(notificationAnchorEl)}
-                onClose={handleNotificationClose}
-                PaperProps={{
-                    elevation: 0,
-                    sx: {
-                        overflow: 'visible',
-                        filter: 'drop-shadow(0px 4px 12px rgba(0,0,0,0.1))',
-                        mt: 1.5,
-                        width: 320,
-                        maxHeight: 400,
-                        borderRadius: 2,
-                        border: '1px solid #e2e8f0',
-                        '&:before': {
-                            content: '""',
-                            display: 'block',
-                            position: 'absolute',
-                            top: 0,
-                            right: 14,
-                            width: 10,
-                            height: 10,
-                            bgcolor: 'background.paper',
-                            transform: 'translateY(-50%) rotate(45deg)',
-                            zIndex: 0,
-                            borderTop: '1px solid #e2e8f0',
-                            borderLeft: '1px solid #e2e8f0',
-                        },
-                    },
-                }}
-            >
-                <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid #e2e8f0' }}>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#0f172a' }}>
-                        Hoạt động gần đây
-                    </Typography>
-                </Box>
-                {recentNotifications.length === 0 ? (
-                    <MenuItem disabled sx={{ py: 3, justifyContent: 'center' }}>
-                        <Typography variant="body2" sx={{ color: '#64748b' }}>Chưa có hoạt động nào</Typography>
-                    </MenuItem>
-                ) : (
-                    recentNotifications.map((n, idx) => {
-                        const employeeName = employees.find(e => e.id === (n as any).created_by || e.auth_user_id === (n as any).created_by)?.full_name || (n as any).created_by || 'Khuyết danh';
-                        return (
-                            <MenuItem key={n.id || idx} onClick={handleNotificationClose} sx={{ py: 1.5, px: 2, borderBottom: '1px solid #f1f5f9', whiteSpace: 'normal', alignItems: 'flex-start' }}>
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                    <Typography variant="body2" sx={{ color: '#0f172a', fontWeight: 500, lineHeight: 1.4 }}>
-                                        <Typography component="span" sx={{ fontWeight: 600, color: '#2563eb' }}>{employeeName}</Typography>
-                                        {' vừa '}{n.type === 'inbound' ? 'nhập kho' : 'xuất kho'}{' '}
-                                        <Typography component="span" sx={{ fontWeight: 600 }}>{n.quantity} {n.product?.name || `Sản phẩm #${n.product_id}`}</Typography>
-                                    </Typography>
-                                    <Typography variant="caption" sx={{ color: '#64748b' }}>
-                                        {n.date ? new Date(n.date).toLocaleString('vi-VN', { timeStyle: 'short', dateStyle: 'medium' }) : 'N/A'}
-                                    </Typography>
-                                </Box>
-                            </MenuItem>
-                        );
-                    })
-                )}
-                <Box sx={{ p: 1, borderTop: '1px solid #e2e8f0', textAlign: 'center' }}>
-                    <Typography component="a" href="#" onClick={(e) => { e.preventDefault(); navigate('/'); handleNotificationClose(); }} sx={{ fontSize: '0.8rem', color: '#2563eb', textDecoration: 'none', fontWeight: 500, '&:hover': { textDecoration: 'underline' } }}>
-                        Xem tất cả trong Dashboard
-                    </Typography>
-                </Box>
-            </Menu>
 
-            {/* User Dropdown Menu */}
+            {/* Profile Menu */}
             <Menu
-                sx={{ mt: '10px' }}
                 anchorEl={anchorEl}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                keepMounted
-                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                id="account-menu"
                 open={Boolean(anchorEl)}
                 onClose={handleMenuClose}
+                onClick={handleMenuClose}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                 PaperProps={{
                     elevation: 0,
                     sx: {
@@ -633,7 +603,11 @@ const MainLayout: React.FC = () => {
             {/* Sidebar */}
             <Box
                 component="nav"
-                sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+                sx={{ 
+                    width: { sm: drawerWidth }, 
+                    flexShrink: { sm: 0 },
+                    '@media print': { display: 'none' }
+                }}
                 aria-label="mailbox folders"
             >
                 {/* Mobile Drawer */}
@@ -673,9 +647,15 @@ const MainLayout: React.FC = () => {
                     minHeight: '100vh',
                     bgcolor: 'background.default',
                     overflowX: 'hidden',
+                    '@media print': {
+                        p: 0,
+                        m: 0,
+                        width: '100%',
+                        bgcolor: 'white'
+                    }
                 }}
             >
-                <Toolbar sx={{ minHeight: '64px !important' }} /> {/* Spacer */}
+                <Toolbar sx={{ minHeight: '64px !important', '@media print': { display: 'none' } }} /> {/* Spacer */}
                 <Outlet />
             </Box>
             

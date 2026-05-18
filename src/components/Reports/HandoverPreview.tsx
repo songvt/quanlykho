@@ -107,7 +107,7 @@ const HandoverTemplate = ({ data, employeeName, date, reporterName, senderPhone,
                             <TableCell align="center">{index + 1}</TableCell>
                             <TableCell sx={{ fontWeight: 600 }}>{item.product_name}</TableCell>
                             <TableCell align="center">{item.unit || 'Cái'}</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 700, color: '#2563eb' }}>{item.quantity}</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 700, color: '#2563eb' }}>{item.quantity.toLocaleString('vi-VN')}</TableCell>
                             <TableCell align="right">
                                 {new Intl.NumberFormat('vi-VN').format(item.unit_price)}
                             </TableCell>
@@ -120,7 +120,7 @@ const HandoverTemplate = ({ data, employeeName, date, reporterName, senderPhone,
                     {/* Total Row */}
                     <TableRow sx={{ bgcolor: '#f1f5f9' }}>
                         <TableCell colSpan={3} align="right" sx={{ fontWeight: 800, textTransform: 'uppercase' }}>Tổng cộng</TableCell>
-                        <TableCell align="center" sx={{ fontWeight: 800, color: '#2563eb' }}>{data.reduce((acc, i) => acc + i.quantity, 0)}</TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 800, color: '#2563eb' }}>{data.reduce((acc, i) => acc + i.quantity, 0).toLocaleString('vi-VN')}</TableCell>
                         <TableCell colSpan={2} align="right" sx={{ fontWeight: 800, fontSize: '11pt' }}>
                             {new Intl.NumberFormat('vi-VN').format(totalAmount)}
                         </TableCell>

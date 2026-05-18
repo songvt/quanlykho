@@ -52,3 +52,47 @@ export const parseDate = (dateStr: any): Date => {
  * Lấy thời gian hiện tại định dạng dd/mm/yyyy
  */
 export const getNowFormatted = (): string => formatDate(new Date());
+
+/**
+ * Kiểm tra xem một ngày có thuộc về tháng/năm mục tiêu hay không (targetMonthStr dạng YYYY-MM)
+ */
+export const checkIsSameMonth = (d: any, targetMonthStr: string): boolean => {
+    if (!d) return false;
+    
+    // Trường hợp d là đối tượng Date thực thụ
+    if (d instanceof Date) {
+        // KIỂM TRA ĐA MÚI GIỜ: Đề phòng lỗi lệch 1 ngày do múi giờ VN/UTC
+        // Thử theo Giờ địa phương
+        const yL = d.getFullYear();
+        const mL = String(d.getMonth() + 1).padStart(2, '0');
+        const isMatchLocal = `${yL}-${mL}` === targetMonthStr;
+        
+        // Thử theo Giờ quốc tế (UTC)
+        const yU = d.getUTCFullYear();
+        const mU = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const isMatchUTC = `${yU}-${mU}` === targetMonthStr;
+
+        return isMatchLocal || isMatchUTC;
+    }
+
+    const dateStr = String(d).trim();
+    if (!dateStr || dateStr === 'undefined' || dateStr === 'null') return false;
+    
+    // ISO format YYYY-MM-DD... (như 2024-04-01T00:00:00.000Z)
+    if (dateStr.includes('T') || (dateStr.length >= 10 && dateStr.includes('-') && dateStr.startsWith('20'))) {
+        return dateStr.substring(0, 7) === targetMonthStr;
+    }
+    
+    // DD/MM/YYYY or MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+    const separator = dateStr.includes('/') ? '/' : (dateStr.includes('-') ? '-' : (dateStr.includes('.') ? '.' : null));
+    if (separator) {
+        const parts = dateStr.split(separator);
+        if (parts.length >= 2) {
+            const m = parts[parts.length - 2].padStart(2, '0');
+            let y = parts[parts.length - 1].split(' ')[0];
+            if (y.length === 2) y = '20' + y;
+            if (y.length === 4) return `${y}-${m}` === targetMonthStr;
+        }
+    }
+    return false;
+};

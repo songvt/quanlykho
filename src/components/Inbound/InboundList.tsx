@@ -135,7 +135,7 @@ const InboundList: React.FC<InboundListProps> = ({ onEdit, onDelete, onBulkDelet
                                                     <Checkbox size="small" sx={{ p: 0 }} checked={selectedIds.includes(row.id)} onChange={e => handleSelectOne(row.id, e.target.checked)} />
                                                     <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1e293b' }}>{row.product?.name || 'Unknown'}</Typography>
                                                 </Box>
-                                                <Chip label={`SL: ${row.quantity}`} size="small" sx={{ fontWeight: 700, bgcolor: '#f1f5f9' }} />
+                                                <Chip label={`SL: ${row.quantity.toLocaleString('vi-VN')}`} size="small" sx={{ fontWeight: 700, bgcolor: '#f1f5f9' }} />
                                             </Box>
                                             <Divider sx={{ my: 1.5, borderColor: '#f1f5f9' }} />
                                             <Grid container spacing={2}>
@@ -207,7 +207,7 @@ const InboundList: React.FC<InboundListProps> = ({ onEdit, onDelete, onBulkDelet
                                             <TableCell sx={{ fontSize: '0.875rem' }}>{formatDate(row.date || row.inbound_date || null)}</TableCell>
                                             <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>{row.product?.name}</TableCell>
                                             <TableCell sx={{ color: '#64748b', fontSize: '0.875rem' }}>{row.serial_code || '-'}</TableCell>
-                                            <TableCell sx={{ fontWeight: 700, color: '#2563eb' }}>{row.quantity}</TableCell>
+                                            <TableCell sx={{ fontWeight: 700, color: '#2563eb' }}>{row.quantity.toLocaleString('vi-VN')}</TableCell>
                                             <TableCell sx={{ fontWeight: 500 }}>{Number(row.unit_price || 0).toLocaleString('vi-VN')} đ</TableCell>
                                             <TableCell>{row.district || '-'}</TableCell>
                                             <TableCell>

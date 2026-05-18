@@ -53,7 +53,7 @@ const productsSlice = createSlice({
             })
             .addCase(fetchProducts.fulfilled, (state, action) => {
                 state.status = 'succeeded';
-                state.items = action.payload;
+                state.items = Array.isArray(action.payload) ? action.payload : [];
                 state.lastFetched = Date.now();
             })
             .addCase(fetchProducts.rejected, (state, action) => {

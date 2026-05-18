@@ -88,6 +88,7 @@ export interface Transaction {
     outbound_date?: string; // Ngày xuất kho
     inbound_date?: string; // Ngày nhập kho
     created_by?: string;   // Người thực hiện (email hoặc tên)
+    created_at?: string;
 }
 
 export interface DashboardStats {
@@ -188,3 +189,64 @@ export interface Asset {
     updated_at?: string;
 }
 
+export interface InventoryReportItem {
+    id?: string;
+    unit_code: string;
+    unit_name: string;
+    transaction_type: string;
+    order_number: string;
+    employee_voucher: string;
+    warehouse_voucher: string;
+    bccs_item: string;
+    finance_item: string;
+    unit_price: number;
+    quantity: number;
+    total_amount: number;
+    voucher_date: string;
+    actual_date: string;
+    employee_name: string;
+    reason: string;
+    note: string;
+    item_code?: string;
+    item_name?: string;
+    unit?: string;
+}
+
+export interface DetailedOutboundItem {
+    id?: string;
+    cost_center_unit: string;
+    cost_center: string;
+    cost_center_store: string;
+    cost_center_employee_code: string;
+    stock_out_date: string;
+    channel_group: string;
+    channel_type: string;
+    service: string;
+    transaction_type: string;
+    item_code: string;
+    item_name: string;
+    finance_item: string;
+    item_type: string;
+    qty_within_limit: number;
+    qty_over_limit: number;
+    qty_total: number;
+    unit: string;
+    cost_price: number;
+    total_amount: number;
+    from_serial: string;
+    to_serial: string;
+    item_status: string;
+    stock_out_voucher: string;
+    transaction_code: string;
+    management_unit: string;
+    vtp_transaction_type: string;
+    case_code: string;
+    case_name: string;
+    document_number: string;
+    customer_group: string;
+    sap_item_code: string;
+    sap_item_name: string;
+    sap_sync_type: string;
+    impact_type: string;
+    cost_allocation: string;
+}

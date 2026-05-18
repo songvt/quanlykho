@@ -108,7 +108,7 @@ const OutboundList: React.FC<OutboundListProps> = ({ transactions, selectedIds, 
                                         </Typography>
                                         <Typography variant="caption" sx={{ color: '#94a3b8', display: 'flex', gap: 2 }}>
                                             <span>Serial: <b>{t.serial_code || 'N/A'}</b></span>
-                                            <span>SL: <b>{t.quantity}</b></span>
+                                            <span>SL: <b>{t.quantity.toLocaleString('vi-VN')}</b></span>
                                         </Typography>
                                     </Box>
                                 </CardContent>
@@ -173,7 +173,7 @@ const OutboundList: React.FC<OutboundListProps> = ({ transactions, selectedIds, 
                                             {t.serial_code || '-'}
                                         </TableCell>
                                         <TableCell sx={{ borderBottom: '1px solid #f1f5f9', fontWeight: 700, color: '#2563eb' }}>
-                                            {t.quantity}
+                                            {t.quantity.toLocaleString('vi-VN')}
                                         </TableCell>
                                         <TableCell sx={{ borderBottom: '1px solid #f1f5f9', color: '#334155' }}>
                                             {t.receiver_name || t.full_name || t.group_name || t.receiver_group || t.receiver || '-'}

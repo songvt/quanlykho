@@ -95,7 +95,7 @@ const ReturnsReportTemplate = ({ data, employeeName, date, receiverName }: Retur
                             <TableCell align="center">{index + 1}</TableCell>
                             <TableCell sx={{ fontWeight: 600 }}>{item.product_name}</TableCell>
                             <TableCell align="center">{item.unit || 'Cái'}</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 700, color: '#ef4444' }}>{item.quantity}</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 700, color: '#ef4444' }}>{item.quantity.toLocaleString('vi-VN')}</TableCell>
                             <TableCell align="right">{new Intl.NumberFormat('vi-VN').format(item.unit_price)}</TableCell>
                             <TableCell align="right" sx={{ fontWeight: 600 }}>{new Intl.NumberFormat('vi-VN').format(item.unit_price * item.quantity)}</TableCell>
                             <TableCell sx={{ wordBreak: 'break-all', maxWidth: 150, fontSize: '9pt', color: '#64748b' }}>
@@ -108,7 +108,7 @@ const ReturnsReportTemplate = ({ data, employeeName, date, receiverName }: Retur
                     {/* Total Row */}
                     <TableRow sx={{ bgcolor: '#f1f5f9' }}>
                         <TableCell colSpan={3} align="right" sx={{ fontWeight: 800, textTransform: 'uppercase' }}>Tổng cộng</TableCell>
-                        <TableCell align="center" sx={{ fontWeight: 800, color: '#ef4444' }}>{data.reduce((acc, i) => acc + i.quantity, 0)}</TableCell>
+                        <TableCell align="center" sx={{ fontWeight: 800, color: '#ef4444' }}>{data.reduce((acc, i) => acc + i.quantity, 0).toLocaleString('vi-VN')}</TableCell>
                         <TableCell colSpan={1}></TableCell>
                         <TableCell align="right" sx={{ fontWeight: 800, fontSize: '11pt' }}>
                             {new Intl.NumberFormat('vi-VN').format(totalAmount)}

@@ -94,8 +94,8 @@ const AssetList = () => {
     }, [assets, searchEmployee]);
 
     const handlePrintByEmployee = () => {
-        if (filteredAssets.length === 0 || !searchEmployee.trim()) {
-            notifyError('Vui lòng nhập tên nhân viên và đảm bảo có tài sản trong danh sách.');
+        if (!searchEmployee.trim()) {
+            notifyError('Vui lòng nhập tên nhân viên.');
             return;
         }
         setHandoverPrint({

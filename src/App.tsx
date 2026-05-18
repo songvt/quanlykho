@@ -27,10 +27,15 @@ const QRGenerator     = lazy(() => import('./pages/QRGenerator'));
 const QRGeneratorHCM  = lazy(() => import('./pages/QRGeneratorHCM'));
 const ActionHistory   = lazy(() => import('./pages/Reports/ActionHistory'));
 const Audit           = lazy(() => import('./pages/Inventory/Audit'));
+const InventoryReport = lazy(() => import('./pages/Inventory/InventoryReport'));
+const DetailedOutboundReport = lazy(() => import('./pages/Inventory/DetailedOutboundReport'));
+const MonthlySettlementReport = lazy(() => import('./pages/Inventory/MonthlySettlementReport'));
+const GoodsSettlementReport = lazy(() => import('./pages/Inventory/GoodsSettlementReport'));
 const AssetList          = lazy(() => import('./pages/Assets/AssetList'));
 const AssetMonthlyReport = lazy(() => import('./pages/Assets/AssetMonthlyReport'));
 const AssetDetailReport  = lazy(() => import('./pages/Assets/AssetDetailReport'));
 const AssetBrokenReport  = lazy(() => import('./pages/Assets/AssetBrokenReport'));
+const AssetHandoverBhl   = lazy(() => import('./pages/Assets/AssetHandoverBhl'));
 
 
 
@@ -84,10 +89,15 @@ function App() {
 
                                 <Route element={<ProtectedRoute allowedPermissions={['audit.view', 'audit.create']} />}>
                                     <Route path="audit" element={<Audit />} />
+                                    <Route path="inventory-report" element={<InventoryReport />} />
+                                    <Route path="detailed-outbound-report" element={<DetailedOutboundReport />} />
+                                    <Route path="monthly-settlement" element={<MonthlySettlementReport />} />
+                                    <Route path="goods-settlement" element={<GoodsSettlementReport />} />
                                 </Route>
 
                                 <Route element={<ProtectedRoute allowedPermissions={['assets.view', 'assets.manage', 'assets.list_only', '*']} />}>
                                     <Route path="assets" element={<AssetList />} />
+                                    <Route path="assets/handover-bhl" element={<AssetHandoverBhl />} />
                                 </Route>
 
                                 <Route element={<ProtectedRoute allowedPermissions={['assets.view', 'assets.manage', '*']} />}>

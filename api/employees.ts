@@ -78,57 +78,104 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     created_at: p.created_at || new Date().toISOString()
                 }));
 
-                let successCount = 0;
                 const { data: sbData, error: sbError } = await supabase
                     .from('employees')
                     .upsert(formatted, { onConflict: 'id', ignoreDuplicates: true })
                     .select();
-                if (!sbError) successCount++;
+                
+                if (sbError) {
+                    console.error('SB Upsert Error:', sbError);
+                    return res.status(500).json({ error: 'Supabase Upsert Failed' });
+                }
 
-                try { await sheet.addRows(formatted); successCount++; } catch (e) { console.error('GS Mirror Error:', e); }
+                try {
+                    const writePromise = async () => {
+                        await sheet.addRows(formatted);
+                    };
+                    await Promise.race([
+                        writePromise(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('GS Sync Timeout')), 3000))
+                    ]);
+                } catch (e: any) {
+                    console.error('GS Mirror Error, queuing:', e.message);
+                    await supabase.from('gs_sync_queue').insert({
+                        table_name: 'employees',
+                        action: 'insert',
+                        payload: formatted,
+                        error_message: e.message
+                    });
+                }
 
-                if (successCount === 0) return res.status(500).json({ error: 'Create failed on both databases' });
                 return res.status(201).json(action === 'bulk_insert' ? (sbData || formatted) : (sbData ? sbData[0] : formatted[0]));
             }
 
             case 'PUT': {
                 const updates = req.body;
                 if (!updates.id) return res.status(400).json({ error: 'ID required' });
-                let successCount = 0;
                 
                 const dbUpdates = { ...updates };
                 if (dbUpdates.permissions) dbUpdates.permissions = JSON.stringify(dbUpdates.permissions);
 
                 const { data: sbData, error: sbError } = await supabase.from('employees').update(dbUpdates).eq('id', updates.id).select();
-                if (!sbError) successCount++;
+                if (sbError) {
+                    console.error('SB Update Error:', sbError);
+                    return res.status(500).json({ error: 'Supabase Update Failed' });
+                }
 
                 try {
-                    const rows = await sheet.getRows();
-                    const row = rows.find(r => r.get('id') === updates.id);
-                    if (row) { row.assign(dbUpdates); await row.save(); successCount++; }
-                } catch (e) { console.error('GS Mirror Error:', e); }
+                    const updatePromise = async () => {
+                        const rows = await sheet.getRows();
+                        const row = rows.find(r => r.get('id') === updates.id);
+                        if (row) { row.assign(dbUpdates); await row.save(); }
+                    };
+                    await Promise.race([
+                        updatePromise(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('GS Sync Timeout')), 3000))
+                    ]);
+                } catch (e: any) {
+                    console.error('GS Mirror Error, queuing:', e.message);
+                    await supabase.from('gs_sync_queue').insert({
+                        table_name: 'employees',
+                        action: 'update',
+                        payload: dbUpdates,
+                        error_message: e.message
+                    });
+                }
 
-                if (successCount === 0) return res.status(500).json({ error: 'Update failed on both databases' });
                 return res.status(200).json(sbData ? sbData[0] : updates);
             }
 
             case 'DELETE': {
                 const { id, ids } = req.body;
                 const targetIds = Array.isArray(ids) ? ids : [id];
-                let successCount = 0;
 
                 const { error: sbError } = await supabase.from('employees').delete().in('id', targetIds);
-                if (!sbError) successCount++;
+                if (sbError) {
+                    console.error('SB Delete Error:', sbError);
+                    return res.status(500).json({ error: 'Supabase Delete Failed' });
+                }
 
                 try {
-                    const rows = await sheet.getRows();
-                    for (let i = rows.length - 1; i >= 0; i--) {
-                        if (targetIds.includes(rows[i].get('id'))) await rows[i].delete();
-                    }
-                    successCount++;
-                } catch (e) { console.error('GS Mirror Error:', e); }
+                    const deletePromise = async () => {
+                        const rows = await sheet.getRows();
+                        for (let i = rows.length - 1; i >= 0; i--) {
+                            if (targetIds.includes(rows[i].get('id'))) await rows[i].delete();
+                        }
+                    };
+                    await Promise.race([
+                        deletePromise(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('GS Sync Timeout')), 3000))
+                    ]);
+                } catch (e: any) {
+                    console.error('GS Mirror Error, queuing:', e.message);
+                    await supabase.from('gs_sync_queue').insert({
+                        table_name: 'employees',
+                        action: 'delete',
+                        payload: { ids: targetIds },
+                        error_message: e.message
+                    });
+                }
 
-                if (successCount === 0) return res.status(500).json({ error: 'Delete failed on both databases' });
                 return res.status(200).json({ message: 'Deleted', ids: targetIds });
             }
 

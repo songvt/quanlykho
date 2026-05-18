@@ -31,6 +31,8 @@ export const selectDetailedStockMap = createSelector(
     (transactions: Transaction[], orders: Order[]) => {
         const detailedStockMap: Record<string, number> = {};
 
+        if (!transactions || !Array.isArray(transactions)) return detailedStockMap;
+
         transactions.forEach((t) => {
             const qty = t.type === 'inbound' ? Number(t.quantity) : -Number(t.quantity);
             const pId = t.product_id;
@@ -81,6 +83,7 @@ const rawAuth = (state: RootState) => state.auth.profile;
 export const selectStockMap = createSelector(
     [selectDetailedStockMap, rawAuth],
     (detailedMap, profile) => {
+        if (!detailedMap) return {};
         const isAdmin = profile?.role?.toLowerCase() === 'admin';
         const userDistrict = profile?.district || '';
         

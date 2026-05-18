@@ -103,14 +103,14 @@ const assetsSlice = createSlice({
             })
             .addCase(fetchAssets.fulfilled, (state, action) => {
                 state.status = 'succeeded';
-                state.items = action.payload;
+                state.items = Array.isArray(action.payload) ? action.payload : [];
             })
             .addCase(fetchAssets.rejected, (state, action) => {
                 state.status = 'failed';
                 state.error = action.error.message || 'Failed to fetch assets';
             })
             .addCase(fetchAssetLogs.fulfilled, (state, action) => {
-                state.logs = action.payload;
+                state.logs = Array.isArray(action.payload) ? action.payload : [];
             })
             .addCase(addNewAsset.fulfilled, (state, action) => {
                 state.items.unshift(action.payload);

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabase } from './utils/supabase.js';
 import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets.js';
@@ -44,6 +45,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
 
             try {
+                const pk = table_name === 'district_storekeepers' ? 'district' : 'id';
+
                 if (action === 'insert') {
                     const items = Array.isArray(payload) ? payload : [payload];
                     // Add rows incrementally with smaller chunks and delay to avoid limits
@@ -55,21 +58,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     }
                 } else if (action === 'update') {
                     const rows = await sheet.getRows();
-                    const targetId = payload.id;
-                    const updates = payload.updates;
-                    const row = rows.find(r => r.get('id') === targetId);
+                    const targetId = payload[pk] || payload.id;
+                    const updates = payload.updates || payload;
+                    const row = rows.find(r => r.get(pk) === targetId);
                     if (row) {
                         Object.keys(updates).forEach(k => { if (updates[k] !== undefined) row.set(k, updates[k]); });
-                        if (!updates.updated_at) row.set('updated_at', formatLocalDate(new Date()));
+                        if (!updates.updated_at && row.get('updated_at') !== undefined) row.set('updated_at', formatLocalDate(new Date()));
                         await row.save();
                         await new Promise(resolve => setTimeout(resolve, 300)); // Nghỉ 300ms sau khi save
                     }
                 } else if (action === 'delete') {
                     const rows = await sheet.getRows();
-                    const targetIds = payload.ids || [payload.id];
+                    const targetIds = payload.ids || [payload[pk] || payload.id];
                     let deletedCount = 0;
                     for (let i = rows.length - 1; i >= 0; i--) {
-                        if (targetIds.includes(rows[i].get('id'))) {
+                        if (targetIds.includes(rows[i].get(pk))) {
                             await rows[i].delete();
                             deletedCount++;
                             // Cứ xóa 5 dòng thì nghỉ 1s, còn không thì nghỉ 300ms

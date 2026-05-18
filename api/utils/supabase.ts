@@ -1,28 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase credentials missing in process.env');
+  throw new Error('CRITICAL: Supabase credentials (URL/Key) are missing in environment variables (.env)');
 }
 
-const finalSupabaseUrl = supabaseUrl || 'https://placeholder.supabase.co';
-
-// Ensure it doesn't crash during build if env vars are missing
-export const supabase = createClient(finalSupabaseUrl, supabaseAnonKey || 'placeholder', {
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: {
     fetch: (url, options) => {
-      if (finalSupabaseUrl === 'https://placeholder.supabase.co') {
+      if (!supabaseUrl) {
         return Promise.reject(new Error('Supabase URL not configured in environment variables'));
       }
-      // Add a 4-second timeout to prevent exhausting Vercel's 10s limit
+      // Add a 60-second timeout to prevent failures during large batch inserts
       const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), 4000);
+      const id = setTimeout(() => controller.abort(), 60000);
       return fetch(url, { ...options, signal: controller.signal as any })
         .catch(err => {
             if (err.name === 'AbortError') {
-                throw new Error('Supabase request timed out after 4000ms');
+                throw new Error('Supabase request timed out after 60s - likely due to large batch insert.');
             }
             throw err;
         })

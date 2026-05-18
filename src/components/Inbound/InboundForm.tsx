@@ -134,7 +134,7 @@ const InboundForm: React.FC<InboundFormProps> = ({ onSuccess }) => {
         const product = products.find(p => p.id === selectedProduct);
         const isSerialized = product?.category?.toLowerCase() === 'hàng hóa';
 
-        let serialList = isSerialized ? (scannedSerials.length > 0 ? scannedSerials : parseSerialInput(serial)) : [];
+        const serialList = isSerialized ? (scannedSerials.length > 0 ? scannedSerials : parseSerialInput(serial)) : [];
         if (isSerialized && serialList.length === 0) {
             notifyError('Vui lòng nhập hoặc quét số Serial cho Hàng hóa');
             return;

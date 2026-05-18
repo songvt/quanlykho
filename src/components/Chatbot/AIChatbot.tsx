@@ -127,7 +127,7 @@ export default function AIChatbot() {
             if (!keywords) return "Bạn muốn kiểm tra tồn kho của sản phẩm nào? (VD: 'tồn kho cáp quang', 'tồn kho modem')";
 
             const searchWords = keywords.split(' ').filter(w => w.length > 0);
-            let matchedProducts = products.filter(p => {
+            const matchedProducts = (Array.isArray(products) ? products : []).filter(p => {
                 const normName = normalizeStr(p.name);
                 const normCode = normalizeStr(p.item_code);
                 return searchWords.every(w => normName.includes(w) || normCode.includes(w));
@@ -196,7 +196,7 @@ export default function AIChatbot() {
 
             if (serialKeyword) {
                 // Find transactions with this serial
-                const matchedTxs = transactions.filter(tx => 
+                const matchedTxs = (Array.isArray(transactions) ? transactions : []).filter(tx => 
                     tx.serial_code && normalizeStr(tx.serial_code).includes(serialKeyword)
                 ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 

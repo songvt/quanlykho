@@ -468,11 +468,11 @@ const ProductList = () => {
                                                     fontWeight: 700, fontSize: '12px'
                                                 }}
                                             >
-                                                <WarningAmberRoundedIcon sx={{ fontSize: 14 }} /> {qty}
+                                                <WarningAmberRoundedIcon sx={{ fontSize: 14 }} /> {qty.toLocaleString('vi-VN')}
                                             </Box>
                                         ) : (
                                             <Typography variant="body2" fontWeight={700} color={qty === 0 ? 'error.main' : qty < 10 ? 'warning.main' : 'success.main'}>
-                                                {qty}
+                                                {qty.toLocaleString('vi-VN')}
                                             </Typography>
                                         )}
                                     </Stack>
@@ -600,7 +600,7 @@ const ProductList = () => {
                                                                 }}
                                                             >
                                                                 <WarningAmberRoundedIcon sx={{ fontSize: 16 }} />
-                                                                {qty}
+                                                                {qty.toLocaleString('vi-VN')}
                                                             </Box>
                                                         </Tooltip>
                                                     );
@@ -614,7 +614,7 @@ const ProductList = () => {
                                                             color: qty === 0 ? '#ef4444' : qty < 10 ? '#f59e0b' : '#10b981'
                                                         }}
                                                     >
-                                                        {qty}
+                                                        {qty.toLocaleString('vi-VN')}
                                                     </Typography>
                                                 );
                                             })()}

@@ -7,6 +7,8 @@ import employeesReducer from './slices/employeesSlice';
 import ordersReducer from './slices/ordersSlice';
 import returnsReducer from './slices/returnsSlice';
 import assetsReducer from './slices/assetsSlice';
+import settlementReducer from './slices/settlementSlice';
+
 export const store = configureStore({
     reducer: {
         products: productsReducer,
@@ -17,9 +19,9 @@ export const store = configureStore({
         orders: ordersReducer,
         returns: returnsReducer,
         assets: assetsReducer,
+        settlement: settlementReducer,
     },
 });
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
-

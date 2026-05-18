@@ -47,7 +47,7 @@ const ApprovedOrdersList: React.FC<ApprovedOrdersListProps> = ({ orders, product
                                     </TableCell>
                                     <TableCell align="center">
                                         <Typography variant="body2" fontWeight="bold" color="primary">
-                                            {order.quantity}
+                                            {order.quantity.toLocaleString('vi-VN')}
                                         </Typography>
                                     </TableCell>
                                     <TableCell align="center">

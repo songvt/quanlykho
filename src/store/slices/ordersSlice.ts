@@ -55,7 +55,7 @@ const ordersSlice = createSlice({
             })
             .addCase(fetchOrders.fulfilled, (state, action: PayloadAction<Order[]>) => {
                 state.status = 'succeeded';
-                state.items = action.payload;
+                state.items = Array.isArray(action.payload) ? action.payload : [];
             })
             .addCase(fetchOrders.rejected, (state, action) => {
                 state.status = 'failed';

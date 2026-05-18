@@ -27,6 +27,7 @@ import { fetchOrders } from '../store/slices/ordersSlice';
 import DashboardSkeleton from './DashboardSkeleton';
 import { useTabVisibility } from '../hooks/useTabVisibility';
 import { formatDate, parseDate } from '../utils/dateUtils';
+import { formatNumber } from '../utils/numberUtils';
 
 const MetricCard = ({ title, value, subtitle, icon, color, trend, onClick }: any) => (
     <Paper 
@@ -279,10 +280,10 @@ const Dashboard = () => {
                 <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <MetricCard 
                         title="TỒN KHO KHẢ DỤNG" 
-                        value={stats.total_inventory.toLocaleString('vi-VN')} 
+                        value={formatNumber(stats.total_inventory)} 
                         icon={<ShippingIcon />} 
                         color="#10b981"
-                        subtitle={`Đang giữ: ${(stats as any).total_reserved?.toLocaleString('vi-VN') || 0} (chờ xuất)`}
+                        subtitle={`Đang giữ: ${formatNumber(stats.total_reserved || 0)} (chờ xuất)`}
                         trend="up"
                         onClick={() => navigate('/products')}
                     />
@@ -372,7 +373,7 @@ const Dashboard = () => {
                                 position: 'absolute', top: '45%', left: '50%', transform: 'translate(-50%, -50%)',
                                 textAlign: 'center'
                             }}>
-                                <Typography variant="h3" sx={{ fontWeight: 700, color: '#0f172a' }}>{stats.total_inventory.toLocaleString('vi-VN')}</Typography>
+                                <Typography variant="h3" sx={{ fontWeight: 700, color: '#0f172a' }}>{formatNumber(stats.total_inventory)}</Typography>
                                 <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>Tồn kho</Typography>
                             </Box>
                         </Box>
@@ -409,7 +410,7 @@ const Dashboard = () => {
                                     />
                                     <Box textAlign="right">
                                         <Typography variant="body1" sx={{ fontWeight: 700, color: t.type === 'inbound' ? '#10b981' : '#0f172a' }}>
-                                            {t.type === 'inbound' ? '+' : '-'}{t.quantity} sản phẩm
+                                            {t.type === 'inbound' ? '+' : '-'}{formatNumber(t.quantity)} sản phẩm
                                         </Typography>
                                         <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500, display: 'block' }}>
                                             {t.group_name || 'Kho chính'}

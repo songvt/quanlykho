@@ -1,31 +1,17 @@
+import 'dotenv/config';
+import { getGoogleSheet } from '../api/utils/googleSheets.js';
 
-import { GoogleSpreadsheet } from 'google-spreadsheet';
-import { JWT } from 'google-auth-library';
-import * as dotenv from 'dotenv';
-
-dotenv.config();
-
-const listSheets = async () => {
+async function listSheets() {
     try {
-        const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL!;
-        const privateKey = process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n');
-        const sheetId = process.env.GOOGLE_SHEET_ID!;
-
-        const auth = new JWT({
-            email: serviceAccountEmail,
-            key: privateKey,
-            scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+        const doc = await getGoogleSheet();
+        console.log('Document title:', doc.title);
+        console.log('Worksheets:');
+        doc.sheetsByIndex.forEach(sheet => {
+            console.log(`- ${sheet.title} (${sheet.rowCount} rows)`);
         });
-
-        const doc = new GoogleSpreadsheet(sheetId, auth);
-        await doc.loadInfo();
-
-        console.log('--- Google Sheet Titles ---');
-        Object.keys(doc.sheetsByTitle).forEach(t => console.log(`- ${t}`));
-
-    } catch (e) {
-        console.error(e);
+    } catch (err) {
+        console.error('Error:', err);
     }
-};
+}
 
 listSheets();

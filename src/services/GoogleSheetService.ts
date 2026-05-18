@@ -1,7 +1,7 @@
 import type { Product, Transaction, DashboardStats, FifoAgingItem, EmployeeReturn } from '../types';
 
 const API_BASE = '/api';
-const REQUEST_TIMEOUT_MS = 12000; // Giảm xuống 12 giây để tránh UI bị treo (Vercel max 10s-15s)
+const REQUEST_TIMEOUT_MS = 60000; // Tăng lên 60 giây cho các tác vụ Import lớn
 const MAX_RETRIES = 2;            // Retry tối đa 2 lần nếu lỗi mạng
 
 /** Delay helper */
@@ -16,9 +16,16 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const apiRequest = async (endpoint: string, options?: RequestInit, retryCount = 0): Promise<any> => {
     const url = `${API_BASE}/${endpoint}`;
 
-    // AbortController để timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    // Logging payload size for debugging
+    if (options?.body) {
+        const size = (options.body as string).length;
+        if (size > 1024 * 1024) {
+            console.log(`[API] Payload size for ${endpoint}: ${(size / (1024 * 1024)).toFixed(2)} MB`);
+        }
+    }
 
     try {
         const response = await fetch(url, {
@@ -61,8 +68,13 @@ const apiRequest = async (endpoint: string, options?: RequestInit, retryCount = 
 
         // Lỗi mạng (TypeError: Failed to fetch)
         if (err instanceof TypeError && retryCount < MAX_RETRIES) {
+            console.warn(`[API] Network error on ${endpoint}, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
             await delay(1000 * (retryCount + 1));
             return apiRequest(endpoint, options, retryCount + 1);
+        }
+
+        if (err instanceof TypeError) {
+            throw new Error(`Không thể kết nối đến máy chủ API (${endpoint}). Vui lòng kiểm tra kết nối mạng hoặc server.`);
         }
 
         throw err;
@@ -381,23 +393,12 @@ export const GoogleSheetService = {
 
     // --- Complex Analytics Dashboard ---
 
-    async getDashboardStats() {
-        // Simplistic mock until fully implemented
-        return {
-            total_products: 0,
-            total_inventory: 0,
-            low_stock_items: 0,
-            out_of_stock_items: 0,
-            recent_transactions: [],
-            weekly_stats: [],
-            category_stats: []
-        } as DashboardStats;
+    async getDashboardStats(): Promise<DashboardStats> {
+        return apiRequest('stats?action=dashboard');
     },
 
-    async getFifoInventoryAging() {
-        // Hard to implement purely without a backend function doing the math.
-        // Might need an API endpoint just for this if required, or fetch all inbound and outbound and calc locally.
-        return [] as FifoAgingItem[];
+    async getFifoInventoryAging(): Promise<FifoAgingItem[]> {
+        return apiRequest('stats?action=fifo_aging');
     },
 
     async getReportNumber(_dateObj?: Date, _employeeName?: string) {
@@ -431,5 +432,143 @@ export const GoogleSheetService = {
         return apiRequest('asset_logs', {
             method: 'GET'
         });
-    }
+    },
+
+    // --- Settlement History ---
+    async getSettlementHistory(month: string) {
+        return apiRequest(`settlement_history?month=${month}`);
+    },
+
+    async saveSettlementHistory(payload: any[]) {
+        return apiRequest('settlement_history', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ payload })
+        });
+    },
+
+    // --- Settlement Data Persistence (with Chunking to avoid Vercel limits) ---
+    /** Internal helper for chunked saving to avoid Vercel timeouts/limits */
+    async _saveChunked(endpoint: string, month: string, payload: any[], typeLabel: string) {
+        const CHUNK_SIZE = 1000;
+        for (let i = 0; i < payload.length; i += CHUNK_SIZE) {
+            const chunk = payload.slice(i, i + CHUNK_SIZE);
+            await apiRequest(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    month, 
+                    payload: chunk,
+                    skipDelete: i > 0 
+                })
+            });
+            console.log(`[Import] Saved ${typeLabel} chunk ${Math.floor(i/CHUNK_SIZE) + 1}/${Math.ceil(payload.length/CHUNK_SIZE)}`);
+        }
+    },
+
+    async saveSettlementInventory(month: string, payload: any[]) {
+        return this._saveChunked('settlement_inventory', month, payload, 'Inventory');
+    },
+
+    async saveSettlementOutbound(month: string, payload: any[]) {
+        return this._saveChunked('settlement_outbound', month, payload, 'Outbound');
+    },
+
+    async clearSettlementData(month: string, type: 'inventory' | 'outbound') {
+        const endpoint = type === 'inventory' ? 'settlement_inventory' : 'settlement_outbound';
+        return apiRequest(`${endpoint}?month=${month}`, { method: 'DELETE' });
+    },
+
+    async getSettlementInventory(month: string) {
+        return apiRequest(`settlement_inventory?month=${month}`);
+    },
+
+    async getSettlementOutbound(month: string) {
+        return apiRequest(`settlement_outbound?month=${month}`);
+    },
+
+    /**
+     * Tổng hợp nhập/xuất/trả từ chi tiết và lưu cố định vào settlement_history.
+     * Sau bước này, cột XUẤT TRONG KỲ không đổi khi reload cho đến khi import/xóa lại.
+     */
+    async syncSettlementMovements(
+        month: string,
+        inventoryData: any[],
+        outboundData: any[],
+        mode: 'supply' | 'goods',
+        existingHistory: Record<string, any> = {},
+        goodsOptions?: { findStandardKey?: (name: string, code?: string) => string | null }
+    ) {
+        const {
+            normalizeSettlementMonth,
+            aggregateSettlementMovements,
+            buildSettlementHistoryPayload,
+        } = await import('../utils/settlementAggregates');
+
+        const normalizedMonth = normalizeSettlementMonth(month);
+        const aggregates = aggregateSettlementMovements(
+            inventoryData,
+            outboundData,
+            normalizedMonth,
+            mode,
+            goodsOptions
+        );
+        const payload = buildSettlementHistoryPayload(normalizedMonth, aggregates, existingHistory);
+        if (payload.length > 0) {
+            await apiRequest('settlement_history', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ payload }),
+            });
+        }
+        const { markMovementsFrozen } = await import('../utils/settlementAggregates');
+        markMovementsFrozen(normalizedMonth, mode);
+        return payload;
+    },
+
+    async clearSettlementMovements(
+        month: string,
+        existingHistory: Record<string, any>,
+        mode: 'supply' | 'goods' = 'supply'
+    ) {
+        const { normalizeSettlementMonth, clearMovementsFrozen } = await import('../utils/settlementAggregates');
+        const normalizedMonth = normalizeSettlementMonth(month);
+        const records = Object.values(existingHistory);
+        if (records.length === 0) return;
+
+        const payload = records.map((hist: any) => {
+            const opening_qty = Number(hist.opening_qty) || 0;
+            const opening_amount = Number(hist.opening_amount) || 0;
+            return {
+                month: normalizedMonth,
+                item_code: hist.item_code || '',
+                item_name: hist.item_name,
+                unit: hist.unit || 'Cái',
+                unit_price: Number(hist.unit_price) || 0,
+                opening_qty,
+                opening_amount,
+                inbound_qty: 0,
+                inbound_amount: 0,
+                outbound_qty: 0,
+                outbound_amount: 0,
+                usage_qty: Number(hist.usage_qty) || 0,
+                usage_amount: Number(hist.usage_amount) || 0,
+                return_qty: 0,
+                return_amount: 0,
+                closing_qty: opening_qty,
+                closing_amount: opening_amount,
+                sap_item_code: hist.sap_item_code || '',
+                finance_item_name: hist.finance_item_name || '',
+                updated_at: new Date().toISOString(),
+            };
+        });
+
+        clearMovementsFrozen(normalizedMonth, mode);
+
+        await apiRequest('settlement_history', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ payload }),
+        });
+    },
 };

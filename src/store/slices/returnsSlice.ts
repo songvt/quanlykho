@@ -41,7 +41,7 @@ const returnsSlice = createSlice({
             })
             .addCase(fetchReturns.fulfilled, (state, action) => {
                 state.status = 'succeeded';
-                state.items = action.payload;
+                state.items = Array.isArray(action.payload) ? action.payload : [];
             })
             .addCase(fetchReturns.rejected, (state, action) => {
                 state.status = 'failed';
