@@ -1,16 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('CRITICAL: Supabase credentials (URL/Key) are missing in environment variables (.env)');
-}
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://placeholder-url.supabase.co';
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: {
     fetch: (url, options) => {
-      if (!supabaseUrl) {
+      if (!supabaseUrl || supabaseUrl === 'https://placeholder-url.supabase.co') {
         return Promise.reject(new Error('Supabase URL not configured in environment variables'));
       }
       // Add a 60-second timeout to prevent failures during large batch inserts
