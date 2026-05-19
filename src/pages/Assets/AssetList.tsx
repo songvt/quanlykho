@@ -4,7 +4,7 @@ import {
     Box, Paper, Typography, Button, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, IconButton, Dialog,
     DialogTitle, DialogContent, DialogActions, TextField, Stack,
-    Checkbox, TablePagination, useMediaQuery, useTheme, Chip, Divider
+    Checkbox, TablePagination, useMediaQuery, useTheme, Chip, Divider, Autocomplete
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -15,6 +15,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import PrintIcon from '@mui/icons-material/Print';
 
 import { fetchAssets, deleteAsset, importAssets, updateAsset } from '../../store/slices/assetsSlice';
+import { fetchHRProfiles } from '../../store/slices/hrProfilesSlice';
 import { useNotification } from '../../contexts/NotificationContext';
 import { readAssetExcelFile, generateAssetTemplate } from '../../utils/excelUtils';
 import type { RootState, AppDispatch } from '../../store';
@@ -27,6 +28,7 @@ const AssetList = () => {
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const dispatch = useDispatch<AppDispatch>();
     const { items: assets, status } = useSelector((state: RootState) => state.assets);
+    const { items: hrProfiles, status: hrProfilesStatus } = useSelector((state: RootState) => state.hrProfiles);
     const { profile } = useSelector((state: RootState) => state.auth);
     const { success, error: notifyError } = useNotification();
 
@@ -63,13 +65,17 @@ const AssetList = () => {
 
     const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string }>({ open: false, id: '' });
     const [searchEmployee, setSearchEmployee] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState('all');
 
 
     useEffect(() => {
         if (status === 'idle') {
             dispatch(fetchAssets());
         }
-    }, [status, dispatch]);
+        if (hrProfilesStatus === 'idle') {
+            dispatch(fetchHRProfiles());
+        }
+    }, [status, hrProfilesStatus, dispatch]);
 
     const handleSelectAll = (checked: boolean) => {
         if (checked) setSelectedIds(assets.map(a => a.id));
@@ -82,16 +88,32 @@ const AssetList = () => {
     };
 
     const filteredAssets = useMemo(() => {
-        if (!searchEmployee.trim()) return assets;
+        let list = assets;
+        
+        if (categoryFilter === 'ccdc') {
+            list = list.filter(a => {
+                const group = (a.asset_group || '').toLowerCase();
+                const type = (a.asset_type || '').toLowerCase();
+                return group.includes('ccdc') || type.includes('ccdc');
+            });
+        } else if (categoryFilter === 'tbvp') {
+            list = list.filter(a => {
+                const group = (a.asset_group || '').toLowerCase();
+                const type = (a.asset_type || '').toLowerCase();
+                return group.includes('tbvp') || type.includes('tbvp');
+            });
+        }
+
+        if (!searchEmployee.trim()) return list;
         const s = searchEmployee.toLowerCase();
-        return assets.filter(a => 
+        return list.filter(a => 
             (a.user_employee_name || '').toLowerCase().includes(s) ||
             (a.manager_name || '').toLowerCase().includes(s) ||
             (a.asset_name || '').toLowerCase().includes(s) ||
             (a.status || '').toLowerCase().includes(s) ||
             (a.asset_code || '').toLowerCase().includes(s)
         );
-    }, [assets, searchEmployee]);
+    }, [assets, searchEmployee, categoryFilter]);
 
     const handlePrintByEmployee = () => {
         if (!searchEmployee.trim()) {
@@ -400,7 +422,7 @@ const AssetList = () => {
             </Stack>
 
             {/* Search + selection info */}
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} mb={2} alignItems={{ sm: 'center' }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} mb={2} alignItems={{ sm: 'center' }}>
                 <TextField
                     placeholder="Tìm theo tên TS, tình trạng, nhân viên..."
                     size="small"
@@ -409,6 +431,18 @@ const AssetList = () => {
                     value={searchEmployee}
                     onChange={(e) => setSearchEmployee(e.target.value)}
                 />
+                <TextField
+                    select
+                    size="small"
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    SelectProps={{ native: true }}
+                    sx={{ width: isMobile ? '100%' : 220, bgcolor: 'white' }}
+                >
+                    <option value="all">Tất cả danh mục (CCDC & TBVP)</option>
+                    <option value="ccdc">Công cụ dụng cụ (CCDC)</option>
+                    <option value="tbvp">Thiết bị văn phòng (TBVP)</option>
+                </TextField>
                 {selectedIds.length > 0 && (
                     <Chip 
                         label={`Đã chọn: ${selectedIds.length}`} 
@@ -626,6 +660,31 @@ const AssetList = () => {
                     <Typography mb={2}>Đang thao tác trên {actionModal.assetIds.length} tài sản.</Typography>
                     {actionModal.type !== 'revoke' && (
                         <Stack spacing={2} mt={1}>
+                            <Autocomplete
+                                options={hrProfiles}
+                                getOptionLabel={(option) => `${option.full_name} (${option.id})`}
+                                value={hrProfiles.find(p => p.id === employeeCode) || null}
+                                onChange={(_, newVal) => {
+                                    if (newVal) {
+                                        setEmployeeCode(newVal.id);
+                                        setEmployeeName(newVal.full_name);
+                                        setDepartment(newVal.department || '');
+                                    } else {
+                                        setEmployeeCode('');
+                                        setEmployeeName('');
+                                        setDepartment('');
+                                    }
+                                }}
+                                loading={hrProfilesStatus === 'loading'}
+                                renderInput={(params) => (
+                                    <TextField 
+                                        {...params} 
+                                        label="Chọn nhân viên nhận" 
+                                        size="small" 
+                                        placeholder="Gõ tên hoặc mã nhân viên..."
+                                    />
+                                )}
+                            />
                             <TextField 
                                 label="Mã nhân viên nhận" 
                                 fullWidth 

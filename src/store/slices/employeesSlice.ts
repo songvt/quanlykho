@@ -19,12 +19,12 @@ export const fetchEmployees = createAsyncThunk('employees/fetchEmployees', async
     return data;
 });
 
-export const addEmployee = createAsyncThunk('employees/addEmployee', async (employee: Omit<Employee, 'id'>) => {
+export const addEmployee = createAsyncThunk('employees/addEmployee', async (employee: Partial<Employee>) => {
     const data = await SupabaseService.addEmployee(employee);
     return data;
 });
 
-export const importEmployees = createAsyncThunk('employees/import', async (employees: Omit<Employee, 'id'>[]) => {
+export const importEmployees = createAsyncThunk('employees/import', async (employees: Partial<Employee>[]) => {
     return await SupabaseService.bulkAddEmployees(employees);
 });
 

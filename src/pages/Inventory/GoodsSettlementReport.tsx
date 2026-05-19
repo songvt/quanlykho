@@ -996,13 +996,16 @@ const GoodsSettlementReport: React.FC = () => {
                         if (mainTable) {
                             (mainTable as any).style.borderCollapse = 'collapse';
                             (mainTable as any).style.width = '100%';
+                            (mainTable as any).style.tableLayout = 'auto';
                             const cells = mainTable.querySelectorAll('th, td');
                             cells.forEach((cell: any) => {
                                 cell.style.border = '1px solid black';
-                                cell.style.padding = '4px';
-                                cell.style.fontSize = '10pt';
+                                cell.style.padding = '2px 1.5px';
+                                cell.style.fontSize = '6.5pt'; // Siêu nhỏ cho bảng 17 cột hàng hóa
                                 cell.style.color = 'black';
                                 cell.style.fontFamily = '"Times New Roman", Times, serif';
+                                cell.style.minWidth = 'auto';
+                                cell.style.whiteSpace = 'normal';
                             });
                         }
 
@@ -1170,8 +1173,10 @@ const GoodsSettlementReport: React.FC = () => {
                         fontFamily: '"Times New Roman", Times, serif',
                         '@media print': {
                             border: '1px solid black',
-                            fontSize: '0.62rem',
-                            padding: '2px 4px'
+                            fontSize: '0.52rem',
+                            padding: '2px 1.5px',
+                            minWidth: 'auto !important',
+                            whiteSpace: 'normal !important'
                         }
                     } 
                 }}>
@@ -1357,9 +1362,11 @@ const GoodsSettlementReport: React.FC = () => {
                     }
                     th, td {
                         border: 1px solid #000 !important;
-                        padding: 4px 6px !important;
-                        font-size: 8pt !important;
+                        padding: 2px 1.5px !important;
+                        font-size: 6.5pt !important;
                         word-break: break-word !important;
+                        min-width: auto !important;
+                        white-space: normal !important;
                     }
                     /* Remove borders for layout tables */
                     .layout-table, .layout-table th, .layout-table td {

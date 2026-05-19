@@ -922,73 +922,205 @@ const Reports = () => {
         }
     };
 
-    const ReportCard = ({ title, desc, icon, color, onClick }: any) => (
-        <Card sx={{
-            height: '100%',
-            borderRadius: 3,
-            display: 'flex',
-            flexDirection: 'column',
-            transition: 'all 0.2s',
-            border: '1px solid',
-            borderColor: 'divider',
-            minWidth: 300, // Prevent squashing
-            '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: (theme) => `0 10px 20px -5px ${(theme.palette as any)[color].main}20`,
-                borderColor: `${color}.main`
-            }
-        }}>
-            <CardContent sx={{ flexGrow: 1, p: 3, textAlign: 'center' }}>
+    const ReportCard = ({ title, desc, icon, color, onClick }: any) => {
+        const themeColor = color || 'primary';
+        
+        const gradients: Record<string, string> = {
+            primary: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
+            secondary: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)',
+            success: 'linear-gradient(135deg, #10B981 0%, #047857 100%)',
+            warning: 'linear-gradient(135deg, #F59E0B 0%, #B45309 100%)',
+            info: 'linear-gradient(135deg, #06B6D4 0%, #0E7490 100%)',
+            error: 'linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)',
+        };
+
+        const hoverShadows: Record<string, string> = {
+            primary: '0 12px 24px -10px rgba(59, 130, 246, 0.35)',
+            secondary: '0 12px 24px -10px rgba(139, 92, 246, 0.35)',
+            success: '0 12px 24px -10px rgba(16, 185, 129, 0.35)',
+            warning: '0 12px 24px -10px rgba(245, 158, 11, 0.35)',
+            info: '0 12px 24px -10px rgba(6, 182, 212, 0.35)',
+            error: '0 12px 24px -10px rgba(239, 68, 68, 0.35)',
+        };
+
+        const pillBg: Record<string, string> = {
+            primary: 'rgba(59, 130, 246, 0.08)',
+            secondary: 'rgba(139, 92, 246, 0.08)',
+            success: 'rgba(16, 185, 129, 0.08)',
+            warning: 'rgba(245, 158, 11, 0.08)',
+            info: 'rgba(6, 182, 212, 0.08)',
+            error: 'rgba(239, 68, 68, 0.08)',
+        };
+
+        const textColors: Record<string, string> = {
+            primary: '#2563EB',
+            secondary: '#7C3AED',
+            success: '#10B981',
+            warning: '#D97706',
+            info: '#0891B2',
+            error: '#EF4444',
+        };
+
+        let category = 'Báo cáo';
+        if (title.includes('Tồn Kho') || title.includes('Tồn kho')) {
+            category = 'Tồn kho';
+        } else if (title.includes('Bàn Giao') || title.includes('Bàn giao')) {
+            category = 'Biên bản';
+        } else if (title.includes('Nhập / Xuất') || title.includes('Giao Dịch') || title.includes('Thẻ Kho')) {
+            category = 'Giao dịch';
+        } else if (title.includes('Nhân Viên') || title.includes('Nhân viên')) {
+            category = 'Nhân sự';
+        } else if (title.includes('FIFO') || title.includes('Tuổi Kho')) {
+            category = 'Cảnh báo';
+        } else if (title.includes('Đơn Hàng') || title.includes('Đơn hàng')) {
+            category = 'Đơn hàng';
+        }
+
+        return (
+            <Card sx={{
+                height: '100%',
+                borderRadius: '16px',
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative',
+                overflow: 'hidden',
+                background: '#ffffff',
+                border: '1px solid rgba(226, 232, 240, 0.8)',
+                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.02)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                '&:hover': {
+                    transform: 'translateY(-6px)',
+                    boxShadow: hoverShadows[themeColor] || '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+                    borderColor: textColors[themeColor],
+                    '& .card-icon-container': {
+                        transform: 'scale(1.1) rotate(5deg)',
+                        boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
+                    }
+                }
+            }}>
+                {/* Visual Accent Top Bar */}
                 <Box sx={{
-                    display: 'inline-flex',
-                    p: 1.5,
-                    borderRadius: '12px',
-                    bgcolor: (theme) => `${(theme.palette as any)[color].main}15`,
-                    color: `${color}.main`,
-                    mb: 2
-                }}>
-                    {icon}
-                </Box>
-                <Typography variant="h6" fontWeight="700" gutterBottom sx={{ fontSize: '1.1rem' }}>{title}</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem', lineHeight: 1.5 }}>{desc}</Typography>
-            </CardContent>
-            <CardActions sx={{ p: 2, pt: 0, justifyContent: 'center' }}>
-                <Button
-                    variant="outlined"
-                    color={color}
-                    size="small"
-                    startIcon={<DownloadIcon fontSize="small" />}
-                    onClick={onClick}
-                    sx={{
-                        borderRadius: 2,
-                        px: 3,
-                        fontWeight: 600,
-                        textTransform: 'none',
-                        borderWidth: 1.5,
-                        '&:hover': { borderWidth: 1.5 }
-                    }}
-                >
-                    Xuất Excel
-                </Button>
-            </CardActions>
-        </Card>
-    );
+                    height: '4px',
+                    width: '100%',
+                    background: gradients[themeColor] || gradients.primary,
+                }} />
+
+                <CardContent sx={{ flexGrow: 1, p: 3, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                    {/* Category Pill + Icon Row */}
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', mb: 2.5 }}>
+                        <Box 
+                            className="card-icon-container"
+                            sx={{
+                                display: 'inline-flex',
+                                p: 1.5,
+                                borderRadius: '12px',
+                                background: gradients[themeColor] || gradients.primary,
+                                color: '#ffffff',
+                                transition: 'all 0.3s ease',
+                                boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
+                            }}
+                        >
+                            {icon}
+                        </Box>
+                        
+                        <Typography 
+                            variant="caption" 
+                            sx={{
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: '1px',
+                                px: 1.5,
+                                py: 0.5,
+                                borderRadius: '20px',
+                                bgcolor: pillBg[themeColor] || pillBg.primary,
+                                color: textColors[themeColor] || textColors.primary,
+                                fontSize: '0.7rem'
+                            }}
+                        >
+                            {category}
+                        </Typography>
+                    </Box>
+
+                    {/* Title */}
+                    <Typography 
+                        variant="h6" 
+                        fontWeight="800" 
+                        sx={{ 
+                            fontSize: '1.1rem', 
+                            color: '#1E293B',
+                            mb: 1,
+                            lineHeight: 1.3
+                        }}
+                    >
+                        {title}
+                    </Typography>
+
+                    {/* Description */}
+                    <Typography 
+                        variant="body2" 
+                        sx={{ 
+                            fontSize: '0.85rem', 
+                            color: '#64748B', 
+                            lineHeight: 1.5,
+                            flexGrow: 1
+                        }}
+                    >
+                        {desc}
+                    </Typography>
+                </CardContent>
+
+                {/* Actions Button */}
+                <CardActions sx={{ p: 3, pt: 0, width: '100%' }}>
+                    <Button
+                        variant="contained"
+                        size="medium"
+                        startIcon={<DownloadIcon fontSize="small" />}
+                        onClick={onClick}
+                        sx={{
+                            borderRadius: '10px',
+                            px: 3,
+                            py: 1,
+                            fontWeight: 700,
+                            textTransform: 'none',
+                            background: gradients[themeColor] || gradients.primary,
+                            boxShadow: 'none',
+                            color: '#ffffff',
+                            '&:hover': {
+                                background: gradients[themeColor] || gradients.primary,
+                                opacity: 0.95,
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                            },
+                            transition: 'all 0.2s ease',
+                            width: '100%'
+                        }}
+                    >
+                        Xuất dữ liệu Excel
+                    </Button>
+                </CardActions>
+            </Card>
+        );
+    };
 
     return (
-        <Box p={{ xs: 1, sm: 3 }} sx={{ bgcolor: '#F8FAFC', minHeight: '100vh', maxWidth: 1000, mx: 'auto', width: '100%', overflowX: 'hidden', zoom: { xs: 0.85, md: 1 } }}>
-            <Box mb={{ xs: 2, sm: 4 }} textAlign="center">
+        <Box p={{ xs: 1, sm: 3 }} sx={{ bgcolor: '#F8FAFC', minHeight: '100vh', maxWidth: 1200, mx: 'auto', width: '100%', overflowX: 'hidden', zoom: { xs: 0.85, md: 1 } }}>
+            <Box mb={{ xs: 3, sm: 5 }} textAlign="center">
+                <Box sx={{ display: 'inline-flex', px: 2, py: 0.5, borderRadius: '20px', bgcolor: 'rgba(37, 99, 235, 0.08)', color: 'primary.main', mb: 1.5 }}>
+                    <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.5px' }}>
+                        Hệ thống xuất báo cáo
+                    </Typography>
+                </Box>
                 <Typography variant="h4" fontWeight="900" mb={1} sx={{
                     fontSize: { xs: '1.75rem', sm: '2.5rem' },
                     textTransform: 'uppercase',
-                    background: 'linear-gradient(45deg, #0d47a1 30%, #1976d2 90%)',
+                    background: 'linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     letterSpacing: '1px'
                 }}>
-                    BÁO CÁO & THỐNG KÊ
+                    Báo cáo & Thống kê
                 </Typography>
-                <Typography variant="body2" color="text.secondary" maxWidth={600} mx="auto" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
-                    Trung tâm xuất dữ liệu và báo cáo quản trị kho.
+                <Typography variant="body2" color="text.secondary" maxWidth={600} mx="auto" sx={{ fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
+                    Trung tâm quản trị dữ liệu, biên bản bàn giao và phân tích tồn kho của ACT.
                 </Typography>
             </Box>
 
@@ -996,31 +1128,94 @@ const Reports = () => {
                 <Alert
                     severity={notification.type}
                     onClose={() => setNotification(null)}
-                    sx={{ mb: 2, borderRadius: 2 }}
+                    sx={{ mb: 3, borderRadius: '12px' }}
                 >
                     {notification.message}
                 </Alert>
             )}
 
-            <Tabs
-                value={selectedTab}
-                onChange={(_, newValue) => setSelectedTab(newValue)}
-                centered
-                sx={{ mb: { xs: 2, sm: 4 }, borderBottom: 1, borderColor: 'divider', '& .MuiTab-root': { fontSize: { xs: '0.75rem', sm: '0.875rem' }, minHeight: 48, px: 1 } }}
-            >
-                <Tab label="Báo cáo chung" />
-                <Tab label="Báo cáo Đơn hàng" />
-                {isAdmin && <Tab label="Quản lý dữ liệu" sx={{ color: 'error.main' }} />}
-            </Tabs>
+            {/* Premium Pill Tabs Navigation */}
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: { xs: 3, sm: 5 } }}>
+                <Box sx={{
+                    display: 'inline-flex',
+                    bgcolor: 'rgba(15, 23, 42, 0.05)',
+                    borderRadius: '24px',
+                    p: '6px',
+                    gap: 1
+                }}>
+                    <Button
+                        onClick={() => setSelectedTab(0)}
+                        sx={{
+                            borderRadius: '18px',
+                            px: { xs: 2.5, sm: 3.5 },
+                            py: 1,
+                            fontWeight: 700,
+                            fontSize: '0.875rem',
+                            textTransform: 'none',
+                            bgcolor: selectedTab === 0 ? '#ffffff' : 'transparent',
+                            color: selectedTab === 0 ? 'primary.main' : 'text.secondary',
+                            boxShadow: selectedTab === 0 ? '0 4px 12px rgba(0, 0, 0, 0.05)' : 'none',
+                            '&:hover': {
+                                bgcolor: selectedTab === 0 ? '#ffffff' : 'rgba(15, 23, 42, 0.08)',
+                            },
+                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                        }}
+                    >
+                        Báo cáo chung
+                    </Button>
+                    <Button
+                        onClick={() => setSelectedTab(1)}
+                        sx={{
+                            borderRadius: '18px',
+                            px: { xs: 2.5, sm: 3.5 },
+                            py: 1,
+                            fontWeight: 700,
+                            fontSize: '0.875rem',
+                            textTransform: 'none',
+                            bgcolor: selectedTab === 1 ? '#ffffff' : 'transparent',
+                            color: selectedTab === 1 ? 'primary.main' : 'text.secondary',
+                            boxShadow: selectedTab === 1 ? '0 4px 12px rgba(0, 0, 0, 0.05)' : 'none',
+                            '&:hover': {
+                                bgcolor: selectedTab === 1 ? '#ffffff' : 'rgba(15, 23, 42, 0.08)',
+                            },
+                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                        }}
+                    >
+                        Báo cáo Đơn hàng
+                    </Button>
+                    {isAdmin && (
+                        <Button
+                            onClick={() => setSelectedTab(2)}
+                            sx={{
+                                borderRadius: '18px',
+                                px: { xs: 2.5, sm: 3.5 },
+                                py: 1,
+                                fontWeight: 700,
+                                fontSize: '0.875rem',
+                                textTransform: 'none',
+                                bgcolor: selectedTab === 2 ? '#ffffff' : 'transparent',
+                                color: selectedTab === 2 ? 'error.main' : 'text.secondary',
+                                boxShadow: selectedTab === 2 ? '0 4px 12px rgba(0, 0, 0, 0.05)' : 'none',
+                                '&:hover': {
+                                    bgcolor: selectedTab === 2 ? '#ffffff' : 'rgba(15, 23, 42, 0.08)',
+                                },
+                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+                            }}
+                        >
+                            Quản lý dữ liệu
+                        </Button>
+                    )}
+                </Box>
+            </Box>
 
             {selectedTab === 0 && (
-                <Grid container spacing={{ xs: 2, sm: 3 }} justifyContent="center" maxWidth={1200} mx="auto">
+                <Grid container spacing={{ xs: 2.5, sm: 3.5 }} justifyContent="center" maxWidth={1200} mx="auto">
                     {isAdmin && (
                         <>
                             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                                 <ReportCard
                                     title="Báo Cáo Tồn Kho"
-                                    desc="Danh sách tồn kho, giá trị và số lượng."
+                                    desc="Danh sách tồn kho chi tiết, giá trị tổng tài sản và số lượng khả dụng."
                                     icon={<InventoryIcon />}
                                     color="primary"
                                     onClick={handleExportInventory}
@@ -1029,7 +1224,7 @@ const Reports = () => {
                             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                                 <ReportCard
                                     title="Nhập / Xuất"
-                                    desc="Báo cáo chi tiết giao dịch theo thời gian."
+                                    desc="Báo cáo phân tích dòng chảy giao dịch chi tiết theo thời gian."
                                     icon={<AssessmentIcon />}
                                     color="info"
                                     onClick={() => setOpenPeriodReport(true)}
@@ -1038,7 +1233,7 @@ const Reports = () => {
                             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                                 <ReportCard
                                     title="Lịch Sử Giao Dịch"
-                                    desc="Log toàn bộ các hoạt động nhập xuất."
+                                    desc="Toàn bộ nhật ký (log) các hoạt động xuất nhập trong toàn hệ thống."
                                     icon={<ReceiptIcon />}
                                     color="secondary"
                                     onClick={() => handleExportTransactions()}
@@ -1050,7 +1245,7 @@ const Reports = () => {
                     <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                         <ReportCard
                             title="Biên Bản Bàn Giao (Nhập Kho)"
-                            desc="In biên bản bàn giao phiếu nhập kho."
+                            desc="In và xuất biên bản giao nhận thiết bị cho các phiếu nhập kho."
                             icon={<AssignmentIndIcon />}
                             color="success"
                             onClick={() => { setHandoverType('inbound'); setOpenHandover(true); }}
@@ -1059,7 +1254,7 @@ const Reports = () => {
                     <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                         <ReportCard
                             title="Biên Bản Bàn Giao (Xuất Kho)"
-                            desc="In biên bản bàn giao phiếu xuất kho."
+                            desc="In và xuất biên bản giao nhận thiết bị cho các phiếu xuất kho."
                             icon={<AssignmentIndIcon />}
                             color="warning"
                             onClick={() => { setHandoverType('outbound'); setOpenHandover(true); }}
@@ -1071,7 +1266,7 @@ const Reports = () => {
                             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                                 <ReportCard
                                     title="Theo Nhân Viên"
-                                    desc="Thống kê nhập/xuất theo nhân viên."
+                                    desc="Báo cáo thống kê hiệu suất xuất nhập chi tiết theo từng nhân sự."
                                     icon={<AssignmentIndIcon />}
                                     color="info"
                                     onClick={() => setOpenEmployeeReport(true)}
@@ -1080,7 +1275,7 @@ const Reports = () => {
                             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                                 <ReportCard
                                     title="Thẻ Kho"
-                                    desc="Chi tiết biến động của từng mặt hàng."
+                                    desc="Theo dõi chi tiết lịch sử biến động số lượng của từng mã sản phẩm."
                                     icon={<AssignmentIcon />}
                                     color="error"
                                     onClick={() => setOpenStockCard(true)}
@@ -1089,7 +1284,7 @@ const Reports = () => {
                             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                                 <ReportCard
                                     title="Tồn Kho Theo Quận"
-                                    desc="Báo cáo số lượng tồn kho theo từng khu vực."
+                                    desc="Báo cáo phân vùng trữ lượng tồn kho thực tế theo từng chi nhánh quận."
                                     icon={<InventoryIcon />}
                                     color="success"
                                     onClick={handleExportStockByDistrict}
@@ -1098,7 +1293,7 @@ const Reports = () => {
                             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                                 <ReportCard
                                     title="Tuổi Kho (FIFO)"
-                                    desc="Cảnh báo hàng nhập kho lâu ngày chưa xuất."
+                                    desc="Cảnh báo hạn lưu kho của hàng hóa dựa trên nguyên tắc FIFO."
                                     icon={<WarningIcon />}
                                     color="secondary"
                                     onClick={handleExportFifoAging}
@@ -1110,11 +1305,11 @@ const Reports = () => {
             )}
 
             {selectedTab === 1 && (
-                <Grid container spacing={{ xs: 2, sm: 3 }} justifyContent="center" maxWidth={1200} mx="auto">
+                <Grid container spacing={{ xs: 2.5, sm: 3.5 }} justifyContent="center" maxWidth={1200} mx="auto">
                     <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                         <ReportCard
                             title="Đơn Hàng"
-                            desc="Danh sách và trạng thái các đơn hàng."
+                            desc="Danh sách tổng hợp và tiến độ duyệt các đơn hàng yêu cầu cấp phát."
                             icon={<ShoppingCartIcon />}
                             color="success"
                             onClick={handleExportOrders}

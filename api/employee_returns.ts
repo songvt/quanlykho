@@ -44,53 +44,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
         }
 
-        const doc = await getGoogleSheet();
-        const returnsSheet = await getSheetByTitle(doc, 'employee_returns');
-        const inboundSheet = await getSheetByTitle(doc, 'inbound_transactions');
-        const productsSheet = await getSheetByTitle(doc, 'products');
-
-        if (returnsSheet.rowCount === 0) {
-            await returnsSheet.setHeaderRow([
-                'id', 'product_id', 'serial_code', 'quantity', 'reason', 'unit_price', 'total_price', 'return_date', 'employee_id', 'created_by', 'created_at',
-                'group_name', 'returner_name', 'status', 'description', 'district', 'item_status', 'type', 'updated_at', 'date'
-            ]);
-        }
-
-        const getProductsMap = async () => {
-            const rows = await productsSheet.getRows();
-            const map: Record<string, any> = {};
-            rows.forEach(r => map[r.get('id')] = { name: r.get('name'), item_code: r.get('item_code'), unit: r.get('unit') });
-            return map;
-        };
-
-        const getEmployeesMap = async () => {
-            const empSheet = await getSheetByTitle(doc, 'employees');
-            const rows = await empSheet.getRows();
-            const map: Record<string, any> = {};
-            rows.forEach(r => map[r.get('id')] = { full_name: r.get('full_name') });
-            return map;
-        }
-
         switch (req.method) {
             case 'GET': {
+                try {
+                    const doc = await getGoogleSheet();
+                    const returnsSheet = await getSheetByTitle(doc, 'employee_returns');
+                    const productsSheet = await getSheetByTitle(doc, 'products');
 
-                const rows = await returnsSheet.getRows();
-                const productsMap = await getProductsMap();
-                const employeesMap = await getEmployeesMap();
-
-                const returns = rows.map(r => {
-                    const rowObj = r.toObject();
-                    if (rowObj.quantity !== undefined) rowObj.quantity = Number(rowObj.quantity);
-                    if (rowObj.unit_price !== undefined) rowObj.unit_price = Number(rowObj.unit_price);
-                    if (rowObj.total_price !== undefined) rowObj.total_price = Number(rowObj.total_price);
-                    return {
-                        ...rowObj,
-                        product: productsMap[rowObj.product_id] || null,
-                        employee: employeesMap[rowObj.employee_id] || null
+                    const getProductsMap = async () => {
+                        const rows = await productsSheet.getRows();
+                        const map: Record<string, any> = {};
+                        rows.forEach(r => map[r.get('id')] = { name: r.get('name'), item_code: r.get('item_code'), unit: r.get('unit') });
+                        return map;
                     };
-                }).sort((a: any, b: any) => parseLocalDate(b.return_date).getTime() - parseLocalDate(a.return_date).getTime());
 
-                return res.status(200).json(returns);
+                    const getEmployeesMap = async () => {
+                        const empSheet = await getSheetByTitle(doc, 'employees');
+                        const rows = await empSheet.getRows();
+                        const map: Record<string, any> = {};
+                        rows.forEach(r => map[r.get('id')] = { full_name: r.get('full_name') });
+                        return map;
+                    };
+
+                    const rows = await returnsSheet.getRows();
+                    const productsMap = await getProductsMap();
+                    const employeesMap = await getEmployeesMap();
+
+                    const returns = rows.map(r => {
+                        const rowObj = r.toObject();
+                        if (rowObj.quantity !== undefined) rowObj.quantity = Number(rowObj.quantity);
+                        if (rowObj.unit_price !== undefined) rowObj.unit_price = Number(rowObj.unit_price);
+                        if (rowObj.total_price !== undefined) rowObj.total_price = Number(rowObj.total_price);
+                        return {
+                            ...rowObj,
+                            product: productsMap[rowObj.product_id] || null,
+                            employee: employeesMap[rowObj.employee_id] || null
+                        };
+                    }).sort((a: any, b: any) => parseLocalDate(b.return_date).getTime() - parseLocalDate(a.return_date).getTime());
+
+                    return res.status(200).json(returns);
+                } catch (gsErr: any) {
+                    console.error('[EmployeeReturns GET] Google Sheets fallback failed:', gsErr.message);
+                    return res.status(500).json({ error: 'Failed to fetch employee returns from both sources' });
+                }
             }
 
             case 'POST': {
@@ -140,6 +136,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     }
 
                     try {
+                        const doc = await getGoogleSheet();
+                        const returnsSheet = await getSheetByTitle(doc, 'employee_returns');
+                        const inboundSheet = await getSheetByTitle(doc, 'inbound_transactions');
+                        if (returnsSheet.rowCount === 0) {
+                            await returnsSheet.setHeaderRow([
+                                'id', 'product_id', 'serial_code', 'quantity', 'reason', 'unit_price', 'total_price', 'return_date', 'employee_id', 'created_by', 'created_at',
+                                'group_name', 'returner_name', 'status', 'description', 'district', 'item_status', 'type', 'updated_at', 'date'
+                            ]);
+                        }
                         const gsWritePromise = async () => {
                             await returnsSheet.addRows(toInsertReturns);
                             await inboundSheet.addRows(toInsertInbound);
@@ -196,6 +201,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     }
 
                     try {
+                        const doc = await getGoogleSheet();
+                        const returnsSheet = await getSheetByTitle(doc, 'employee_returns');
+                        const inboundSheet = await getSheetByTitle(doc, 'inbound_transactions');
+                        if (returnsSheet.rowCount === 0) {
+                            await returnsSheet.setHeaderRow([
+                                'id', 'product_id', 'serial_code', 'quantity', 'reason', 'unit_price', 'total_price', 'return_date', 'employee_id', 'created_by', 'created_at',
+                                'group_name', 'returner_name', 'status', 'description', 'district', 'item_status', 'type', 'updated_at', 'date'
+                            ]);
+                        }
                         const gsWritePromise = async () => {
                             await returnsSheet.addRow(toInsertReturn);
                             await inboundSheet.addRow(toInsertInbound);
@@ -229,6 +243,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 }
 
                 try {
+                    const doc = await getGoogleSheet();
+                    const returnsSheet = await getSheetByTitle(doc, 'employee_returns');
                     const deletePromise = async () => {
                         const rows = await returnsSheet.getRows();
                         for (let i = rows.length - 1; i >= 0; i--) {

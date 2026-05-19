@@ -31,9 +31,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(200).json(items);
         }
 
-        const doc = await getGoogleSheet();
-        const sheet = await getSheetByTitle(doc, 'district_storekeepers');
-
         if (req.method === 'POST' || req.method === 'PUT') {
             const { district, storekeeper_name } = req.body;
 
@@ -79,6 +76,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             // 2. Google Sheets with Queue Fallback
             try {
+                const doc = await getGoogleSheet();
+                const sheet = await getSheetByTitle(doc, 'district_storekeepers');
                 const writePromise = async () => {
                     const rows = await sheet.getRows();
                     const existingRow = rows.find(row => row.get('district') === district);
@@ -129,6 +128,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             // 2. Google Sheets with Queue Fallback
             try {
+                const doc = await getGoogleSheet();
+                const sheet = await getSheetByTitle(doc, 'district_storekeepers');
                 const deletePromise = async () => {
                     const rows = await sheet.getRows();
                     const rowToDelete = rows.find(row => row.get('district') === district);

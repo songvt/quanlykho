@@ -328,6 +328,53 @@ export const GoogleSheetService = {
         return ids;
     },
 
+    // --- HR Profiles ---
+    async fetchHRProfiles() {
+        return apiRequest('hr_profiles');
+    },
+
+    async addHRProfile(profile: any) {
+        return apiRequest('hr_profiles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ payload: profile })
+        });
+    },
+
+    async bulkAddHRProfiles(profiles: any[]) {
+        return apiRequest('hr_profiles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'bulk_insert', payload: profiles })
+        });
+    },
+
+    async updateHRProfile(id: string, updates: any) {
+        return apiRequest('hr_profiles', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...updates, id })
+        });
+    },
+
+    async deleteHRProfile(id: string) {
+        await apiRequest('hr_profiles', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+        });
+        return id;
+    },
+
+    async bulkDeleteHRProfiles(ids: string[]) {
+        await apiRequest('hr_profiles', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids })
+        });
+        return ids;
+    },
+
 
 
     // --- Orders ---

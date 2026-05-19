@@ -54,14 +54,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 }
 
                 // 2. Google Sheets
-                const doc = await getGoogleSheet();
-                const sheet = await getSheetByTitle(doc, 'qr_logs');
                 const gsRow = {
                     ...logEntry,
                     details: typeof logEntry.details === 'object' ? JSON.stringify(logEntry.details) : logEntry.details
                 };
 
                 try {
+                    const doc = await getGoogleSheet();
+                    const sheet = await getSheetByTitle(doc, 'qr_logs');
                     const writePromise = async () => {
                         await sheet.addRow(gsRow);
                     };
@@ -121,14 +121,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             if (error) throw error;
 
             // 2. Google Sheets
-            const doc = await getGoogleSheet();
-            const sheet = await getSheetByTitle(doc, 'inventory_audits');
             const gsRow = {
                 ...processedPayload,
                 details: typeof processedPayload.details === 'object' ? JSON.stringify(processedPayload.details) : processedPayload.details
             };
 
             try {
+                const doc = await getGoogleSheet();
+                const sheet = await getSheetByTitle(doc, 'inventory_audits');
                 const writePromise = async () => {
                     await sheet.addRow(gsRow);
                 };

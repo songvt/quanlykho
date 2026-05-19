@@ -18,13 +18,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
         }
 
-        const doc = await getGoogleSheet();
-        const sheet = await getSheetByTitle(doc, 'products');
-
         switch (req.method) {
             case 'GET': {
-                const rows = await sheet.getRows();
-                return res.status(200).json(rows.map(row => row.toObject()));
+                try {
+                    const doc = await getGoogleSheet();
+                    const sheet = await getSheetByTitle(doc, 'products');
+                    const rows = await sheet.getRows();
+                    return res.status(200).json(rows.map(row => row.toObject()));
+                } catch (gsErr: any) {
+                    console.error('Google Sheets GET fallback failed:', gsErr.message);
+                    return res.status(500).json({ error: 'Failed to fetch products from both sources' });
+                }
             }
 
             case 'POST': {
@@ -49,6 +53,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                 // 2. Google Sheets
                 try {
+                    const doc = await getGoogleSheet();
+                    const sheet = await getSheetByTitle(doc, 'products');
                     const gsWritePromise = async () => {
                         if (action === 'bulk_insert') await sheet.addRows(itemsToInsert);
                         else await sheet.addRow(itemsToInsert[0]);
@@ -82,6 +88,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                 // 2. Google Sheets
                 try {
+                    const doc = await getGoogleSheet();
+                    const sheet = await getSheetByTitle(doc, 'products');
                     const updatePromise = async () => {
                         const rows = await sheet.getRows();
                         const row = rows.find(r => r.get('id') === updatedProduct.id);
@@ -117,6 +125,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                 // 2. Google Sheets
                 try {
+                    const doc = await getGoogleSheet();
+                    const sheet = await getSheetByTitle(doc, 'products');
                     const deletePromise = async () => {
                         const rows = await sheet.getRows();
                         for (let i = rows.length - 1; i >= 0; i--) {

@@ -26,6 +26,34 @@ export interface Employee {
     must_change_password?: boolean;
     permissions?: PermissionCode[];
     check?: string; // Cảnh báo / ghi chú nội bộ
+    
+    // Personnel columns
+    gender?: string;
+    date_of_birth?: string;
+    job_position?: string;
+    department?: string;
+    probation_date?: string;
+    official_date?: string;
+    contract_type?: string;
+    labor_status?: string;
+    insurance_participation?: boolean;
+}
+
+export interface HRProfile {
+    id: string; // Mã nhân viên (custom code, e.g. NV001)
+    full_name: string;
+    gender?: string;
+    date_of_birth?: string;
+    phone_number?: string;
+    email?: string;
+    job_position?: string;
+    department?: string;
+    probation_date?: string;
+    official_date?: string;
+    contract_type?: string;
+    labor_status?: string;
+    insurance_participation?: boolean;
+    created_at?: string;
 }
 
 export interface Product {

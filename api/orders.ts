@@ -46,21 +46,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
         }
 
-        // GS Fallback / Write path
-        const doc = await getGoogleSheet();
-        const sheet = await getSheetByTitle(doc, 'orders');
-
         switch (req.method) {
             case 'GET': {
-                const daysParam = parseInt(req.query.days as string, 10) || 60;
-                const limitDate = new Date();
-                limitDate.setDate(limitDate.getDate() - daysParam);
-                const rows = await sheet.getRows();
-                return res.status(200).json(
-                    rows.map(r => r.toObject())
-                        .filter(r => parseLocalDate(r.order_date).getTime() >= limitDate.getTime())
-                        .sort((a, b) => parseLocalDate(b.order_date).getTime() - parseLocalDate(a.order_date).getTime())
-                );
+                try {
+                    const doc = await getGoogleSheet();
+                    const sheet = await getSheetByTitle(doc, 'orders');
+                    const daysParam = parseInt(req.query.days as string, 10) || 60;
+                    const limitDate = new Date();
+                    limitDate.setDate(limitDate.getDate() - daysParam);
+                    const rows = await sheet.getRows();
+                    return res.status(200).json(
+                        rows.map(r => r.toObject())
+                            .filter(r => parseLocalDate(r.order_date).getTime() >= limitDate.getTime())
+                            .sort((a, b) => parseLocalDate(b.order_date).getTime() - parseLocalDate(a.order_date).getTime())
+                    );
+                } catch (gsErr: any) {
+                    console.error('[Orders GET] Google Sheets fallback failed:', gsErr.message);
+                    return res.status(500).json({ error: 'Failed to fetch orders from both sources' });
+                }
             }
 
             case 'POST': {
@@ -85,6 +88,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                 // 2. Google Sheets
                 try {
+                    const doc = await getGoogleSheet();
+                    const sheet = await getSheetByTitle(doc, 'orders');
                     const nowLocal = formatLocalDate(new Date());
                     const gsWritePromise = async () => {
                         await sheet.addRows(processed.map((p: any) => ({
@@ -152,6 +157,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                 // 2. Google Sheets
                 try {
+                    const doc = await getGoogleSheet();
+                    const sheet = await getSheetByTitle(doc, 'orders');
                     const updatePromise = async () => {
                         const rows = await sheet.getRows();
                         const row = rows.find(r => r.get('id') === id);
@@ -194,6 +201,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                 // 2. Google Sheets
                 try {
+                    const doc = await getGoogleSheet();
+                    const sheet = await getSheetByTitle(doc, 'orders');
                     const deletePromise = async () => {
                         const rows = await sheet.getRows();
                         for (let i = rows.length - 1; i >= 0; i--) {

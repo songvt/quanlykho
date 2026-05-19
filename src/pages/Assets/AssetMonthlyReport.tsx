@@ -213,17 +213,17 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
         w.document.write(`
             <html><head><meta charset="utf-8"/><title>In Báo Cáo Tổng Hợp</title>
             <style>
-                @page { size: A4 landscape; margin: 10mm; }
-                body { font-family: 'Times New Roman', serif; font-size: 11pt; margin: 0; padding: 0; }
-                table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: fixed; }
-                th, td { border: 1px solid #000; padding: 4px; text-align: center; vertical-align: middle; word-wrap: break-word; font-size: 9.5pt; }
+                @page { size: A4 landscape; margin: 8mm 6mm; }
+                body { font-family: 'Times New Roman', serif; font-size: 10.5pt; margin: 0; padding: 0; }
+                table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: auto; }
+                th, td { border: 1px solid #000; padding: 4px 3px; text-align: center; vertical-align: middle; word-wrap: break-word; font-size: 8.5pt; }
                 th { background: #e0e0e0; font-weight: bold; }
                 .footer-container { margin-top: 40px; }
-                .sig-date { text-align: right; font-style: italic; margin-bottom: 5px; padding-right: 50px; font-size: 10.5pt; }
+                .sig-date { text-align: right; font-style: italic; margin-bottom: 5px; padding-right: 50px; font-size: 10pt; }
                 .sig-grid { display: flex; justify-content: space-between; text-align: center; width: 100%; }
                 .sig-box { width: 32%; display: inline-block; vertical-align: top; }
-                .sig-title { font-weight: bold; font-size: 11pt; }
-                .sig-note { font-style: italic; font-size: 9.5pt; }
+                .sig-title { font-weight: bold; font-size: 10.5pt; }
+                .sig-note { font-style: italic; font-size: 9pt; }
                 /* Flex layout for print */
                 .print-header { display: flex; justify-content: space-between; width: 100%; }
                 .print-header-side { text-align: center; width: 45%; }
@@ -235,7 +235,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
         setTimeout(() => { w.print(); }, 500);
     };
 
-    const colStyle: React.CSSProperties = { border: '1px solid #000', padding: '5px', textAlign: 'center', fontSize: '9.5pt', fontFamily: 'Times New Roman' };
+    const colStyle: React.CSSProperties = { border: '1px solid #000', padding: '4px 3px', textAlign: 'center', fontSize: '8.5pt', fontFamily: 'Times New Roman' };
     const headerStyle: React.CSSProperties = { ...colStyle, backgroundColor: '#e0e0e0', fontWeight: 'bold' };
 
     return (
@@ -255,7 +255,16 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                             {YEARS.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
                         </Select>
                     </FormControl>
-                    {!isMobile && <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>In</Button>}
+                    {!isMobile && (
+                        <Button 
+                            variant="outlined" 
+                            color="error" 
+                            startIcon={<PrintIcon />} 
+                            onClick={handlePrint}
+                        >
+                            In / Xuất PDF
+                        </Button>
+                    )}
                     <Button variant="contained" color="success" startIcon={<DownloadIcon />} onClick={handleExportExcel}>Excel</Button>
                 </Stack>
             </Stack>

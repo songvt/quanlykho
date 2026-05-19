@@ -8,6 +8,7 @@ import ordersReducer from './slices/ordersSlice';
 import returnsReducer from './slices/returnsSlice';
 import assetsReducer from './slices/assetsSlice';
 import settlementReducer from './slices/settlementSlice';
+import hrProfilesReducer from './slices/hrProfilesSlice';
 
 export const store = configureStore({
     reducer: {
@@ -20,6 +21,7 @@ export const store = configureStore({
         returns: returnsReducer,
         assets: assetsReducer,
         settlement: settlementReducer,
+        hrProfiles: hrProfilesReducer,
     },
 });
 

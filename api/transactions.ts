@@ -76,43 +76,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 }
 
                 // 2. Fallback to Google Sheets (khi Supabase lỗi thật)
-                const doc = await getGoogleSheet();
-                const inboundSheet = doc.sheetsByTitle['inbound_transactions'];
-                const outboundSheet = doc.sheetsByTitle['outbound_transactions'];
-                const productsSheet = doc.sheetsByTitle['products'];
+                try {
+                    const doc = await getGoogleSheet();
+                    const inboundSheet = doc.sheetsByTitle['inbound_transactions'];
+                    const outboundSheet = doc.sheetsByTitle['outbound_transactions'];
+                    const productsSheet = doc.sheetsByTitle['products'];
 
-                const [iRows, oRows, pRows] = await Promise.all([
-                    (!type || type === 'inbound') ? inboundSheet.getRows() : Promise.resolve([]),
-                    (!type || type === 'outbound') ? outboundSheet.getRows() : Promise.resolve([]),
-                    productsSheet.getRows()
-                ]);
+                    const [iRows, oRows, pRows] = await Promise.all([
+                        (!type || type === 'inbound') ? inboundSheet.getRows() : Promise.resolve([]),
+                        (!type || type === 'outbound') ? outboundSheet.getRows() : Promise.resolve([]),
+                        productsSheet.getRows()
+                    ]);
 
-                const productsMap: Record<string, any> = {};
-                pRows.forEach(r => { productsMap[r.get('id')] = r.toObject(); });
+                    const productsMap: Record<string, any> = {};
+                    pRows.forEach(r => { productsMap[r.get('id')] = r.toObject(); });
 
-                const mapper = (r: any, tType: 'inbound' | 'outbound') => {
-                    const t = r.toObject();
-                    const qty = Number(t.quantity || 0);
-                    const price = Number(t.unit_price || 0);
-                    return {
-                        ...t,
-                        quantity: qty,
-                        unit_price: price,
-                        total_price: Number(t.total_price || (qty * price)),
-                        type: tType,
-                        date: tType === 'inbound' ? t.inbound_date : t.outbound_date,
-                        product: productsMap[t.product_id] || { name: 'Unknown' }
+                    const mapper = (r: any, tType: 'inbound' | 'outbound') => {
+                        const t = r.toObject();
+                        const qty = Number(t.quantity || 0);
+                        const price = Number(t.unit_price || 0);
+                        return {
+                            ...t,
+                            quantity: qty,
+                            unit_price: price,
+                            total_price: Number(t.total_price || (qty * price)),
+                            type: tType,
+                            date: tType === 'inbound' ? t.inbound_date : t.outbound_date,
+                            product: productsMap[t.product_id] || { name: 'Unknown' }
+                        };
                     };
-                };
 
-                const all = [
-                    ...iRows.map(r => mapper(r, 'inbound')),
-                    ...oRows.map(r => mapper(r, 'outbound'))
-                ]
-                .filter(t => parseLocalDate(t.date).getTime() >= limitDate.getTime())
-                .sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime());
+                    const all = [
+                        ...iRows.map(r => mapper(r, 'inbound')),
+                        ...oRows.map(r => mapper(r, 'outbound'))
+                    ]
+                    .filter(t => parseLocalDate(t.date).getTime() >= limitDate.getTime())
+                    .sort((a, b) => parseLocalDate(b.date).getTime() - parseLocalDate(a.date).getTime());
 
-                return res.status(200).json(all);
+                    return res.status(200).json(all);
+                } catch (gsErr: any) {
+                    console.error('[Transactions GET] Google Sheets fallback failed:', gsErr.message);
+                    return res.status(500).json({ error: 'Failed to fetch transactions from both sources' });
+                }
             }
 
             case 'POST': {

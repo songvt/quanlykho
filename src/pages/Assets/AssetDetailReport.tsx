@@ -133,17 +133,17 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
         w.document.write(`
             <html><head><meta charset="utf-8"/><title>In Báo Cáo Chi Tiết</title>
             <style>
-                @page { size: A3 landscape; margin: 5mm; }
+                @page { size: A4 landscape; margin: 8mm 6mm; }
                 body { font-family: 'Times New Roman', serif; font-size: 10pt; margin: 0; padding: 0; }
                 table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
-                th, td { border: 1px solid #000; padding: 2px; text-align: center; vertical-align: middle; word-wrap: break-word; font-size: 8.5pt; }
+                th, td { border: 1px solid #000; padding: 3px 2px; text-align: center; vertical-align: middle; word-wrap: break-word; font-size: 7.2pt; }
                 th { background: #e0e0e0; font-weight: bold; }
                 .footer-container { margin-top: 30px; }
-                .sig-date { text-align: right; font-style: italic; margin-bottom: 5px; padding-right: 50px; font-size: 10.5pt; }
+                .sig-date { text-align: right; font-style: italic; margin-bottom: 5px; padding-right: 50px; font-size: 10pt; }
                 .sig-grid { display: flex; justify-content: space-between; text-align: center; width: 100%; }
                 .sig-box { width: 32%; display: inline-block; vertical-align: top; }
-                .sig-title { font-weight: bold; font-size: 11pt; }
-                .sig-note { font-style: italic; font-size: 9.5pt; }
+                .sig-title { font-weight: bold; font-size: 10.5pt; }
+                .sig-note { font-style: italic; font-size: 9pt; }
                 /* Ensure flex layout works in print */
                 .print-header { display: flex; justify-content: space-between; width: 100%; }
                 .print-header-side { text-align: center; width: 45%; }
@@ -155,7 +155,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
         setTimeout(() => { w.print(); }, 500);
     };
 
-    const colStyle: React.CSSProperties = { border: '1px solid #000', padding: '3px', textAlign: 'center', fontSize: '8.5pt', fontFamily: 'Times New Roman' };
+    const colStyle: React.CSSProperties = { border: '1px solid #000', padding: '3px 2px', textAlign: 'center', fontSize: '7.2pt', fontFamily: 'Times New Roman' };
     const headerStyle: React.CSSProperties = { ...colStyle, backgroundColor: '#e0e0e0', fontWeight: 'bold' };
 
     return (
@@ -175,7 +175,16 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                             {YEARS.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
                         </Select>
                     </FormControl>
-                    {!isMobile && <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>In</Button>}
+                    {!isMobile && (
+                        <Button 
+                            variant="outlined" 
+                            color="error" 
+                            startIcon={<PrintIcon />} 
+                            onClick={handlePrint}
+                        >
+                            In / Xuất PDF
+                        </Button>
+                    )}
                     <Button variant="contained" color="success" startIcon={<DownloadIcon />} onClick={handleExportExcel}>Excel</Button>
                 </Stack>
             </Stack>
@@ -204,24 +213,24 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                     </div>
                 </div>
 
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Times New Roman' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Times New Roman', tableLayout: 'fixed' }}>
                     <thead>
                         <tr>
-                            <th style={{...headerStyle, width: 30}}>STT</th>
-                            <th style={{...headerStyle, width: 90}}>Mã tài sản</th>
-                            <th style={{...headerStyle, width: 180}}>Tên tài sản</th>
-                            <th style={{...headerStyle, width: 100}}>Loại tài sản</th>
-                            <th style={{...headerStyle, width: 80}}>Tình trạng</th>
-                            <th style={{...headerStyle, width: 60}}>Mã người SD</th>
-                            <th style={{...headerStyle, width: 120}}>Tên người SD</th>
-                            <th style={{...headerStyle, width: 60}}>Mã người QL</th>
-                            <th style={{...headerStyle, width: 120}}>Tên người QL</th>
-                            <th style={{...headerStyle, width: 80}}>Ngày nhận</th>
-                            <th style={{...headerStyle, width: 50}}>Tăng TS</th>
-                            <th style={{...headerStyle, width: 50}}>Giảm TS</th>
-                            <th style={{...headerStyle, width: 80}}>Mã đơn vị</th>
-                            <th style={{...headerStyle, width: 150}}>Tên đơn vị</th>
-                            <th style={{...headerStyle, width: 60}}>Ghi chú</th>
+                            <th style={{...headerStyle, width: '3%'}}>STT</th>
+                            <th style={{...headerStyle, width: '8%'}}>Mã tài sản</th>
+                            <th style={{...headerStyle, width: '15%'}}>Tên tài sản</th>
+                            <th style={{...headerStyle, width: '8%'}}>Loại tài sản</th>
+                            <th style={{...headerStyle, width: '6%'}}>Tình trạng</th>
+                            <th style={{...headerStyle, width: '5%'}}>Mã người SD</th>
+                            <th style={{...headerStyle, width: '9%'}}>Tên người SD</th>
+                            <th style={{...headerStyle, width: '5%'}}>Mã người QL</th>
+                            <th style={{...headerStyle, width: '9%'}}>Tên người QL</th>
+                            <th style={{...headerStyle, width: '7%'}}>Ngày nhận</th>
+                            <th style={{...headerStyle, width: '4%'}}>Tăng TS</th>
+                            <th style={{...headerStyle, width: '4%'}}>Giảm TS</th>
+                            <th style={{...headerStyle, width: '6%'}}>Mã đơn vị</th>
+                            <th style={{...headerStyle, width: '11%'}}>Tên đơn vị</th>
+                            <th style={{...headerStyle, width: '5%'}}>Ghi chú</th>
                         </tr>
                     </thead>
                     <tbody>

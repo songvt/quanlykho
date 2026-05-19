@@ -17,10 +17,10 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 
 import { fetchAssets } from '../../store/slices/assetsSlice';
-import { fetchEmployees } from '../../store/slices/employeesSlice';
+import { fetchHRProfiles } from '../../store/slices/hrProfilesSlice';
 import { useNotification } from '../../contexts/NotificationContext';
 import type { RootState, AppDispatch } from '../../store';
-import type { Asset, Employee } from '../../types';
+import type { Asset, HRProfile } from '../../types';
 import { formatPhone } from '../../utils/format';
 
 interface BhlItem {
@@ -44,10 +44,10 @@ const AssetHandoverBhl: React.FC = () => {
 
     // Redux State
     const { items: assets, status: assetStatus } = useSelector((state: RootState) => state.assets);
-    const { items: employees, status: employeeStatus } = useSelector((state: RootState) => state.employees);
+    const { items: hrProfiles, status: hrProfilesStatus } = useSelector((state: RootState) => state.hrProfiles);
 
     // Form Configurations
-    const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+    const [selectedEmployee, setSelectedEmployee] = useState<HRProfile | null>(null);
     const [templateType, setTemplateType] = useState<'default' | 'bhl'>('bhl');
     const [actionType, setActionType] = useState<'allocate' | 'revoke' | 'transfer'>('allocate');
 
@@ -189,18 +189,18 @@ const AssetHandoverBhl: React.FC = () => {
         if (assetStatus === 'idle') {
             dispatch(fetchAssets());
         }
-        if (employeeStatus === 'idle') {
-            dispatch(fetchEmployees());
+        if (hrProfilesStatus === 'idle') {
+            dispatch(fetchHRProfiles());
         }
-    }, [dispatch, assetStatus, employeeStatus]);
+    }, [dispatch, assetStatus, hrProfilesStatus]);
 
     // Handle Employee selection changes
-    const handleEmployeeChange = (employee: Employee | null) => {
+    const handleEmployeeChange = (employee: HRProfile | null) => {
         setSelectedEmployee(employee);
         if (employee) {
             setReceiverName(employee.full_name.toUpperCase());
-            setReceiverTitle(employee.role === 'admin' ? 'Quản trị viên' : employee.role === 'manager' ? 'Trưởng phòng' : 'Nhân viên kĩ thuật');
-            setReceiverDept(employee.district || 'Trung Tâm KV Bắc Sài Gòn');
+            setReceiverTitle(employee.job_position || 'Nhân viên kĩ thuật');
+            setReceiverDept(employee.department || 'Trung Tâm KV Bắc Sài Gòn');
             
             // Auto lookup department from assigned assets if possible
             const assignedAsset = assets.find(a => 
@@ -365,16 +365,16 @@ const AssetHandoverBhl: React.FC = () => {
 
                                 <Stack spacing={2.5}>
                                     <Autocomplete
-                                        options={employees}
-                                        getOptionLabel={(emp) => `${emp.full_name} (${emp.email})`}
+                                        options={hrProfiles}
+                                        getOptionLabel={(emp) => `${emp.full_name} (${emp.id})`}
                                         value={selectedEmployee}
                                         onChange={(_, newVal) => handleEmployeeChange(newVal)}
-                                        loading={employeeStatus === 'loading'}
+                                        loading={hrProfilesStatus === 'loading'}
                                         renderInput={(params) => (
                                             <TextField
                                                 {...params}
                                                 label="Chọn Nhân viên kĩ thuật"
-                                                placeholder="Gõ tên hoặc email..."
+                                                placeholder="Gõ tên hoặc mã nhân viên..."
                                                 variant="outlined"
                                                 size="small"
                                             />

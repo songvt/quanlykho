@@ -332,8 +332,30 @@ export const generateProductTemplate = () => {
     generateTemplateFromHeaders(headers, [15, 30, 20, 15, 10, 15], "ProductTemplate", "ProductImportTemplate.xlsx");
 };
 export const generateEmployeeTemplate = () => {
-    const headers = [{ HO_TEN: "Nguyễn Văn A", EMAIL: "nguyenvan.a@example.com", SO_DIEN_THOAI: "0901234567", VAI_TRO: "staff", TEN_DANG_NHAP: "nguyenvana", QUAN_HUYEN: "Quận 1" }];
-    generateTemplateFromHeaders(headers, [25, 30, 15, 15, 20, 15], "EmployeeTemplate", "EmployeeImportTemplate.xlsx");
+    const headers = [{
+        MA_NHAN_VIEN: "NV001",
+        HO_TEN: "Nguyễn Văn A",
+        GIOI_TINH: "Nam",
+        NGAY_SINH: "15/10/1995",
+        SO_DIEN_THOAI: "0901234567",
+        EMAIL: "nguyenvan.a@example.com",
+        VI_TRI_CONG_VIEC: "Nhân viên Kỹ thuật",
+        DON_VI_CONG_TAC: "Trung tâm ACT BSG",
+        NGAY_THU_VIEC: "01/01/2024",
+        NGAY_CHINH_THUC: "01/03/2024",
+        LOAI_HOP_DONG: "HĐ lao động xác định thời hạn",
+        TRANG_THAI_LAO_DONG: "Đang làm việc",
+        THAM_GIA_BAO_HIEM: "Có",
+        VAI_TRO: "staff",
+        TEN_DANG_NHAP: "nguyenvana",
+        QUAN_HUYEN: "Quận 12"
+    }];
+    generateTemplateFromHeaders(
+        headers, 
+        [15, 25, 12, 15, 15, 30, 20, 25, 15, 15, 30, 20, 20, 15, 20, 15], 
+        "EmployeeTemplate", 
+        "EmployeeImportTemplate.xlsx"
+    );
 };
 export const generateInboundTemplate = () => {
     const headers = [{ MA_HANG: "SP001", SO_LUONG: 10, DON_GIA: 150000, SERIAL: "SN123456", GHI_CHU: "Nhập hàng đợt 1", QUAN_HUYEN: "Quận 1", TRANG_THAI_HANG: "Mới 100%" }];

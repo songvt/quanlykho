@@ -28,6 +28,7 @@ const AssetBrokenReport = () => {
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(25);
     const [searchTerm, setSearchTerm] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState('all');
     
     const [printModalOpen, setPrintModalOpen] = useState(false);
 
@@ -45,14 +46,30 @@ const AssetBrokenReport = () => {
     }, [assets]);
 
     const filteredAssets = useMemo(() => {
-        if (!searchTerm.trim()) return brokenAssets;
+        let list = brokenAssets;
+        
+        if (categoryFilter === 'ccdc') {
+            list = list.filter(a => {
+                const group = (a.asset_group || '').toLowerCase();
+                const type = (a.asset_type || '').toLowerCase();
+                return group.includes('ccdc') || type.includes('ccdc');
+            });
+        } else if (categoryFilter === 'tbvp') {
+            list = list.filter(a => {
+                const group = (a.asset_group || '').toLowerCase();
+                const type = (a.asset_type || '').toLowerCase();
+                return group.includes('tbvp') || type.includes('tbvp');
+            });
+        }
+
+        if (!searchTerm.trim()) return list;
         const s = searchTerm.toLowerCase();
-        return brokenAssets.filter(a => 
+        return list.filter(a => 
             a.asset_code.toLowerCase().includes(s) ||
             a.asset_name.toLowerCase().includes(s) ||
             (a.user_employee_name || '').toLowerCase().includes(s)
         );
-    }, [brokenAssets, searchTerm]);
+    }, [brokenAssets, searchTerm, categoryFilter]);
 
     const handleSelectAll = (checked: boolean) => {
         if (checked) setSelectedIds(filteredAssets.map(a => a.id));
@@ -164,6 +181,18 @@ const AssetBrokenReport = () => {
                         ),
                     }}
                 />
+                <TextField
+                    select
+                    size="small"
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    SelectProps={{ native: true }}
+                    sx={{ width: isMobile ? '100%' : 220, bgcolor: 'white' }}
+                >
+                    <option value="all">Tất cả danh mục (CCDC & TBVP)</option>
+                    <option value="ccdc">Công cụ dụng cụ (CCDC)</option>
+                    <option value="tbvp">Thiết bị văn phòng (TBVP)</option>
+                </TextField>
                 <Chip label={`${filteredAssets.length} bản ghi`} size="small" variant="outlined" />
             </Paper>
 

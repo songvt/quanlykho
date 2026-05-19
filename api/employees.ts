@@ -10,20 +10,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
-        const doc = await getGoogleSheet();
-        const sheet = await getSheetByTitle(doc, 'employees');
-
         switch (req.method) {
             case 'GET': {
                 const { data: sbData, error: sbError } = await supabase.from('employees').select('*');
-                const rows = await sheet.getRows();
-                const gsEmployees = rows.map(r => {
-                    const obj = r.toObject();
-                    if (obj.permissions && typeof obj.permissions === 'string') {
-                        try { obj.permissions = JSON.parse(obj.permissions); } catch (e) { obj.permissions = []; }
-                    }
-                    return obj;
-                });
+                
+                let gsEmployees: any[] = [];
+                try {
+                    const doc = await getGoogleSheet();
+                    const sheet = await getSheetByTitle(doc, 'employees');
+                    const rows = await sheet.getRows();
+                    gsEmployees = rows.map(r => {
+                        const obj = r.toObject();
+                        if (obj.permissions && typeof obj.permissions === 'string') {
+                            try { obj.permissions = JSON.parse(obj.permissions); } catch (e) { obj.permissions = []; }
+                        }
+                        return obj;
+                    });
+                } catch (gsErr: any) {
+                    console.warn('Google Sheets load failed for GET employees:', gsErr.message);
+                }
 
                 if (!sbError && sbData && sbData.length > 0) {
                     const sbIds = new Set(sbData.map(e => e.id));
@@ -34,40 +39,65 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     });
                     return res.status(200).json(combined);
                 }
-                return res.status(200).json(gsEmployees);
+
+                if (sbError) {
+                    if (gsEmployees.length > 0) {
+                        return res.status(200).json(gsEmployees);
+                    }
+                    return res.status(500).json({ error: 'Failed to fetch employees from both sources', details: sbError.message });
+                }
+                return res.status(200).json([]);
             }
 
             case 'POST': {
                 const { action, payload, email, password } = req.body;
 
                 if (action === 'login') {
+                    // Try Supabase first
                     const { data, error } = await supabase.from('employees').select('*').eq('email', email).eq('password', password).single();
                     if (!error && data) {
                         const { password: _, ...user } = data;
-                        await supabase.from('qr_logs').insert([{
-                            action: 'LOGIN',
-                            doc_title: 'Đăng nhập hệ thống',
-                            created_by: email,
-                            total_serials: 0,
-                            total_qrs: 0,
-                            details: JSON.stringify({ ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'Unknown' })
-                        }]);
+                        try {
+                            await supabase.from('qr_logs').insert([{
+                                action: 'LOGIN',
+                                doc_title: 'Đăng nhập hệ thống',
+                                created_by: email,
+                                total_serials: 0,
+                                total_qrs: 0,
+                                details: JSON.stringify({ ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'Unknown' })
+                            }]);
+                        } catch (logErr) {
+                            console.error('Lỗi insert QR log khi login:', logErr);
+                        }
                         return res.status(200).json({ ...user, permissions: typeof data.permissions === 'string' ? JSON.parse(data.permissions) : data.permissions });
                     }
-                    const rows = await sheet.getRows();
-                    const userRow = rows.find(r => r.get('email') === email && r.get('password') === password);
-                    if (!userRow) return res.status(401).json({ error: 'Email hoặc mật khẩu không chính xác.' });
-                    const user = userRow.toObject();
-                    delete user.password;
-                    await supabase.from('qr_logs').insert([{
-                        action: 'LOGIN',
-                        doc_title: 'Đăng nhập hệ thống (GS)',
-                        created_by: email,
-                        total_serials: 0,
-                        total_qrs: 0,
-                        details: JSON.stringify({ ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'Unknown' })
-                    }]);
-                    return res.status(200).json({ ...user, permissions: typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions });
+                    
+                    // Fallback to Google Sheets
+                    try {
+                        const doc = await getGoogleSheet();
+                        const sheet = await getSheetByTitle(doc, 'employees');
+                        const rows = await sheet.getRows();
+                        const userRow = rows.find(r => r.get('email') === email && r.get('password') === password);
+                        if (!userRow) return res.status(401).json({ error: 'Email hoặc mật khẩu không chính xác.' });
+                        const user = userRow.toObject();
+                        delete user.password;
+                        try {
+                            await supabase.from('qr_logs').insert([{
+                                action: 'LOGIN',
+                                doc_title: 'Đăng nhập hệ thống (GS)',
+                                created_by: email,
+                                total_serials: 0,
+                                total_qrs: 0,
+                                details: JSON.stringify({ ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'Unknown' })
+                            }]);
+                        } catch (logErr) {
+                            console.error('Lỗi insert QR log khi login GS:', logErr);
+                        }
+                        return res.status(200).json({ ...user, permissions: typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions });
+                    } catch (gsErr: any) {
+                        console.error('Google Sheets login fallback failed:', gsErr.message);
+                        return res.status(401).json({ error: 'Email hoặc mật khẩu không chính xác hoặc lỗi cấu hình hệ thống.' });
+                    }
                 }
 
                 const items = action === 'bulk_insert' ? payload : [payload];
@@ -89,6 +119,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 }
 
                 try {
+                    const doc = await getGoogleSheet();
+                    const sheet = await getSheetByTitle(doc, 'employees');
                     const writePromise = async () => {
                         await sheet.addRows(formatted);
                     };
@@ -123,6 +155,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 }
 
                 try {
+                    const doc = await getGoogleSheet();
+                    const sheet = await getSheetByTitle(doc, 'employees');
                     const updatePromise = async () => {
                         const rows = await sheet.getRows();
                         const row = rows.find(r => r.get('id') === updates.id);
@@ -156,6 +190,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 }
 
                 try {
+                    const doc = await getGoogleSheet();
+                    const sheet = await getSheetByTitle(doc, 'employees');
                     const deletePromise = async () => {
                         const rows = await sheet.getRows();
                         for (let i = rows.length - 1; i >= 0; i--) {
