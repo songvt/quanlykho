@@ -87,6 +87,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     console.error('[EmployeeReturns GET] Google Sheets fallback failed:', gsErr.message);
                     return res.status(500).json({ error: 'Failed to fetch employee returns from both sources' });
                 }
+                // Không bao giờ fall-through xuống case POST
             }
 
             case 'POST': {

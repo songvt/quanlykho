@@ -75,7 +75,7 @@ const MainLayout: React.FC = () => {
         if (location.pathname.startsWith('/assets')) {
             setExpandAssets(true);
         }
-        if (['/inventory-report', '/detailed-outbound-report', '/monthly-settlement'].includes(location.pathname)) {
+        if (['/inventory-report', '/detailed-outbound-report', '/monthly-settlement', '/goods-settlement'].includes(location.pathname)) {
             setExpandSettlement(true);
         }
     }, [location.pathname]);
@@ -94,11 +94,13 @@ const MainLayout: React.FC = () => {
     }));
 
     // Check if user has required profile to see anything
+    // Chỉ redirect khi đã xác nhận không có session (không phải đang loading)
+    const authStatus = useSelector((state: RootState) => state.auth.status);
     useEffect(() => {
-        if (!profile) {
+        if (!profile && authStatus !== 'loading') {
             navigate('/login');
         }
-    }, [profile, navigate]);
+    }, [profile, authStatus, navigate]);
 
     const handleLogout = () => {
         handleMenuClose();
@@ -299,7 +301,7 @@ const MainLayout: React.FC = () => {
                             { text: 'Quyết toán vật tư', path: '/monthly-settlement' },
                             { text: 'Quyết toán hàng hóa', path: '/goods-settlement' },
                         ];
-                        const isGroupActive = ['/inventory-report', '/detailed-outbound-report', '/monthly-settlement'].includes(location.pathname);
+                        const isGroupActive = ['/inventory-report', '/detailed-outbound-report', '/monthly-settlement', '/goods-settlement'].includes(location.pathname);
                         return (
                             <React.Fragment key="settlement-group">
                                 <ListItem disablePadding sx={{ mb: 0.5 }}>

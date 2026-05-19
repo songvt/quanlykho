@@ -4,6 +4,11 @@ const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL ||
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false
+  },
   global: {
     fetch: (url, options) => {
       if (!supabaseUrl || supabaseUrl === 'https://placeholder-url.supabase.co') {
@@ -26,9 +31,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 /**
  * Helper to fetch all rows from a Supabase table handling the 1000-row limit.
+ * Optimized to fetch sequentially to avoid database connection pool exhaustion.
  */
 export const fetchAll = async (table: string, select: string = '*', queryModifier?: (query: any) => any) => {
-    // Get total count first for parallel fetching
+    // Get total count first
     let countQuery = supabase.from(table).select('*', { count: 'exact', head: true });
     if (queryModifier) countQuery = queryModifier(countQuery);
     
@@ -37,18 +43,14 @@ export const fetchAll = async (table: string, select: string = '*', queryModifie
     if (!count || count === 0) return [];
 
     const step = 1000;
-    const promises = [];
+    let allData: any[] = [];
     
+    // Fetch sequentially to prevent overloading the database connections
     for (let from = 0; from < count; from += step) {
         let query = supabase.from(table).select(select).range(from, from + step - 1);
         if (queryModifier) query = queryModifier(query);
-        promises.push(query);
-    }
-    
-    const results = await Promise.all(promises);
-    let allData: any[] = [];
-    
-    for (const res of results) {
+        
+        const res = await query;
         if (res.error) throw res.error;
         if (res.data) allData = allData.concat(res.data);
     }

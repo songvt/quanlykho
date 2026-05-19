@@ -445,9 +445,10 @@ const MonthlySettlementReport: React.FC = () => {
             if (useFrozen) {
                 applyFrozenMovementsFromHistory(row, historicalData, true);
             } else {
-                row.final_qty = row.initial_qty + row.inbound_qty - row.outbound_qty - row.return_qty;
+                // Công thức đúng: Tồn đầu + Nhập - Xuất (chi tiết) - Sử dụng (vật tư tiêu hao) - Trả kho
+                row.final_qty = row.initial_qty + row.inbound_qty - row.outbound_qty - row.usage_qty - row.return_qty;
                 row.final_amount =
-                    row.initial_amount + row.inbound_amount - row.outbound_amount - row.return_amount;
+                    row.initial_amount + row.inbound_amount - row.outbound_amount - row.usage_amount - row.return_amount;
             }
             return row;
         });

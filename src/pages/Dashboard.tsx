@@ -179,8 +179,12 @@ const Dashboard = () => {
         if (orderStatus === 'idle') dispatch(fetchOrders());
         if (inventoryStatus === 'idle') dispatch(fetchInventory());
         if (employeeStatus === 'idle') dispatch(fetchEmployees());
-        setLastUpdated(new Date());
     }, [productStatus, transactionStatus, inventoryStatus, orderStatus, employeeStatus, dispatch]);
+
+    // Chỉ set lastUpdated 1 lần khi mount (không phụ thuộc status để tránh vòng lặp)
+    useEffect(() => {
+        setLastUpdated(new Date());
+    }, []);
 
     // Fetch again if tab becomes active and data is stale (> 5 minutes)
     useTabVisibility(refreshAll, 5 * 60 * 1000);

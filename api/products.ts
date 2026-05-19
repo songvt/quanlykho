@@ -20,6 +20,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         switch (req.method) {
             case 'GET': {
+                // Supabase đã thành công ở trên (dòng 12-18) và đã return.
+                // Đây là fallback GS khi Supabase lỗi:
                 try {
                     const doc = await getGoogleSheet();
                     const sheet = await getSheetByTitle(doc, 'products');
@@ -29,6 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     console.error('Google Sheets GET fallback failed:', gsErr.message);
                     return res.status(500).json({ error: 'Failed to fetch products from both sources' });
                 }
+                // Không bao giờ fall-through xuống case POST
             }
 
             case 'POST': {

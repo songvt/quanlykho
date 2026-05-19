@@ -39,10 +39,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const { month } = req.query;
                 if (!month) return res.status(400).json({ error: 'Month required' });
                 
-                console.log(`[API] Deleting settlement_outbound for ${month}`);
-                const { error } = await supabase.from('settlement_outbound_data').delete().eq('month', month as string);
+                const normalizedMonth = normalizeSettlementMonth(month as string);
+                console.log(`[API] Deleting settlement_outbound for ${normalizedMonth}`);
+                const { error } = await supabase.from('settlement_outbound_data').delete().eq('month', normalizedMonth);
                 if (error) return res.status(500).json({ error: error.message });
-                return res.status(200).json({ success: true, message: `Deleted data for ${month}` });
+                return res.status(200).json({ success: true, message: `Deleted data for ${normalizedMonth}` });
             }
 
             if (req.method === 'POST') {
@@ -156,10 +157,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const { month } = req.query;
                 if (!month) return res.status(400).json({ error: 'Month required' });
                 
-                console.log(`[API] Deleting settlement_inventory for ${month}`);
-                const { error } = await supabase.from('settlement_inventory_data').delete().eq('month', month as string);
+                const normalizedMonth = normalizeSettlementMonth(month as string);
+                console.log(`[API] Deleting settlement_inventory for ${normalizedMonth}`);
+                const { error } = await supabase.from('settlement_inventory_data').delete().eq('month', normalizedMonth);
                 if (error) return res.status(500).json({ error: error.message });
-                return res.status(200).json({ success: true, message: `Deleted data for ${month}` });
+                return res.status(200).json({ success: true, message: `Deleted data for ${normalizedMonth}` });
             }
 
             if (req.method === 'POST') {
