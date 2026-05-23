@@ -7,6 +7,8 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import SettingsIcon from '@mui/icons-material/Settings';
+import PageHeader from '../components/Common/PageHeader';
 import { GoogleSheetService as SupabaseService } from '../services/GoogleSheetService';
 
 interface DistrictConfig {
@@ -80,14 +82,37 @@ const Settings = () => {
 
     return (
         <Box p={3}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-                <Typography variant="h5" fontWeight="bold" color="primary">
-                    THIẾT LẬP HỆ THỐNG
-                </Typography>
-                <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate}>
-                    Thêm Cấu Hình Quận/Huyện
-                </Button>
-            </Box>
+            <PageHeader 
+                title="Thiết Lập Hệ Thống"
+                subtitle="Cấu hình danh mục quản trị, thủ kho và các thông số hoạt động của hệ thống kho"
+                icon={<SettingsIcon sx={{ fontSize: 30, color: 'white' }} />}
+                gradientType="blue"
+                actions={
+                    <Button 
+                        variant="contained" 
+                        onClick={handleOpenCreate}
+                        startIcon={<AddIcon />}
+                        sx={{ 
+                            bgcolor: '#ffffff', 
+                            color: '#1e3a8a',
+                            borderRadius: '12px',
+                            px: 3,
+                            py: 1,
+                            fontWeight: 700,
+                            textTransform: 'none',
+                            transition: 'all 0.25s ease',
+                            '&:hover': {
+                                bgcolor: '#f8fafc',
+                                transform: 'translateY(-2px)',
+                                boxShadow: '0 4px 12px rgba(255,255,255,0.2)'
+                            },
+                            '&:active': { transform: 'scale(0.95)' }
+                        }}
+                    >
+                        Thêm Cấu Hình Quận/Huyện
+                    </Button>
+                }
+            />
 
             <Paper elevation={0} sx={{ border: '1px solid #eee' }}>
                 <Box p={2} bgcolor="#f5f5f5" borderBottom="1px solid #eee">

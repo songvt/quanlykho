@@ -21,6 +21,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import { GoogleSheetService as SupabaseService } from '../services/GoogleSheetService';
 import { logoutUser } from '../store/slices/authSlice';
 import { useNavigate } from 'react-router-dom';
+import PageHeader from '../components/Common/PageHeader';
 
 const UserProfile = () => {
     const { profile } = useSelector((state: RootState) => state.auth);
@@ -82,18 +83,12 @@ const UserProfile = () => {
 
     return (
         <Box maxWidth="lg" mx="auto">
-            <Typography variant="h4" fontWeight="900" mb={3} sx={{
-                textTransform: 'uppercase',
-                background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 2
-            }}>
-                <PersonIcon fontSize="large" sx={{ color: '#2196F3' }} />
-                Hồ Sơ Cá Nhân
-            </Typography>
+            <PageHeader 
+                title="Hồ Sơ Cá Nhân"
+                subtitle="Xem thông tin tài khoản, chức vụ và thay đổi mật khẩu đăng nhập hệ thống"
+                icon={<PersonIcon sx={{ fontSize: 30, color: 'white' }} />}
+                gradientType="slate"
+            />
 
             <Grid container spacing={3}>
                 {/* Left Column: User Info */}

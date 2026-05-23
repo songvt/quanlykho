@@ -15,6 +15,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { GoogleSheetService } from '../../services/GoogleSheetService';
+import PageHeader from '../../components/Common/PageHeader';
 
 interface ActionLog {
     id: string;
@@ -194,42 +195,12 @@ const ActionHistory: React.FC = () => {
         <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
             
             {/* Top Header Card */}
-            <Box sx={{ 
-                mb: 4, 
-                p: { xs: 3, md: 4 }, 
-                borderRadius: '24px', 
-                background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-                color: '#ffffff',
-                position: 'relative',
-                overflow: 'hidden',
-                boxShadow: '0 20px 25px -5px rgba(15, 23, 42, 0.2)'
-            }}>
-                <Box sx={{
-                    position: 'absolute',
-                    top: '-50%',
-                    right: '-10%',
-                    width: '350px',
-                    height: '350px',
-                    borderRadius: '50%',
-                    background: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0) 70%)',
-                    filter: 'blur(30px)',
-                    pointerEvents: 'none'
-                }} />
-                
-                <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={2} sx={{ position: 'relative', zIndex: 1 }}>
-                    <Box display="flex" alignItems="center" gap={2}>
-                        <Avatar sx={{ bgcolor: 'rgba(255, 255, 255, 0.1)', width: 56, height: 56, border: '1px solid rgba(255, 255, 255, 0.15)' }}>
-                            <HistoryIcon sx={{ fontSize: 32, color: '#6366f1' }} />
-                        </Avatar>
-                        <Box>
-                            <Typography variant="h4" sx={{ fontWeight: 850, letterSpacing: '-0.03em', textShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                                Nhật Ký Hoạt Động
-                            </Typography>
-                            <Typography variant="body2" sx={{ color: '#94a3b8', fontWeight: 500, mt: 0.5 }}>
-                                Giám sát trực tiếp các thay đổi, biến động tài sản & hoạt động phát sinh mã QR
-                            </Typography>
-                        </Box>
-                    </Box>
+            <PageHeader 
+                title="Nhật Ký Hoạt Động" 
+                subtitle="Giám sát trực tiếp các thay đổi, biến động tài sản & hoạt động phát sinh mã QR" 
+                icon={<HistoryIcon sx={{ fontSize: 32, color: 'white' }} />}
+                gradientType="dark" 
+                actions={
                     <IconButton 
                         onClick={fetchData} 
                         disabled={loading} 
@@ -256,8 +227,8 @@ const ActionHistory: React.FC = () => {
                             }
                         }} />
                     </IconButton>
-                </Box>
-            </Box>
+                }
+            />
 
             {/* Custom Pill tab selector */}
             <Box sx={{ 

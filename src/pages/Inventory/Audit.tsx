@@ -6,6 +6,8 @@ import {
 } from '@mui/material';
 import { Save as SaveIcon, Print as PrintIcon } from '@mui/icons-material';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
+import InventoryIcon from '@mui/icons-material/Inventory';
+import PageHeader from '../../components/Common/PageHeader';
 import QRScanner from '../../components/QRScanner';
 import { playBeep } from '../../utils/audio';
 import { parseSerialInput, filterNewSerials } from '../../utils/serialParser';
@@ -379,37 +381,68 @@ const Audit: React.FC = () => {
                     <CircularProgress size={24} sx={{ display: 'block', mx: 'auto' }} />
                 </Box>
             )}
-            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Box>
-                    <Typography variant="h5" sx={{ fontWeight: 800, color: '#1e293b', mb: 1 }}>
-                        BẢNG KIỂM KÊ VẬT TƯ
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        Dành cho nhân viên kiểm kê số lượng thực tế tại kho so với hệ thống.
-                    </Typography>
-                </Box>
-                <Box display="flex" gap={2}>
-                    <Button 
-                        variant="outlined" 
-                        color="secondary" 
-                        startIcon={<PrintIcon />}
-                        onClick={() => handlePrint()}
-                        sx={{ borderRadius: 2, px: 3, py: 1, fontWeight: 600 }}
-                    >
-                        In Biên Bản
-                    </Button>
-                    <Button 
-                        variant="contained" 
-                        color="primary" 
-                        startIcon={<SaveIcon />}
-                        onClick={handleSave}
-                        disabled={isSaving}
-                        sx={{ borderRadius: 2, px: 3, py: 1, fontWeight: 600 }}
-                    >
-                        {isSaving ? 'Đang lưu...' : 'Lưu & In'}
-                    </Button>
-                </Box>
-            </Box>
+            <PageHeader 
+                title="Bảng Kiểm Kê Vật Tư"
+                subtitle="Dành cho nhân viên kiểm kê số lượng thực tế tại kho so với hệ thống"
+                icon={<InventoryIcon sx={{ fontSize: 30, color: 'white' }} />}
+                gradientType="slate"
+                actions={
+                    <>
+                        <Button 
+                            variant="contained" 
+                            onClick={() => handlePrint()}
+                            startIcon={<PrintIcon />}
+                            sx={{ 
+                                bgcolor: 'rgba(255, 255, 255, 0.15)', 
+                                color: '#ffffff',
+                                backdropFilter: 'blur(12px)',
+                                border: '1px solid rgba(255, 255, 255, 0.2)',
+                                borderRadius: '12px',
+                                px: 3,
+                                py: 1,
+                                fontWeight: 700,
+                                textTransform: 'none',
+                                transition: 'all 0.25s ease',
+                                '&:hover': {
+                                    bgcolor: 'rgba(255, 255, 255, 0.25)',
+                                    transform: 'translateY(-2px)'
+                                },
+                                '&:active': { transform: 'scale(0.95)' }
+                            }}
+                        >
+                            In Biên Bản
+                        </Button>
+                        <Button 
+                            variant="contained" 
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            startIcon={<SaveIcon />}
+                            sx={{ 
+                                bgcolor: '#ffffff', 
+                                color: '#334155',
+                                borderRadius: '12px',
+                                px: 3,
+                                py: 1,
+                                fontWeight: 700,
+                                textTransform: 'none',
+                                transition: 'all 0.25s ease',
+                                '&:hover': {
+                                    bgcolor: '#f8fafc',
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: '0 4px 12px rgba(255,255,255,0.2)'
+                                },
+                                '&:disabled': {
+                                    bgcolor: 'rgba(255,255,255,0.3)',
+                                    color: 'rgba(255,255,255,0.5)'
+                                },
+                                '&:active': { transform: 'scale(0.95)' }
+                            }}
+                        >
+                            {isSaving ? 'Đang lưu...' : 'Lưu & In'}
+                        </Button>
+                    </>
+                }
+            />
 
             <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
                 <Grid container spacing={2}>

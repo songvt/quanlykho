@@ -31,6 +31,7 @@ import HandoverPreview from '../../components/Reports/HandoverPreview';
 import ReturnsReportPreview from '../../components/Reports/ReturnsReportPreview';
 import { formatCurrency, getLocalYYYYMMDD, matchDistrict, formatPhone } from '../../utils/format';
 import { formatDate, parseDate } from '../../utils/dateUtils';
+import PageHeader from '../../components/Common/PageHeader';
 
 const Reports = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -1103,26 +1104,12 @@ const Reports = () => {
 
     return (
         <Box p={{ xs: 1, sm: 3 }} sx={{ bgcolor: '#F8FAFC', minHeight: '100vh', maxWidth: 1200, mx: 'auto', width: '100%', overflowX: 'hidden', zoom: { xs: 0.85, md: 1 } }}>
-            <Box mb={{ xs: 3, sm: 5 }} textAlign="center">
-                <Box sx={{ display: 'inline-flex', px: 2, py: 0.5, borderRadius: '20px', bgcolor: 'rgba(37, 99, 235, 0.08)', color: 'primary.main', mb: 1.5 }}>
-                    <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1.5px' }}>
-                        Hệ thống xuất báo cáo
-                    </Typography>
-                </Box>
-                <Typography variant="h4" fontWeight="900" mb={1} sx={{
-                    fontSize: { xs: '1.75rem', sm: '2.5rem' },
-                    textTransform: 'uppercase',
-                    background: 'linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    letterSpacing: '1px'
-                }}>
-                    Báo cáo & Thống kê
-                </Typography>
-                <Typography variant="body2" color="text.secondary" maxWidth={600} mx="auto" sx={{ fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
-                    Trung tâm quản trị dữ liệu, biên bản bàn giao và phân tích tồn kho của ACT.
-                </Typography>
-            </Box>
+            <PageHeader 
+                title="Báo cáo & Thống kê"
+                subtitle="Trung tâm quản trị dữ liệu, biên bản bàn giao và phân tích tồn kho của ACT."
+                icon={<AssessmentIcon sx={{ fontSize: 30, color: 'white' }} />}
+                gradientType="blue"
+            />
 
             {notification && (
                 <Alert

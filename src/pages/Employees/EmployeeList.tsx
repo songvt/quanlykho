@@ -23,6 +23,8 @@ import { InputAdornment } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
+import PeopleIcon from '@mui/icons-material/People';
+import PageHeader from '../../components/Common/PageHeader';
 import PermissionDialog from '../../components/PermissionDialog';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import VoiceSearchButton from '../../components/VoiceSearchButton';
@@ -502,28 +504,34 @@ const EmployeeList = () => {
             )}
             
             {/* Page Header */}
-            <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} mb={{ xs: 2, sm: 4 }} spacing={2}>
-                <Box>
-                    <Typography variant="h4" fontWeight="900" sx={{
-                        fontSize: { xs: '1.5rem', sm: '2.125rem' },
-                        textTransform: 'uppercase',
-                        background: 'linear-gradient(45deg, #1e3a8a 30%, #3b82f6 90%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        letterSpacing: '0.5px'
-                    }}>
-                        QUẢN LÝ NHÂN SỰ
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-                        {viewMode === 'personnel' 
-                            ? 'Danh sách hồ sơ nhân sự chính thức của doanh nghiệp (Lưu trữ độc lập)' 
-                            : 'Danh sách tài khoản và phân quyền truy cập hệ thống quản lý kho'
-                        }
-                    </Typography>
-                </Box>
-                
-                {/* Actions Toolbar */}
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} width={{ xs: '100%', sm: 'auto' }} alignItems="center">
+            <PageHeader 
+                title="Quản Lý Nhân Sự"
+                subtitle={viewMode === 'personnel' 
+                    ? 'Danh sách hồ sơ nhân sự chính thức của doanh nghiệp (Lưu trữ độc lập)' 
+                    : 'Danh sách tài khoản và phân quyền truy cập hệ thống quản lý kho'
+                }
+                icon={<PeopleIcon sx={{ fontSize: 30, color: 'white' }} />}
+                gradientType="blue"
+            />
+            
+            {/* Premium Filter & Actions Toolbar */}
+            <Paper 
+                elevation={0} 
+                sx={{ 
+                    p: 2.5, 
+                    mb: 3.5, 
+                    borderRadius: '16px', 
+                    border: '1px solid rgba(226, 232, 240, 0.8)', 
+                    bgcolor: '#ffffff',
+                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.01)'
+                }}
+            >
+                <Stack 
+                    direction={{ xs: 'column', md: 'row' }} 
+                    justifyContent="space-between" 
+                    alignItems="center" 
+                    spacing={2}
+                >
                     <TextField
                         size="small"
                         placeholder="Tìm kiếm..."
@@ -536,122 +544,132 @@ const EmployeeList = () => {
                                 </InputAdornment>
                             ),
                             endAdornment: <VoiceSearchButton onResult={setSearchTerm} />,
-                            sx: { borderRadius: 2, bgcolor: 'white' }
+                            sx: { borderRadius: '10px', bgcolor: '#f8fafc' }
                         }}
-                        sx={{ minWidth: 260, width: { xs: '100%', sm: 'auto' } }}
+                        sx={{ minWidth: 260, width: { xs: '100%', md: 'auto' } }}
                     />
-                    {isAdmin && (
-                        <>
-                            {selectedIds.length > 0 && (
-                                <Button
-                                    variant="contained"
-                                    color="error"
-                                    startIcon={<DeleteIcon />}
-                                    onClick={handleBulkDelete}
-                                    sx={{ borderRadius: 2, height: 40 }}
-                                    size="small"
-                                >
-                                    Xóa ({selectedIds.length})
-                                </Button>
-                            )}
-                            {viewMode === 'personnel' && (
-                                <>
-                                    <Button
-                                        variant="outlined"
-                                        startIcon={<FileDownloadIcon />}
-                                        onClick={generateEmployeeTemplate}
-                                        sx={{ borderRadius: 2, height: 40, whiteSpace: 'nowrap' }}
-                                        size="small"
-                                        fullWidth={isMobile}
-                                    >
-                                        Mẫu Excel
-                                    </Button>
-                                    <Button
-                                        variant="outlined"
-                                        component="label"
-                                        startIcon={<UploadFileIcon />}
-                                        sx={{ borderRadius: 2, height: 40, whiteSpace: 'nowrap' }}
-                                        size="small"
-                                        fullWidth={isMobile}
-                                    >
-                                        Nhập Excel
-                                        <input
-                                            type="file"
-                                            hidden
-                                            accept=".xlsx, .xls"
-                                            onChange={async (e) => {
-                                                if (e.target.files && e.target.files[0]) {
-                                                    try {
-                                                        const originalData = await readExcelFile(e.target.files[0]);
-                                                        const mappedData = originalData.map((row: any) => {
-                                                            const rawIns = row['THAM_GIA_BAO_HIEM'] || row['Tham gia bảo hiểm'] || '';
-                                                            const isInsured = rawIns.toString().toLowerCase().includes('có') ||
-                                                                            rawIns.toString().toLowerCase() === 'true' ||
-                                                                            rawIns === 1 || rawIns === '1';
-
-                                                            return {
-                                                                id: String(row['MA_NHAN_VIEN'] || row['Mã nhân viên'] || '').trim(),
-                                                                full_name: String(row['HO_TEN'] || row['Họ và tên'] || '').trim(),
-                                                                gender: String(row['GIOI_TINH'] || row['Giới tính'] || 'Nam').trim(),
-                                                                date_of_birth: parseImportedDate(row['NGAY_SINH'] || row['Ngày sinh']),
-                                                                phone_number: row['SO_DIEN_THOAI'] || row['ĐT di động'] || row['SĐT'] ? String(row['SO_DIEN_THOAI'] || row['ĐT di động'] || row['SĐT']).trim() : '',
-                                                                email: String(row['EMAIL'] || row['Email cơ quan'] || row['Email'] || '').trim(),
-                                                                job_position: String(row['VI_TRI_CONG_VIEC'] || row['Vị trí công việc'] || '').trim(),
-                                                                department: String(row['DON_VI_CONG_TAC'] || row['Đơn vị công tác'] || '').trim(),
-                                                                probation_date: parseImportedDate(row['NGAY_THU_VIEC'] || row['Ngày thử việc']),
-                                                                official_date: parseImportedDate(row['NGAY_CHINH_THUC'] || row['Ngày chính thức']),
-                                                                contract_type: String(row['LOAI_HOP_DONG'] || row['Loại hợp đồng'] || 'HĐ lao động xác định thời hạn').trim(),
-                                                                labor_status: String(row['TRANG_THAI_LAO_DONG'] || row['Trạng thái lao động'] || 'Đang làm việc').trim(),
-                                                                insurance_participation: isInsured
-                                                            };
-                                                        }).filter(emp => emp.id && emp.full_name);
-
-                                                        if (mappedData.length > 0) {
-                                                            await dispatch(importHRProfiles(mappedData)).unwrap();
-                                                            setNotification({ type: 'success', message: `Đã nhập thành công ${mappedData.length} nhân viên vào bảng hồ sơ!` });
-                                                        } else {
-                                                            setNotification({ type: 'warning', message: 'Không tìm thấy dữ liệu hợp lệ trong file Excel.' });
-                                                        }
-                                                    } catch (error: any) {
-                                                        setNotification({ type: 'error', message: `Lỗi khi nhập dữ liệu: ${error.message || JSON.stringify(error)}` });
-                                                    }
-                                                    e.target.value = '';
-                                                }
-                                            }}
-                                        />
-                                    </Button>
-                                </>
-                            )}
-                        </>
-                    )}
                     
-                    {/* Active Personnel Export */}
-                    {viewMode === 'personnel' && (
+                    <Stack 
+                        direction={{ xs: 'column', sm: 'row' }} 
+                        spacing={1.5} 
+                        width={{ xs: '100%', sm: 'auto' }} 
+                        alignItems="center"
+                        flexWrap="wrap"
+                        gap={1}
+                    >
+                        {isAdmin && (
+                            <>
+                                {selectedIds.length > 0 && (
+                                    <Button
+                                        variant="contained"
+                                        color="error"
+                                        startIcon={<DeleteIcon />}
+                                        onClick={handleBulkDelete}
+                                        sx={{ borderRadius: '10px', height: 40, fontWeight: 700 }}
+                                        size="small"
+                                    >
+                                        Xóa ({selectedIds.length})
+                                    </Button>
+                                )}
+                                {viewMode === 'personnel' && (
+                                    <>
+                                        <Button
+                                            variant="outlined"
+                                            startIcon={<FileDownloadIcon />}
+                                            onClick={generateEmployeeTemplate}
+                                            sx={{ borderRadius: '10px', height: 40, whiteSpace: 'nowrap', fontWeight: 700 }}
+                                            size="small"
+                                            fullWidth={isMobile}
+                                        >
+                                            Mẫu Excel
+                                        </Button>
+                                        <Button
+                                            variant="outlined"
+                                            component="label"
+                                            startIcon={<UploadFileIcon />}
+                                            sx={{ borderRadius: '10px', height: 40, whiteSpace: 'nowrap', fontWeight: 700 }}
+                                            size="small"
+                                            fullWidth={isMobile}
+                                        >
+                                            Nhập Excel
+                                            <input
+                                                type="file"
+                                                hidden
+                                                accept=".xlsx, .xls"
+                                                onChange={async (e) => {
+                                                    if (e.target.files && e.target.files[0]) {
+                                                        try {
+                                                            const originalData = await readExcelFile(e.target.files[0]);
+                                                            const mappedData = originalData.map((row: any) => {
+                                                                const rawIns = row['THAM_GIA_BAO_HIEM'] || row['Tham gia bảo hiểm'] || '';
+                                                                const isInsured = rawIns.toString().toLowerCase().includes('có') ||
+                                                                                rawIns.toString().toLowerCase() === 'true' ||
+                                                                                rawIns === 1 || rawIns === '1';
+
+                                                                return {
+                                                                    id: String(row['MA_NHAN_VIEN'] || row['Mã nhân viên'] || '').trim(),
+                                                                    full_name: String(row['HO_TEN'] || row['Họ và tên'] || '').trim(),
+                                                                    gender: String(row['GIOI_TINH'] || row['Giới tính'] || 'Nam').trim(),
+                                                                    date_of_birth: parseImportedDate(row['NGAY_SINH'] || row['Ngày sinh']),
+                                                                    phone_number: row['SO_DIEN_THOAI'] || row['ĐT di động'] || row['SĐT'] ? String(row['SO_DIEN_THOAI'] || row['ĐT di động'] || row['SĐT']).trim() : '',
+                                                                    email: String(row['EMAIL'] || row['Email cơ quan'] || row['Email'] || '').trim(),
+                                                                    job_position: String(row['VI_TRI_CONG_VIEC'] || row['Vị trí công việc'] || '').trim(),
+                                                                    department: String(row['DON_VI_CONG_TAC'] || row['Đơn vị công tác'] || '').trim(),
+                                                                    probation_date: parseImportedDate(row['NGAY_THU_VIEC'] || row['Ngày thử việc']),
+                                                                    official_date: parseImportedDate(row['NGAY_CHINH_THUC'] || row['Ngày chính thức']),
+                                                                    contract_type: String(row['LOAI_HOP_DONG'] || row['Loại hợp đồng'] || 'HĐ lao động xác định thời hạn').trim(),
+                                                                    labor_status: String(row['TRANG_THAI_LAO_DONG'] || row['Trạng thái lao động'] || 'Đang làm việc').trim(),
+                                                                    insurance_participation: isInsured
+                                                                };
+                                                            }).filter(emp => emp.id && emp.full_name);
+
+                                                            if (mappedData.length > 0) {
+                                                                await dispatch(importHRProfiles(mappedData)).unwrap();
+                                                                setNotification({ type: 'success', message: `Đã nhập thành công ${mappedData.length} nhân viên vào bảng hồ sơ!` });
+                                                            } else {
+                                                                setNotification({ type: 'warning', message: 'Không tìm thấy dữ liệu hợp lệ trong file Excel.' });
+                                                            }
+                                                        } catch (error: any) {
+                                                            setNotification({ type: 'error', message: `Lỗi khi nhập dữ liệu: ${error.message || JSON.stringify(error)}` });
+                                                        }
+                                                        e.target.value = '';
+                                                    }
+                                                }}
+                                            />
+                                        </Button>
+                                    </>
+                                )}
+                            </>
+                        )}
+                        
+                        {/* Active Personnel Export */}
+                        {viewMode === 'personnel' && (
+                            <Button
+                                variant="contained"
+                                color="success"
+                                startIcon={<FileDownloadIcon />}
+                                onClick={handleExportPersonnel}
+                                sx={{ borderRadius: '10px', height: 40, whiteSpace: 'nowrap', bgcolor: '#10b981', fontWeight: 700, '&:hover': { bgcolor: '#059669' } }}
+                                size="small"
+                                fullWidth={isMobile}
+                            >
+                                Xuất Excel
+                            </Button>
+                        )}
+
                         <Button
                             variant="contained"
-                            color="success"
-                            startIcon={<FileDownloadIcon />}
-                            onClick={handleExportPersonnel}
-                            sx={{ borderRadius: 2, height: 40, whiteSpace: 'nowrap', bgcolor: '#10b981', '&:hover': { bgcolor: '#059669' } }}
+                            startIcon={<AddIcon />}
+                            onClick={() => handleOpen()}
+                            sx={{ px: 3, height: 40, borderRadius: '10px', whiteSpace: 'nowrap', fontWeight: 'bold' }}
                             size="small"
                             fullWidth={isMobile}
                         >
-                            Xuất Excel
+                            {viewMode === 'personnel' ? 'Thêm Hồ Sơ' : 'Tạo Tài Khoản'}
                         </Button>
-                    )}
-
-                    <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={() => handleOpen()}
-                        sx={{ px: 3, height: 40, borderRadius: 2, whiteSpace: 'nowrap', fontWeight: 'bold' }}
-                        size="small"
-                        fullWidth={isMobile}
-                    >
-                        {viewMode === 'personnel' ? 'Thêm Hồ Sơ' : 'Tạo Tài Khoản'}
-                    </Button>
+                    </Stack>
                 </Stack>
-            </Stack>
+            </Paper>
 
             {/* View Mode Switching Tabs */}
             <Tabs 
