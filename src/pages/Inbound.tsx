@@ -16,6 +16,8 @@ import { generateInboundTemplate, readExcelFile } from '../utils/excelUtils';
 import { useNotification } from '../contexts/NotificationContext';
 import InboundForm from '../components/Inbound/InboundForm';
 import InboundList from '../components/Inbound/InboundList';
+import PageHeader from '../components/Common/PageHeader';
+import MoveToInboxIcon from '@mui/icons-material/MoveToInbox';
 
 export const Inbound = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -93,72 +95,107 @@ export const Inbound = () => {
 
     return (
         <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: '100%', mx: 'auto', width: '100%', overflowX: 'hidden' }}>
-            <Box mb={{ xs: 3, md: 5 }} display="flex" flexDirection="column" alignItems="center">
-                <Typography variant="h4" component="h1" sx={{
-                    fontWeight: 900,
-                    fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' },
-                    textTransform: 'uppercase',
-                    background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    letterSpacing: '-0.02em',
-                    mb: 1
-                }}>
-                    NHẬP HÀNG HÓA
-                </Typography>
-                <Typography variant="body1" sx={{ color: '#64748b', textAlign: 'center', fontWeight: 500 }}>
-                    Quản lý phiếu nhập kho và cập nhật số lượng tồn kho thời gian thực
-                </Typography>
-            </Box>
-
-            {isAdmin && (
-                <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="center" spacing={2} mb={3}>
-                    <Button
-                        variant="contained" color="secondary"
-                        startIcon={isSyncing ? <CircularProgress size={20} color="inherit" /> : <SyncIcon />}
-                        onClick={async () => {
-                            setIsSyncing(true);
-                            try {
-                                const res = await dispatch(syncInStock()).unwrap();
-                                success(res.message || 'Đồng bộ thành công!');
-                            } catch (e: any) { notifyError(e.message); }
-                            finally { setIsSyncing(false); }
-                        }}
-                        disabled={isSyncing} size="small"
-                    >
-                        {isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ từ kho tổng'}
-                    </Button>
-                    <Button variant="outlined" startIcon={<FileDownloadIcon />} onClick={generateInboundTemplate} size="small">
-                        Tải mẫu Excel
-                    </Button>
-                    <Button variant="contained" component="label" startIcon={<UploadFileIcon />} size="small">
-                        Nhập Excel
-                        <input type="file" hidden accept=".xlsx, .xls" onChange={async (e) => {
-                            if (e.target.files?.[0]) {
-                                try {
-                                    const json = await readExcelFile(e.target.files[0]);
-                                    const mappedData = json.map((row: any) => {
-                                        const product = products.find(p => p.item_code === row['MA_HANG']);
-                                        if (!product) throw new Error(`Không tìm thấy: ${row['MA_HANG']}`);
-                                        return {
-                                            product_id: product.id,
-                                            quantity: Number(row['SO_LUONG'] || 0),
-                                            unit_price: Number(row['DON_GIA'] || product.unit_price || 0),
-                                            serial_code: row['SERIAL'] ? String(row['SERIAL']) : undefined,
-                                            district: row['QUAN_HUYEN'],
-                                            item_status: row['TRANG_THAI_HANG']
-                                        };
-                                    });
-                                    await dispatch(importInboundTransactions(mappedData)).unwrap();
-                                    success(`Đã nhập thành công ${mappedData.length} giao dịch!`);
-                                    dispatch(fetchTransactionsForce()); // Refresh list
-                                } catch (e: any) { notifyError(e.message); }
-                                e.target.value = '';
-                            }
-                        }} />
-                    </Button>
-                </Stack>
-            )}
+            <PageHeader
+                title="NHẬP HÀNG HÓA"
+                subtitle="Quản lý phiếu nhập kho và cập nhật số lượng tồn kho thời gian thực"
+                icon={<MoveToInboxIcon sx={{ color: 'white', fontSize: 28 }} />}
+                gradientType="blue"
+                actions={
+                    isAdmin ? (
+                        <>
+                            <Button
+                                variant="contained"
+                                startIcon={isSyncing ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
+                                onClick={async () => {
+                                    setIsSyncing(true);
+                                    try {
+                                        const res = await dispatch(syncInStock()).unwrap();
+                                        success(res.message || 'Đồng bộ thành công!');
+                                    } catch (e: any) { notifyError(e.message); }
+                                    finally { setIsSyncing(false); }
+                                }}
+                                disabled={isSyncing}
+                                size="small"
+                                sx={{ 
+                                    borderRadius: '12px', 
+                                    textTransform: 'none', 
+                                    fontWeight: 700, 
+                                    bgcolor: 'rgba(255, 255, 255, 0.2)',
+                                    color: 'white',
+                                    border: '1px solid rgba(255,255,255,0.3)',
+                                    backdropFilter: 'blur(5px)',
+                                    px: 2,
+                                    py: 1,
+                                    '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.3)' }
+                                }}
+                            >
+                                {isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ từ kho tổng'}
+                            </Button>
+                            <Button 
+                                variant="contained" 
+                                startIcon={<FileDownloadIcon />} 
+                                onClick={generateInboundTemplate} 
+                                size="small"
+                                sx={{ 
+                                    borderRadius: '12px', 
+                                    textTransform: 'none', 
+                                    fontWeight: 700, 
+                                    bgcolor: 'rgba(255, 255, 255, 0.2)',
+                                    color: 'white',
+                                    border: '1px solid rgba(255,255,255,0.3)',
+                                    backdropFilter: 'blur(5px)',
+                                    px: 2,
+                                    py: 1,
+                                    '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.3)' }
+                                }}
+                            >
+                                Tải mẫu Excel
+                            </Button>
+                            <Button 
+                                variant="contained" 
+                                component="label" 
+                                startIcon={<UploadFileIcon />} 
+                                size="small"
+                                sx={{ 
+                                    borderRadius: '12px', 
+                                    textTransform: 'none', 
+                                    fontWeight: 800, 
+                                    bgcolor: '#ffffff',
+                                    color: '#2563eb',
+                                    px: 2.5,
+                                    py: 1.2,
+                                    '&:hover': { bgcolor: '#f8fafc', transform: 'translateY(-1px)' }
+                                }}
+                            >
+                                Nhập Excel
+                                <input type="file" hidden accept=".xlsx, .xls" onChange={async (e) => {
+                                    if (e.target.files?.[0]) {
+                                        try {
+                                            const json = await readExcelFile(e.target.files[0]);
+                                            const mappedData = json.map((row: any) => {
+                                                const product = products.find(p => p.item_code === row['MA_HANG']);
+                                                if (!product) throw new Error(`Không tìm thấy: ${row['MA_HANG']}`);
+                                                return {
+                                                    product_id: product.id,
+                                                    quantity: Number(row['SO_LUONG'] || 0),
+                                                    unit_price: Number(row['DON_GIA'] || product.unit_price || 0),
+                                                    serial_code: row['SERIAL'] ? String(row['SERIAL']) : undefined,
+                                                    district: row['QUAN_HUYEN'],
+                                                    item_status: row['TRANG_THAI_HANG']
+                                                };
+                                            });
+                                            await dispatch(importInboundTransactions(mappedData)).unwrap();
+                                            success(`Đã nhập thành công ${mappedData.length} giao dịch!`);
+                                            dispatch(fetchTransactionsForce()); // Refresh list
+                                        } catch (e: any) { notifyError(e.message); }
+                                        e.target.value = '';
+                                    }
+                                }} />
+                            </Button>
+                        </>
+                    ) : undefined
+                }
+            />
 
             <InboundForm />
 

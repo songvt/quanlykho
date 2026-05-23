@@ -10,6 +10,8 @@ import type { Order, Product } from '../../types';
 
 import OutboundList from '../../components/Outbound/OutboundList';
 import PrintIcon from '@mui/icons-material/Print';
+import PageHeader from '../../components/Common/PageHeader';
+import OutboxIcon from '@mui/icons-material/Outbox';
 
 interface StaffOutboundViewProps {
     approvedOrders: Order[];
@@ -36,24 +38,12 @@ const StaffOutboundView = ({
 }: StaffOutboundViewProps) => {
     return (
         <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: '100%', overflowX: 'hidden', minHeight: '100vh' }}>
-            <Box mb={{ xs: 2, sm: 4 }} textAlign="center">
-                <Typography
-                    variant="h3"
-                    fontWeight="bold"
-                    color="text.primary"
-                    gutterBottom
-                    sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '3rem' } }}
-                >
-                    Xuất Kho (Đơn Hàng)
-                </Typography>
-                <Typography
-                    variant="h6"
-                    color="text.secondary"
-                    sx={{ fontSize: { xs: '0.875rem', sm: '1rem', md: '1.25rem' } }}
-                >
-                    Danh sách các đơn hàng đã được duyệt chờ xuất kho
-                </Typography>
-            </Box>
+            <PageHeader
+                title="XUẤT KHO (ĐƠN HÀNG)"
+                subtitle="Danh sách các đơn hàng đã được duyệt chờ xuất kho"
+                icon={<OutboxIcon sx={{ color: 'white', fontSize: 28 }} />}
+                gradientType="blue"
+            />
 
             {/* --- Đơn hàng chờ xuất --- */}
             <TableContainer

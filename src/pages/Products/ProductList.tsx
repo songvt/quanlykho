@@ -27,6 +27,8 @@ import { usePermission } from '../../hooks/usePermission';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import { useTabVisibility } from '../../hooks/useTabVisibility';
 import VoiceSearchButton from '../../components/VoiceSearchButton';
+import PageHeader from '../../components/Common/PageHeader';
+import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 
 const ProductList = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -211,110 +213,135 @@ const ProductList = () => {
 
     return (
         <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: '100%', mx: 'auto' }}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} mb={{ xs: 2, sm: 4 }} spacing={2}>
-                <Box>
-                    <Typography variant="h4" sx={{
-                        fontWeight: 900,
-                        fontSize: { xs: '1.5rem', sm: '2.125rem' },
-                        textTransform: 'uppercase',
-                        background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        letterSpacing: '-0.02em',
-                        mb: 0.5
-                    }}>
-                        DANH SÁCH HÀNG HÓA
-                    </Typography>
-                    <Typography variant="body1" sx={{ color: '#64748b', fontWeight: 500 }}>
-                        Quản lý danh mục sản phẩm và theo dõi tồn kho trực tuyến
-                    </Typography>
-                </Box>
-                <Stack direction="row" spacing={1} width={{ xs: '100%', sm: 'auto' }} flexWrap="wrap" useFlexGap sx={{ gap: 1 }}>
-                    {canManage && (
-                        <>
-                            {selectedIds.length > 0 && (
+            <PageHeader
+                title="DANH SÁCH HÀNG HÓA"
+                subtitle="Quản lý danh mục sản phẩm và theo dõi tồn kho trực tuyến"
+                icon={<Inventory2OutlinedIcon sx={{ color: 'white', fontSize: 28 }} />}
+                gradientType="blue"
+                actions={
+                    <>
+                        {canManage && (
+                            <>
+                                {selectedIds.length > 0 && (
+                                    <Button
+                                        variant="contained"
+                                        color="error"
+                                        size="small"
+                                        startIcon={<DeleteIcon />}
+                                        onClick={handleBulkDelete}
+                                        sx={{ 
+                                            borderRadius: '12px', 
+                                            textTransform: 'none', 
+                                            fontWeight: 700, 
+                                            px: 2, 
+                                            py: 1,
+                                            boxShadow: '0 8px 20px -6px rgba(239, 68, 68, 0.4)'
+                                        }}
+                                    >
+                                        Xóa ({selectedIds.length})
+                                    </Button>
+                                )}
                                 <Button
                                     variant="contained"
-                                    color="error"
                                     size="small"
-                                    startIcon={<DeleteIcon />}
-                                    onClick={handleBulkDelete}
-                                    sx={{ borderRadius: 2, flex: { xs: 1, sm: 'none' }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                                >
-                                    Xóa ({selectedIds.length})
-                                </Button>
-                            )}
-                            <Button
-                                variant="outlined"
-                                size="small"
-                                startIcon={<FileDownloadIcon />}
-                                onClick={generateProductTemplate}
-                                sx={{ borderRadius: 2, flex: { xs: 1, sm: 'none' }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                            >
-                                Tải mẫu
-                            </Button>
-                            <Button
-                                variant="outlined"
-                                size="small"
-                                component="label"
-                                startIcon={<UploadFileIcon />}
-                                sx={{ borderRadius: 2, flex: { xs: 1, sm: 'none' }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                            >
-                                Nhập Excel
-                                <input
-                                    type="file"
-                                    hidden
-                                    accept=".xlsx, .xls"
-                                    onChange={async (e) => {
-                                        if (e.target.files && e.target.files[0]) {
-                                            try {
-                                                const originalData = await readExcelFile(e.target.files[0]);
-                                                // Map Vietnamese headers to English keys
-                                                const mappedData = originalData.map((row: any) => ({
-                                                    item_code: row['MA_HANG'],
-                                                    name: row['TEN_HANG_HOA'],
-                                                    category: row['LOAI_DM'] || 'General',
-                                                    unit_price: Number(row['DON_GIA']) || 0,
-                                                    unit: row['DON_VI'] || 'Cái',
-                                                    type: row['LOAI_HANG']
-                                                })).filter(p => p.item_code && p.name); // Basic validation
-
-                                                if (mappedData.length > 0) {
-                                                    try {
-                                                        await dispatch(importProducts(mappedData)).unwrap();
-                                                        success(`Đã nhập thành công ${mappedData.length} sản phẩm!`);
-                                                        // Reset input only on success or if we want to allow retry
-                                                        e.target.value = '';
-                                                    } catch (err: any) {
-                                                        console.error('Import failed:', err);
-                                                        notifyError(`Lỗi khi nhập dữ liệu: ${err.message || JSON.stringify(err)}`);
-                                                    }
-                                                } else {
-                                                    notifyError('Không tìm thấy dữ liệu hợp lệ trong file. Vui lòng kiểm tra lại các cột.');
-                                                }
-                                            } catch (error) {
-                                                console.error('Import failed:', error);
-                                                notifyError('Lỗi khi nhập file. Vui lòng kiểm tra định dạng.');
-                                            }
-                                            // Reset input value to allow re-uploading same file
-                                            e.target.value = '';
-                                        }
+                                    startIcon={<FileDownloadIcon />}
+                                    onClick={generateProductTemplate}
+                                    sx={{ 
+                                        borderRadius: '12px', 
+                                        textTransform: 'none', 
+                                        fontWeight: 700, 
+                                        bgcolor: 'rgba(255, 255, 255, 0.2)',
+                                        color: 'white',
+                                        border: '1px solid rgba(255,255,255,0.3)',
+                                        backdropFilter: 'blur(5px)',
+                                        px: 2,
+                                        py: 1,
+                                        '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.3)' }
                                     }}
-                                />
-                            </Button>
-                        </>
-                    )}
-                    <Button
-                        variant="contained"
-                        size="small"
-                        startIcon={<AddIcon />}
-                        onClick={handleOpenAdd}
-                        sx={{ px: 2, py: 1, borderRadius: 2, flex: { xs: 1, sm: 'none' }, whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                    >
-                        Thêm mới
-                    </Button>
-                </Stack>
-            </Stack>
+                                >
+                                    Tải mẫu
+                                </Button>
+                                <Button
+                                    variant="contained"
+                                    size="small"
+                                    component="label"
+                                    startIcon={<UploadFileIcon />}
+                                    sx={{ 
+                                        borderRadius: '12px', 
+                                        textTransform: 'none', 
+                                        fontWeight: 700, 
+                                        bgcolor: 'rgba(255, 255, 255, 0.2)',
+                                        color: 'white',
+                                        border: '1px solid rgba(255,255,255,0.3)',
+                                        backdropFilter: 'blur(5px)',
+                                        px: 2,
+                                        py: 1,
+                                        '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.3)' }
+                                    }}
+                                >
+                                    Nhập Excel
+                                    <input
+                                        type="file"
+                                        hidden
+                                        accept=".xlsx, .xls"
+                                        onChange={async (e) => {
+                                            if (e.target.files && e.target.files[0]) {
+                                                try {
+                                                    const originalData = await readExcelFile(e.target.files[0]);
+                                                    // Map Vietnamese headers to English keys
+                                                    const mappedData = originalData.map((row: any) => ({
+                                                        item_code: row['MA_HANG'],
+                                                        name: row['TEN_HANG_HOA'],
+                                                        category: row['LOAI_DM'] || 'General',
+                                                        unit_price: Number(row['DON_GIA']) || 0,
+                                                        unit: row['DON_VI'] || 'Cái',
+                                                        type: row['LOAI_HANG']
+                                                    })).filter(p => p.item_code && p.name); // Basic validation
+
+                                                    if (mappedData.length > 0) {
+                                                        try {
+                                                            await dispatch(importProducts(mappedData)).unwrap();
+                                                            success(`Đã nhập thành công ${mappedData.length} sản phẩm!`);
+                                                            e.target.value = '';
+                                                        } catch (err: any) {
+                                                            console.error('Import failed:', err);
+                                                            notifyError(`Lỗi khi nhập dữ liệu: ${err.message || JSON.stringify(err)}`);
+                                                        }
+                                                    } else {
+                                                        notifyError('Không tìm thấy dữ liệu hợp lệ trong file. Vui lòng kiểm tra lại các cột.');
+                                                    }
+                                                } catch (error) {
+                                                    console.error('Import failed:', error);
+                                                    notifyError('Lỗi khi nhập file. Vui lòng kiểm tra định dạng.');
+                                                }
+                                                e.target.value = '';
+                                            }
+                                        }}
+                                    />
+                                </Button>
+                            </>
+                        )}
+                        <Button
+                            variant="contained"
+                            size="small"
+                            startIcon={<AddIcon />}
+                            onClick={handleOpenAdd}
+                            sx={{ 
+                                px: 2.5, 
+                                py: 1.2, 
+                                borderRadius: '12px', 
+                                whiteSpace: 'nowrap', 
+                                fontWeight: 800,
+                                bgcolor: '#ffffff',
+                                color: '#2563eb',
+                                '&:hover': { bgcolor: '#f8fafc', transform: 'translateY(-1px)' }
+                            }}
+                        >
+                            Thêm mới
+                        </Button>
+                    </>
+                }
+            />
 
             {/* Cảnh báo tồn kho âm */}
             {negativeStockProducts.length > 0 && (

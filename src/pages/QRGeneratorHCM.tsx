@@ -2,7 +2,8 @@ import React, { useState, useRef, useCallback } from 'react';
 import {
     Box, Typography, Paper, Button, TextField, Grid, Stack,
     Chip, IconButton, Alert, Table, TableBody, TableCell,
-    TableContainer, TableHead, TableRow, CircularProgress
+    TableContainer, TableHead, TableRow, CircularProgress,
+    Tabs, Tab, Card, CardContent, Tooltip, Zoom
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { QRCodeSVG } from 'qrcode.react';
@@ -15,6 +16,13 @@ import PreviewIcon from '@mui/icons-material/Preview';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import InventoryIcon from '@mui/icons-material/Inventory2Outlined';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import KeyboardIcon from '@mui/icons-material/KeyboardOutlined';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import ListAltIcon from '@mui/icons-material/ListAlt';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import InfoIcon from '@mui/icons-material/InfoOutlined';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+
 import { readExcelFile } from '../utils/excelUtils';
 import { useNotification } from '../contexts/NotificationContext';
 import { parseSerialInput } from '../utils/serialParser';
@@ -63,15 +71,15 @@ const buildQRChunks = (serials: string[]): QRChunk[] => {
 
     if (limited.length <= MAX_SERIALS_PER_QR) {
         // Single QR
-        return [{ label: 'Mã QR', serials: limited, qrValue: limited.join('\n') }];
+        return [{ label: 'Mã QR Duy Nhất', serials: limited, qrValue: limited.join('\n') }];
     }
 
     // Two QR codes
     const chunk1 = limited.slice(0, MAX_SERIALS_PER_QR);
     const chunk2 = limited.slice(MAX_SERIALS_PER_QR);
     return [
-        { label: 'QR 1', serials: chunk1, qrValue: chunk1.join('\n') },
-        { label: 'QR 2', serials: chunk2, qrValue: chunk2.join('\n') },
+        { label: 'Mã QR Số 1', serials: chunk1, qrValue: chunk1.join('\n') },
+        { label: 'Mã QR Số 2', serials: chunk2, qrValue: chunk2.join('\n') },
     ];
 };
 
@@ -90,7 +98,7 @@ const downloadTemplate = async () => {
     const headerRow = ws.getRow(1);
     headerRow.eachCell(cell => {
         cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
         cell.alignment = { horizontal: 'center' };
     });
 
@@ -120,14 +128,21 @@ const QRGeneratorHCM = () => {
     const [isDragOver, setIsDragOver] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [isPrinting, setIsPrinting] = useState(false);
+    const [activeTab, setActiveTab] = useState(0);
     
     const printRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+        setActiveTab(newValue);
+    };
+
+    // Engineered A4 layout styles for printing labels (highly stylized shipping look)
     const printStyles = `
         @page { size: A4 landscape; margin: 0; }
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; }
+        
         .print-container { 
             width: 297mm;
             height: 210mm;
@@ -139,119 +154,168 @@ const QRGeneratorHCM = () => {
             flex-direction: column;
             justify-content: flex-start;
         }
+        
         .label-wrapper { 
             width: 100%; 
             height: 200mm; 
-            border: 5px solid #1e293b; 
+            border: 4.5px solid #000000; 
             margin-bottom: 0; 
             background: white;
             display: flex;
             flex-direction: column;
             page-break-inside: avoid;
             position: relative;
-            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+            box-shadow: 0 0 15px rgba(0,0,0,0.06);
             overflow: hidden;
+            border-radius: 6px;
         }
+        
         .label-wrapper:last-child {
             margin-bottom: 0;
         }
+        
         @media print {
             .page-break { page-break-after: always; height: 0; border: none; margin: 0; }
-            .label-wrapper { box-shadow: none; border-color: black; }
+            .label-wrapper { box-shadow: none; border-color: black !important; border: 4.5px solid black !important; }
         }
+        
         .header-text-print { 
-            font-size: 32pt; 
-            font-weight: bold; 
+            font-size: 30pt; 
+            font-weight: 900; 
             text-align: center; 
             text-transform: uppercase;
-            line-height: 1.3;
+            line-height: 1.35;
             margin-bottom: 0;
-            letter-spacing: 1px;
-            background-color: #facc15 !important;
+            letter-spacing: 0.5px;
+            background: #facc15 !important;
             color: black !important;
-            padding: 10px 0;
-            border-radius: 4px 4px 0 0;
-            text-decoration: underline;
+            padding: 12px 15px;
+            border-bottom: 4.5px solid #000000;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
         }
+        
+        .header-decor-line {
+            height: 3px;
+            width: 50px;
+            background-color: black;
+            display: inline-block;
+        }
+        
         .label-body {
             display: grid;
             grid-template-columns: 95mm 95mm 95mm;
             grid-template-rows: repeat(4, 45mm);
             flex: 1;
             min-height: 0;
-            border-top: 2px solid #334155;
             background: white;
         }
+        
         .grid-cell {
             display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
             background: white;
-            border-bottom: 2px solid #334155;
+            border-bottom: 2px solid #000000;
             position: relative;
             isolation: isolate;
             contain: paint;
         }
+        
         .grid-cell-label {
             justify-content: flex-start;
-            padding-left: 20mm;
+            padding-left: 18mm;
             font-size: 26pt;
-            font-weight: bold;
-            border-right: 2px solid #334155;
+            font-weight: 900;
+            border-right: 2px solid #000000;
             z-index: 5;
             text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #1e293b;
         }
+        
         .grid-cell-value {
-            background-color: #facc15 !important;
-            font-size: 34pt; 
-            font-weight: bold; 
+            background-color: #fef08a !important; /* Premium softer yellow background */
+            font-size: 32pt; 
+            font-weight: 900; 
             text-align: center;
-            padding: 0 10px;
-            border-right: 2px solid #334155;
+            padding: 0 12px;
+            border-right: 2px solid #000000;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
             z-index: 10;
             white-space: nowrap;
             text-transform: uppercase;
+            color: #000000;
         }
+        
         .grid-cell-value-lg {
-            background-color: #facc15 !important;
-            font-size: 50pt; 
-            font-weight: bold; 
+            background-color: #facc15 !important; /* Bold yellow for primary numbers */
+            font-size: 48pt; 
+            font-weight: 900; 
             text-align: center;
-            border-right: 2px solid #334155;
+            border-right: 2px solid #000000;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
             z-index: 10;
             white-space: nowrap;
             text-transform: uppercase;
+            color: #000000;
         }
+        
         .grid-cell-qr {
             flex-direction: column;
-            padding: 10px;
+            padding: 12px;
             border-right: none;
             background: white !important;
             z-index: 5;
             transform: translateZ(0);
         }
+        
         .grid-cell-qr svg {
             shape-rendering: crispEdges;
             background: white !important;
         }
+        
         /* Last row specific: remove bottom border */
         .label-body > .grid-cell:nth-last-child(-n+2) {
             border-bottom: none;
         }
+        
         .qr-label-small {
-            font-size: 8pt;
+            font-size: 9pt;
+            font-weight: 900;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            background-color: #e2e8f0;
+            color: black;
+            padding: 2px 10px;
+            border-radius: 10px;
+            border: 1px solid #cbd5e1;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        
+        .logistics-watermark {
+            position: absolute;
+            bottom: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 7pt;
+            color: #94a3b8;
             font-weight: bold;
-            margin-bottom: 4px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            white-space: nowrap;
+            opacity: 0.8;
         }
     `;
 
@@ -343,7 +407,7 @@ const QRGeneratorHCM = () => {
     const handleExportPDF = async () => {
         if (!dataRows.length) return;
         setIsExporting(true);
-        notifyError("Đang xuất PDF đúng định dạng A4 Ngang... Vui lòng đợi.");
+        notifyError("Đang xuất PDF định dạng A4 ngang... Vui lòng đợi trong giây lát.");
         
         try {
             const pdf = new jsPDF("l", "mm", "a4");
@@ -400,7 +464,6 @@ const QRGeneratorHCM = () => {
                 if (canvas.width > 0) {
                     const imgData = canvas.toDataURL("image/png");
                     if (i > 0) pdf.addPage();
-                    // Map image exactly to A4 dimensions in mm without stretching
                     pdf.addImage(imgData, "PNG", 0, 0, 297, 210, undefined, 'FAST');
                 }
                 await new Promise(resolve => setTimeout(resolve, 60));
@@ -440,7 +503,6 @@ const QRGeneratorHCM = () => {
 
             const parsed: QRDataRow[] = [];
             json.forEach((row: any) => {
-                // Case-insensitive key lookup
                 const findValue = (possibleKeys: string[]) => {
                     const key = Object.keys(row).find(k => 
                         possibleKeys.some(pk => k.toLowerCase() === pk.toLowerCase())
@@ -507,121 +569,563 @@ const QRGeneratorHCM = () => {
     };
 
     return (
-        <Box sx={{ maxWidth: 1400, mx: 'auto' }}>
-            {/* Header */}
-            <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
-                <Box display="flex" alignItems="center" gap={1.5}>
-                    <Box sx={{ width: 44, height: 44, borderRadius: '12px', background: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <QrCode2Icon sx={{ color: 'white', fontSize: 26 }} />
-                    </Box>
-                    <Box>
-                        <Typography variant="h5" sx={{ fontWeight: 900, color: '#0f172a' }}>TẠO QR_CODE</Typography>
-                        <Typography variant="body2" sx={{ color: '#2563eb', fontWeight: 700 }}>
-                            Thiết kế bởi Võ Thanh Song - LH: 0988.229.082
-                        </Typography>
-                    </Box>
-                </Box>
-                <Stack direction="row" spacing={1.5} flexWrap="wrap">
-                    <Button size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={downloadTemplate}>
-                        Tải file mẫu HCM
-                    </Button>
-                    {dataRows.length > 0 && (
-                        <>
-                            <Button size="small" variant="outlined" startIcon={<PreviewIcon />} onClick={() => setShowPreview(v => !v)}>
-                                {showPreview ? 'Ẩn' : 'Xem'} dữ liệu
+        <Box sx={{ maxWidth: 1400, mx: 'auto', px: { xs: 1, sm: 2, md: 3 }, py: 2 }}>
+            
+            {/* ── Page Header (Sleek Dark Premium Card) ── */}
+            <Paper 
+                elevation={3} 
+                sx={{ 
+                    p: { xs: 2.5, md: 4 }, 
+                    mb: 4, 
+                    background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
+                    border: 'none',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    color: 'white',
+                    boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.3)',
+                    '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        top: -50,
+                        right: -50,
+                        width: 220,
+                        height: 220,
+                        borderRadius: '50%',
+                        background: 'rgba(250, 204, 21, 0.08)',
+                        filter: 'blur(35px)',
+                    }
+                }}
+            >
+                <Grid container spacing={2} alignItems="center" justifyContent="space-between">
+                    <Grid item xs={12} md={8}>
+                        <Stack direction="row" spacing={2} alignItems="center">
+                            <Box 
+                                sx={{ 
+                                    width: 56, 
+                                    height: 56, 
+                                    borderRadius: '16px', 
+                                    background: 'rgba(255, 255, 255, 0.08)', 
+                                    border: '1px solid rgba(255,255,255,0.15)',
+                                    backdropFilter: 'blur(10px)',
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center',
+                                    animation: 'pulse-yellow 2.5s infinite',
+                                    '@keyframes pulse-yellow': {
+                                        '0%': { transform: 'scale(1)', boxShadow: '0 0 0 0 rgba(250, 204, 21, 0.2)' },
+                                        '50%': { transform: 'scale(1.04)', boxShadow: '0 0 15px 4px rgba(250, 204, 21, 0.15)' },
+                                        '100%': { transform: 'scale(1)', boxShadow: '0 0 0 0 rgba(250, 204, 21, 0.2)' }
+                                    }
+                                }}
+                            >
+                                <QrCode2Icon sx={{ color: '#facc15', fontSize: 32 }} />
+                            </Box>
+                            <Box>
+                                <Typography 
+                                    variant="h4" 
+                                    sx={{ 
+                                        fontWeight: 900, 
+                                        color: '#ffffff', 
+                                        letterSpacing: '-0.02em',
+                                        fontSize: { xs: '1.65rem', md: '2.1rem' }
+                                    }}
+                                >
+                                    TẠO QR CODE CHI NHÁNH HCM
+                                </Typography>
+                                <Typography 
+                                    variant="body2" 
+                                    sx={{ 
+                                        color: '#facc15', 
+                                        fontWeight: 700, 
+                                        mt: 0.5,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 0.5,
+                                        fontSize: '0.875rem',
+                                        letterSpacing: '0.5px'
+                                    }}
+                                >
+                                    <SupportAgentIcon sx={{ fontSize: 18 }} /> THIẾT KẾ: VÕ THANH SONG - LH: 0988.229.082
+                                </Typography>
+                            </Box>
+                        </Stack>
+                    </Grid>
+                    <Grid item xs={12} md={4} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
+                        <Stack direction="row" spacing={1.5} flexWrap="wrap" gap={1}>
+                            <Button 
+                                variant="contained" 
+                                startIcon={<DownloadIcon />} 
+                                onClick={downloadTemplate}
+                                sx={{ 
+                                    borderRadius: '12px', 
+                                    textTransform: 'none', 
+                                    fontWeight: 700,
+                                    bgcolor: 'rgba(255, 255, 255, 0.1)',
+                                    color: 'white',
+                                    border: '1px solid rgba(255,255,255,0.2)',
+                                    px: 2,
+                                    py: 1,
+                                    '&:hover': { 
+                                        bgcolor: 'rgba(255, 255, 255, 0.2)',
+                                        border: '1px solid rgba(255,255,255,0.4)',
+                                        transform: 'translateY(-2px)'
+                                    } 
+                                }}
+                            >
+                                File Mẫu HCM
                             </Button>
-                            <Button size="small" variant="outlined" color="error" startIcon={<DeleteOutlineIcon />} onClick={() => setDataRows([])}>
-                                Xóa hết
-                            </Button>
-                            <Button size="small" variant="contained" startIcon={<PictureAsPdfIcon />} onClick={handleExportPDF} disabled={isExporting} sx={{ bgcolor: '#d97706' }}>
-                                Xuất PDF
-                            </Button>
-                            <Button size="small" variant="contained" startIcon={<PrintIcon />} onClick={handlePrint} disabled={isPrinting} sx={{ bgcolor: 'black' }}>
-                                In Tem ({totalQRCodes})
-                            </Button>
-                        </>
-                    )}
-                </Stack>
-            </Box>
+                            
+                            {dataRows.length > 0 && (
+                                <Button 
+                                    variant="contained" 
+                                    color="error" 
+                                    startIcon={<DeleteOutlineIcon />}
+                                    onClick={() => { setDataRows([]); success('Đã xóa dữ liệu'); }}
+                                    sx={{ 
+                                        borderRadius: '12px', 
+                                        textTransform: 'none', 
+                                        fontWeight: 700,
+                                        px: 2.5,
+                                        py: 1,
+                                        boxShadow: '0 8px 20px -6px rgba(239, 68, 68, 0.4)',
+                                        '&:hover': { transform: 'translateY(-2px)' }
+                                    }}
+                                >
+                                    Xóa Hết
+                                </Button>
+                            )}
+                        </Stack>
+                    </Grid>
+                </Grid>
+            </Paper>
 
-            <Grid container spacing={3} mb={3}>
-                {/* Import */}
-                <Grid size={{ xs: 12, md: 6 }}>
-                    <Paper elevation={0} sx={{ p: 3, border: '1px solid #e2e8f0', borderRadius: 3 }}>
-                        <Typography variant="h6" fontWeight={600} mb={1}>📂 Import Excel</Typography>
-                        <Box
-                            onDragOver={e => { e.preventDefault(); setIsDragOver(true); }}
-                            onDragLeave={() => setIsDragOver(false)}
-                            onDrop={async e => { e.preventDefault(); setIsDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) await parseExcelRows(f); }}
-                            onClick={() => fileInputRef.current?.click()}
-                            sx={{
-                                border: `2px dashed ${isDragOver ? 'black' : '#e2e8f0'}`,
-                                borderRadius: '12px', p: 4, textAlign: 'center', cursor: 'pointer',
-                                bgcolor: isDragOver ? alpha('#000', 0.05) : '#f8fafc',
-                                transition: 'all 0.3s'
-                            }}>
-                            <UploadFileIcon sx={{ fontSize: 40, color: '#94a3b8', mb: 1 }} />
-                            <Typography fontWeight={700}>Click hoặc kéo thả file Excel vào đây</Typography>
-                            <input ref={fileInputRef} type="file" hidden accept=".xlsx,.xls" onChange={handleFileChange} />
+            {/* ── Dashboard Stats Widget (Premium Themed Cards) ── */}
+            {dataRows.length > 0 && (
+                <Grid container spacing={2.5} mb={4}>
+                    <Grid item xs={12} sm={4}>
+                        <Card 
+                            sx={{ 
+                                border: '1px solid #e2e8f0', 
+                                borderRadius: '16px',
+                                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)',
+                                background: 'linear-gradient(to right, #ffffff, #f8fafc)',
+                                transition: 'all 0.3s ease',
+                                '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 10px 20px rgba(245, 158, 11, 0.08)', borderColor: '#fde68a' }
+                            }}
+                        >
+                            <CardContent sx={{ display: 'flex', alignItems: 'center', p: 3, '&:last-child': { pb: 3 } }}>
+                                <Box sx={{ p: 2, borderRadius: '12px', bgcolor: 'rgba(245, 158, 11, 0.08)', mr: 2.5, display: 'flex' }}>
+                                    <InventoryIcon sx={{ color: '#d97706', fontSize: 30 }} />
+                                </Box>
+                                <Box>
+                                    <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                        Tổng Số Serials
+                                    </Typography>
+                                    <Typography variant="h4" sx={{ fontWeight: 900, color: '#0f172a', mt: 0.5 }}>
+                                        {dataRows.length} <span style={{ fontSize: '1rem', fontWeight: 500, color: '#64748b' }}>mã</span>
+                                    </Typography>
+                                </Box>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+
+                    <Grid item xs={12} sm={4}>
+                        <Card 
+                            sx={{ 
+                                border: '1px solid #e2e8f0', 
+                                borderRadius: '16px',
+                                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)',
+                                background: 'linear-gradient(to right, #ffffff, #f8fafc)',
+                                transition: 'all 0.3s ease',
+                                '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 10px 20px rgba(15, 23, 42, 0.08)', borderColor: '#cbd5e1' }
+                            }}
+                        >
+                            <CardContent sx={{ display: 'flex', alignItems: 'center', p: 3, '&:last-child': { pb: 3 } }}>
+                                <Box sx={{ p: 2, borderRadius: '12px', bgcolor: 'rgba(15, 23, 42, 0.08)', mr: 2.5, display: 'flex' }}>
+                                    <LocalShippingIcon sx={{ color: '#1e293b', fontSize: 30 }} />
+                                </Box>
+                                <Box>
+                                    <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                        Tổng Số Thùng HCM
+                                    </Typography>
+                                    <Typography variant="h4" sx={{ fontWeight: 900, color: '#0f172a', mt: 0.5 }}>
+                                        {groupedBoxes.length} <span style={{ fontSize: '1rem', fontWeight: 500, color: '#64748b' }}>tem in</span>
+                                    </Typography>
+                                </Box>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+
+                    <Grid item xs={12} sm={4}>
+                        <Card 
+                            sx={{ 
+                                border: '1px solid #e2e8f0', 
+                                borderRadius: '16px',
+                                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.03)',
+                                background: 'linear-gradient(to right, #ffffff, #f8fafc)',
+                                transition: 'all 0.3s ease',
+                                '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 10px 20px rgba(14, 165, 233, 0.08)', borderColor: '#bae6fd' }
+                            }}
+                        >
+                            <CardContent sx={{ display: 'flex', alignItems: 'center', p: 3, '&:last-child': { pb: 3 } }}>
+                                <Box sx={{ p: 2, borderRadius: '12px', bgcolor: 'rgba(14, 165, 233, 0.08)', mr: 2.5, display: 'flex' }}>
+                                    <QrCode2Icon sx={{ color: '#0ea5e9', fontSize: 30 }} />
+                                </Box>
+                                <Box>
+                                    <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                        Mã QR Cần Quét
+                                    </Typography>
+                                    <Typography variant="h4" sx={{ fontWeight: 900, color: '#0f172a', mt: 0.5 }}>
+                                        {totalQRCodes} <span style={{ fontSize: '1rem', fontWeight: 500, color: '#64748b' }}>tem</span>
+                                    </Typography>
+                                </Box>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+                </Grid>
+            )}
+
+            {/* ── Input Panels & Tabs ── */}
+            <Grid container spacing={3.5} mb={4}>
+                
+                {/* ── Data Input Card ── */}
+                <Grid item xs={12} lg={7}>
+                    <Paper 
+                        elevation={0} 
+                        sx={{ 
+                            borderRadius: '20px', 
+                            border: '1px solid #e2e8f0', 
+                            boxShadow: '0 6px 24px rgba(0,0,0,0.02)',
+                            overflow: 'hidden'
+                        }}
+                    >
+                        <Box sx={{ borderBottom: 1, borderColor: '#e2e8f0', bgcolor: '#f8fafc', px: 2 }}>
+                            <Tabs 
+                                value={activeTab} 
+                                onChange={handleTabChange} 
+                                variant="fullWidth"
+                                sx={{
+                                    '& .MuiTab-root': { py: 2, fontWeight: 700, fontSize: '0.95rem', textTransform: 'none', color: '#64748b' },
+                                    '& .Mui-selected': { color: '#0f172a' },
+                                    '& .MuiTabs-indicator': { height: '3px', borderRadius: '3px', bgcolor: '#0f172a' }
+                                }}
+                            >
+                                <Tab icon={<UploadFileIcon />} iconPosition="start" label="Import File Excel HCM" />
+                                <Tab icon={<KeyboardIcon />} iconPosition="start" label="Nhập Tay Thủ Công" />
+                            </Tabs>
+                        </Box>
+
+                        <Box sx={{ p: { xs: 3, md: 4 } }}>
+                            
+                            {/* TAB 0: Excel Import */}
+                            {activeTab === 0 && (
+                                <Box>
+                                    <Box sx={{ mb: 3 }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            📂 Tải Excel Mẫu HCM
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: '#64748b', mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <InfoIcon sx={{ fontSize: 16 }} /> File Excel cần chứa các cột hợp lệ: <b>THÙNG, Thiết bị, QR, Tình Trạng, Tiêu đề</b>
+                                        </Typography>
+                                    </Box>
+
+                                    {/* Advanced Drag & Drop Zone */}
+                                    <Box
+                                        onDragOver={e => { e.preventDefault(); setIsDragOver(true); }}
+                                        onDragLeave={() => setIsDragOver(false)}
+                                        onDrop={async e => { e.preventDefault(); setIsDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) await parseExcelRows(f); }}
+                                        onClick={() => fileInputRef.current?.click()}
+                                        sx={{
+                                            border: `2.5px dashed ${isDragOver ? '#000000' : '#cbd5e1'}`,
+                                            borderRadius: '16px', 
+                                            p: { xs: 4, md: 6 }, 
+                                            textAlign: 'center', 
+                                            cursor: 'pointer',
+                                            bgcolor: isDragOver ? alpha('#000000', 0.04) : '#f8fafc',
+                                            transition: 'all 0.3s ease',
+                                            '&:hover': { 
+                                                borderColor: '#0f172a', 
+                                                bgcolor: alpha('#0f172a', 0.01),
+                                                transform: 'translateY(-2px)'
+                                            }
+                                        }}
+                                    >
+                                        <Box 
+                                            sx={{ 
+                                                mx: 'auto',
+                                                width: 68, 
+                                                height: 68, 
+                                                borderRadius: '50%', 
+                                                bgcolor: isDragOver ? 'rgba(15, 23, 42, 0.1)' : '#e2e8f0', 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                justifyContent: 'center',
+                                                mb: 2,
+                                                transition: 'all 0.3s'
+                                            }}
+                                        >
+                                            <UploadFileIcon sx={{ fontSize: 36, color: isDragOver ? '#0f172a' : '#475569' }} />
+                                        </Box>
+                                        <Typography variant="h6" sx={{ fontWeight: 800, color: '#334155', mb: 1, fontSize: '1.05rem' }}>
+                                            {isDragOver ? 'Thả File Excel HCM Tại Đây!' : 'Click chọn hoặc kéo thả file Excel HCM vào đây'}
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, mb: 0.5 }}>
+                                            Chấp nhận các định dạng tiêu chuẩn: <b>.xlsx, .xls</b>
+                                        </Typography>
+                                        <input ref={fileInputRef} type="file" hidden accept=".xlsx,.xls" onChange={handleFileChange} />
+                                    </Box>
+                                </Box>
+                            )}
+
+                            {/* TAB 1: Manual Input */}
+                            {activeTab === 1 && (
+                                <Box>
+                                    <Box sx={{ mb: 2.5 }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a' }}>
+                                            ⌨️ Nhập Serials Thủ Công HCM
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                            Điền các thông tin thùng hàng và danh sách serials để tạo tem.
+                                        </Typography>
+                                    </Box>
+
+                                    <Grid container spacing={2}>
+                                        <Grid item xs={12} sm={6}>
+                                            <TextField 
+                                                fullWidth 
+                                                label="THÙNG" 
+                                                size="small" 
+                                                value={manualThung} 
+                                                onChange={e => setManualThung(e.target.value)} 
+                                                InputProps={{ sx: { borderRadius: '10px' } }}
+                                            />
+                                        </Grid>
+                                        <Grid item xs={12} sm={6}>
+                                            <TextField 
+                                                fullWidth 
+                                                label="Thiết bị" 
+                                                size="small" 
+                                                value={manualThietBi} 
+                                                onChange={e => setManualThietBi(e.target.value)} 
+                                                InputProps={{ sx: { borderRadius: '10px' } }}
+                                            />
+                                        </Grid>
+                                        <Grid item xs={12} sm={6}>
+                                            <TextField 
+                                                fullWidth 
+                                                label="Tình Trạng" 
+                                                size="small" 
+                                                value={manualTinhTrang} 
+                                                onChange={e => setManualTinhTrang(e.target.value)} 
+                                                InputProps={{ sx: { borderRadius: '10px' } }}
+                                            />
+                                        </Grid>
+                                        <Grid item xs={12} sm={6}>
+                                            <TextField 
+                                                fullWidth 
+                                                label="Tiêu đề tem" 
+                                                size="small" 
+                                                value={manualTieuDe} 
+                                                onChange={e => setManualTieuDe(e.target.value)} 
+                                                InputProps={{ sx: { borderRadius: '10px' } }}
+                                            />
+                                        </Grid>
+                                        <Grid item xs={12}>
+                                            <TextField 
+                                                fullWidth 
+                                                label="Danh Sách Serials (QR)" 
+                                                size="small" 
+                                                multiline 
+                                                rows={3} 
+                                                value={manualSerials} 
+                                                onChange={e => setManualSerials(e.target.value)} 
+                                                placeholder="Nhập danh sách serials (mỗi serial 1 dòng)..." 
+                                                InputProps={{ sx: { borderRadius: '12px' } }}
+                                            />
+                                        </Grid>
+                                        <Grid item xs={12}>
+                                            <Button 
+                                                fullWidth 
+                                                variant="contained" 
+                                                onClick={handleManualAdd} 
+                                                sx={{ 
+                                                    bgcolor: '#0f172a',
+                                                    borderRadius: '12px', 
+                                                    py: 1.3, 
+                                                    fontWeight: 800,
+                                                    boxShadow: '0 8px 16px rgba(15, 23, 42, 0.2)',
+                                                    '&:hover': { bgcolor: '#1e293b', transform: 'translateY(-1px)' }
+                                                }}
+                                            >
+                                                Thêm Tem Chờ In
+                                            </Button>
+                                        </Grid>
+                                    </Grid>
+                                </Box>
+                            )}
+
                         </Box>
                     </Paper>
                 </Grid>
 
-                {/* Manual */}
-                <Grid size={{ xs: 12, md: 6 }}>
-                    <Paper elevation={0} sx={{ p: 3, border: '1px solid #e2e8f0', borderRadius: 3 }}>
-                        <Typography variant="h6" fontWeight={600} mb={1}>⌨️ Nhập thủ công</Typography>
-                        <Grid container spacing={2}>
-                            <Grid size={{ xs: 6 }}>
-                                <TextField fullWidth label="THÙNG" size="small" value={manualThung} onChange={e => setManualThung(e.target.value)} />
-                            </Grid>
-                            <Grid size={{ xs: 6 }}>
-                                <TextField fullWidth label="Thiết bị" size="small" value={manualThietBi} onChange={e => setManualThietBi(e.target.value)} />
-                            </Grid>
-                            <Grid size={{ xs: 6 }}>
-                                <TextField fullWidth label="Tình Trạng" size="small" value={manualTinhTrang} onChange={e => setManualTinhTrang(e.target.value)} />
-                            </Grid>
-                            <Grid size={{ xs: 6 }}>
-                                <TextField fullWidth label="Tiêu đề" size="small" value={manualTieuDe} onChange={e => setManualTieuDe(e.target.value)} />
-                            </Grid>
-                            <Grid size={{ xs: 12 }}>
-                                <TextField fullWidth label="Serials (QR)" size="small" multiline rows={2} value={manualSerials} onChange={e => setManualSerials(e.target.value)} placeholder="Nhập danh sách serial..." />
-                            </Grid>
-                            <Grid size={{ xs: 12 }}>
-                                <Button fullWidth variant="contained" onClick={handleManualAdd} sx={{ bgcolor: 'black' }}>Thêm</Button>
-                            </Grid>
-                        </Grid>
+                {/* ── Rules & Specification ── */}
+                <Grid item xs={12} lg={5}>
+                    <Paper 
+                        elevation={0} 
+                        sx={{ 
+                            p: { xs: 3, md: 4 }, 
+                            height: '100%', 
+                            borderRadius: '20px', 
+                            border: '1px solid #e2e8f0',
+                            bgcolor: '#ffffff',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                            boxShadow: '0 6px 24px rgba(0,0,0,0.02)',
+                        }}
+                    >
+                        <Box>
+                            <Typography variant="h6" sx={{ fontWeight: 800, color: '#0f172a', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <ListAltIcon sx={{ color: '#facc15' }} /> Tiêu chuẩn kỹ thuật tem in HCM
+                            </Typography>
+                            
+                            <Stack spacing={2}>
+                                <Box display="flex" gap={1.5} alignItems="flex-start">
+                                    <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#facc15', mt: 1, flexShrink: 0 }} />
+                                    <Typography variant="body2" color="text.secondary">
+                                        <b>Định dạng in ấn</b>: Bản in tối ưu khổ <b>A4 ngang</b> (Landscape). Thiết kế tem logistics cân đối tỉ lệ vàng.
+                                    </Typography>
+                                </Box>
+                                <Box display="flex" gap={1.5} alignItems="flex-start">
+                                    <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#facc15', mt: 1, flexShrink: 0 }} />
+                                    <Typography variant="body2" color="text.secondary">
+                                        <b>Giới hạn QR Code</b>: Tối đa <b>{MAX_SERIALS_PER_QR} serials</b> cho 1 mã QR code.
+                                    </Typography>
+                                </Box>
+                                <Box display="flex" gap={1.5} alignItems="flex-start">
+                                    <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#facc15', mt: 1, flexShrink: 0 }} />
+                                    <Typography variant="body2" color="text.secondary">
+                                        <b>Giới hạn Thùng hàng</b>: Tối đa <b>{MAX_SERIALS_TOTAL} serials</b> cho 1 Thùng hàng (Tự động tách thành mã QR kép khi vượt quá 60 serials).
+                                    </Typography>
+                                </Box>
+                                <Box display="flex" gap={1.5} alignItems="flex-start">
+                                    <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#facc15', mt: 1, flexShrink: 0 }} />
+                                    <Typography variant="body2" color="text.secondary">
+                                        <b>Tự động tối ưu chữ</b>: Giao diện tem tự động thu nhỏ kích cỡ font chữ khi các trường thông tin (Thiết bị, Tình trạng) quá dài nhằm chống tràn tem.
+                                    </Typography>
+                                </Box>
+                            </Stack>
+                        </Box>
+
+                        {dataRows.length > 0 && (
+                            <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid #f1f5f9' }}>
+                                <Alert severity="warning" icon={<CheckCircleIcon sx={{ fontSize: 20, color: '#eab308' }} />} sx={{ borderRadius: '12px', bgcolor: 'rgba(250,204,21,0.06)', border: '1px solid rgba(250,204,21,0.2)', color: '#854d0e' }}>
+                                    Đã sẵn sàng tạo <b>{groupedBoxes.length} tem in</b> đặc trưng CN HCM.
+                                </Alert>
+                            </Box>
+                        )}
                     </Paper>
                 </Grid>
             </Grid>
 
-            {/* Labels Preview (On-screen) */}
+            {/* ── Interactive Printed Labels Preview ── */}
             {dataRows.length > 0 && (
-                <Box sx={{ mt: 4, mb: 6 }}>
-                    <Typography variant="h6" fontWeight={700} mb={2} display="flex" alignItems="center" gap={1}>
-                        <PreviewIcon color="primary" /> Xem trước tem in ({groupedBoxes.length} tem)
-                    </Typography>
+                <Box sx={{ mt: 4, mb: 5 }}>
                     
+                    <Paper 
+                        elevation={0}
+                        sx={{ 
+                            p: 3, 
+                            mb: 3, 
+                            borderRadius: '16px', 
+                            border: '1px solid #e2e8f0', 
+                            bgcolor: '#f8fafc',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            flexWrap: 'wrap',
+                            gap: 2
+                        }}
+                    >
+                        <Box>
+                            <Typography variant="h6" sx={{ fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <PreviewIcon color="primary" /> Xem Trước Tem In Tem CN HCM ({groupedBoxes.length} tem)
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 500 }}>
+                                Nhãn in có viền sắc nét, màu sắc rực rỡ tương thích in laser grayscale.
+                            </Typography>
+                        </Box>
+                        
+                        <Stack direction="row" spacing={1.5} flexWrap="wrap" gap={1}>
+                            <Button 
+                                variant="outlined" 
+                                startIcon={<PreviewIcon />} 
+                                onClick={() => setShowPreview(v => !v)}
+                                sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: 700, px: 2 }}
+                            >
+                                {showPreview ? 'Ẩn Bảng Serials' : 'Hiển Thị Bảng Serials'}
+                            </Button>
+
+                            <Button 
+                                variant="contained" 
+                                startIcon={<PictureAsPdfIcon />} 
+                                onClick={handleExportPDF} 
+                                disabled={isExporting} 
+                                sx={{ 
+                                    bgcolor: '#d97706',
+                                    borderRadius: '10px',
+                                    fontWeight: 700,
+                                    textTransform: 'none',
+                                    px: 2.5,
+                                    '&:hover': { bgcolor: '#b45309', transform: 'translateY(-1px)' }
+                                }}
+                            >
+                                Xuất File PDF
+                            </Button>
+                            
+                            <Button 
+                                variant="contained" 
+                                startIcon={<PrintIcon />} 
+                                onClick={handlePrint} 
+                                disabled={isPrinting} 
+                                sx={{ 
+                                    bgcolor: '#0f172a',
+                                    borderRadius: '10px',
+                                    fontWeight: 800,
+                                    textTransform: 'none',
+                                    px: 2.5,
+                                    boxShadow: '0 8px 16px rgba(15, 23, 42, 0.25)',
+                                    '&:hover': { bgcolor: '#1e293b', transform: 'translateY(-1px)' }
+                                }}
+                            >
+                                In Tem Ngay
+                            </Button>
+                        </Stack>
+                    </Paper>
+                    
+                    {/* Tem In Preview Container (A4 layout inside responsive shell) */}
                     <Paper 
                         elevation={0} 
                         sx={{ 
-                            p: 4, 
+                            p: { xs: 1.5, sm: 3, md: 4 }, 
                             bgcolor: '#f1f5f9', 
-                            borderRadius: 4, 
-                            border: '1px solid #e2e8f0',
-                            maxHeight: '800px',
+                            borderRadius: '24px', 
+                            border: '1px solid #cbd5e1',
+                            maxHeight: '900px',
                             overflowY: 'auto'
                         }}
                     >
-                        <Box ref={printRef} sx={{ bgcolor: 'white', p: 0, mx: 'auto', width: 'fit-content' }}>
+                        <Box ref={printRef} sx={{ bgcolor: 'white', p: 0, mx: 'auto', width: 'fit-content', borderRadius: '4px', boxShadow: '0 8px 24px rgba(0,0,0,0.06)' }}>
                             <style>{printStyles}</style>
-                            {/* 1 label per page */}
+                            
                             {groupedBoxes.map((group, groupIdx) => (
                                 <div className="print-container" key={groupIdx}>
                                     <div className="label-wrapper">
                                         {/* Header */}
                                         <div className="header-text-print">
-                                            {group.tieu_de || 'TIÊU ĐỀ'}
+                                            <span className="header-decor-line"></span>
+                                            {group.tieu_de || 'TIÊU ĐỀ IN ẤN'}
+                                            <span className="header-decor-line"></span>
                                         </div>
 
                                         {/* Helper for auto-shrink font size */}
@@ -629,7 +1133,7 @@ const QRGeneratorHCM = () => {
                                             const getShrinkFontSize = (text: string | number, baseSize: number) => {
                                                 const str = String(text);
                                                 if (str.length > 20) return `${Math.floor(baseSize * 0.55)}pt`;
-                                                if (str.length > 15) return `${Math.floor(baseSize * 0.75)}pt`;
+                                                if (str.length > 15) return `${Math.floor(baseSize * 0.72)}pt`;
                                                 if (str.length > 10) return `${Math.floor(baseSize * 0.85)}pt`;
                                                 return `${baseSize}pt`;
                                             };
@@ -637,34 +1141,34 @@ const QRGeneratorHCM = () => {
                                                 <div className="label-body">
                                                     {/* Row 1 */}
                                                     <div className="grid-cell grid-cell-label">THÙNG</div>
-                                                    <div className="grid-cell grid-cell-value-lg" style={{ fontSize: getShrinkFontSize(group.thung, 50) }}>
+                                                    <div className="grid-cell grid-cell-value-lg" style={{ fontSize: getShrinkFontSize(group.thung, 48) }}>
                                                         {group.thung}
                                                     </div>
-                                                    <div className="grid-cell grid-cell-qr" style={{ gridRow: group.qrChunks.length > 1 ? 'span 2' : 'span 4', borderBottom: group.qrChunks.length > 1 ? '2px solid #334155' : 'none' }}>
+                                                    <div className="grid-cell grid-cell-qr" style={{ gridRow: group.qrChunks.length > 1 ? 'span 2' : 'span 4', borderBottom: group.qrChunks.length > 1 ? '2.5px solid #000000' : 'none' }}>
                                                         {group.qrChunks[0] && (
                                                             <>
-                                                                {group.qrChunks.length > 1 && <div className="qr-label-small">{group.qrChunks[0].label}</div>}
-                                                                <QRCodeSVG value={group.qrChunks[0].qrValue} size={group.qrChunks.length > 1 ? 180 : 280} level="M" includeMargin={false} />
+                                                                {group.qrChunks.length > 1 && <div className="qr-label-small">{group.qrChunks[0].label} ({group.qrChunks[0].serials.length} QR)</div>}
+                                                                <QRCodeSVG value={group.qrChunks[0].qrValue} size={group.qrChunks.length > 1 ? 165 : 265} level="M" includeMargin={false} />
                                                             </>
                                                         )}
                                                     </div>
 
                                                     {/* Row 2 */}
                                                     <div className="grid-cell grid-cell-label">Số lượng</div>
-                                                    <div className="grid-cell grid-cell-value-lg" style={{ fontSize: getShrinkFontSize(group.totalQuantity, 50) }}>
-                                                        {group.totalQuantity}
+                                                    <div className="grid-cell grid-cell-value-lg" style={{ fontSize: getShrinkFontSize(group.totalQuantity, 48) }}>
+                                                        {group.totalQuantity} <span style={{ fontSize: '20pt', fontWeight: 'normal' }}>pcs</span>
                                                     </div>
                                                     {/* Col 3 is spanned from Row 1 */}
 
                                                     {/* Row 3 */}
                                                     <div className="grid-cell grid-cell-label">Thiết bị</div>
-                                                    <div className="grid-cell grid-cell-value" style={{ fontSize: getShrinkFontSize(group.thiet_bi, 34) }}>
+                                                    <div className="grid-cell grid-cell-value" style={{ fontSize: getShrinkFontSize(group.thiet_bi, 32) }}>
                                                         {group.thiet_bi}
                                                     </div>
                                                     {group.qrChunks.length > 1 ? (
                                                         <div className="grid-cell grid-cell-qr" style={{ gridRow: 'span 2', borderBottom: 'none' }}>
-                                                            <div className="qr-label-small">{group.qrChunks[1].label}</div>
-                                                            <QRCodeSVG value={group.qrChunks[1].qrValue} size={180} level="M" includeMargin={false} />
+                                                            <div className="qr-label-small">{group.qrChunks[1].label} ({group.qrChunks[1].serials.length} QR)</div>
+                                                            <QRCodeSVG value={group.qrChunks[1].qrValue} size={165} level="M" includeMargin={false} />
                                                         </div>
                                                     ) : (
                                                         null // Spanned from Row 1
@@ -672,12 +1176,15 @@ const QRGeneratorHCM = () => {
 
                                                     {/* Row 4 */}
                                                     <div className="grid-cell grid-cell-label">Tình trạng</div>
-                                                    <div className="grid-cell grid-cell-value" style={{ fontSize: getShrinkFontSize(group.tinh_trang, 34) }}>
+                                                    <div className="grid-cell grid-cell-value" style={{ fontSize: getShrinkFontSize(group.tinh_trang, 30), borderBottom: 'none' }}>
                                                         {group.tinh_trang}
                                                     </div>
                                                 </div>
                                             );
                                         })()}
+                                        
+                                        {/* Watermark in bottom corner */}
+                                        <div className="logistics-watermark">BSG Logistics HCM Division · Tem Nhãn Phân Phối Tiêu Chuẩn</div>
                                     </div>
                                     {groupIdx < groupedBoxes.length - 1 && <div className="page-break" />}
                                 </div>
@@ -687,29 +1194,31 @@ const QRGeneratorHCM = () => {
                 </Box>
             )}
 
-            {/* Table Preview */}
+            {/* Table Preview Grid */}
             {showPreview && dataRows.length > 0 && (
-                <Box sx={{ mt: 2 }}>
-                    <Typography variant="subtitle2" color="text.secondary" mb={1}>Chi tiết danh sách serial:</Typography>
-                    <TableContainer component={Paper} sx={{ mb: 3, maxHeight: 300, border: '1px solid #e2e8f0' }}>
+                <Box sx={{ mt: 3 }}>
+                    <Typography variant="subtitle2" sx={{ color: '#475569', mb: 1, fontWeight: 700 }}>Danh sách chi tiết các dòng chờ tạo tem ({dataRows.length} dòng):</Typography>
+                    <TableContainer component={Paper} sx={{ mb: 3, maxHeight: 350, border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
                         <Table size="small" stickyHeader>
                             <TableHead>
-                                <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                                    <TableCell>THÙNG</TableCell>
-                                    <TableCell>Thiết bị</TableCell>
-                                    <TableCell>QR</TableCell>
-                                    <TableCell>Tình Trạng</TableCell>
-                                    <TableCell></TableCell>
+                                <TableRow>
+                                    <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc' }}>THÙNG</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc' }}>Tên Thiết Bị</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc' }}>Mã Serial (QR)</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc' }}>Tình Trạng Hàng</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, bgcolor: '#f8fafc', textAlign: 'center' }}>Thao tác</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {dataRows.map((row, idx) => (
-                                    <TableRow key={idx}>
-                                        <TableCell>{row.thung}</TableCell>
-                                        <TableCell>{row.thiet_bi}</TableCell>
-                                        <TableCell sx={{ fontFamily: 'monospace' }}>{row.serial}</TableCell>
-                                        <TableCell>{row.tinh_trang}</TableCell>
+                                    <TableRow key={idx} hover sx={{ '&:hover': { bgcolor: '#f8fafc' } }}>
+                                        <TableCell sx={{ fontWeight: 600 }}>{row.thung}</TableCell>
+                                        <TableCell sx={{ fontWeight: 500 }}>{row.thiet_bi}</TableCell>
+                                        <TableCell sx={{ fontFamily: 'monospace', fontWeight: 700 }}>{row.serial}</TableCell>
                                         <TableCell>
+                                            <Chip label={row.tinh_trang} size="small" sx={{ fontWeight: 600, bgcolor: '#f1f5f9', color: '#475569', borderRadius: '6px' }} />
+                                        </TableCell>
+                                        <TableCell sx={{ textAlign: 'center' }}>
                                             <IconButton size="small" color="error" onClick={() => setDataRows(prev => prev.filter((_, i) => i !== idx))}>
                                                 <DeleteOutlineIcon fontSize="small" />
                                             </IconButton>

@@ -21,6 +21,8 @@ import OutboundList from '../components/Outbound/OutboundList';
 import ApprovedOrdersList from '../components/Outbound/ApprovedOrdersList';
 import QRScanner from '../components/QRScanner';
 import { sendTelegramNotification } from './Outbound/outboundTelegram';
+import PageHeader from '../components/Common/PageHeader';
+import OutboxIcon from '@mui/icons-material/Outbox';
 
 export const Outbound = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -171,41 +173,60 @@ export const Outbound = () => {
                 <>
                     <ApprovedOrdersList orders={allApprovedOrders} products={products} onFulfill={handleOpenFulfill} />
 
-            <Box mb={{ xs: 3, md: 5 }} display="flex" flexDirection="column" alignItems="center">
-                <Typography variant="h4" component="h1" sx={{
-                    fontWeight: 900,
-                    fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' },
-                    textTransform: 'uppercase',
-                    background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    letterSpacing: '-0.02em',
-                    mb: 1
-                }}>
-                    XUẤT HÀNG HÓA
-                </Typography>
-                <Typography variant="body1" sx={{ color: '#64748b', textAlign: 'center', fontWeight: 500 }}>
-                    Quản lý phiếu xuất kho, cấp phát thiết bị và in ấn biên bản bàn giao
-                </Typography>
-            </Box>
-                <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="center" spacing={2} mb={4}>
-                    <Button
-                        variant="contained" color="secondary" startIcon={<PrintIcon />}
-                        disabled={selectedPrintIds.length === 0}
-                        onClick={() => {
-                            setOpenPrintPreview(true);
-                            setResolvedDelivererName(profile?.full_name || 'Admin');
-                        }}
-                    >
-                        In Biên Bản ({selectedPrintIds.length})
-                    </Button>
-                    <Button variant="contained" component="label" startIcon={<UploadFileIcon />} size="small">
-                        Nhập Excel
-                        <input type="file" hidden accept=".xlsx, .xls" onChange={async () => {
-                            // ... existing excel logic
-                        }} />
-                    </Button>
-                </Stack>
+            <PageHeader
+                title="XUẤT HÀNG HÓA"
+                subtitle="Quản lý phiếu xuất kho, cấp phát thiết bị và in ấn biên bản bàn giao"
+                icon={<OutboxIcon sx={{ color: 'white', fontSize: 28 }} />}
+                gradientType="blue"
+                actions={
+                    <>
+                        <Button
+                            variant="contained" 
+                            startIcon={<PrintIcon />}
+                            disabled={selectedPrintIds.length === 0}
+                            onClick={() => {
+                                setOpenPrintPreview(true);
+                                setResolvedDelivererName(profile?.full_name || 'Admin');
+                            }}
+                            sx={{ 
+                                borderRadius: '12px', 
+                                textTransform: 'none', 
+                                fontWeight: 700, 
+                                bgcolor: 'rgba(255, 255, 255, 0.2)',
+                                color: 'white',
+                                border: '1px solid rgba(255,255,255,0.3)',
+                                backdropFilter: 'blur(5px)',
+                                px: 2,
+                                py: 1,
+                                '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.3)' }
+                            }}
+                        >
+                            In Biên Bản ({selectedPrintIds.length})
+                        </Button>
+                        <Button 
+                            variant="contained" 
+                            component="label" 
+                            startIcon={<UploadFileIcon />} 
+                            size="small"
+                            sx={{ 
+                                borderRadius: '12px', 
+                                textTransform: 'none', 
+                                fontWeight: 800, 
+                                bgcolor: '#ffffff',
+                                color: '#2563eb',
+                                px: 2.5,
+                                py: 1.2,
+                                '&:hover': { bgcolor: '#f8fafc', transform: 'translateY(-1px)' }
+                            }}
+                        >
+                            Nhập Excel
+                            <input type="file" hidden accept=".xlsx, .xls" onChange={async () => {
+                                // ... existing excel logic
+                            }} />
+                        </Button>
+                    </>
+                }
+            />
             
             <OutboundForm />
 

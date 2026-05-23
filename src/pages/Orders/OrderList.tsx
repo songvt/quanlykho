@@ -31,6 +31,8 @@ import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import VoiceSearchButton from '../../components/VoiceSearchButton';
 import { getOrderLimit } from '../../config/orderLimits';
 import { formatDate, parseDate } from '../../utils/dateUtils';
+import PageHeader from '../../components/Common/PageHeader';
+import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
 
 const OrderList = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -275,51 +277,91 @@ const OrderList = () => {
         <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: '100%', mx: 'auto' }}>
             {/* Loading bar - non-blocking, keeps component mounted */}
             {isLoading && <LinearProgress sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 2000 }} />}
-            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} mb={{ xs: 2, sm: 4 }} spacing={2}>
-                <Box>
-                    <Typography variant="h4" fontWeight="900" sx={{
-                        fontSize: { xs: '1.5rem', sm: '2.125rem' },
-                        textTransform: 'uppercase',
-                        background: 'linear-gradient(45deg, #1e4b9b 30%, #0f2b5b 90%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        letterSpacing: '0.5px',
-                        textShadow: '0 2px 10px rgba(15, 43, 91, 0.2)'
-                    }}>
-                        QUẢN LÝ ĐẶT HÀNG
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.875rem', sm: '1rem' }, mt: 0.5 }}>Quản lý yêu cầu đặt hàng từ các đơn vị</Typography>
-                </Box>
-                <Stack direction="row" spacing={1} alignItems="center" width={{ xs: '100%', sm: 'auto' }} flexWrap="wrap" useFlexGap sx={{ gap: 1 }}>
-                    {canDelete && selectedOrderIds.length > 0 && (
-                        <>
-                            <Button
-                                variant="contained"
-                                color="error"
-                                size="small"
-                                startIcon={<DeleteIcon />}
-                                onClick={handleBulkDelete}
-                                sx={{ borderRadius: 2, flex: { xs: 1, sm: 'none' }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                            >
-                                Xóa ({selectedOrderIds.length})
-                            </Button>
-                            {/* Only show 'Approve' if there are pending orders selected */}
-                            {canApprove && selectedOrderIds.some(id => orders.find(o => o.id === id)?.status === 'pending') && (
+            <PageHeader
+                title="QUẢN LÝ ĐẶT HÀNG"
+                subtitle="Quản lý yêu cầu đặt hàng từ các đơn vị và theo dõi tiến độ"
+                icon={<ShoppingCartOutlinedIcon sx={{ color: 'white', fontSize: 28 }} />}
+                gradientType="blue"
+                actions={
+                    <>
+                        {canDelete && selectedOrderIds.length > 0 && (
+                            <>
                                 <Button
                                     variant="contained"
-                                    color="success"
+                                    color="error"
                                     size="small"
-                                    startIcon={bulkApproveLoading ? <CircularProgress size={14} color="inherit" /> : <DoneAllIcon />}
-                                    onClick={handleBulkApprove}
-                                    disabled={bulkApproveLoading}
-                                    sx={{ borderRadius: 2, flex: { xs: 1, sm: 'none' }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                                    startIcon={<DeleteIcon />}
+                                    onClick={handleBulkDelete}
+                                    sx={{ 
+                                        borderRadius: '12px', 
+                                        textTransform: 'none', 
+                                        fontWeight: 700, 
+                                        px: 2, 
+                                        py: 1,
+                                        boxShadow: '0 8px 20px -6px rgba(239, 68, 68, 0.4)'
+                                    }}
                                 >
-                                    {bulkApproveLoading ? 'Đang duyệt...' : 'Duyệt'}
+                                    Xóa ({selectedOrderIds.length})
                                 </Button>
-                            )}
-                        </>
-                    )}
+                                {canApprove && selectedOrderIds.some(id => orders.find(o => o.id === id)?.status === 'pending') && (
+                                    <Button
+                                        variant="contained"
+                                        color="success"
+                                        size="small"
+                                        startIcon={bulkApproveLoading ? <CircularProgress size={14} color="inherit" /> : <DoneAllIcon />}
+                                        onClick={handleBulkApprove}
+                                        disabled={bulkApproveLoading}
+                                        sx={{ 
+                                            borderRadius: '12px', 
+                                            textTransform: 'none', 
+                                            fontWeight: 700, 
+                                            px: 2, 
+                                            py: 1,
+                                            boxShadow: '0 8px 20px -6px rgba(16, 185, 129, 0.4)'
+                                        }}
+                                    >
+                                        {bulkApproveLoading ? 'Đang duyệt...' : 'Duyệt'}
+                                    </Button>
+                                )}
+                            </>
+                        )}
+                        {canCreate && (
+                            <Button
+                                variant="contained"
+                                size="small"
+                                startIcon={<AddIcon />}
+                                onClick={handleOpenAdd}
+                                sx={{ 
+                                    px: 2.5, 
+                                    py: 1.2, 
+                                    borderRadius: '12px', 
+                                    whiteSpace: 'nowrap', 
+                                    fontWeight: 800,
+                                    bgcolor: '#ffffff',
+                                    color: '#2563eb',
+                                    '&:hover': { bgcolor: '#f8fafc', transform: 'translateY(-1px)' }
+                                }}
+                            >
+                                Tạo mới
+                            </Button>
+                        )}
+                    </>
+                }
+            />
 
+            {/* Filter and Search controls bar */}
+            <Paper elevation={0} sx={{ 
+                mb: 3, 
+                p: 2, 
+                borderRadius: '16px', 
+                display: 'flex', 
+                gap: 2, 
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                border: '1px solid #e2e8f0',
+                bgcolor: 'white'
+            }}>
+                <Stack direction="row" spacing={2} sx={{ width: { xs: '100%', md: 'auto' }, flexGrow: 1 }}>
                     <TextField
                         size="small"
                         type="date"
@@ -327,7 +369,7 @@ const OrderList = () => {
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
                         InputLabelProps={{ shrink: true }}
-                        sx={{ bgcolor: 'white', borderRadius: 2, width: { xs: '48%', sm: 'auto' } }}
+                        sx={{ bgcolor: '#f8fafc', '& fieldset': { border: 'none' }, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
                     />
                     <TextField
                         size="small"
@@ -336,37 +378,35 @@ const OrderList = () => {
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
                         InputLabelProps={{ shrink: true }}
-                        sx={{ bgcolor: 'white', borderRadius: 2, width: { xs: '48%', sm: 'auto' } }}
+                        sx={{ bgcolor: '#f8fafc', '& fieldset': { border: 'none' }, '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
                     />
-                    <TextField
-                        size="small"
-                        placeholder="Tìm kiếm..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        InputProps={{
-                            startAdornment: (
-                                <InputAdornment position="start">
-                                    <SearchIcon color="action" />
-                                </InputAdornment>
-                            ),
-                            endAdornment: <VoiceSearchButton onResult={setSearchTerm} />,
-                            sx: { borderRadius: 2, bgcolor: 'white', fontSize: { xs: '0.8rem', sm: '1rem' } }
-                        }}
-                        sx={{ flex: { xs: 1, sm: 'none' }, minWidth: '150px' }}
-                    />
-                    {canCreate && (
-                        <Button
-                            variant="contained"
-                            size="small"
-                            startIcon={<AddIcon />}
-                            onClick={handleOpenAdd}
-                            sx={{ px: 2, py: 1, borderRadius: 2, whiteSpace: 'nowrap', flex: { xs: 1, sm: 'none' }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
-                        >
-                            Tạo mới
-                        </Button>
-                    )}
                 </Stack>
-            </Stack>
+                <TextField
+                    size="small"
+                    placeholder="Tìm kiếm theo nhân viên, vật tư..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <SearchIcon color="action" />
+                            </InputAdornment>
+                        ),
+                        endAdornment: <VoiceSearchButton onResult={setSearchTerm} />,
+                        sx: { border: 'none', bgcolor: '#f8fafc', fontSize: '0.9rem' }
+                    }}
+                    sx={{ 
+                        flexGrow: 1,
+                        width: { xs: '100%', md: '300px' },
+                        '& .MuiOutlinedInput-root': { 
+                            '& fieldset': { border: 'none' }, 
+                            '&:hover fieldset': { border: 'none' },
+                            '&.Mui-focused fieldset': { border: '1px solid #2563eb' },
+                            borderRadius: '10px'
+                        }
+                    }}
+                />
+            </Paper>
 
 
 
