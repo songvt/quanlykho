@@ -58,6 +58,12 @@ export default function AIChatbot() {
         scrollToBottom();
     }, [messages, isTyping]);
 
+    useEffect(() => {
+        const handleOpenChat = () => setOpen(true);
+        window.addEventListener('open-ai-chatbot', handleOpenChat);
+        return () => window.removeEventListener('open-ai-chatbot', handleOpenChat);
+    }, []);
+
     const handleSend = async (text: string = input) => {
         if (!text.trim()) return;
 
