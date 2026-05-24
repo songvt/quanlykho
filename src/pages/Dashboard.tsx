@@ -14,16 +14,6 @@ import {
     ErrorOutline as ErrorIcon,
     LocalShippingOutlined as ShippingIcon,
     RefreshOutlined as RefreshIcon,
-    FolderSpecialOutlined as AdminIcon,
-    PeopleAltOutlined as HRIcon,
-    SpeedOutlined as OperationsIcon,
-    BusinessOutlined as SalesIcon,
-    CampaignOutlined as MarketingIcon,
-    AccountBalanceWalletOutlined as FinanceIcon,
-    ShoppingCartOutlined as ProcurementIcon,
-    FactoryOutlined as ProductionIcon,
-    AssessmentOutlined as ExecutiveIcon,
-    LayersOutlined as SystemIcon,
     AutoAwesomeOutlined as AIIcon,
     CopyrightOutlined as CopyrightIcon,
     StarBorder as StarBorderIcon,
@@ -31,6 +21,16 @@ import {
     Close as CloseIcon,
     SupportAgent as SupportAgentIcon,
     InfoOutlined as InfoIcon,
+    DevicesOther as DevicesIcon,
+    FactCheckOutlined as FactCheckIcon,
+    AssessmentOutlined as AssessmentIcon,
+    KeyboardReturnOutlined as InputIcon,
+    QrCode2 as QrCodeIcon,
+    ShoppingCartOutlined as OrderIcon,
+    AssignmentReturnOutlined as ReturnIcon,
+    HistoryOutlined as HistoryIcon,
+    PeopleOutline as PeopleIcon,
+    SettingsOutlined as SettingsIcon,
 } from '@mui/icons-material';
 import {
     XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
@@ -169,95 +169,128 @@ const MetricCard = ({ title, value, subtitle, icon, color, trend, onClick }: any
 // ─── Functional Modules Data ───
 const modulesData = [
     {
-        id: 'administrative',
-        title: 'Hành chính',
-        desc: 'Công văn, hợp đồng, văn thư lưu trữ.',
-        color: '#f97316', // Orange
-        icon: <AdminIcon sx={{ fontSize: 28 }} />,
-        type: 'placeholder'
-    },
-    {
-        id: 'hr',
-        title: 'Nhân sự',
-        desc: 'Tuyển dụng, đào tạo, chấm công, lương.',
-        color: '#0d9488', // Teal
-        icon: <HRIcon sx={{ fontSize: 28 }} />,
-        type: 'route',
-        path: '/employees'
-    },
-    {
-        id: 'operations',
-        title: 'Vận hành',
-        desc: 'Quản lý vận hành, giám sát và quy trình.',
+        id: 'assets',
+        title: 'Tài sản',
+        desc: 'Quản lý công cụ dụng cụ, thiết bị văn phòng, bàn giao CCDC.',
         color: '#0284c7', // Sky Blue
-        icon: <OperationsIcon sx={{ fontSize: 28 }} />,
-        type: 'placeholder'
-    },
-    {
-        id: 'sales',
-        title: 'Kinh doanh',
-        desc: 'Bán hàng, khách hàng, cơ hội và báo cáo kinh doanh.',
-        color: '#2563eb', // Royal Blue
-        icon: <SalesIcon sx={{ fontSize: 28 }} />,
+        icon: <DevicesIcon sx={{ fontSize: 28 }} />,
         type: 'route',
-        path: '/orders'
+        path: '/assets'
     },
     {
-        id: 'marketing',
-        title: 'Marketing',
-        desc: 'Chiến dịch, khách hàng, báo cáo marketing.',
-        color: '#db2777', // Pink
-        icon: <MarketingIcon sx={{ fontSize: 28 }} />,
-        type: 'placeholder'
+        id: 'products',
+        title: 'Hàng hóa',
+        desc: 'Quản lý danh mục hàng hóa, vật tư, tồn kho tối thiểu.',
+        color: '#0d9488', // Teal
+        icon: <InventoryIcon sx={{ fontSize: 28 }} />,
+        type: 'route',
+        path: '/products'
     },
     {
-        id: 'finance',
-        title: 'Tài chính',
-        desc: 'Kế toán, ngân sách, báo cáo tài chính.',
+        id: 'audit',
+        title: 'Kiểm kê kho',
+        desc: 'Tạo phiếu kiểm kê, đối soát số lượng tồn kho thực tế.',
+        color: '#4f46e5', // Indigo
+        icon: <FactCheckIcon sx={{ fontSize: 28 }} />,
+        type: 'route',
+        path: '/audit'
+    },
+    {
+        id: 'settlement',
+        title: 'Quyết toán',
+        desc: 'Quyết toán vật tư, hàng hóa, đối chiếu chênh lệch XNT.',
         color: '#7c3aed', // Purple
-        icon: <FinanceIcon sx={{ fontSize: 28 }} />,
+        icon: <AssessmentIcon sx={{ fontSize: 28 }} />,
         type: 'route',
         path: '/goods-settlement'
     },
     {
-        id: 'procurement',
-        title: 'Mua hàng',
-        desc: 'Đề xuất vật tư, đơn đặt hàng, đối tác.',
-        color: '#ea580c', // Orange-Red
-        icon: <ProcurementIcon sx={{ fontSize: 28 }} />,
+        id: 'inbound',
+        title: 'Nhập kho',
+        desc: 'Thực hiện nhập kho vật tư, thiết bị, quản lý số phiếu nhập.',
+        color: '#16a34a', // Green
+        icon: <InputIcon sx={{ fontSize: 28 }} />,
+        type: 'route',
+        path: '/inbound'
+    },
+    {
+        id: 'qr-generator',
+        title: 'Tạo QR code',
+        desc: 'Tạo nhãn mã QR chuẩn, phân tách serial tự động.',
+        color: '#2563eb', // Royal Blue
+        icon: <QrCodeIcon sx={{ fontSize: 28 }} />,
+        type: 'route',
+        path: '/qr-generator'
+    },
+    {
+        id: 'qr-generator-hcm',
+        title: 'Tạo QR code CN_HCM',
+        desc: 'Tạo tem nhãn mã QR riêng biệt cho chi nhánh Hồ Chí Minh.',
+        color: '#1e3a8a', // Deep Blue
+        icon: <QrCodeIcon sx={{ fontSize: 28 }} />,
+        type: 'route',
+        path: '/qr-generator-hcm'
+    },
+    {
+        id: 'orders',
+        title: 'Đặt hàng',
+        desc: 'Đăng ký đặt hàng, theo dõi tiến độ phê duyệt đơn hàng.',
+        color: '#f97316', // Orange
+        icon: <OrderIcon sx={{ fontSize: 28 }} />,
         type: 'route',
         path: '/orders'
     },
     {
-        id: 'production',
-        title: 'Sản xuất',
-        desc: 'Kế hoạch sản xuất, quản lý sản xuất.',
-        color: '#16a34a', // Green
-        icon: <ProductionIcon sx={{ fontSize: 28 }} />,
-        type: 'placeholder'
+        id: 'outbound',
+        title: 'Xuất kho',
+        desc: 'Thực hiện xuất kho vật tư, thiết bị cho nhân viên kỹ thuật.',
+        color: '#ea580c', // Orange-Red
+        icon: <ShippingIcon sx={{ fontSize: 28 }} />,
+        type: 'route',
+        path: '/outbound'
     },
     {
-        id: 'logistics',
-        title: 'Kho vận',
-        desc: 'Tồn kho, xuất nhập kho, vận chuyển.',
-        color: '#0ea5e9', // Sky Teal / Deep Blue
-        icon: <InventoryIcon sx={{ fontSize: 28 }} />,
-        type: 'active'
+        id: 'employee-returns',
+        title: 'Trả hàng',
+        desc: 'Tiếp nhận thiết bị thu hồi từ nhân viên, khách hàng trả lại.',
+        color: '#db2777', // Pink
+        icon: <ReturnIcon sx={{ fontSize: 28 }} />,
+        type: 'route',
+        path: '/employee-returns'
     },
     {
-        id: 'executive',
-        title: 'Điều hành',
-        desc: 'Điều hành, giám sát và vận hành.',
+        id: 'reports',
+        title: 'Báo cáo',
+        desc: 'Xuất file báo cáo bàn giao, biểu mẫu Excel, PDF in ấn.',
         color: '#0891b2', // Cyan
-        icon: <ExecutiveIcon sx={{ fontSize: 28 }} />,
-        type: 'placeholder'
+        icon: <AssessmentIcon sx={{ fontSize: 28 }} />,
+        type: 'route',
+        path: '/reports'
     },
     {
-        id: 'system',
-        title: 'Hệ thống',
-        desc: 'Cấu hình, phân quyền và nhân sự.',
+        id: 'action-history',
+        title: 'Lịch sử tác động',
+        desc: 'Nhật ký ghi nhận lịch sử thao tác của các tài khoản.',
         color: '#4b5563', // Slate
-        icon: <SystemIcon sx={{ fontSize: 28 }} />,
+        icon: <HistoryIcon sx={{ fontSize: 28 }} />,
+        type: 'route',
+        path: '/action-history'
+    },
+    {
+        id: 'employees',
+        title: 'Nhân viên',
+        desc: 'Quản lý danh sách nhân viên kỹ thuật, phân quyền tài khoản.',
+        color: '#10b981', // Emerald
+        icon: <PeopleIcon sx={{ fontSize: 28 }} />,
+        type: 'route',
+        path: '/employees'
+    },
+    {
+        id: 'settings',
+        title: 'Thiết lập',
+        desc: 'Cấu hình tham số hệ thống, RLS bảo mật cơ sở dữ liệu.',
+        color: '#6b7280', // Gray
+        icon: <SettingsIcon sx={{ fontSize: 28 }} />,
         type: 'route',
         path: '/settings'
     },
@@ -293,8 +326,8 @@ const Dashboard = () => {
 
     // Premium Portal Dashboard Menu States
     const [activeMenuTab, setActiveMenuTab] = useState(0); // 0: Chức năng, 1: Đánh dấu, 2: Tất cả
-    const [markedModules, setMarkedModules] = useState<string[]>(['logistics', 'ai', 'system']);
-    const [selectedModule, setSelectedModule] = useState<string | null>('logistics'); // "Kho vận" active by default
+    const [markedModules, setMarkedModules] = useState<string[]>(['products', 'inbound', 'outbound', 'ai']);
+    const [selectedModule, setSelectedModule] = useState<string | null>(null);
     const [placeholderModule, setPlaceholderModule] = useState<string | null>(null);
     const [copyrightOpen, setCopyrightOpen] = useState(false);
 
@@ -702,22 +735,21 @@ const Dashboard = () => {
                 })}
             </Grid>
 
-            {/* ── DYNAMIC logistics stats section (Active only when "Kho vận" is selected) ── */}
-            {selectedModule === 'logistics' && (
-                <Box sx={{ 
-                    position: 'relative', 
-                    zIndex: 1,
-                    animation: 'fadeInUpPanel 0.75s cubic-bezier(0.16, 1, 0.3, 1)',
-                    '@keyframes fadeInUpPanel': {
-                        from: { opacity: 0, transform: 'translateY(25px)' },
-                        to: { opacity: 1, transform: 'translateY(0)' }
-                    }
-                }}>
-                    <Divider sx={{ my: 5, borderColor: '#e2e8f0' }} />
+            {/* ── DYNAMIC logistics stats section ── */}
+            <Box sx={{ 
+                position: 'relative', 
+                zIndex: 1,
+                animation: 'fadeInUpPanel 0.75s cubic-bezier(0.16, 1, 0.3, 1)',
+                '@keyframes fadeInUpPanel': {
+                    from: { opacity: 0, transform: 'translateY(25px)' },
+                    to: { opacity: 1, transform: 'translateY(0)' }
+                }
+            }}>
+                <Divider sx={{ my: 5, borderColor: '#e2e8f0' }} />
 
-                    <Typography variant="h5" sx={{ fontWeight: 800, color: '#0f172a', mb: 3, letterSpacing: '-0.5px' }}>
-                        📊 Báo cáo kho vận thời gian thực
-                    </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 800, color: '#0f172a', mb: 3, letterSpacing: '-0.5px' }}>
+                    📊 Báo cáo kho vận thời gian thực
+                </Typography>
 
                     {/* Premium Metric Grid */}
                     <Grid container spacing={3} mb={4}>
@@ -945,7 +977,6 @@ const Dashboard = () => {
                         </Grid>
                     </Grid>
                 </Box>
-            )}
 
             {/* ── Dialog 1: Placeholder "Coming soon" Module ── */}
             <Dialog
