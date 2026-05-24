@@ -19,88 +19,109 @@ export default function VoiceSearchButton({ onResult, isAdornment = true }: Voic
         onResultRef.current = onResult;
     }, [onResult]);
 
+    // Clean up recognition instance on unmount
     useEffect(() => {
-        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-        
-        if (!SpeechRecognition) {
-            return;
-        }
-
-        const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'vi-VN';
-
-        recognition.onstart = () => {
-            setIsListening(true);
-        };
-
-        recognition.onresult = (event: any) => {
-            const transcript = event.results[0][0].transcript;
-            if (transcript) {
-                onResultRef.current(transcript);
-                notifyInfo(`Nhận diện: "${transcript}"`);
-            }
-            setIsListening(false);
-        };
-
-        recognition.onerror = (event: any) => {
-            console.error('Speech recognition error', event.error);
-            setIsListening(false);
-            
-            switch (event.error) {
-                case 'not-allowed':
-                    notifyError('Quyền truy cập micro bị từ chối. Vui lòng kiểm tra cài đặt trình duyệt.');
-                    break;
-                case 'no-speech':
-                    // Silent fail for no speech is usually better UX
-                    break;
-                case 'network':
-                    notifyError('Lỗi kết nối mạng khi nhận diện giọng nói.');
-                    break;
-                default:
-                    notifyError('Lỗi nhận diện giọng nói: ' + event.error);
-            }
-        };
-
-        recognition.onend = () => {
-            setIsListening(false);
-        };
-
-        recognitionRef.current = recognition;
-
         return () => {
             if (recognitionRef.current) {
                 try {
-                    recognitionRef.current.stop();
+                    recognitionRef.current.abort();
                 } catch (e) {
                     // Ignore errors during cleanup
                 }
             }
         };
-    }, [notifyError, notifyInfo]);
+    }, []);
 
-    const toggleListen = useCallback(() => {
-        if (!recognitionRef.current) {
-            notifyError('Trình duyệt của bạn không hỗ trợ hoặc chưa sẵn sàng cho nhận diện giọng nói.');
+    const stopListening = useCallback(() => {
+        if (recognitionRef.current) {
+            try {
+                recognitionRef.current.abort();
+            } catch (e) {
+                console.error('Failed to abort speech recognition:', e);
+            }
+            recognitionRef.current = null;
+        }
+        setIsListening(false);
+    }, []);
+
+    const startListening = useCallback(() => {
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        
+        if (!SpeechRecognition) {
+            notifyError('Trình duyệt của bạn không hỗ trợ nhận diện giọng nói.');
             return;
         }
 
-        if (isListening) {
-            recognitionRef.current.stop();
-        } else {
+        // Clean up any existing instance first
+        if (recognitionRef.current) {
             try {
-                recognitionRef.current.start();
-            } catch (err: any) {
-                if (err.name === 'InvalidStateError') {
-                    // Already started, ignore
-                } else {
-                    console.error(err);
-                    notifyError('Không thể khởi động nhận diện giọng nói.');
-                }
-            }
+                recognitionRef.current.abort();
+            } catch (e) {}
         }
-    }, [isListening, notifyError]);
+
+        try {
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'vi-VN';
+
+            recognition.onstart = () => {
+                setIsListening(true);
+            };
+
+            recognition.onresult = (event: any) => {
+                const transcript = event.results[0][0].transcript;
+                if (transcript) {
+                    onResultRef.current(transcript);
+                    notifyInfo(`Nhận diện: "${transcript}"`);
+                }
+                stopListening();
+            };
+
+            recognition.onerror = (event: any) => {
+                console.error('Speech recognition error', event.error);
+                stopListening();
+                
+                switch (event.error) {
+                    case 'not-allowed':
+                        notifyError('Quyền truy cập micro bị từ chối. Vui lòng kiểm tra cài đặt trình duyệt.');
+                        break;
+                    case 'no-speech':
+                        // Silent fail for no speech is usually better UX
+                        break;
+                    case 'network':
+                        notifyError('Lỗi kết nối mạng khi nhận diện giọng nói.');
+                        break;
+                    case 'aborted':
+                        // Manual abort, ignore
+                        break;
+                    default:
+                        notifyError('Lỗi nhận diện giọng nói: ' + event.error);
+                }
+            };
+
+            recognition.onend = () => {
+                setIsListening(false);
+                recognitionRef.current = null;
+            };
+
+            recognitionRef.current = recognition;
+            recognition.start();
+        } catch (err: any) {
+            console.error('Failed to start speech recognition:', err);
+            notifyError('Không thể khởi động nhận diện giọng nói.');
+            setIsListening(false);
+            recognitionRef.current = null;
+        }
+    }, [notifyError, notifyInfo, stopListening]);
+
+    const toggleListen = useCallback(() => {
+        if (isListening) {
+            stopListening();
+        } else {
+            startListening();
+        }
+    }, [isListening, startListening, stopListening]);
 
     const hasSupport = !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
     
