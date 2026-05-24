@@ -81,7 +81,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
             }}
         >
             <Grid container spacing={2} alignItems="center" justifyContent="space-between">
-                <Grid item xs={12} md={actions ? 7 : 12}>
+                <Grid size={{ xs: 12, md: actions ? 7 : 12 }}>
                     <Stack direction="row" spacing={2.5} alignItems="center">
                         {icon && (
                             <Box
@@ -133,7 +133,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({
                     </Stack>
                 </Grid>
                 {actions && (
-                    <Grid item xs={12} md={5} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
+                    <Grid size={{ xs: 12, md: 5 }} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
                         <Stack direction="row" spacing={1.5} flexWrap="wrap" gap={1} width={{ xs: '100%', sm: 'auto' }}>
                             {actions}
                         </Stack>

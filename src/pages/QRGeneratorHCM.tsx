@@ -597,7 +597,7 @@ const QRGeneratorHCM = () => {
                 }}
             >
                 <Grid container spacing={2} alignItems="center" justifyContent="space-between">
-                    <Grid item xs={12} md={8}>
+                    <Grid size={{ xs: 12, md: 8 }}>
                         <Stack direction="row" spacing={2} alignItems="center">
                             <Box 
                                 sx={{ 
@@ -650,7 +650,7 @@ const QRGeneratorHCM = () => {
                             </Box>
                         </Stack>
                     </Grid>
-                    <Grid item xs={12} md={4} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
+                    <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
                         <Stack direction="row" spacing={1.5} flexWrap="wrap" gap={1}>
                             <Button 
                                 variant="contained" 
@@ -702,7 +702,7 @@ const QRGeneratorHCM = () => {
             {/* ── Dashboard Stats Widget (Premium Themed Cards) ── */}
             {dataRows.length > 0 && (
                 <Grid container spacing={2.5} mb={4}>
-                    <Grid item xs={12} sm={4}>
+                    <Grid size={{ xs: 12, sm: 4 }}>
                         <Card 
                             sx={{ 
                                 border: '1px solid #e2e8f0', 
@@ -729,7 +729,7 @@ const QRGeneratorHCM = () => {
                         </Card>
                     </Grid>
 
-                    <Grid item xs={12} sm={4}>
+                    <Grid size={{ xs: 12, sm: 4 }}>
                         <Card 
                             sx={{ 
                                 border: '1px solid #e2e8f0', 
@@ -756,7 +756,7 @@ const QRGeneratorHCM = () => {
                         </Card>
                     </Grid>
 
-                    <Grid item xs={12} sm={4}>
+                    <Grid size={{ xs: 12, sm: 4 }}>
                         <Card 
                             sx={{ 
                                 border: '1px solid #e2e8f0', 
@@ -789,7 +789,7 @@ const QRGeneratorHCM = () => {
             <Grid container spacing={3.5} mb={4}>
                 
                 {/* ── Data Input Card ── */}
-                <Grid item xs={12} lg={7}>
+                <Grid size={{ xs: 12, lg: 7 }}>
                     <Paper 
                         elevation={0} 
                         sx={{ 
@@ -890,7 +890,7 @@ const QRGeneratorHCM = () => {
                                     </Box>
 
                                     <Grid container spacing={2}>
-                                        <Grid item xs={12} sm={6}>
+                                        <Grid size={{ xs: 12, sm: 6 }}>
                                             <TextField 
                                                 fullWidth 
                                                 label="THÙNG" 
@@ -900,7 +900,7 @@ const QRGeneratorHCM = () => {
                                                 InputProps={{ sx: { borderRadius: '10px' } }}
                                             />
                                         </Grid>
-                                        <Grid item xs={12} sm={6}>
+                                        <Grid size={{ xs: 12, sm: 6 }}>
                                             <TextField 
                                                 fullWidth 
                                                 label="Thiết bị" 
@@ -910,7 +910,7 @@ const QRGeneratorHCM = () => {
                                                 InputProps={{ sx: { borderRadius: '10px' } }}
                                             />
                                         </Grid>
-                                        <Grid item xs={12} sm={6}>
+                                        <Grid size={{ xs: 12, sm: 6 }}>
                                             <TextField 
                                                 fullWidth 
                                                 label="Tình Trạng" 
@@ -920,7 +920,7 @@ const QRGeneratorHCM = () => {
                                                 InputProps={{ sx: { borderRadius: '10px' } }}
                                             />
                                         </Grid>
-                                        <Grid item xs={12} sm={6}>
+                                        <Grid size={{ xs: 12, sm: 6 }}>
                                             <TextField 
                                                 fullWidth 
                                                 label="Tiêu đề tem" 
@@ -930,7 +930,7 @@ const QRGeneratorHCM = () => {
                                                 InputProps={{ sx: { borderRadius: '10px' } }}
                                             />
                                         </Grid>
-                                        <Grid item xs={12}>
+                                        <Grid size={{ xs: 12 }}>
                                             <TextField 
                                                 fullWidth 
                                                 label="Danh Sách Serials (QR)" 
@@ -943,7 +943,7 @@ const QRGeneratorHCM = () => {
                                                 InputProps={{ sx: { borderRadius: '12px' } }}
                                             />
                                         </Grid>
-                                        <Grid item xs={12}>
+                                        <Grid size={{ xs: 12 }}>
                                             <Button 
                                                 fullWidth 
                                                 variant="contained" 
@@ -969,7 +969,7 @@ const QRGeneratorHCM = () => {
                 </Grid>
 
                 {/* ── Rules & Specification ── */}
-                <Grid item xs={12} lg={5}>
+                <Grid size={{ xs: 12, lg: 5 }}>
                     <Paper 
                         elevation={0} 
                         sx={{ 
