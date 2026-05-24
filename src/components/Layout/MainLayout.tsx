@@ -112,7 +112,7 @@ const MainLayout: React.FC = () => {
 
     const menuItems = [
         ...(profile?.role === 'admin' || (profile?.role === 'staff' && (!profile.permissions || profile.permissions.length === 0)) ? [
-            { text: 'Dashboard', icon: <DashboardIcon />, path: '/' }
+            { text: 'Trang chủ', icon: <DashboardIcon />, path: '/' }
         ] : []),
         ...(hasAnyPermission(['assets.view', 'assets.manage', 'assets.list_only', '*']) ? [
             { text: 'Tài sản', icon: <DevicesOtherIcon />, path: '/assets' }
@@ -501,7 +501,7 @@ const MainLayout: React.FC = () => {
                                     Quản lý kho
                                  </Typography>
                                  <Typography sx={{ color: '#0f172a', fontWeight: 600, fontSize: '0.875rem' }}>
-                                     {currentMenuItem?.text || 'Dashboard'}
+                                     {currentMenuItem?.text || 'Trang chủ'}
                                  </Typography>
                              </Breadcrumbs>
                         </Box>
