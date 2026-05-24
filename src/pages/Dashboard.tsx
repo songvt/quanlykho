@@ -178,13 +178,13 @@ const modulesData = [
         icon: <DevicesIcon sx={{ fontSize: 28 }} />,
         type: 'submenu',
         submenus: [
-            { title: 'Danh sách tài sản', path: '/assets', desc: 'Quản lý danh sách, thông tin tài sản.' },
-            { title: 'Bàn giao CCDC-BHLĐ', path: '/assets/handover-bhl', desc: 'Bàn giao công cụ dụng cụ, bảo hộ lao động.' },
-            { title: 'Báo cáo CCDC-TSNT', path: '/assets/report-ccdc', desc: 'Báo cáo tổng hợp công cụ dụng cụ.' },
-            { title: 'Chi tiết CCDC-TSNT', path: '/assets/detail-ccdc', desc: 'Chi tiết tài sản công cụ dụng cụ.' },
-            { title: 'Báo cáo TBVP', path: '/assets/report-tbvp', desc: 'Báo cáo tổng hợp thiết bị văn phòng.' },
-            { title: 'Chi tiết TBVP', path: '/assets/detail-tbvp', desc: 'Chi tiết thiết bị văn phòng.' },
-            { title: 'Báo cáo hỏng', path: '/assets/broken-report', desc: 'Báo cáo công cụ dụng cụ hỏng.' }
+            { title: 'Danh sách tài sản', path: '/assets', desc: 'Quản lý danh sách, thông tin tài sản.', icon: <DevicesIcon sx={{ fontSize: 20 }} /> },
+            { title: 'Bàn giao CCDC-BHLĐ', path: '/assets/handover-bhl', desc: 'Bàn giao công cụ dụng cụ, bảo hộ lao động.', icon: <ReturnIcon sx={{ fontSize: 20 }} /> },
+            { title: 'Báo cáo CCDC-TSNT', path: '/assets/report-ccdc', desc: 'Báo cáo tổng hợp công cụ dụng cụ.', icon: <AssessmentIcon sx={{ fontSize: 20 }} /> },
+            { title: 'Chi tiết CCDC-TSNT', path: '/assets/detail-ccdc', desc: 'Chi tiết tài sản công cụ dụng cụ.', icon: <InfoIcon sx={{ fontSize: 20 }} /> },
+            { title: 'Báo cáo TBVP', path: '/assets/report-tbvp', desc: 'Báo cáo tổng hợp thiết bị văn phòng.', icon: <AssessmentIcon sx={{ fontSize: 20 }} /> },
+            { title: 'Chi tiết TBVP', path: '/assets/detail-tbvp', desc: 'Chi tiết thiết bị văn phòng.', icon: <InfoIcon sx={{ fontSize: 20 }} /> },
+            { title: 'Báo cáo hỏng', path: '/assets/broken-report', desc: 'Báo cáo công cụ dụng cụ hỏng.', icon: <WarningIcon sx={{ fontSize: 20 }} /> }
         ]
     },
     {
@@ -213,10 +213,10 @@ const modulesData = [
         icon: <AssessmentIcon sx={{ fontSize: 28 }} />,
         type: 'submenu',
         submenus: [
-            { title: 'Báo cáo 17 - XNT', path: '/inventory-report', desc: 'Báo cáo Xuất - Nhập - Tồn.' },
-            { title: 'Báo cáo Xuất trong kỳ', path: '/detailed-outbound-report', desc: 'Chi tiết tình hình xuất kho.' },
-            { title: 'Quyết toán vật tư', path: '/monthly-settlement', desc: 'Đối chiếu chênh lệch vật tư.' },
-            { title: 'Quyết toán hàng hóa', path: '/goods-settlement', desc: 'Quyết toán chênh lệch hàng hóa.' }
+            { title: 'Báo cáo 17 - XNT', path: '/inventory-report', desc: 'Báo cáo Xuất - Nhập - Tồn.', icon: <TrendingUpIcon sx={{ fontSize: 20 }} /> },
+            { title: 'Báo cáo Xuất trong kỳ', path: '/detailed-outbound-report', desc: 'Chi tiết tình hình xuất kho.', icon: <ShippingIcon sx={{ fontSize: 20 }} /> },
+            { title: 'Quyết toán vật tư', path: '/monthly-settlement', desc: 'Đối chiếu chênh lệch vật tư.', icon: <FactCheckIcon sx={{ fontSize: 20 }} /> },
+            { title: 'Quyết toán hàng hóa', path: '/goods-settlement', desc: 'Quyết toán chênh lệch hàng hóa.', icon: <InventoryIcon sx={{ fontSize: 20 }} /> }
         ]
     },
     {
@@ -1007,112 +1007,132 @@ const Dashboard = () => {
                     </Grid>
                 </Box>
 
-            {/* ── Submenu Popover for Assets & Settlement ── */}
-            <Popover
-                open={Boolean(submenuAnchorEl) && Boolean(activeSubmenuModule)}
-                anchorEl={submenuAnchorEl}
+            {/* ── Submenu Dialog for Assets & Settlement ── */}
+            <Dialog
+                open={Boolean(activeSubmenuModule)}
                 onClose={() => {
-                    setSubmenuAnchorEl(null);
                     setActiveSubmenuModule(null);
-                }}
-                anchorOrigin={{
-                    vertical: 'bottom',
-                    horizontal: 'center',
-                }}
-                transformOrigin={{
-                    vertical: 'top',
-                    horizontal: 'center',
                 }}
                 PaperProps={{
                     sx: {
-                        mt: 1.5,
-                        borderRadius: '24px',
-                        border: '1px solid rgba(226, 232, 240, 0.8)',
-                        boxShadow: '0 20px 40px -15px rgba(15, 23, 42, 0.1)',
-                        width: '320px',
-                        overflow: 'hidden',
+                        borderRadius: '32px',
+                        p: 3.5,
+                        width: '750px',
+                        maxWidth: '95%',
                         bgcolor: 'rgba(255, 255, 255, 0.95)',
                         backdropFilter: 'blur(20px)',
+                        boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.12)',
+                        border: '1px solid rgba(226, 232, 240, 0.8)',
                     }
                 }}
             >
                 {activeSubmenuModule && (
-                    <Box sx={{ p: 1.5 }}>
-                        <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <Box sx={{
-                                width: 36,
-                                height: 36,
-                                borderRadius: '10px',
-                                bgcolor: activeSubmenuModule.color,
-                                color: 'white',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}>
-                                {React.cloneElement(activeSubmenuModule.icon as React.ReactElement<any>, { sx: { fontSize: 18 } })}
+                    <Box>
+                        {/* Header */}
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Box sx={{
+                                    width: 48,
+                                    height: 48,
+                                    borderRadius: '16px',
+                                    bgcolor: activeSubmenuModule.color,
+                                    color: 'white',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    boxShadow: `0 6px 16px ${alpha(activeSubmenuModule.color, 0.2)}`
+                                }}>
+                                    {React.cloneElement(activeSubmenuModule.icon as React.ReactElement<any>, { sx: { fontSize: 24 } })}
+                                </Box>
+                                <Box>
+                                    <Typography variant="h5" sx={{ fontWeight: 900, color: '#0f172a', letterSpacing: '-0.5px' }}>
+                                        {activeSubmenuModule.title}
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 600 }}>
+                                        Phân hệ chức năng chi tiết
+                                    </Typography>
+                                </Box>
                             </Box>
-                            <Box>
-                                <Typography sx={{ fontWeight: 800, color: '#0f172a', fontSize: '0.95rem', letterSpacing: '-0.2px' }}>
-                                    {activeSubmenuModule.title}
-                                </Typography>
-                                <Typography sx={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>
-                                    Chọn chức năng con để tiếp tục
-                                </Typography>
-                            </Box>
+                            <IconButton 
+                                onClick={() => setActiveSubmenuModule(null)}
+                                sx={{ 
+                                    bgcolor: '#f1f5f9', 
+                                    color: '#64748b', 
+                                    '&:hover': { bgcolor: '#e2e8f0', color: '#0f172a' } 
+                                }}
+                            >
+                                <CloseIcon />
+                            </IconButton>
                         </Box>
-                        
-                        <Divider sx={{ my: 1, borderColor: '#e2e8f0' }} />
-                        
-                        <List sx={{ p: 0 }}>
+
+                        <Divider sx={{ mb: 3.5, borderColor: '#e2e8f0' }} />
+
+                        {/* Grid of Submenu Cards */}
+                        <Grid container spacing={2.5}>
                             {activeSubmenuModule.submenus.map((sub: any) => (
-                                <ListItem key={sub.path} disablePadding sx={{ mb: 0.5 }}>
-                                    <ListItemButton
+                                <Grid size={{ xs: 12, sm: activeSubmenuModule.submenus.length > 4 ? 4 : 6 }} key={sub.path}>
+                                    <Paper
+                                        elevation={0}
                                         onClick={() => {
                                             navigate(sub.path);
-                                            setSubmenuAnchorEl(null);
                                             setActiveSubmenuModule(null);
                                         }}
                                         sx={{
-                                            borderRadius: '12px',
-                                            py: 1,
-                                            px: 2,
-                                            transition: 'all 0.2s',
+                                            p: 3,
+                                            borderRadius: '20px',
+                                            border: '1.5px solid #f1f5f9',
+                                            bgcolor: 'white',
+                                            cursor: 'pointer',
+                                            height: '100%',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'flex-start',
+                                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                             '&:hover': {
-                                                bgcolor: alpha(activeSubmenuModule.color, 0.06),
-                                                '& .sub-icon': {
-                                                    color: activeSubmenuModule.color,
-                                                    transform: 'translateX(3px)'
+                                                transform: 'translateY(-4px)',
+                                                borderColor: alpha(activeSubmenuModule.color, 0.35),
+                                                boxShadow: `0 12px 24px -8px ${alpha(activeSubmenuModule.color, 0.15)}`,
+                                                '& .sub-icon-box': {
+                                                    bgcolor: activeSubmenuModule.color,
+                                                    color: 'white',
+                                                    transform: 'scale(1.05)',
+                                                    boxShadow: `0 4px 12px ${alpha(activeSubmenuModule.color, 0.2)}`
                                                 }
                                             }
                                         }}
                                     >
-                                        <ListItemText
-                                            primary={
-                                                <Typography sx={{ fontWeight: 700, color: '#1e293b', fontSize: '0.85rem' }}>
-                                                    {sub.title}
-                                                </Typography>
-                                            }
-                                            secondary={
-                                                <Typography sx={{ fontSize: '0.75rem', color: '#64748b', mt: 0.2, fontWeight: 500 }}>
-                                                    {sub.desc}
-                                                </Typography>
-                                            }
-                                        />
-                                        <ChevronRightIcon 
-                                            className="sub-icon"
-                                            sx={{ 
-                                                fontSize: 16, 
-                                                color: '#94a3b8', 
-                                                transition: 'all 0.2s' 
-                                            }} 
-                                        />
-                                    </ListItemButton>
-                                </ListItem>
+                                        <Box 
+                                            className="sub-icon-box"
+                                            sx={{
+                                                width: 40,
+                                                height: 40,
+                                                borderRadius: '12px',
+                                                bgcolor: alpha(activeSubmenuModule.color, 0.08),
+                                                color: activeSubmenuModule.color,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                mb: 2,
+                                                transition: 'all 0.25s ease'
+                                            }}
+                                        >
+                                            {sub.icon || activeSubmenuModule.icon}
+                                        </Box>
+                                        
+                                        <Typography sx={{ fontWeight: 800, color: '#1e293b', fontSize: '0.9rem', mb: 0.5, lineHeight: 1.3 }}>
+                                            {sub.title}
+                                        </Typography>
+                                        
+                                        <Typography sx={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500, lineHeight: 1.4 }}>
+                                            {sub.desc}
+                                        </Typography>
+                                    </Paper>
+                                </Grid>
                             ))}
-                        </List>
+                        </Grid>
                     </Box>
                 )}
-            </Popover>
+            </Dialog>
 
             {/* ── Dialog 1: Placeholder "Coming soon" Module ── */}
             <Dialog
