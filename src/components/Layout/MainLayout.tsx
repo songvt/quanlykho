@@ -68,6 +68,7 @@ const MainLayout: React.FC = () => {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const [expandAssets, setExpandAssets] = useState(false);
     const [expandSettlement, setExpandSettlement] = useState(false);
+    const [expandAdminHr, setExpandAdminHr] = useState(false);
     const [notificationAnchorEl, setNotificationAnchorEl] = useState<null | HTMLElement>(null);
 
     // Auto-expand menu groups based on current URL
@@ -77,6 +78,9 @@ const MainLayout: React.FC = () => {
         }
         if (['/inventory-report', '/detailed-outbound-report', '/monthly-settlement', '/goods-settlement'].includes(location.pathname)) {
             setExpandSettlement(true);
+        }
+        if (['/attendance', '/attendance-summary', '/admin-requests', '/kpi-grades', '/payroll', '/bonus-penalty', '/payroll-settings', '/feedback-box'].includes(location.pathname)) {
+            setExpandAdminHr(true);
         }
     }, [location.pathname]);
 
@@ -150,6 +154,9 @@ const MainLayout: React.FC = () => {
         ] : []),
         ...(hasPermission('employees.view') ? [
             { text: 'Nhân viên', icon: <PeopleIcon />, path: '/employees' }
+        ] : []),
+        ...(profile?.role === 'admin' || profile?.role === 'manager' ? [
+            { text: 'Hành chính', icon: <PeopleIcon sx={{ color: '#059669' }} />, path: '/admin-hr' }
         ] : []),
         ...(hasPermission('*') ? [
             { text: 'Thiết lập', icon: <SettingsIcon />, path: '/settings' }
@@ -347,6 +354,79 @@ const MainLayout: React.FC = () => {
                                                         }}
                                                     >
                                                         <ListItemIcon sx={{ minWidth: 26, color: subActive ? '#2563eb' : '#cbd5e1' }}>
+                                                            <BarChartIcon sx={{ fontSize: 16 }} />
+                                                        </ListItemIcon>
+                                                        <ListItemText primary={sub.text}
+                                                            primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: subActive ? 700 : 400 }}
+                                                        />
+                                                    </ListItemButton>
+                                                </ListItem>
+                                            );
+                                        })}
+                                    </List>
+                                </Collapse>
+                            </React.Fragment>
+                        );
+                    }
+
+                    // ── Special: expandable "Hành chính" group
+                    if (item.path === '/admin-hr') {
+                        const adminHrSubItems = [
+                            { text: 'Chấm công', path: '/attendance' },
+                            { text: 'Tổng hợp chấm công', path: '/attendance-summary' },
+                            { text: 'Phiếu hành chính', path: '/admin-requests' },
+                            { text: 'Chấm điểm KPI', path: '/kpi-grades' },
+                            { text: 'Bảng lương', path: '/payroll' },
+                            { text: 'Điểm cộng trừ', path: '/bonus-penalty' },
+                            { text: 'Thiết lập công lương', path: '/payroll-settings' },
+                            { text: 'Hòm thư góp ý', path: '/feedback-box' },
+                        ];
+                        const isGroupActive = ['/attendance', '/attendance-summary', '/admin-requests', '/kpi-grades', '/payroll', '/bonus-penalty', '/payroll-settings', '/feedback-box'].includes(location.pathname);
+                        return (
+                            <React.Fragment key="admin-hr-group">
+                                <ListItem disablePadding sx={{ mb: 0.5 }}>
+                                    <ListItemButton
+                                        onClick={() => setExpandAdminHr(p => !p)}
+                                        selected={isGroupActive}
+                                        sx={{
+                                            height: 44, borderRadius: '10px', color: '#64748b',
+                                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', px: 2,
+                                            '&.Mui-selected': {
+                                                backgroundColor: '#eff6ff', color: '#059669',
+                                                '&:hover': { backgroundColor: '#d1fae5' },
+                                                '& .MuiListItemIcon-root': { color: '#059669' },
+                                            },
+                                            '&:hover': { backgroundColor: '#f1f5f9', color: '#0f172a' },
+                                        }}
+                                    >
+                                        <ListItemIcon sx={{ minWidth: 32, color: isGroupActive ? '#059669' : '#94a3b8' }}>
+                                            {React.isValidElement(item.icon) ? React.cloneElement(item.icon as React.ReactElement<any>, { sx: { fontSize: 20 } }) : item.icon}
+                                        </ListItemIcon>
+                                        <ListItemText primary={item.text}
+                                            primaryTypographyProps={{ fontWeight: isGroupActive ? 700 : 500, fontSize: '0.875rem' }}
+                                        />
+                                        {expandAdminHr ? <ExpandLessIcon sx={{ fontSize: 18, color: '#94a3b8' }} /> : <ChevronRightIcon sx={{ fontSize: 18, color: '#94a3b8' }} />}
+                                    </ListItemButton>
+                                </ListItem>
+                                <Collapse in={expandAdminHr} timeout="auto" unmountOnExit>
+                                    <List disablePadding sx={{ pl: 2 }}>
+                                        {adminHrSubItems.map(sub => {
+                                            const subActive = location.pathname === sub.path;
+                                            return (
+                                                <ListItem key={sub.path} disablePadding sx={{ mb: 0.5 }}>
+                                                    <ListItemButton
+                                                        onClick={() => { navigate(sub.path); if (mobileOpen) setMobileOpen(false); }}
+                                                        selected={subActive}
+                                                        sx={{
+                                                            height: 38, borderRadius: '8px', color: '#64748b', px: 1.5,
+                                                            '&.Mui-selected': {
+                                                                backgroundColor: '#eff6ff', color: '#059669',
+                                                                '& .MuiListItemIcon-root': { color: '#059669' },
+                                                            },
+                                                            '&:hover': { backgroundColor: '#f1f5f9' },
+                                                        }}
+                                                    >
+                                                        <ListItemIcon sx={{ minWidth: 26, color: subActive ? '#059669' : '#cbd5e1' }}>
                                                             <BarChartIcon sx={{ fontSize: 16 }} />
                                                         </ListItemIcon>
                                                         <ListItemText primary={sub.text}

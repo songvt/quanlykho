@@ -301,6 +301,24 @@ const modulesData = [
         path: '/employees'
     },
     {
+        id: 'admin-hr',
+        title: 'Hành chính',
+        desc: 'Quản lý chấm công, bảng lương, đánh giá KPI, và hòm thư góp ý.',
+        color: '#059669', // Emerald Green
+        icon: <PeopleIcon sx={{ fontSize: 28 }} />,
+        type: 'submenu',
+        submenus: [
+            { title: 'Chấm công', path: '/attendance', desc: 'Quản lý chấm công, ca làm việc.', icon: <FactCheckIcon sx={{ fontSize: 20 }} /> },
+            { title: 'Tổng hợp chấm công', path: '/attendance-summary', desc: 'Tổng hợp và báo cáo chấm công theo nhân viên.', icon: <AssessmentIcon sx={{ fontSize: 20 }} /> },
+            { title: 'Phiếu hành chính', path: '/admin-requests', desc: 'Phiếu đề xuất, xác nhận hành chính.', icon: <ReturnIcon sx={{ fontSize: 20 }} /> },
+            { title: 'Chấm điểm KPI', path: '/kpi-grades', desc: 'Đánh giá và chấm điểm KPI theo kỳ, nhân viên.', icon: <TrendingUpIcon sx={{ fontSize: 20 }} /> },
+            { title: 'Bảng lương', path: '/payroll', desc: 'Tính lương, phiếu lương, báo cáo.', icon: <InventoryIcon sx={{ fontSize: 20 }} /> },
+            { title: 'Điểm cộng trừ', path: '/bonus-penalty', desc: 'Ghi nhận điểm cộng, trừ của nhân viên theo tháng.', icon: <TrendingUpIcon sx={{ fontSize: 20 }} /> },
+            { title: 'Thiết lập công lương', path: '/payroll-settings', desc: 'Cấu hình hệ số, quy tắc tính lương.', icon: <SettingsIcon sx={{ fontSize: 20 }} /> },
+            { title: 'Hòm thư góp ý', path: '/feedback-box', desc: 'Gửi góp ý, xem phản hồi; quản trị xem tất cả.', icon: <AIIcon sx={{ fontSize: 20 }} /> }
+        ]
+    },
+    {
         id: 'settings',
         title: 'Thiết lập',
         desc: 'Cấu hình tham số hệ thống, RLS bảo mật cơ sở dữ liệu.',
