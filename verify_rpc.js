@@ -17,29 +17,35 @@ envContent.split('\n').forEach(line => {
 const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY);
 
 async function verifyRPC() {
-    console.log('--- Testing get_inventory_summary RPC ---');
-
+    console.log('--- Testing get_dashboard_stats RPC ---');
     try {
-        const { data, error } = await supabase.rpc('get_inventory_summary');
-
+        const { data, error } = await supabase.rpc('get_dashboard_stats');
         if (error) {
-            console.error('RPC Error:', error);
-            return;
-        }
-
-        if (!data || data.length === 0) {
-            console.log('RPC returned NO DATA.');
+            console.error('get_dashboard_stats Error:', error);
         } else {
-            console.log(`RPC returned ${data.length} rows.`);
-            console.log('Sample rows:', data.slice(0, 5));
+            console.log('get_dashboard_stats SUCCESS!');
+            console.log('Keys returned:', Object.keys(data));
+            console.log('Total Products:', data.total_products);
+            console.log('Total Inventory:', data.total_inventory);
         }
-
-        // Check if any stock > 0
-        const totalStock = data.reduce((acc, curr) => acc + Number(curr.total_quantity || 0), 0);
-        console.log('Total System Stock Sum:', totalStock);
-
     } catch (err) {
-        console.error('Script Error:', err);
+        console.error('get_dashboard_stats Script Error:', err);
+    }
+
+    console.log('\n--- Testing get_fifo_inventory_aging RPC ---');
+    try {
+        const { data, error } = await supabase.rpc('get_fifo_inventory_aging');
+        if (error) {
+            console.error('get_fifo_inventory_aging Error:', error);
+        } else {
+            console.log('get_fifo_inventory_aging SUCCESS!');
+            console.log(`Returned ${data?.length || 0} aging rows.`);
+            if (data && data.length > 0) {
+                console.log('Sample row:', data[0]);
+            }
+        }
+    } catch (err) {
+        console.error('get_fifo_inventory_aging Script Error:', err);
     }
 }
 
