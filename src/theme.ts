@@ -52,16 +52,7 @@ const theme = createTheme({
         },
     },
     typography: {
-        fontFamily: [
-            'Inter',
-            '-apple-system',
-            'BlinkMacSystemFont',
-            '"Segoe UI"',
-            'Roboto',
-            '"Helvetica Neue"',
-            'Arial',
-            'sans-serif',
-        ].join(','),
+        fontFamily: "'Times New Roman', Times, serif",
         h1: { fontWeight: 800, letterSpacing: '-0.03em', color: '#09090b' },
         h2: { fontWeight: 700, letterSpacing: '-0.028em', color: '#09090b' },
         h3: { fontWeight: 700, letterSpacing: '-0.025em', color: '#09090b' },

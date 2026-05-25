@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useDispatch, useSelector } from 'react-redux';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
 import {
     Box, Paper, Typography, Button, IconButton, Dialog, DialogTitle, DialogContent, DialogActions,
     TextField, FormControl, InputLabel, Select, MenuItem, Stack, Alert, CircularProgress, Chip,
@@ -88,6 +89,62 @@ const parseImportedDate = (val: any) => {
     }
     return str;
 };
+
+const timesTheme = createTheme({
+    typography: {
+        fontFamily: "'Times New Roman', Times, serif",
+        allVariants: {
+            fontFamily: "'Times New Roman', Times, serif",
+        },
+    },
+    components: {
+        MuiButton: {
+            styleOverrides: {
+                root: {
+                    fontFamily: "'Times New Roman', Times, serif",
+                    textTransform: 'none',
+                    fontWeight: 'bold',
+                },
+            },
+        },
+        MuiInputLabel: {
+            styleOverrides: {
+                root: {
+                    fontFamily: "'Times New Roman', Times, serif",
+                },
+            },
+        },
+        MuiInputBase: {
+            styleOverrides: {
+                root: {
+                    fontFamily: "'Times New Roman', Times, serif",
+                },
+            },
+        },
+        MuiTableCell: {
+            styleOverrides: {
+                root: {
+                    fontFamily: "'Times New Roman', Times, serif",
+                },
+            },
+        },
+        MuiMenuItem: {
+            styleOverrides: {
+                root: {
+                    fontFamily: "'Times New Roman', Times, serif",
+                },
+            },
+        },
+        MuiTab: {
+            styleOverrides: {
+                root: {
+                    fontFamily: "'Times New Roman', Times, serif",
+                    fontWeight: 'bold',
+                },
+            },
+        },
+    },
+});
 
 const EmployeeList = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -496,8 +553,9 @@ const EmployeeList = () => {
     if (pageError) return <Alert severity="error">{pageError}</Alert>;
 
     return (
-        <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: '100%', mx: 'auto', width: '100%', overflowX: 'hidden' }}>
-            {notification && (
+        <ThemeProvider theme={timesTheme}>
+            <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: '100%', mx: 'auto', width: '100%', overflowX: 'hidden', fontFamily: "'Times New Roman', Times, serif" }}>
+                {notification && (
                 <Alert severity={notification.type} onClose={() => setNotification(null)} sx={{ mb: 2, borderRadius: 2 }}>
                     {notification.message}
                 </Alert>
@@ -1144,6 +1202,7 @@ const EmployeeList = () => {
                 onCancel={() => setConfirmState(s => ({ ...s, open: false }))}
             />
         </Box>
+    </ThemeProvider>
     );
 };
 
