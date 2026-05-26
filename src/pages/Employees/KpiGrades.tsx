@@ -473,8 +473,8 @@ const KpiGrades = () => {
         
         const mildClauses = ['30.1', '30.3', '30.6', '30.9', '30.10', '30.14', '30.18'];
         const performanceClauses = ['30.2', '30.4', '30.5', '30.11', '30.12', '30.13', '30.19', '30.25', '30.26'];
-        const propertyClauses = ['30.7', '30.8', '30.16', '30.17', '30.21', '30.22', '30.23', '30.31', '30.39', '30.40', '30.41', '30.42', '30.43'];
-        const criticalClauses = ['30.15', '30.20', '30.24', '30.24.1', '30.24.2', '30.27', '30.28', '30.29', '30.30', '30.31', '30.32', '30.33', '30.34', '30.35', '30.36', '30.37', '30.38', '30.44', '30.45', '30.46'];
+        const propertyClauses = ['30.7', '30.8', '30.16', '30.17', '30.21', '30.23'];
+        const criticalClauses = ['30.15', '30.20', '30.22', '30.24', '30.24.1', '30.24.2', '30.27', '30.28', '30.29', '30.30', '30.31', '30.32', '30.33', '30.34', '30.35', '30.36', '30.37', '30.38', '30.39', '30.40', '30.41', '30.42', '30.43', '30.44', '30.45', '30.46'];
 
         if (mildClauses.includes(mainClause)) {
             category = 'mild';
@@ -495,6 +495,18 @@ const KpiGrades = () => {
             ? description 
             : '';
 
+        // Clean description for first-person representation by removing "Đồng chí [Tên]" prefixes
+        let firstPersonDesc = cleanDesc;
+        if (firstPersonDesc) {
+            const prefixRegex = new RegExp(`^Đồng chí\\s+${violatorName}\\s*`, 'i');
+            firstPersonDesc = firstPersonDesc.replace(prefixRegex, '');
+            const prefixRegexUpper = new RegExp(`^Đồng chí\\s+${violatorNameUpper}\\s*`, 'i');
+            firstPersonDesc = firstPersonDesc.replace(prefixRegexUpper, '');
+            if (firstPersonDesc.length > 0) {
+                firstPersonDesc = firstPersonDesc.charAt(0).toLowerCase() + firstPersonDesc.slice(1);
+            }
+        }
+
         switch (category) {
             case 'mild':
                 explanation = `Tôi nhận thức sâu sắc lỗi đi muộn/tác phong chưa chuẩn mực đã gây ảnh hưởng chung đến kỷ luật và tác phong của cả đơn vị. Tôi xin nghiêm túc rút kinh nghiệm và cam kết từ nay về sau sẽ chấp hành đúng nội quy giờ giấc, tác phong của Công ty. Nếu còn tái phạm, tôi xin chịu mọi hình thức kỷ luật.`;
@@ -503,7 +515,7 @@ const KpiGrades = () => {
                 break;
                 
             case 'property':
-                explanation = `Tôi thừa nhận sai sót trong việc quản lý và sử dụng thiết bị/vật tư công ty dẫn đến ${cleanDesc || 'hao hụt hoặc lãng phí tài sản chung'}. Tôi xin nhận thức được trách nhiệm của bản thân, cam kết bồi thường thiệt hại (nếu có) và tuân thủ đúng định mức, kỹ thuật quy định. Nếu tiếp tục vi phạm tôi xin chịu mọi hình thức xử lý cao nhất.`;
+                explanation = `Tôi thừa nhận sai sót trong việc quản lý và sử dụng thiết bị/vật tư công ty dẫn đến ${firstPersonDesc || 'hao hụt hoặc lãng phí tài sản chung'}. Tôi xin nhận thức được trách nhiệm của bản thân, cam kết bồi thường thiệt hại (nếu có) và tuân thủ đúng định mức, kỹ thuật quy định. Nếu tiếp tục vi phạm tôi xin chịu mọi hình thức xử lý cao nhất.`;
                 conclusion = `Đồng chí ${violatorNameUpper} vi phạm quy trình kỹ thuật và quản lý tài sản, vật tư theo điều ${clauseValue}. Yêu cầu đồng chí thực hiện khắc phục hoàn toàn hậu quả, bồi hoàn thiết bị (nếu có) dưới sự giám sát chặt chẽ của Chỉ huy trực tiếp. Nếu tiếp tục tái phạm sẽ xử lý kỷ luật sa thải.`;
                 mitigationReq = `Yêu cầu đồng chí ${violatorNameUpper} nghiêm túc kiểm điểm sai sót trong quản lý thiết bị/vật tư, thực hiện ngay các biện pháp khắc phục thiệt hại và bàn giao, bảo quản tài sản công ty đúng quy định. Tuân thủ tuyệt đối quy trình kỹ thuật để tránh hao hụt, thất thoát tài sản chung.`;
                 break;
@@ -516,7 +528,7 @@ const KpiGrades = () => {
                 
             case 'performance':
             default:
-                explanation = `Tôi nhận thức rõ việc ${cleanDesc || 'chưa hoàn thành công việc đúng khối lượng, chất lượng được giao'} là do bản thân chưa sắp xếp thời gian hợp lý và thiếu tập trung. Tôi cam kết sẽ tập trung tối đa, nỗ lực hết mình để giải quyết dứt điểm các lỗi phát sinh và hoàn thành mọi chỉ tiêu đúng thời hạn. Nếu tiếp tục chậm trễ làm ảnh hưởng đến KPI chung của đơn vị, tôi xin hoàn toàn chịu trách nhiệm.`;
+                explanation = `Tôi nhận thức rõ việc ${firstPersonDesc || 'chưa hoàn thành công việc đúng khối lượng, chất lượng được giao'} là do bản thân chưa sắp xếp thời gian hợp lý và thiếu tập trung. Tôi cam kết sẽ tập trung tối đa, nỗ lực hết mình để giải quyết dứt điểm các lỗi phát sinh và hoàn thành mọi chỉ tiêu đúng thời hạn. Nếu tiếp tục chậm trễ làm ảnh hưởng đến KPI chung của đơn vị, tôi xin hoàn toàn chịu trách nhiệm.`;
                 conclusion = `Đồng chí ${violatorNameUpper} chưa hoàn thành nhiệm vụ theo điều ${clauseValue}. Yêu cầu đồng chí chấn chỉnh ngay tinh thần làm việc, tập trung khắc phục nhanh các tồn đọng dưới sự kèm cặp sát sao của Chỉ huy trực tiếp. Trừ điểm đánh giá KPI tháng này của đồng chí, nếu còn tái phạm sẽ chuyển lên hội đồng xem xét kỷ luật bậc tiếp theo.`;
                 mitigationReq = `Yêu cầu đồng chí ${violatorNameUpper} tập trung cải thiện tinh thần làm việc, khẩn trương hoàn thành đúng tiến độ và chất lượng các công việc được giao để đảm bảo chỉ tiêu KPI chung của đơn vị. Chỉ huy trực tiếp sẽ tăng cường giám sát, đánh giá hiệu quả hàng ngày để hỗ trợ đồng chí khắc phục lỗi.`;
                 break;
