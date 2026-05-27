@@ -1,4 +1,5 @@
 import { checkIsSameMonth } from './dateUtils';
+import { parseExcelNumber } from './numberUtils';
 
 export type SettlementReportMode = 'supply' | 'goods';
 
@@ -20,28 +21,19 @@ export interface SettlementMovementTotals {
 /** Chuẩn hóa tháng về YYYY-MM */
 export const normalizeSettlementMonth = (month: string): string => {
     const s = String(month || '').trim();
-    if (/^\d{4}-\d{2}$/.test(s)) return s;
+    const dashMatch = s.match(/^(\d{4})-(\d{1,2})$/);
+    if (dashMatch) {
+        return `${dashMatch[1]}-${dashMatch[2].padStart(2, '0')}`;
+    }
     const slash = s.match(/^(\d{1,2})\/(\d{4})$/);
     if (slash) return `${slash[2]}-${slash[1].padStart(2, '0')}`;
     return s;
 };
 
 export const parseSettlementNumber = (val: unknown): number => {
-    if (typeof val === 'number' && !Number.isNaN(val)) return val;
-    if (val === null || val === undefined || val === '') return 0;
-    let str = String(val).trim();
-    if (str.includes('.') && !str.includes(',')) {
-        const parts = str.split('.');
-        if (parts.length > 1 && parts[parts.length - 1].length === 3) {
-            str = str.replace(/\./g, '');
-        }
-    }
-    if (str.startsWith('(') && str.endsWith(')')) {
-        str = '-' + str.substring(1, str.length - 1);
-    }
-    str = str.replace(/,/g, '');
-    return Number(str) || 0;
+    return parseExcelNumber(val);
 };
+
 
 const normalizeKeyName = (name: string) =>
     (name || '').trim().replace(/\s+/g, ' ');
@@ -66,8 +58,6 @@ const isGoodsCategory = (excelCat: string) =>
     excelCat.includes('hàng hóa') || excelCat.includes('hang hoa');
 
 const isSupplyInventoryRow = (item: any, selectedMonth: string) => {
-    const date = item.actual_date || item.voucher_date;
-    if (date && !checkIsSameMonth(date, selectedMonth)) return false;
     const excelCat = String(item.note || '').toLowerCase();
     return !isGoodsCategory(excelCat);
 };
@@ -153,12 +143,6 @@ export function aggregateSettlementMovements(
         }
 
         const sortedOut = [...outboundData].filter((item) => {
-            const stockDate = item.stock_out_date;
-            const inMonth =
-                !stockDate || stockDate === 'null' || stockDate === 'undefined'
-                    ? true
-                    : checkIsSameMonth(stockDate, month);
-            if (!inMonth) return false;
             const excelCat = String(item.item_type || '').toLowerCase();
             if (excelCat && isGoodsCategory(excelCat)) return false;
             return true;
@@ -182,7 +166,6 @@ export function aggregateSettlementMovements(
             if (itemCode) lastItemCode = itemCode;
             if (stockDate) lastDate = stockDate;
             if (!itemName && !itemCode) continue;
-            if (stockDate && !checkIsSameMonth(stockDate, month)) continue;
 
             const key = getStableItemKey(itemCode, itemName);
             const row = ensure(
@@ -207,16 +190,17 @@ export function aggregateSettlementMovements(
         }
     } else {
         const findStandardKey = options?.findStandardKey;
-        const sortedInv = [...inventoryData].filter((item) => {
-            const date = item.actual_date || item.voucher_date;
-            return date ? checkIsSameMonth(date, month) : true;
-        });
+        const sortedInv = [...inventoryData];
 
         for (const item of sortedInv) {
             const rawName = normalizeKeyName(item.bccs_item || item.item_name || '');
             const rawCode = (item.item_code || '').trim();
             if (!rawName && !rawCode) continue;
-            const key = findStandardKey?.(rawName, rawCode);
+            let key = findStandardKey?.(rawName, rawCode);
+            if (!key) {
+                const excelCat = String(item.note || '').toLowerCase();
+                if (isGoodsCategory(excelCat)) key = rawName;
+            }
             if (!key) continue;
 
             const row = ensure(key, rawCode, key, item.unit, parseSettlementNumber(item.unit_price));
@@ -251,12 +235,6 @@ export function aggregateSettlementMovements(
             if (itemCode) lastItemCode = itemCode;
             if (stockDate) lastDate = stockDate;
             if (!itemName && !itemCode) continue;
-
-            const inMonth =
-                !stockDate || stockDate === 'null' || stockDate === 'undefined'
-                    ? true
-                    : checkIsSameMonth(stockDate, month);
-            if (!inMonth) continue;
 
             let key = findStandardKey?.(itemName, itemCode);
             if (!key) {

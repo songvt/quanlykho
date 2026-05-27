@@ -2,6 +2,35 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabase, fetchAll } from './utils/supabase.js';
 import { normalizeSettlementMonth } from './utils/settlementMonth.js';
 
+function getMonthFormats(monthStr: string): string[] {
+    const s = String(monthStr || '').trim();
+    const formats = new Set<string>([s]);
+    
+    // Parse YYYY-MM hoặc YYYY-M
+    const dashMatch = s.match(/^(\d{4})-(\d{1,2})$/);
+    if (dashMatch) {
+        const y = dashMatch[1];
+        const m = dashMatch[2];
+        const mNum = parseInt(m, 10);
+        formats.add(`${y}-${m.padStart(2, '0')}`);
+        formats.add(`${mNum}/${y}`);
+        formats.add(`${String(mNum).padStart(2, '0')}/${y}`);
+    }
+    
+    // Parse M/YYYY hoặc MM/YYYY
+    const slashMatch = s.match(/^(\d{1,2})\/(\d{4})$/);
+    if (slashMatch) {
+        const m = slashMatch[1];
+        const y = slashMatch[2];
+        const mNum = parseInt(m, 10);
+        formats.add(`${y}-${String(mNum).padStart(2, '0')}`);
+        formats.add(`${mNum}/${y}`);
+        formats.add(`${String(mNum).padStart(2, '0')}/${y}`);
+    }
+    
+    return Array.from(formats);
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { type } = req.query;
     
@@ -18,20 +47,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const { month } = req.query;
                 if (!month) return res.status(400).json({ error: 'Month required' });
                 
-                const raw = month as string;
-                const normalized = normalizeSettlementMonth(raw);
-                let data = await fetchAll(
+                const formats = getMonthFormats(month as string);
+                const data = await fetchAll(
                     'settlement_outbound_data',
                     '*',
-                    (q) => q.eq('month', normalized).order('id', { ascending: true })
+                    (q) => q.in('month', formats).order('id', { ascending: true })
                 );
-                if (data.length === 0 && raw !== normalized) {
-                    data = await fetchAll(
-                        'settlement_outbound_data',
-                        '*',
-                        (q) => q.eq('month', raw).order('id', { ascending: true })
-                    );
-                }
                 return res.status(200).json(data);
             }
 
@@ -39,11 +60,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const { month } = req.query;
                 if (!month) return res.status(400).json({ error: 'Month required' });
                 
-                const normalizedMonth = normalizeSettlementMonth(month as string);
-                console.log(`[API] Deleting settlement_outbound for ${normalizedMonth}`);
-                const { error } = await supabase.from('settlement_outbound_data').delete().eq('month', normalizedMonth);
+                const formats = getMonthFormats(month as string);
+                console.log(`[API] Deleting settlement_outbound for formats:`, formats);
+                const { error } = await supabase.from('settlement_outbound_data').delete().in('month', formats);
                 if (error) return res.status(500).json({ error: error.message });
-                return res.status(200).json({ success: true, message: `Deleted data for ${normalizedMonth}` });
+
+                // Đồng bộ xóa sang Google Sheet
+                try {
+                    await supabase.from('gs_sync_queue').insert({
+                        table_name: 'settlement_outbound_data',
+                        action: 'delete_by_month',
+                        payload: { formats }
+                    });
+                } catch (gsError) {
+                    console.error('[Dual-Write] Failed to queue GS sync delete:', gsError);
+                }
+
+                return res.status(200).json({ success: true, message: `Deleted data for ${month}` });
             }
 
             if (req.method === 'POST') {
@@ -60,6 +93,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 if (!skipDelete) {
                     console.log(`[API] Clearing existing data for ${month}`);
                     await supabase.from('settlement_outbound_data').delete().eq('month', monthStored);
+
+                    // Đồng bộ xóa cũ sang Google Sheet trước khi thêm mới
+                    try {
+                        await supabase.from('gs_sync_queue').insert({
+                            table_name: 'settlement_outbound_data',
+                            action: 'delete_by_month',
+                            payload: { formats: [monthStored] }
+                        });
+                    } catch (gsError) {
+                        console.error('[Dual-Write] Failed to queue GS sync delete for update:', gsError);
+                    }
                 }
 
                 // Lọc đúng các cột có trong bảng settlement_outbound_data
@@ -136,20 +180,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const { month } = req.query;
                 if (!month) return res.status(400).json({ error: 'Month required' });
                 
-                const raw = month as string;
-                const normalized = normalizeSettlementMonth(raw);
-                let data = await fetchAll(
+                const formats = getMonthFormats(month as string);
+                const data = await fetchAll(
                     'settlement_inventory_data',
                     '*',
-                    (q) => q.eq('month', normalized).order('id', { ascending: true })
+                    (q) => q.in('month', formats).order('id', { ascending: true })
                 );
-                if (data.length === 0 && raw !== normalized) {
-                    data = await fetchAll(
-                        'settlement_inventory_data',
-                        '*',
-                        (q) => q.eq('month', raw).order('id', { ascending: true })
-                    );
-                }
                 return res.status(200).json(data);
             }
 
@@ -157,11 +193,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const { month } = req.query;
                 if (!month) return res.status(400).json({ error: 'Month required' });
                 
-                const normalizedMonth = normalizeSettlementMonth(month as string);
-                console.log(`[API] Deleting settlement_inventory for ${normalizedMonth}`);
-                const { error } = await supabase.from('settlement_inventory_data').delete().eq('month', normalizedMonth);
+                const formats = getMonthFormats(month as string);
+                console.log(`[API] Deleting settlement_inventory for formats:`, formats);
+                const { error } = await supabase.from('settlement_inventory_data').delete().in('month', formats);
                 if (error) return res.status(500).json({ error: error.message });
-                return res.status(200).json({ success: true, message: `Deleted data for ${normalizedMonth}` });
+
+                // Đồng bộ xóa sang Google Sheet
+                try {
+                    await supabase.from('gs_sync_queue').insert({
+                        table_name: 'settlement_inventory_data',
+                        action: 'delete_by_month',
+                        payload: { formats }
+                    });
+                } catch (gsError) {
+                    console.error('[Dual-Write] Failed to queue GS sync delete:', gsError);
+                }
+
+                return res.status(200).json({ success: true, message: `Deleted data for ${month}` });
             }
 
             if (req.method === 'POST') {
@@ -178,6 +226,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 if (!skipDelete) {
                     console.log(`[API] Clearing existing data for ${month}`);
                     await supabase.from('settlement_inventory_data').delete().eq('month', monthStored);
+
+                    // Đồng bộ xóa cũ sang Google Sheet trước khi thêm mới
+                    try {
+                        await supabase.from('gs_sync_queue').insert({
+                            table_name: 'settlement_inventory_data',
+                            action: 'delete_by_month',
+                            payload: { formats: [monthStored] }
+                        });
+                    } catch (gsError) {
+                        console.error('[Dual-Write] Failed to queue GS sync delete for update:', gsError);
+                    }
                 }
 
                 // Lọc đúng các cột có trong bảng để tránh lỗi Supabase
@@ -254,6 +313,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 if (!payload) return res.status(400).json({ error: 'Payload required' });
                 
                 const itemsToInsert = Array.isArray(payload) ? payload : [payload];
+
+                // Đồng bộ dọn dẹp Google Sheets trước để tránh duplicate
+                const monthsInPayload = Array.from(new Set(itemsToInsert.map((item: any) => item.month).filter(Boolean)));
+                if (monthsInPayload.length > 0) {
+                    try {
+                        await supabase.from('gs_sync_queue').insert({
+                            table_name: 'settlement_history',
+                            action: 'delete_by_month',
+                            payload: { formats: monthsInPayload }
+                        });
+                    } catch (gsError) {
+                        console.error('[Dual-Write] Failed to queue GS sync delete for history update:', gsError);
+                    }
+                }
+
                 const CHUNK_SIZE = 500;
                 let insertedCount = 0;
 
@@ -291,6 +365,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     .eq('month', month);
                 
                 if (error) throw error;
+
+                // Đồng bộ xóa sang Google Sheet
+                try {
+                    await supabase.from('gs_sync_queue').insert({
+                        table_name: 'settlement_history',
+                        action: 'delete_by_month',
+                        payload: { formats: [month as string] }
+                    });
+                } catch (gsError) {
+                    console.error('[Dual-Write] Failed to queue GS sync delete for history:', gsError);
+                }
+
                 return res.status(200).json({ message: `Deleted settlement for ${month}` });
             }
         }

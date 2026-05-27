@@ -580,7 +580,13 @@ export const GoogleSheetService = {
     ) {
         const { normalizeSettlementMonth, clearMovementsFrozen } = await import('../utils/settlementAggregates');
         const normalizedMonth = normalizeSettlementMonth(month);
-        const records = Object.values(existingHistory);
+        const uniqueRecordsMap = new Map<string, any>();
+        Object.values(existingHistory).forEach((hist: any) => {
+            if (hist && hist.item_name) {
+                uniqueRecordsMap.set(hist.item_name, hist);
+            }
+        });
+        const records = Array.from(uniqueRecordsMap.values());
         if (records.length === 0) return;
 
         const payload = records.map((hist: any) => {

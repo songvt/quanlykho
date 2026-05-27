@@ -219,6 +219,7 @@ export interface Asset {
 
 export interface InventoryReportItem {
     id?: string;
+    month?: string;
     unit_code: string;
     unit_name: string;
     transaction_type: string;
@@ -242,6 +243,7 @@ export interface InventoryReportItem {
 
 export interface DetailedOutboundItem {
     id?: string;
+    month?: string;
     cost_center_unit: string;
     cost_center: string;
     cost_center_store: string;
@@ -278,3 +280,4 @@ export interface DetailedOutboundItem {
     impact_type: string;
     cost_allocation: string;
 }
+

@@ -3,7 +3,7 @@ import {
     Box, Typography, Paper, Table, TableBody, TableCell, 
     TableContainer, TableHead, TableRow, Button,
     TextField, IconButton, InputAdornment, TablePagination,
-    Chip, Tooltip
+    Chip, Tooltip, CircularProgress
 } from '@mui/material';
 import { 
     CloudUpload as CloudUploadIcon, 
@@ -20,10 +20,13 @@ import { useDispatch, useSelector } from 'react-redux';
 import type { RootState } from '../../store';
 import { setDetailedOutboundData } from '../../store/slices/settlementSlice';
 import { GoogleSheetService } from '../../services/GoogleSheetService';
-import { formatNumber } from '../../utils/numberUtils';
+import { formatNumber, parseExcelNumber } from '../../utils/numberUtils';
+import { clearMovementsFrozen } from '../../utils/settlementAggregates';
+
 
 interface DetailedOutboundItem {
     id?: string;
+    month?: string;
     cost_center_unit: string;
     cost_center: string;
     cost_center_store: string;
@@ -69,6 +72,13 @@ const DetailedOutboundReport: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(25);
+    const [isLoading, setIsLoading] = useState(false);
+    
+    // Đọc tháng đang chọn từ localStorage (dùng chung với màn hình Quyết toán)
+    const selectedMonth = localStorage.getItem('settlement_selected_month') || (() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    })();
 
     React.useEffect(() => {
         const loadData = async () => {
@@ -127,16 +137,17 @@ const DetailedOutboundReport: React.FC = () => {
                 channel_type: formatValue(item['Loại kênh']),
                 service: formatValue(item['Dịch vụ']),
                 transaction_type: formatValue(item['Loại giao dịch']),
-                item_code: formatValue(item['Mã mặt hàng']),
-                item_name: formatValue(item['Mặt hàng']),
+                item_code: formatValue(item['Mã mặt hàng']).trim(),
+                item_name: formatValue(item['Mặt hàng']).trim(),
                 finance_item: formatValue(item['Mặt hàng tài chính']),
                 item_type: formatValue(item['Loại Mặt hàng'] || item['Loại mặt hàng'] || item['DM'] || item['Ghi chú']),
-                qty_within_limit: Number(item['Số lượng (trong hạn mức)'] || item['SL (trong HM)'] || item['SL']) || 0,
-                qty_over_limit: Number(item['Số lượng (vượt hạn mức)'] || item['SL (vuot HM)']) || 0,
-                qty_total: Number(item['Số lượng tổng'] || item['SL tổng'] || item['Tổng cộng'] || item['Số lượng thực xuất'] || item['Tổng số lượng']) || 0,
+                qty_within_limit: parseExcelNumber(item['Số lượng (trong hạn mức)'] || item['SL (trong HM)'] || item['SL']),
+                qty_over_limit: parseExcelNumber(item['Số lượng (vượt hạn mức)'] || item['SL (vuot HM)']),
+                qty_total: parseExcelNumber(item['Số lượng tổng'] || item['SL tổng'] || item['Tổng cộng'] || item['Số lượng thực xuất'] || item['Tổng số lượng']),
                 unit: formatValue(item['ĐVT'] || item['Đơn vị tính'] || item['Unit']),
-                cost_price: Number(item['Đơn giá (giá vốn)'] || item['Đơn giá']) || 0,
-                total_amount: Number(item['Thành tiền'] || item['TT']) || 0,
+                cost_price: parseExcelNumber(item['Đơn giá (giá vốn)'] || item['Đơn giá']),
+                total_amount: parseExcelNumber(item['Thành tiền'] || item['TT']),
+
                 from_serial: formatValue(item['Từ Serial']),
                 to_serial: formatValue(item['Đến Serial']),
                 item_status: formatValue(item['Trạng thái hàng']),
@@ -155,22 +166,16 @@ const DetailedOutboundReport: React.FC = () => {
                 cost_allocation: formatValue(item['Phân bổ giá vốn'])
             }));
 
-            // 1. Phân nhóm theo tháng để lưu xuống DB
-            const monthsMap: Record<string, any[]> = {};
-            mappedData.forEach(item => {
-                const dateParts = item.stock_out_date.split('/');
-                if (dateParts.length === 3) {
-                    // Chuẩn hóa sang YYYY-MM để đồng bộ toàn hệ thống
-                    const monthKey = `${dateParts[2]}-${dateParts[1].padStart(2, '0')}`;
-                    if (!monthsMap[monthKey]) monthsMap[monthKey] = [];
-                    monthsMap[monthKey].push(item);
-                }
-            });
+            // 1. Dùng tháng đang chọn (không parse từ ngày của từng dòng)
+            //    Lý do: User import riêng từng tháng, ngày trong file có thể là ngày 1 của tháng
+            //    tiếp theo (vd: 1/5/2026 trong file tháng 4 bị parse nhầm thành tháng 5).
+            const targetMonth = normalizeSettlementMonth(selectedMonth);
 
-            // 2. Lưu từng tháng xuống DB
-            for (const [month, payload] of Object.entries(monthsMap)) {
-                await GoogleSheetService.saveSettlementOutbound(month, payload);
-            }
+            // 2. Lưu toàn bộ vào đúng tháng đang chọn
+            await GoogleSheetService.saveSettlementOutbound(targetMonth, mappedData);
+            // Giải phóng đông cứng để màn hình Quyết toán tự động tính toán lại theo số liệu mới
+            clearMovementsFrozen(targetMonth, 'supply');
+            clearMovementsFrozen(targetMonth, 'goods');
 
             dispatch(setDetailedOutboundData(mappedData));
             success(`Đã import và lưu thành công ${mappedData.length} dòng dữ liệu vào Database.`);
@@ -180,6 +185,68 @@ const DetailedOutboundReport: React.FC = () => {
         } finally {
             event.target.value = '';
         }
+    };
+
+    const handleClearAll = async () => {
+        if (!window.confirm('Bạn có chắc chắn muốn XÓA SẠCH toàn bộ dữ liệu đang hiển thị khỏi Cơ sở dữ liệu? Thao tác này không thể hoàn tác.')) return;
+        
+        setIsLoading(true);
+        try {
+            const months = new Set<string>();
+            storedData.forEach(item => {
+                if (item.month) {
+                    months.add(normalizeSettlementMonth(item.month));
+                } else {
+                    const dateStr = item.stock_out_date;
+                    if (dateStr) {
+                        if (dateStr.includes('/')) {
+                            const parts = dateStr.split('/');
+                            if (parts.length === 3) {
+                                months.add(normalizeSettlementMonth(`${parts[2]}-${parts[1]}`));
+                            }
+                        } else if (dateStr.includes('-')) {
+                            const parts = dateStr.split('-');
+                            if (parts.length >= 2) {
+                                months.add(normalizeSettlementMonth(`${parts[0]}-${parts[1]}`));
+                            }
+                        }
+                    }
+                }
+            });
+
+            if (months.size === 0) {
+                const now = new Date();
+                months.add(normalizeSettlementMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`));
+            }
+
+            await Promise.all(
+                Array.from(months).map(month => {
+                    clearMovementsFrozen(month, 'supply');
+                    clearMovementsFrozen(month, 'goods');
+                    return GoogleSheetService.clearSettlementData(month, 'outbound');
+                })
+            );
+
+            dispatch(setDetailedOutboundData([]));
+            setPage(0);
+            success('Đã xóa sạch dữ liệu trên Database.');
+        } catch (err: any) {
+            console.error('Lỗi khi xóa:', err);
+            notifyError('Lỗi khi xóa dữ liệu trên Database: ' + err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const normalizeSettlementMonth = (month: string): string => {
+        const s = String(month || '').trim();
+        const dashMatch = s.match(/^(\d{4})-(\d{1,2})$/);
+        if (dashMatch) {
+            return `${dashMatch[1]}-${dashMatch[2].padStart(2, '0')}`;
+        }
+        const slash = s.match(/^(\d{1,2})\/(\d{4})$/);
+        if (slash) return `${slash[2]}-${slash[1].padStart(2, '0')}`;
+        return s;
     };
 
     const downloadTemplate = async () => {
@@ -253,17 +320,12 @@ const DetailedOutboundReport: React.FC = () => {
                         <Button
                             variant="outlined"
                             color="error"
-                            startIcon={<DeleteSweepIcon />}
-                            onClick={() => {
-                                if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ dữ liệu đang hiển thị?')) {
-                                    dispatch(setDetailedOutboundData([]));
-                                    setPage(0);
-                                    success('Đã xóa toàn bộ dữ liệu.');
-                                }
-                            }}
+                            startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : <DeleteSweepIcon />}
+                            onClick={handleClearAll}
+                            disabled={isLoading}
                             sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
                         >
-                            Xóa tất cả
+                            {isLoading ? 'Đang xóa...' : 'Xóa tất cả'}
                         </Button>
                     )}
                     <Button variant="outlined" startIcon={<FileDownloadIcon />} onClick={downloadTemplate} sx={{ borderRadius: 2 }}>

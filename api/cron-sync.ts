@@ -80,6 +80,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                             else await new Promise(resolve => setTimeout(resolve, 300));
                         }
                     }
+                } else if (action === 'delete_by_month') {
+                    const rows = await sheet.getRows();
+                    const formats = payload.formats || [payload.month];
+                    let deletedCount = 0;
+                    console.log(`[Cron Sync] Deleting rows for months:`, formats);
+                    for (let i = rows.length - 1; i >= 0; i--) {
+                        const rowMonth = rows[i].get('month');
+                        if (formats.includes(rowMonth)) {
+                            await rows[i].delete();
+                            deletedCount++;
+                            if (deletedCount % 5 === 0) await new Promise(resolve => setTimeout(resolve, 1000));
+                            else await new Promise(resolve => setTimeout(resolve, 300));
+                        }
+                    }
+                    console.log(`[Cron Sync] Deleted ${deletedCount} rows for months from sheet ${table_name}`);
                 }
 
                 // Mark as done

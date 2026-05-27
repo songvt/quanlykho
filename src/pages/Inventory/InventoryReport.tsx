@@ -3,7 +3,7 @@ import {
     Box, Typography, Paper, Table, TableBody, TableCell, 
     TableContainer, TableHead, TableRow, Button,
     TextField, IconButton, InputAdornment, TablePagination,
-    Chip, Tooltip
+    Chip, Tooltip, CircularProgress
 } from '@mui/material';
 import { 
     CloudUpload as CloudUploadIcon, 
@@ -20,11 +20,13 @@ import { useDispatch, useSelector } from 'react-redux';
 import type { RootState } from '../../store';
 import { setInventoryReportData } from '../../store/slices/settlementSlice';
 import { GoogleSheetService } from '../../services/GoogleSheetService';
-import { formatNumber } from '../../utils/numberUtils';
-import { normalizeSettlementMonth } from '../../utils/settlementAggregates';
+import { formatNumber, parseExcelNumber } from '../../utils/numberUtils';
+import { normalizeSettlementMonth, clearMovementsFrozen } from '../../utils/settlementAggregates';
+
 
 interface InventoryReportItem {
     id?: string;
+    month?: string;
     unit_code: string;
     unit_name: string;
     transaction_type: string;
@@ -33,6 +35,9 @@ interface InventoryReportItem {
     warehouse_voucher: string;
     bccs_item: string;
     finance_item: string;
+    item_code?: string;
+    item_name?: string;
+    unit?: string;
     unit_price: number;
     quantity: number;
     total_amount: number;
@@ -50,6 +55,13 @@ const InventoryReport: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(25);
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Đọc tháng đang chọn từ localStorage (dùng chung với màn hình Quyết toán)
+    const selectedMonth = localStorage.getItem('settlement_selected_month') || (() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    })();
 
     React.useEffect(() => {
         const loadData = async () => {
@@ -97,44 +109,59 @@ const InventoryReport: React.FC = () => {
 
         try {
             const rawData = await readExcelFile(file);
+            
+            const { createGoodsFindStandardKey } = await import('../../utils/settlementAggregates');
+            const { STANDARD_GOODS_31_DATA } = await import('../../config/settlementData');
+            const findStandardKey = createGoodsFindStandardKey(STANDARD_GOODS_31_DATA);
+
             // Map excel columns to our interface
             // Expected headers: Mã đơn vị, Đơn vị, Loại giao dịch, Lệnh NXK, Số phiếu NV, Số phiếu NXK, Mặt hàng BCCS, Mặt hàng Tài chính, Đơn giá, Số lượng, Thành tiền, Ngày lập phiếu, Ngày thực nhập/xuất, Nhân viên, Lý do, DM
-            const mappedData: InventoryReportItem[] = rawData.map((item: any, index: number) => ({
-                id: `import-${Date.now()}-${index}`,
-                unit_code: formatValue(item['Mã đơn vị']),
-                unit_name: formatValue(item['Đơn vị']),
-                transaction_type: formatValue(item['Loại giao dịch']),
-                order_number: formatValue(item['Lệnh NXK']),
-                employee_voucher: formatValue(item['Số phiếu NV']),
-                warehouse_voucher: formatValue(item['Số phiếu NXK']),
-                bccs_item: formatValue(item['Mặt hàng BCCS']),
-                finance_item: formatValue(item['Mặt hàng Tài chính']),
-                unit_price: Number(item['Đơn giá']) || 0,
-                quantity: Number(item['Số lượng']) || 0,
-                total_amount: Number(item['Thành tiền']) || 0,
-                voucher_date: formatValue(item['Ngày lập phiếu']),
-                actual_date: formatValue(item['Ngày thực nhập/xuất']),
-                employee_name: formatValue(item['Nhân viên']),
-                reason: formatValue(item['Lý do']),
-                note: formatValue(item['DM'])
-            }));
-
-            // 1. Phân nhóm theo tháng để lưu xuống DB
-            const monthsMap: Record<string, any[]> = {};
-            mappedData.forEach(item => {
-                const dateStr = item.actual_date || item.voucher_date;
-                const dateParts = dateStr.split('/');
-                if (dateParts.length === 3) {
-                    const monthKey = normalizeSettlementMonth(`${dateParts[2]}-${dateParts[1]}`);
-                    if (!monthsMap[monthKey]) monthsMap[monthKey] = [];
-                    monthsMap[monthKey].push(item);
+            const mappedData: InventoryReportItem[] = rawData.map((item: any, index: number) => {
+                const bccsItem = formatValue(item['Mặt hàng BCCS']).trim();
+                const financeItem = formatValue(item['Mặt hàng Tài chính']).trim();
+                const standardKey = findStandardKey(bccsItem || financeItem);
+                
+                let standardCode = '';
+                if (standardKey) {
+                    const found = STANDARD_GOODS_31_DATA.find(x => x.name === standardKey);
+                    if (found) standardCode = found.code;
                 }
+
+                return {
+                    id: `import-${Date.now()}-${index}`,
+                    unit_code: formatValue(item['Mã đơn vị']),
+                    unit_name: formatValue(item['Đơn vị']),
+                    transaction_type: formatValue(item['Loại giao dịch']),
+                    order_number: formatValue(item['Lệnh NXK']),
+                    employee_voucher: formatValue(item['Số phiếu NV']),
+                    warehouse_voucher: formatValue(item['Số phiếu NXK']),
+                    bccs_item: bccsItem,
+                    finance_item: financeItem,
+                    item_code: standardCode || bccsItem,
+                    item_name: standardKey || bccsItem,
+                    unit: formatValue(item['ĐVT'] || item['Đơn vị tính'] || item['Unit']) || 'Cái',
+                    unit_price: parseExcelNumber(item['Đơn giá']),
+                    quantity: parseExcelNumber(item['Số lượng']),
+                    total_amount: parseExcelNumber(item['Thành tiền']),
+                    voucher_date: formatValue(item['Ngày lập phiếu']),
+                    actual_date: formatValue(item['Ngày thực nhập/xuất']),
+                    employee_name: formatValue(item['Nhân viên']),
+                    reason: formatValue(item['Lý do']),
+                    note: formatValue(item['DM'])
+                };
             });
 
-            // 2. Lưu từng tháng xuống DB
-            for (const [month, payload] of Object.entries(monthsMap)) {
-                await GoogleSheetService.saveSettlementInventory(month, payload);
-            }
+
+            // 1. Dùng tháng đang chọn (không parse từ ngày của từng dòng)
+            //    Lý do: User import riêng từng tháng, ngày trong file có thể là ngày 1 của tháng
+            //    tiếp theo (vd: 1/5/2026 trong file tháng 4 bị parse nhầm thành tháng 5).
+            const targetMonth = normalizeSettlementMonth(selectedMonth);
+
+            // 2. Lưu toàn bộ vào đúng tháng đang chọn
+            await GoogleSheetService.saveSettlementInventory(targetMonth, mappedData);
+            // Giải phóng đông cứng để màn hình Quyết toán tự động tính toán lại theo số liệu mới
+            clearMovementsFrozen(targetMonth, 'supply');
+            clearMovementsFrozen(targetMonth, 'goods');
 
             // Đảm bảo dữ liệu trong Redux/State cũng là string
             const sanitizedData = mappedData.map(item => ({
@@ -150,6 +177,60 @@ const InventoryReport: React.FC = () => {
             notifyError('Lỗi khi xử lý file và lưu Database: ' + err.message);
         } finally {
             event.target.value = '';
+        }
+    };
+
+    const handleClearAll = async () => {
+        if (!window.confirm('Bạn có chắc chắn muốn XÓA SẠCH toàn bộ dữ liệu đang hiển thị khỏi Cơ sở dữ liệu? Thao tác này không thể hoàn tác.')) return;
+        
+        setIsLoading(true);
+        try {
+            // Phân tích các tháng xuất hiện trong dữ liệu hiện tại
+            const months = new Set<string>();
+            storedData.forEach(item => {
+                if (item.month) {
+                    months.add(normalizeSettlementMonth(item.month));
+                } else {
+                    const dateStr = item.actual_date || item.voucher_date;
+                    if (dateStr) {
+                        if (dateStr.includes('/')) {
+                            const parts = dateStr.split('/');
+                            if (parts.length === 3) {
+                                months.add(normalizeSettlementMonth(`${parts[2]}-${parts[1]}`));
+                            }
+                        } else if (dateStr.includes('-')) {
+                            const parts = dateStr.split('-');
+                            if (parts.length >= 2) {
+                                months.add(normalizeSettlementMonth(`${parts[0]}-${parts[1]}`));
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Nếu không tìm thấy tháng nào, dùng tháng hiện tại làm mặc định
+            if (months.size === 0) {
+                const now = new Date();
+                months.add(normalizeSettlementMonth(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`));
+            }
+
+            // Gọi API xóa dữ liệu từng tháng trên DB
+            await Promise.all(
+                Array.from(months).map(month => {
+                    clearMovementsFrozen(month, 'supply');
+                    clearMovementsFrozen(month, 'goods');
+                    return GoogleSheetService.clearSettlementData(month, 'inventory');
+                })
+            );
+
+            dispatch(setInventoryReportData([]));
+            setPage(0);
+            success('Đã xóa sạch dữ liệu trên Database.');
+        } catch (err: any) {
+            console.error('Lỗi khi xóa:', err);
+            notifyError('Lỗi khi xóa dữ liệu trên Database: ' + err.message);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -221,17 +302,12 @@ const InventoryReport: React.FC = () => {
                         <Button
                             variant="outlined"
                             color="error"
-                            startIcon={<DeleteSweepIcon />}
-                            onClick={() => {
-                                if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ dữ liệu đang hiển thị?')) {
-                                    dispatch(setInventoryReportData([]));
-                                    setPage(0);
-                                    success('Đã xóa toàn bộ dữ liệu.');
-                                }
-                            }}
+                            startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : <DeleteSweepIcon />}
+                            onClick={handleClearAll}
+                            disabled={isLoading}
                             sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
                         >
-                            Xóa tất cả
+                            {isLoading ? 'Đang xóa...' : 'Xóa tất cả'}
                         </Button>
                     )}
                     <Button

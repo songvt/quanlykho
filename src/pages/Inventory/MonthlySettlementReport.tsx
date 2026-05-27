@@ -17,7 +17,7 @@ import {
 } from '@mui/icons-material';
 import { useSelector, useDispatch } from 'react-redux';
 import type { RootState } from '../../store';
-import { setInventoryReportData, setDetailedOutboundData, setInitialBalances } from '../../store/slices/settlementSlice';
+import { setInventoryReportData, setDetailedOutboundData, setSupplyInitialBalances } from '../../store/slices/settlementSlice';
 import { useNotification } from '../../contexts/NotificationContext';
 import { GoogleSheetService } from '../../services/GoogleSheetService';
 import { readExcelFile } from '../../utils/excelUtils';
@@ -26,7 +26,7 @@ import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { formatNumber, formatCurrency } from '../../utils/numberUtils';
+import { formatNumber, formatCurrency, parseExcelNumber } from '../../utils/numberUtils';
 import { checkIsSameMonth } from '../../utils/dateUtils';
 import {
     applyFrozenMovementsFromHistory,
@@ -61,34 +61,11 @@ const MonthlySettlementReport: React.FC = () => {
     const dispatch = useDispatch();
     const { success, error, info } = useNotification();
     
-    // Helper to safely parse numbers from Excel strings
-    const parseExcelNumber = (val: any): number => {
-        if (typeof val === 'number') return val;
-        if (!val) return 0;
-        let str = String(val).trim();
-        
-        // Xử lý dấu phân cách hàng nghìn kiểu Việt Nam (75.944 -> 75944)
-        if (str.includes('.') && !str.includes(',')) {
-            const parts = str.split('.');
-            if (parts.length > 1 && parts[parts.length - 1].length === 3) {
-                str = str.replace(/\./g, '');
-            }
-        }
-        
-        // Xử lý số âm trong ngoặc đơn kiểu kế toán: (2) -> -2
-        if (str.startsWith('(') && str.endsWith(')')) {
-            str = '-' + str.substring(1, str.length - 1);
-        }
-        
-        // Xử lý dấu phẩy (1,234.56 hoặc 75,944)
-        str = str.replace(/,/g, '');
-        return Number(str) || 0;
-    };
-
     const { inventoryReportData, detailedOutboundData, initialBalances, profile } = useSelector((state: RootState) => ({
+
         inventoryReportData: state.settlement?.inventoryReportData || [],
         detailedOutboundData: state.settlement?.detailedOutboundData || [],
-        initialBalances: state.settlement?.initialBalances || {},
+        initialBalances: state.settlement?.supplyInitialBalances || {},
         profile: state.auth?.profile
     }));
     
@@ -126,10 +103,6 @@ const MonthlySettlementReport: React.FC = () => {
         return historyMap;
     };
 
-    const syncMovementsAndReload = async (invData: any[], outData: any[], historyMap: Record<string, any>) => {
-        await GoogleSheetService.syncSettlementMovements(monthKey, invData, outData, 'supply', historyMap);
-        return reloadHistory();
-    };
 
     // 1. Tải danh mục sản phẩm và dữ liệu lịch sử ban đầu
     useEffect(() => {
@@ -152,7 +125,10 @@ const MonthlySettlementReport: React.FC = () => {
                     .map((p: any) => p.item_code);
                 setSupplyItems(new Set(supplies));
 
-                let historyMap = historyRecordsToMap(history || []);
+                // Luôn load tồn cuối tháng trước làm đầu kỳ trước (không phụ thuộc vào history rỗng hay không)
+                await loadPreviousBalances(products || []);
+
+                const historyMap = historyRecordsToMap(history || []);
 
                 if (invData && invData.length > 0) dispatch(setInventoryReportData(invData));
                 else dispatch(setInventoryReportData([]));
@@ -160,15 +136,8 @@ const MonthlySettlementReport: React.FC = () => {
                 if (outData && outData.length > 0) dispatch(setDetailedOutboundData(outData));
                 else dispatch(setDetailedOutboundData([]));
 
-                const hasDetail = (invData?.length || 0) > 0 || (outData?.length || 0) > 0;
-                if (hasDetail && !isMovementsFrozen(monthKey, 'supply')) {
-                    historyMap = await syncMovementsAndReload(invData || [], outData || [], historyMap);
-                }
                 setHistoricalData(historyMap);
 
-                if (Object.keys(historyMap).length === 0 && !hasDetail) {
-                    await loadPreviousBalances();
-                }
             } catch (err) {
                 console.error('Lỗi khi tải dữ liệu khởi tạo:', err);
             } finally {
@@ -178,35 +147,40 @@ const MonthlySettlementReport: React.FC = () => {
         fetchInitialData();
     }, [monthKey]);
 
-    // Fetch previous month's balance if needed
-    const loadPreviousBalances = async () => {
+    // Fetch previous month's closing balance làm đầu kỳ tháng hiện tại
+    // Nhận products làm tham số để dùng ngay khi allProducts chưa được set vào state
+    const loadPreviousBalances = async (productsList?: any[]) => {
         setIsLoading(true);
         try {
-            // Calculate previous month
             const [year, month] = selectedMonth.split('-').map(Number);
             const prevDate = new Date(year, month - 2, 1);
             const prevMonthStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
 
-            info(`Đang kiểm tra số dư tồn cuối tháng ${prevMonthStr}...`);
             const prevHistory = await GoogleSheetService.getSettlementHistory(prevMonthStr);
 
             if (prevHistory && prevHistory.length > 0) {
                 const newInitialBalances: Record<string, { quantity: number; amount: number; unit_price?: number }> = {};
                 prevHistory.forEach((item: any) => {
-                    newInitialBalances[item.item_code] = {
-                        quantity: Number(item.closing_qty) || 0,
-                        amount: Number(item.closing_amount) || 0,
-                        unit_price: Number(item.unit_price) || 0
-                    };
+                    // Lấy closing_qty tháng trước làm đầu kỳ tháng hiện tại
+                    if (item.item_code) {
+                        newInitialBalances[item.item_code] = {
+                            quantity: Number(item.closing_qty) || 0,
+                            amount: Number(item.closing_amount) || 0,
+                            unit_price: Number(item.unit_price) || 0
+                        };
+                    }
+                    if (item.item_name) {
+                        newInitialBalances[item.item_name] = {
+                            quantity: Number(item.closing_qty) || 0,
+                            amount: Number(item.closing_amount) || 0,
+                            unit_price: Number(item.unit_price) || 0
+                        };
+                    }
                 });
-                dispatch(setInitialBalances(newInitialBalances));
-                success(`Đã tự động chuyển tồn cuối ${prevMonthStr} sang đầu kỳ ${selectedMonth}.`);
-            } else {
-                info(`Không tìm thấy dữ liệu chốt tháng ${prevMonthStr}. Bạn có thể nhập thủ công.`);
+                dispatch(setSupplyInitialBalances(newInitialBalances));
             }
         } catch (err: any) {
             console.error('Failed to load previous balances:', err);
-            error('Lỗi khi tải số dư đầu kỳ: ' + err.message);
         } finally {
             setIsLoading(false);
         }
@@ -267,10 +241,6 @@ const MonthlySettlementReport: React.FC = () => {
 
         // LỌC VẬT TƯ: Sử dụng cột 'DM' (ghi chú) và 'Loại Mặt hàng' từ file Excel làm chuẩn
         const filteredInventory = inventoryReportData.filter(item => {
-            const date = item.actual_date || item.voucher_date;
-            const isMonth = date ? checkIsSameMonth(date, selectedMonth) : true;
-            if (!isMonth) return false;
-
             const excelCat = String(item.note || '').toLowerCase();
             if (excelCat.includes('hàng hóa') || excelCat.includes('hang hoa')) {
                 return false; // Nếu là Hàng hóa thì loại ra khỏi báo cáo Vật tư
@@ -279,11 +249,6 @@ const MonthlySettlementReport: React.FC = () => {
         });
 
         const filteredOutbound = detailedOutboundData.filter(item => {
-            // CẢI TIẾN: Nếu ngày bị trống (null/undefined/empty), vẫn giữ lại để tránh mất dữ liệu sau reload
-            const stockDate = item.stock_out_date;
-            const isMonth = (stockDate && stockDate !== 'null' && stockDate !== 'undefined') ? checkIsSameMonth(stockDate, selectedMonth) : true;
-            if (!isMonth) return false;
-
             const excelCat = String(item.item_type || '').toLowerCase();
             // CHỈ lọc bỏ nếu CÓ chữ "hàng hóa". Nếu trống thì vẫn giữ lại để không bị thiếu số liệu.
             if (excelCat && (excelCat.includes('hàng hóa') || excelCat.includes('hang hoa'))) {
@@ -291,6 +256,7 @@ const MonthlySettlementReport: React.FC = () => {
             }
             return true;
         });
+
 
 
         // 1. Nạp tất cả các mặt hàng từ dữ liệu lịch sử (Tồn đầu kỳ gán cứng)
@@ -409,10 +375,6 @@ const MonthlySettlementReport: React.FC = () => {
             if (stockDate) lastDate = stockDate;
 
             if (!itemName && !itemCode) return;
-            
-            // Kiểm tra lại ngày sau khi kế thừa
-            const isMonth = stockDate ? checkIsSameMonth(stockDate, selectedMonth) : true;
-            if (!isMonth) return;
 
             const row = getRow(itemName, itemCode, item.unit, parseExcelNumber(item.cost_price));
             row.item_name_finance = String(item.finance_item || row.item_name_finance || '');
@@ -490,37 +452,7 @@ const MonthlySettlementReport: React.FC = () => {
         return Array.from(missing).filter(Boolean);
     }, [inventoryReportData, detailedOutboundData, allProducts, selectedMonth]);
 
-    const handleInventoryImport = async (data: any[]) => {
-        setIsLoading(true);
-        try {
-            await GoogleSheetService.saveSettlementInventory(monthKey, data);
-            dispatch(setInventoryReportData(data));
-            const historyMap = await syncMovementsAndReload(data, detailedOutboundData, historicalData);
-            setHistoricalData(historyMap);
-            success(`Đã lưu và chốt ${data.length} dòng Báo cáo Xuất Nhập tháng ${monthKey}. Số liệu cố định khi tải lại trang.`);
-        } catch (err: any) {
-            console.error('Import Error (Inventory):', err);
-            error('Lỗi khi lưu dữ liệu Import: ' + (err.message || 'Không thể kết nối đến máy chủ.'));
-        } finally {
-            setIsLoading(false);
-        }
-    };
 
-    const handleOutboundImport = async (data: any[]) => {
-        setIsLoading(true);
-        try {
-            await GoogleSheetService.saveSettlementOutbound(monthKey, data);
-            dispatch(setDetailedOutboundData(data));
-            const historyMap = await syncMovementsAndReload(inventoryReportData, data, historicalData);
-            setHistoricalData(historyMap);
-            success(`Đã lưu và chốt ${data.length} dòng Chi Tiết Xuất tháng ${monthKey}. Cột XUẤT TRONG KỲ giữ nguyên khi tải lại.`);
-        } catch (err: any) {
-            console.error('Import Error (Outbound):', err);
-            error('Lỗi khi lưu dữ liệu Import: ' + (err.message || 'Không thể kết nối đến máy chủ.'));
-        } finally {
-            setIsLoading(false);
-        }
-    };
 
     const handleClearData = async () => {
         if (!window.confirm(`Bạn có chắc chắn muốn XÓA TOÀN BỘ dữ liệu nhập xuất và chi tiết xuất của tháng ${monthKey}? Thao tác này không thể hoàn tác.`)) return;
@@ -971,9 +903,7 @@ const MonthlySettlementReport: React.FC = () => {
                         <Typography variant="h6" sx={{ fontWeight: 700 }}>QUYẾT TOÁN VẬT TƯ HÀNG THÁNG</Typography>
                         <Typography variant="body2" color="text.secondary">Dữ liệu tổng hợp từ Báo cáo Xuất Nhập và Chi Tiết Xuất.</Typography>
                     </Box>
-                    <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
-                    <InventoryReportImport onImport={handleInventoryImport} />
-                    <OutboundReportImport onImport={handleOutboundImport} />
+
                 </Box>
                 
                 <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
@@ -1362,183 +1292,6 @@ const MonthlySettlementReport: React.FC = () => {
     );
 };
 
-// --- Internal Import Components ---
 
-const InventoryReportImport: React.FC<{ onImport: (data: any[]) => Promise<void> }> = ({ onImport }) => {
-    const [loading, setLoading] = useState(false);
-    const { error } = useNotification();
-
-    const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        
-        setLoading(true);
-        try {
-            const data = await readExcelFile(file);
-            if (!data || data.length === 0) {
-                error('File Excel không có dữ liệu hoặc định dạng không đúng.');
-                return;
-            }
-
-            // Map BCCS columns (Hỗ trợ nhiều biến thể tên cột)
-            const mapped = data.map((row: any) => {
-                const findVal = (keys: string[]) => {
-                    const normalizedRow = Object.keys(row).reduce((acc: any, k) => {
-                        acc[k.trim().toLowerCase()] = row[k];
-                        return acc;
-                    }, {});
-                    const key = keys.find(k => normalizedRow[k.toLowerCase()] !== undefined);
-                    return key ? normalizedRow[key.toLowerCase()] : undefined;
-                };
-
-                return {
-                    unit_code: findVal(['Mã đơn vị', 'Ma don vi', 'Mã ĐV']),
-                    unit_name: findVal(['Đơn vị', 'Don vi', 'Tên đơn vị']),
-                    transaction_type: findVal(['Loại giao dịch', 'Loai giao dich', 'Loại GD']),
-                    order_number: findVal(['Lệnh NXK', 'Lenh NXK', 'Lệnh']),
-                    employee_voucher: findVal(['Số phiếu NV', 'So phieu NV', 'Số phiếu']),
-                    warehouse_voucher: findVal(['Số phiếu NXK', 'So phieu NXK', 'Số phiếu kho']),
-                    item_code: findVal(['Mã mặt hàng', 'Ma mat hang', 'Mã hàng', 'Mã VT']),
-                    bccs_item: findVal(['Mặt hàng BCCS', 'Mat hang BCCS', 'Tên hàng BCCS', 'TÊN VẬT TƯ, HÀNG HÓA', 'Mặt hàng']),
-                    finance_item: findVal(['Mặt hàng tài chính', 'Mat hang tai chinh', 'Tên hàng TC', 'Mặt hàng hạch toán']),
-                    unit: findVal(['Đơn vị tính', 'ĐVT', 'Don vi tinh', 'DVT', 'Unit']),
-                    unit_price: findVal(['Đơn giá', 'Don gia', 'ĐG']),
-                    quantity: findVal(['Số lượng', 'So luong', 'SL']),
-                    total_amount: findVal(['Thành tiền', 'Thanh tien', 'TT']),
-                    voucher_date: findVal(['Ngày lập phiếu', 'Ngay lap phieu', 'Ngày chứng từ', 'Ngày lập']),
-                    actual_date: findVal(['Ngày thực nhập/xuất', 'Ngay thuc nhap xuat', 'Ngày thực tế', 'Ngày thực hiện']),
-                    employee_name: findVal(['Nhân viên', 'Nhan vien', 'Người thực hiện']),
-                    reason: findVal(['Lý do', 'Ly do']),
-                    note: findVal(['DM', 'Ghi chú', 'Ghi chu'])
-                };
-            });
-
-            // Lọc bỏ các dòng trắng hoàn toàn
-            const validData = mapped.filter(item => item.item_code || item.bccs_item);
-            
-            if (validData.length === 0) {
-                error('Không tìm thấy cột dữ liệu phù hợp trong file Excel. Vui lòng kiểm tra tiêu đề cột.');
-                return;
-            }
-
-            await onImport(validData);
-        } catch (err: any) {
-            console.error('Error reading excel:', err);
-            error('Lỗi đọc file Excel: ' + err.message);
-        } finally {
-            setLoading(false);
-            e.target.value = ''; // Reset input
-        }
-    };
-
-    return (
-        <Button 
-            variant="outlined" 
-            component="label" 
-            startIcon={loading ? <CircularProgress size={20} /> : <UploadFileIcon />} 
-            color="primary"
-            disabled={loading}
-        >
-            {loading ? 'Đang xử lý...' : 'Import BC Xuất Nhập'}
-            <input type="file" hidden onChange={handleFile} accept=".xlsx, .xls" disabled={loading} />
-        </Button>
-    );
-};
-
-const OutboundReportImport: React.FC<{ onImport: (data: any[]) => Promise<void> }> = ({ onImport }) => {
-    const [loading, setLoading] = useState(false);
-    const { error } = useNotification();
-
-    const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        
-        setLoading(true);
-        try {
-            const data = await readExcelFile(file);
-            if (!data || data.length === 0) {
-                error('File Excel không có dữ liệu hoặc định dạng không đúng.');
-                return;
-            }
-
-            // Map Outbound columns (Hỗ trợ nhiều biến thể tên cột)
-            const mapped = data.map((row: any) => {
-                const findVal = (keys: string[]) => {
-                    const normalizedRow = Object.keys(row).reduce((acc: any, k) => {
-                        acc[k.trim().toLowerCase()] = row[k];
-                        return acc;
-                    }, {});
-                    const key = keys.find(k => normalizedRow[k.toLowerCase()] !== undefined);
-                    return key ? normalizedRow[key.toLowerCase()] : undefined;
-                };
-
-                return {
-                    cost_center_unit: findVal(['Đơn vị giá vốn', 'Don vi gia von']),
-                    cost_center: findVal(['Trung tâm giá vốn', 'Trung tam gia von']),
-                    cost_center_store: findVal(['Cửa hàng giá vốn', 'Cua hang gia von']),
-                    cost_center_employee_code: findVal(['Mã Nhân viên/Đại lý giá vốn', 'Ma NV/Dai ly gia von']),
-                    stock_out_date: findVal(['Ngày trừ kho', 'Ngay tru kho', 'Ngày xuất', 'Ngày']),
-                    channel_group: findVal(['Nhóm loại kênh', 'Nhom loai kenh']),
-                    channel_type: findVal(['Loại kênh', 'Loai kenh']),
-                    service: findVal(['Dịch vụ', 'Dich vu']),
-                    transaction_type: findVal(['Loại giao dịch', 'Loai giao dich']),
-                    item_code: findVal(['Mã mặt hàng', 'Ma mat hang', 'Mã hàng', 'Mã VT', 'Mã MH hạch toán', 'Mã hạch toán', 'Mã kế toán', 'Ma MH hach toan']),
-                    item_name: findVal(['Mặt hàng', 'TÊN VẬT TƯ, HÀNG HÓA', 'Mat hang', 'Tên hàng', 'Tên VT', 'Tên vật tư', 'Tên hàng hóa', 'Tên mặt hàng', 'Tên hàng BCCS', 'Tên MH hạch toán', 'Tên hạch toán']),
-                    finance_item: findVal(['Mặt hàng tài chính', 'Mat hang tai chinh', 'Tên hàng TC', 'Mặt hàng hạch toán']),
-                    item_type: findVal(['Loại Mặt hàng', 'Loại mặt hàng', 'DM', 'Ghi chú']),
-                    qty_within_limit: findVal(['Số lượng (trong hạn mức)', 'SL (trong HM)', 'SL', 'Số lượng', 'SL xuất', 'Số lượng xuất', 'Số lượng cấp', 'Số lượng cấp phát', 'Số lượng thực tế', 'Số lượng thực xuất', 'SL thực tế', 'SL thực xuất']),
-                    qty_over_limit: findVal(['Số lượng (vượt hạn mức)', 'SL (vuot HM)', 'Số lượng (ngoài hạn mức)', 'SL (ngoai HM)', 'Số lượng (ngoài HM)']),
-                    qty_total: findVal(['Số lượng tổng', 'SL tổng', 'Tổng cộng', 'Tổng số lượng', 'Số lượng thực xuất']),
-                    cost_price: findVal(['Đơn giá (giá vốn)', 'Don gia (gia von)', 'Đơn giá', 'Giá vốn', 'Đơn giá xuất']),
-                    total_amount: findVal(['Thành tiền', 'Thanh tien', 'TT']),
-                    from_serial: findVal(['Từ Serial', 'Tu Serial']),
-                    to_serial: findVal(['Đến Serial', 'Den Serial']),
-                    item_status: findVal(['Trạng thái hàng', 'Trang thai hang']),
-                    stock_out_voucher: findVal(['Mã phiếu xuất', 'Ma phieu xuat']),
-                    transaction_code: findVal(['Mã giao dịch', 'Ma giao dich']),
-                    management_unit: findVal(['Đơn vị quản lý hàng hóa', 'Don vi quan ly hang hoa']),
-                    vtp_transaction_type: findVal(['Loại GD VTP', 'Loai GD VTP']),
-                    case_code: findVal(['Mã vụ việc', 'Ma vu viec']),
-                    case_name: findVal(['Tên vụ việc', 'Ten vu viec']),
-                    document_number: findVal(['Số giấy tờ', 'So giay to']),
-                    customer_group: findVal(['Nhóm Khách hàng', 'Nhom Khach hang']),
-                    sap_item_code: findVal(['Mã mặt hàng SAP', 'Ma mat hang SAP', 'Mã SAP']),
-                    sap_item_name: findVal(['Tên mặt hàng SAP', 'Ten mat hang SAP', 'Tên SAP']),
-                    sap_sync_type: findVal(['Loại dữ liệu đồng bộ SAP', 'Loai du lieu dong bo SAP']),
-                    impact_type: findVal(['LOẠI TÁC ĐỘNG', 'Loai tac dong']),
-                    cost_allocation: findVal(['Phân bổ giá vốn', 'Phan bo gia von'])
-                };
-            });
-
-            const validData = mapped.filter(item => item.item_code || item.item_name);
-
-            if (validData.length === 0) {
-                error('Không tìm thấy cột dữ liệu phù hợp trong file Excel. Vui lòng kiểm tra tiêu đề cột.');
-                return;
-            }
-
-            await onImport(validData);
-        } catch (err: any) {
-            console.error('Error reading excel:', err);
-            error('Lỗi đọc file Excel: ' + err.message);
-        } finally {
-            setLoading(false);
-            e.target.value = ''; // Reset input
-        }
-    };
-
-    return (
-        <Button 
-            variant="outlined" 
-            component="label" 
-            startIcon={loading ? <CircularProgress size={20} /> : <UploadFileIcon />} 
-            color="secondary"
-            disabled={loading}
-        >
-            {loading ? 'Đang xử lý...' : 'Import Chi Tiết Xuất'}
-            <input type="file" hidden onChange={handleFile} accept=".xlsx, .xls" disabled={loading} />
-        </Button>
-    );
-};
 
 export default MonthlySettlementReport;
