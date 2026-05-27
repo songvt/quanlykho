@@ -923,7 +923,7 @@ const MonthlySettlementReport: React.FC = () => {
                     <Button 
                         variant="outlined" 
                         startIcon={isLoading ? <CircularProgress size={16} /> : <HistoryIcon />} 
-                        onClick={loadPreviousBalances}
+                        onClick={() => loadPreviousBalances()}
                         disabled={isLoading}
                     >
                         Lấy tồn đầu kỳ
