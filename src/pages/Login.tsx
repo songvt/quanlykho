@@ -108,7 +108,7 @@ const Login = () => {
                     textAlign: 'center',
                     lineHeight: 1.2,
                 }}>
-                    Quản lý kho
+                    Hệ thống quản lý kho
                 </Typography>
                 <Typography sx={{
                     fontSize: '0.875rem',
@@ -117,7 +117,7 @@ const Login = () => {
                     mt: 0.5,
                     textAlign: 'center',
                 }}>
-                    Hệ thống quản lý kho GGS
+                    Tài sản
                 </Typography>
             </Box>
 
