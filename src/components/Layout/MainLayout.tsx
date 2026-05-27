@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import type { RootState, AppDispatch } from '../../store';
@@ -23,10 +23,14 @@ import {
     Menu,
     MenuItem,
     Divider,
-    InputBase,
     Badge,
-    Breadcrumbs,
     Collapse,
+    BottomNavigation,
+    BottomNavigationAction,
+    SwipeableDrawer,
+    useMediaQuery,
+    useTheme,
+    Chip,
 } from '@mui/material';
 import {
     Menu as MenuIcon,
@@ -41,7 +45,6 @@ import {
     SettingsOutlined as SettingsIcon,
     AssessmentOutlined as AssessmentIcon,
     AssignmentReturnOutlined as ReturnIcon,
-    Search as SearchIcon,
     NotificationsNoneOutlined as NotificationsIcon,
     ExpandMore as ExpandMoreIcon,
     Business as BusinessIcon,
@@ -52,15 +55,22 @@ import {
     ExpandLess as ExpandLessIcon,
     ChevronRight as ChevronRightIcon,
     BarChart as BarChartIcon,
+    HomeOutlined as HomeIcon,
+    Close as CloseIcon,
+    AppsOutlined as AppsIcon,
 } from '@mui/icons-material';
 import AIChatbot from '../Chatbot/AIChatbot';
 
-const drawerWidth = 260; 
+const DRAWER_WIDTH = 268;
 
 const MainLayout: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const dispatch = useDispatch<AppDispatch>();
+    const muiTheme = useTheme();
+    const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(muiTheme.breakpoints.between('sm', 'md'));
+
     const { profile } = useSelector((state: RootState) => state.auth);
     const { items: transactions } = useSelector((state: RootState) => state.transactions);
 
@@ -73,21 +83,19 @@ const MainLayout: React.FC = () => {
 
     // Auto-expand menu groups based on current URL
     useEffect(() => {
-        if (location.pathname.startsWith('/assets')) {
-            setExpandAssets(true);
-        }
-        if (['/inventory-report', '/detailed-outbound-report', '/monthly-settlement', '/goods-settlement'].includes(location.pathname)) {
-            setExpandSettlement(true);
-        }
-        if (['/employees', '/attendance', '/attendance-summary', '/admin-requests', '/kpi-grades', '/payroll', '/bonus-penalty', '/payroll-settings', '/feedback-box'].includes(location.pathname)) {
-            setExpandAdminHr(true);
-        }
+        if (location.pathname.startsWith('/assets')) setExpandAssets(true);
+        if (['/inventory-report', '/detailed-outbound-report', '/monthly-settlement', '/goods-settlement'].includes(location.pathname)) setExpandSettlement(true);
+        if (['/employees', '/attendance', '/attendance-summary', '/admin-requests', '/kpi-grades', '/payroll', '/bonus-penalty', '/payroll-settings', '/feedback-box'].includes(location.pathname)) setExpandAdminHr(true);
     }, [location.pathname]);
+
+    // Close drawer on navigation (mobile)
+    useEffect(() => {
+        if (isMobile) setMobileOpen(false);
+    }, [location.pathname, isMobile]);
 
     const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
     const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget);
     const handleMenuClose = () => setAnchorEl(null);
-
     const handleNotificationOpen = (event: React.MouseEvent<HTMLElement>) => setNotificationAnchorEl(event.currentTarget);
     const handleNotificationClose = () => setNotificationAnchorEl(null);
 
@@ -97,13 +105,9 @@ const MainLayout: React.FC = () => {
         time: new Date(t.created_at || t.date || '').toLocaleTimeString('vi-VN'),
     }));
 
-    // Check if user has required profile to see anything
-    // Chỉ redirect khi đã xác nhận không có session (không phải đang loading)
     const authStatus = useSelector((state: RootState) => state.auth.status);
     useEffect(() => {
-        if (!profile && authStatus !== 'loading') {
-            navigate('/login');
-        }
+        if (!profile && authStatus !== 'loading') navigate('/login');
     }, [profile, authStatus, navigate]);
 
     const handleLogout = () => {
@@ -114,9 +118,13 @@ const MainLayout: React.FC = () => {
 
     const { hasPermission, hasAnyPermission } = usePermission();
 
-    const menuItems = [
+    const menuItems = useMemo(() => [
         ...(profile?.role === 'admin' || (profile?.role === 'staff' && (!profile.permissions || profile.permissions.length === 0)) ? [
             { text: 'Trang chủ', icon: <DashboardIcon />, path: '/' }
+        ] : []),
+        // ── Hành chính: nằm ngay sau Trang chủ ──
+        ...(profile?.role === 'admin' || profile?.role === 'manager' || hasPermission('employees.view') ? [
+            { text: 'Hành chính', icon: <PeopleIcon sx={{ color: '#059669' }} />, path: '/admin-hr' }
         ] : []),
         ...(hasAnyPermission(['assets.view', 'assets.manage', 'assets.list_only', '*']) ? [
             { text: 'Tài sản', icon: <DevicesOtherIcon />, path: '/assets' }
@@ -137,7 +145,7 @@ const MainLayout: React.FC = () => {
             { text: 'Tạo QR code', icon: <QrCode2Icon />, path: '/qr-generator' }
         ] : []),
         ...(hasPermission('qr_hcm.view') ? [
-            { text: 'Tạo QR code CN_HCM', icon: <QrCode2Icon sx={{ color: '#1e4b9b' }} />, path: '/qr-generator-hcm' }
+            { text: 'QR HCM', icon: <QrCode2Icon sx={{ color: '#1e4b9b' }} />, path: '/qr-generator-hcm' }
         ] : []),
         ...(hasPermission('orders.create') || hasPermission('orders.view_own') ? [
             { text: 'Đặt hàng', icon: <OrderIcon />, path: '/orders' }
@@ -150,487 +158,541 @@ const MainLayout: React.FC = () => {
         ] : []),
         ...(hasAnyPermission(['reports.view_all', 'reports.handover']) ? [
             { text: 'Báo cáo', icon: <AssessmentIcon />, path: '/reports' },
-            { text: 'Lịch sử tác động', icon: <HistoryIcon />, path: '/action-history' }
-        ] : []),
-        ...(profile?.role === 'admin' || profile?.role === 'manager' || hasPermission('employees.view') ? [
-            { text: 'Hành chính', icon: <PeopleIcon sx={{ color: '#059669' }} />, path: '/admin-hr' }
+            { text: 'Lịch sử', icon: <HistoryIcon />, path: '/action-history' }
         ] : []),
         ...(hasPermission('*') ? [
             { text: 'Thiết lập', icon: <SettingsIcon />, path: '/settings' }
         ] : []),
-    ];
+    ], [profile, hasPermission, hasAnyPermission]);
 
-    // Redirect if current path is hidden for this user (e.g. Dashboard)
+    // Bottom navigation items (top 5 most important for mobile)
+    const bottomNavItems = useMemo(() => {
+        const items = [];
+        if (menuItems.find(i => i.path === '/')) items.push({ label: 'Trang chủ', icon: <HomeIcon />, path: '/' });
+        if (menuItems.find(i => i.path === '/inbound')) items.push({ label: 'Nhập kho', icon: <InputIcon />, path: '/inbound' });
+        if (menuItems.find(i => i.path === '/outbound')) items.push({ label: 'Xuất kho', icon: <OutputIcon />, path: '/outbound' });
+        if (menuItems.find(i => i.path === '/products')) items.push({ label: 'Hàng hóa', icon: <InventoryIcon />, path: '/products' });
+        if (menuItems.find(i => i.path === '/orders')) items.push({ label: 'Đặt hàng', icon: <OrderIcon />, path: '/orders' });
+        // Always add "More" button
+        items.push({ label: 'Thêm', icon: <AppsIcon />, path: '__menu__' });
+        return items.slice(0, 5); // max 5 items
+    }, [menuItems]);
+
+    // Redirect if current path is hidden for this user
     useEffect(() => {
         if (location.pathname === '/' && menuItems.length > 0 && !menuItems.find(i => i.path === '/')) {
-            const firstAvailable = menuItems[0].path;
-            navigate(firstAvailable, { replace: true });
+            navigate(menuItems[0].path, { replace: true });
         }
     }, [location.pathname, menuItems, navigate]);
 
     const currentMenuItem = menuItems.find(item => item.path === location.pathname);
 
+    // Get bottom nav value
+    const bottomNavValue = bottomNavItems.findIndex(i => i.path === location.pathname);
+
+    // ─── Sidebar Drawer Content ───────────────────────────────────────────────
     const drawer = (
-        <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            height: '100%', 
-            bgcolor: 'white', 
+        <Box sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            height: '100%',
+            bgcolor: '#ffffff',
             borderRight: '1px solid #e2e8f0',
-            boxShadow: '4px 0 24px rgba(0,0,0,0.02)'
         }}>
-            {/* Standard SaaS Logo Area */}
-            <Box sx={{ 
-                p: 3, 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 2,
-                mb: 1,
+            {/* Logo Area */}
+            <Box sx={{
+                p: 2.5,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5,
+                borderBottom: '1px solid #f1f5f9',
             }}>
-                <Box sx={{ 
-                    width: 40, 
-                    height: 40, 
-                    borderRadius: 2.5, 
+                <Box sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: '12px',
                     background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
-                    display: 'flex', 
-                    alignItems: 'center', 
+                    display: 'flex',
+                    alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+                    flexShrink: 0,
                 }}>
-                    <DashboardIcon sx={{ color: 'white', fontSize: 24 }} />
+                    <InventoryIcon sx={{ color: 'white', fontSize: 22 }} />
                 </Box>
-                <Box>
-                    <Typography
-                        variant="h6"
-                        sx={{
-                            fontWeight: 800,
-                            color: '#0f172a',
-                            letterSpacing: '-0.5px',
-                            fontSize: '1.1rem',
-                            lineHeight: 1.2
-                        }}
-                    >
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography sx={{
+                        fontWeight: 800,
+                        color: '#0f172a',
+                        fontSize: '0.95rem',
+                        lineHeight: 1.2,
+                        letterSpacing: '-0.3px',
+                    }}>
                         QUẢN LÝ KHO
                     </Typography>
-                    <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', fontSize: '0.65rem' }}>
-                        Hệ thống quản lý
+                    <Typography sx={{
+                        color: '#94a3b8',
+                        fontSize: '0.65rem',
+                        fontWeight: 600,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                    }}>
+                        Hệ thống kho GGS
                     </Typography>
+                </Box>
+                {/* Close button only on mobile */}
+                {isMobile && (
+                    <IconButton
+                        onClick={handleDrawerToggle}
+                        size="small"
+                        sx={{ color: '#94a3b8', minWidth: 36, minHeight: 36 }}
+                    >
+                        <CloseIcon fontSize="small" />
+                    </IconButton>
+                )}
+            </Box>
+
+            {/* User Profile compact card */}
+            <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid #f1f5f9' }}>
+                <Box
+                    onClick={handleMenuOpen}
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1.5,
+                        p: 1.5,
+                        borderRadius: '12px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        '&:hover': { bgcolor: '#f8fafc' },
+                        '&:active': { bgcolor: '#f1f5f9', transform: 'scale(0.98)' },
+                    }}
+                >
+                    <Avatar sx={{
+                        width: 36,
+                        height: 36,
+                        background: 'linear-gradient(135deg, #2563eb 0%, #60a5fa 100%)',
+                        color: 'white',
+                        fontSize: '0.875rem',
+                        fontWeight: 700,
+                        boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
+                        flexShrink: 0,
+                    }}>
+                        {profile?.full_name?.charAt(0)?.toUpperCase() || 'A'}
+                    </Avatar>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography sx={{
+                            fontWeight: 700,
+                            color: '#0f172a',
+                            fontSize: '0.85rem',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                        }}>
+                            {profile?.full_name || 'Administrator'}
+                        </Typography>
+                        <Typography sx={{
+                            fontSize: '0.7rem',
+                            color: '#64748b',
+                            fontWeight: 500,
+                        }}>
+                            {profile?.role === 'admin' ? 'Quản trị viên' : profile?.role === 'manager' ? 'Quản lý' : 'Nhân viên kho'}
+                        </Typography>
+                    </Box>
+                    <ExpandMoreIcon sx={{ color: '#94a3b8', fontSize: 18, flexShrink: 0 }} />
                 </Box>
             </Box>
 
-            <List sx={{ px: 2, flexGrow: 1 }}>
-                {menuItems.map((item) => {
-                    const isActive = location.pathname === item.path;
+            {/* Menu Items */}
+            <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', py: 1.5, px: 1.5 }}>
+                <List disablePadding>
+                    {menuItems.map((item) => {
+                        const isActive = location.pathname === item.path;
 
-                    // ── Special: expandable "Tài sản" group
-                    if (item.path === '/assets') {
-                        const canViewReports = hasAnyPermission(['assets.view', 'assets.manage', '*']);
-                        const assetSubItems = [
-                            { text: 'Danh sách tài sản', path: '/assets' },
-                            { text: 'Bàn giao CCDC-BHLĐ', path: '/assets/handover-bhl' },
-                            ...(canViewReports ? [
-                                { text: 'Báo cáo tổng hợp CCDC-TSNT', path: '/assets/report-ccdc' },
-                                { text: 'Chi tiết tài sản CCDC-TSNT', path: '/assets/detail-ccdc' },
-                                { text: 'Báo cáo tổng hợp TBVP', path: '/assets/report-tbvp' },
-                                { text: 'Chi tiết tài sản TBVP', path: '/assets/detail-tbvp' },
-                                { text: 'Báo cáo CCDC-TBVP hỏng', path: '/assets/broken-report' },
-                            ] : []),
-                        ];
-                        const isGroupActive = location.pathname.startsWith('/assets');
+                        // ── Expandable Assets group
+                        if (item.path === '/assets') {
+                            const canViewReports = hasAnyPermission(['assets.view', 'assets.manage', '*']);
+                            const assetSubItems = [
+                                { text: 'Danh sách tài sản', path: '/assets' },
+                                { text: 'Bàn giao CCDC-BHLĐ', path: '/assets/handover-bhl' },
+                                ...(canViewReports ? [
+                                    { text: 'BC tổng hợp CCDC-TSNT', path: '/assets/report-ccdc' },
+                                    { text: 'Chi tiết CCDC-TSNT', path: '/assets/detail-ccdc' },
+                                    { text: 'BC tổng hợp TBVP', path: '/assets/report-tbvp' },
+                                    { text: 'Chi tiết TBVP', path: '/assets/detail-tbvp' },
+                                    { text: 'BC CCDC-TBVP hỏng', path: '/assets/broken-report' },
+                                ] : []),
+                            ];
+                            const isGroupActive = location.pathname.startsWith('/assets');
+                            return (
+                                <React.Fragment key="assets-group">
+                                    <ListItem disablePadding sx={{ mb: 0.5 }}>
+                                        <ListItemButton
+                                            onClick={() => setExpandAssets(p => !p)}
+                                            selected={isGroupActive && !expandAssets}
+                                            sx={menuItemSx(isGroupActive)}
+                                        >
+                                            <ListItemIcon sx={menuIconSx(isGroupActive)}>
+                                                {React.cloneElement(item.icon as React.ReactElement<any>, { sx: { fontSize: 20 } })}
+                                            </ListItemIcon>
+                                            <ListItemText
+                                                primary={item.text}
+                                                primaryTypographyProps={{ fontWeight: isGroupActive ? 700 : 500, fontSize: '0.875rem' }}
+                                            />
+                                            {expandAssets
+                                                ? <ExpandLessIcon sx={{ fontSize: 16, color: '#94a3b8' }} />
+                                                : <ChevronRightIcon sx={{ fontSize: 16, color: '#94a3b8' }} />}
+                                        </ListItemButton>
+                                    </ListItem>
+                                    <Collapse in={expandAssets} timeout="auto" unmountOnExit>
+                                        <List disablePadding sx={{ pl: 1.5, mb: 0.5 }}>
+                                            {assetSubItems.map(sub => {
+                                                const subActive = location.pathname === sub.path;
+                                                return (
+                                                    <ListItem key={sub.path} disablePadding sx={{ mb: 0.5 }}>
+                                                        <ListItemButton
+                                                            onClick={() => { navigate(sub.path); setMobileOpen(false); }}
+                                                            selected={subActive}
+                                                            sx={subItemSx(subActive)}
+                                                        >
+                                                            <Box sx={{
+                                                                width: 6, height: 6, borderRadius: '50%', mr: 1.5, flexShrink: 0,
+                                                                bgcolor: subActive ? '#2563eb' : '#cbd5e1'
+                                                            }} />
+                                                            <ListItemText
+                                                                primary={sub.text}
+                                                                primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: subActive ? 700 : 400, color: subActive ? '#2563eb' : '#475569' }}
+                                                            />
+                                                        </ListItemButton>
+                                                    </ListItem>
+                                                );
+                                            })}
+                                        </List>
+                                    </Collapse>
+                                </React.Fragment>
+                            );
+                        }
+
+                        // ── Expandable Settlement group
+                        if (item.path === '/settlement') {
+                            const settlementSubItems = [
+                                { text: 'Báo cáo 17 - XNT', path: '/inventory-report' },
+                                { text: 'Báo cáo Xuất trong kỳ', path: '/detailed-outbound-report' },
+                                { text: 'Quyết toán vật tư', path: '/monthly-settlement' },
+                                { text: 'Quyết toán hàng hóa', path: '/goods-settlement' },
+                            ];
+                            const isGroupActive = ['/inventory-report', '/detailed-outbound-report', '/monthly-settlement', '/goods-settlement'].includes(location.pathname);
+                            return (
+                                <React.Fragment key="settlement-group">
+                                    <ListItem disablePadding sx={{ mb: 0.5 }}>
+                                        <ListItemButton
+                                            onClick={() => setExpandSettlement(p => !p)}
+                                            selected={isGroupActive && !expandSettlement}
+                                            sx={menuItemSx(isGroupActive)}
+                                        >
+                                            <ListItemIcon sx={menuIconSx(isGroupActive)}>
+                                                {React.isValidElement(item.icon) ? React.cloneElement(item.icon as React.ReactElement<any>, { sx: { fontSize: 20 } }) : item.icon}
+                                            </ListItemIcon>
+                                            <ListItemText
+                                                primary={item.text}
+                                                primaryTypographyProps={{ fontWeight: isGroupActive ? 700 : 500, fontSize: '0.875rem' }}
+                                            />
+                                            {expandSettlement
+                                                ? <ExpandLessIcon sx={{ fontSize: 16, color: '#94a3b8' }} />
+                                                : <ChevronRightIcon sx={{ fontSize: 16, color: '#94a3b8' }} />}
+                                        </ListItemButton>
+                                    </ListItem>
+                                    <Collapse in={expandSettlement} timeout="auto" unmountOnExit>
+                                        <List disablePadding sx={{ pl: 1.5, mb: 0.5 }}>
+                                            {settlementSubItems.map(sub => {
+                                                const subActive = location.pathname === sub.path;
+                                                return (
+                                                    <ListItem key={sub.path} disablePadding sx={{ mb: 0.5 }}>
+                                                        <ListItemButton
+                                                            onClick={() => { navigate(sub.path); setMobileOpen(false); }}
+                                                            selected={subActive}
+                                                            sx={subItemSx(subActive)}
+                                                        >
+                                                            <Box sx={{
+                                                                width: 6, height: 6, borderRadius: '50%', mr: 1.5, flexShrink: 0,
+                                                                bgcolor: subActive ? '#2563eb' : '#cbd5e1'
+                                                            }} />
+                                                            <ListItemText
+                                                                primary={sub.text}
+                                                                primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: subActive ? 700 : 400, color: subActive ? '#2563eb' : '#475569' }}
+                                                            />
+                                                        </ListItemButton>
+                                                    </ListItem>
+                                                );
+                                            })}
+                                        </List>
+                                    </Collapse>
+                                </React.Fragment>
+                            );
+                        }
+
+                        // ── Expandable Admin/HR group
+                        if (item.path === '/admin-hr') {
+                            const adminHrSubItems = [
+                                ...(hasPermission('employees.view') ? [{ text: 'Nhân viên', path: '/employees' }] : []),
+                                ...(profile?.role === 'admin' || profile?.role === 'manager' ? [
+                                    { text: 'Chấm công', path: '/attendance' },
+                                    { text: 'Tổng hợp chấm công', path: '/attendance-summary' },
+                                    { text: 'Phiếu hành chính', path: '/admin-requests' },
+                                    { text: 'Chấm điểm KPI', path: '/kpi-grades' },
+                                    { text: 'Bảng lương', path: '/payroll' },
+                                    { text: 'Điểm cộng trừ', path: '/bonus-penalty' },
+                                    { text: 'Thiết lập công lương', path: '/payroll-settings' },
+                                    { text: 'Hòm thư góp ý', path: '/feedback-box' },
+                                ] : [])
+                            ];
+                            const isGroupActive = ['/employees', '/attendance', '/attendance-summary', '/admin-requests', '/kpi-grades', '/payroll', '/bonus-penalty', '/payroll-settings', '/feedback-box'].includes(location.pathname);
+                            return (
+                                <React.Fragment key="admin-hr-group">
+                                    <ListItem disablePadding sx={{ mb: 0.5 }}>
+                                        <ListItemButton
+                                            onClick={() => setExpandAdminHr(p => !p)}
+                                            selected={isGroupActive && !expandAdminHr}
+                                            sx={menuItemSx(isGroupActive, '#059669')}
+                                        >
+                                            <ListItemIcon sx={menuIconSx(isGroupActive, '#059669')}>
+                                                {React.isValidElement(item.icon) ? React.cloneElement(item.icon as React.ReactElement<any>, { sx: { fontSize: 20 } }) : item.icon}
+                                            </ListItemIcon>
+                                            <ListItemText
+                                                primary={item.text}
+                                                primaryTypographyProps={{ fontWeight: isGroupActive ? 700 : 500, fontSize: '0.875rem' }}
+                                            />
+                                            {expandAdminHr
+                                                ? <ExpandLessIcon sx={{ fontSize: 16, color: '#94a3b8' }} />
+                                                : <ChevronRightIcon sx={{ fontSize: 16, color: '#94a3b8' }} />}
+                                        </ListItemButton>
+                                    </ListItem>
+                                    <Collapse in={expandAdminHr} timeout="auto" unmountOnExit>
+                                        <List disablePadding sx={{ pl: 1.5, mb: 0.5 }}>
+                                            {adminHrSubItems.map(sub => {
+                                                const subActive = location.pathname === sub.path;
+                                                return (
+                                                    <ListItem key={sub.path} disablePadding sx={{ mb: 0.5 }}>
+                                                        <ListItemButton
+                                                            onClick={() => { navigate(sub.path); setMobileOpen(false); }}
+                                                            selected={subActive}
+                                                            sx={subItemSx(subActive, '#059669')}
+                                                        >
+                                                            <Box sx={{
+                                                                width: 6, height: 6, borderRadius: '50%', mr: 1.5, flexShrink: 0,
+                                                                bgcolor: subActive ? '#059669' : '#cbd5e1'
+                                                            }} />
+                                                            <ListItemText
+                                                                primary={sub.text}
+                                                                primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: subActive ? 700 : 400, color: subActive ? '#059669' : '#475569' }}
+                                                            />
+                                                        </ListItemButton>
+                                                    </ListItem>
+                                                );
+                                            })}
+                                        </List>
+                                    </Collapse>
+                                </React.Fragment>
+                            );
+                        }
+
+                        // ── Default menu item
                         return (
-                            <React.Fragment key="assets-group">
-                                <ListItem disablePadding sx={{ mb: 0.5 }}>
-                                    <ListItemButton
-                                        onClick={() => setExpandAssets(p => !p)}
-                                        selected={isGroupActive}
-                                        sx={{
-                                            height: 44, borderRadius: '10px', color: '#64748b',
-                                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', px: 2,
-                                            '&.Mui-selected': {
-                                                backgroundColor: '#eff6ff', color: '#2563eb',
-                                                '&:hover': { backgroundColor: '#dbeafe' },
-                                                '& .MuiListItemIcon-root': { color: '#2563eb' },
-                                            },
-                                            '&:hover': { backgroundColor: '#f1f5f9', color: '#0f172a' },
-                                        }}
-                                    >
-                                        <ListItemIcon sx={{ minWidth: 32, color: isGroupActive ? '#2563eb' : '#94a3b8' }}>
-                                            {React.cloneElement(item.icon as React.ReactElement<any>, { sx: { fontSize: 20 } })}
-                                        </ListItemIcon>
-                                        <ListItemText primary={item.text}
-                                            primaryTypographyProps={{ fontWeight: isGroupActive ? 700 : 500, fontSize: '0.875rem' }}
-                                        />
-                                        {expandAssets ? <ExpandLessIcon sx={{ fontSize: 18, color: '#94a3b8' }} /> : <ChevronRightIcon sx={{ fontSize: 18, color: '#94a3b8' }} />}
-                                    </ListItemButton>
-                                </ListItem>
-                                <Collapse in={expandAssets} timeout="auto" unmountOnExit>
-                                    <List disablePadding sx={{ pl: 2 }}>
-                                        {assetSubItems.map(sub => {
-                                            const subActive = location.pathname === sub.path;
-                                            return (
-                                                <ListItem key={sub.path} disablePadding sx={{ mb: 0.5 }}>
-                                                    <ListItemButton
-                                                        onClick={() => { navigate(sub.path); if (mobileOpen) setMobileOpen(false); }}
-                                                        selected={subActive}
-                                                        sx={{
-                                                            height: 38, borderRadius: '8px', color: '#64748b', px: 1.5,
-                                                            '&.Mui-selected': {
-                                                                backgroundColor: '#eff6ff', color: '#2563eb',
-                                                                '& .MuiListItemIcon-root': { color: '#2563eb' },
-                                                            },
-                                                            '&:hover': { backgroundColor: '#f1f5f9' },
-                                                        }}
-                                                    >
-                                                        <ListItemIcon sx={{ minWidth: 26, color: subActive ? '#2563eb' : '#cbd5e1' }}>
-                                                            <BarChartIcon sx={{ fontSize: 16 }} />
-                                                        </ListItemIcon>
-                                                        <ListItemText primary={sub.text}
-                                                            primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: subActive ? 700 : 400 }}
-                                                        />
-                                                    </ListItemButton>
-                                                </ListItem>
-                                            );
-                                        })}
-                                    </List>
-                                </Collapse>
-                            </React.Fragment>
+                            <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
+                                <ListItemButton
+                                    onClick={() => { navigate(item.path); setMobileOpen(false); }}
+                                    selected={isActive}
+                                    sx={menuItemSx(isActive)}
+                                >
+                                    <ListItemIcon sx={menuIconSx(isActive)}>
+                                        {React.cloneElement(item.icon as React.ReactElement<any>, { sx: { fontSize: 20 } })}
+                                    </ListItemIcon>
+                                    <ListItemText
+                                        primary={item.text}
+                                        primaryTypographyProps={{ fontWeight: isActive ? 700 : 500, fontSize: '0.875rem' }}
+                                    />
+                                    {isActive && (
+                                        <Box sx={{
+                                            width: 4, height: 18, borderRadius: 2,
+                                            bgcolor: '#2563eb', flexShrink: 0
+                                        }} />
+                                    )}
+                                </ListItemButton>
+                            </ListItem>
                         );
-                    }
+                    })}
+                </List>
+            </Box>
 
-                    // ── Special: expandable "Quyết toán" group
-                    if (item.path === '/settlement') {
-                        const settlementSubItems = [
-                            { text: 'Báo cáo 17 - XNT', path: '/inventory-report' },
-                            { text: 'Báo cáo Xuất trong kỳ', path: '/detailed-outbound-report' },
-                            { text: 'Quyết toán vật tư', path: '/monthly-settlement' },
-                            { text: 'Quyết toán hàng hóa', path: '/goods-settlement' },
-                        ];
-                        const isGroupActive = ['/inventory-report', '/detailed-outbound-report', '/monthly-settlement', '/goods-settlement'].includes(location.pathname);
-                        return (
-                            <React.Fragment key="settlement-group">
-                                <ListItem disablePadding sx={{ mb: 0.5 }}>
-                                    <ListItemButton
-                                        onClick={() => setExpandSettlement(p => !p)}
-                                        selected={isGroupActive}
-                                        sx={{
-                                            height: 44, borderRadius: '10px', color: '#64748b',
-                                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', px: 2,
-                                            '&.Mui-selected': {
-                                                backgroundColor: '#eff6ff', color: '#2563eb',
-                                                '&:hover': { backgroundColor: '#dbeafe' },
-                                                '& .MuiListItemIcon-root': { color: '#2563eb' },
-                                            },
-                                            '&:hover': { backgroundColor: '#f1f5f9', color: '#0f172a' },
-                                        }}
-                                    >
-                                        <ListItemIcon sx={{ minWidth: 32, color: isGroupActive ? '#2563eb' : '#94a3b8' }}>
-                                            {React.isValidElement(item.icon) ? React.cloneElement(item.icon as React.ReactElement<any>, { sx: { fontSize: 20 } }) : item.icon}
-                                        </ListItemIcon>
-                                        <ListItemText primary={item.text}
-                                            primaryTypographyProps={{ fontWeight: isGroupActive ? 700 : 500, fontSize: '0.875rem' }}
-                                        />
-                                        {expandSettlement ? <ExpandLessIcon sx={{ fontSize: 18, color: '#94a3b8' }} /> : <ChevronRightIcon sx={{ fontSize: 18, color: '#94a3b8' }} />}
-                                    </ListItemButton>
-                                </ListItem>
-                                <Collapse in={expandSettlement} timeout="auto" unmountOnExit>
-                                    <List disablePadding sx={{ pl: 2 }}>
-                                        {settlementSubItems.map(sub => {
-                                            const subActive = location.pathname === sub.path;
-                                            return (
-                                                <ListItem key={sub.path} disablePadding sx={{ mb: 0.5 }}>
-                                                    <ListItemButton
-                                                        onClick={() => { navigate(sub.path); if (mobileOpen) setMobileOpen(false); }}
-                                                        selected={subActive}
-                                                        sx={{
-                                                            height: 38, borderRadius: '8px', color: '#64748b', px: 1.5,
-                                                            '&.Mui-selected': {
-                                                                backgroundColor: '#eff6ff', color: '#2563eb',
-                                                                '& .MuiListItemIcon-root': { color: '#2563eb' },
-                                                            },
-                                                            '&:hover': { backgroundColor: '#f1f5f9' },
-                                                        }}
-                                                    >
-                                                        <ListItemIcon sx={{ minWidth: 26, color: subActive ? '#2563eb' : '#cbd5e1' }}>
-                                                            <BarChartIcon sx={{ fontSize: 16 }} />
-                                                        </ListItemIcon>
-                                                        <ListItemText primary={sub.text}
-                                                            primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: subActive ? 700 : 400 }}
-                                                        />
-                                                    </ListItemButton>
-                                                </ListItem>
-                                            );
-                                        })}
-                                    </List>
-                                </Collapse>
-                            </React.Fragment>
-                        );
-                    }
-
-                    if (item.path === '/admin-hr') {
-                        const adminHrSubItems = [
-                            ...(hasPermission('employees.view') ? [
-                                { text: 'Nhân viên', path: '/employees' }
-                            ] : []),
-                            ...(profile?.role === 'admin' || profile?.role === 'manager' ? [
-                                { text: 'Chấm công', path: '/attendance' },
-                                { text: 'Tổng hợp chấm công', path: '/attendance-summary' },
-                                { text: 'Phiếu hành chính', path: '/admin-requests' },
-                                { text: 'Chấm điểm KPI', path: '/kpi-grades' },
-                                { text: 'Bảng lương', path: '/payroll' },
-                                { text: 'Điểm cộng trừ', path: '/bonus-penalty' },
-                                { text: 'Thiết lập công lương', path: '/payroll-settings' },
-                                { text: 'Hòm thư góp ý', path: '/feedback-box' }
-                            ] : [])
-                        ];
-                        const isGroupActive = ['/employees', '/attendance', '/attendance-summary', '/admin-requests', '/kpi-grades', '/payroll', '/bonus-penalty', '/payroll-settings', '/feedback-box'].includes(location.pathname);
-                        return (
-                            <React.Fragment key="admin-hr-group">
-                                <ListItem disablePadding sx={{ mb: 0.5 }}>
-                                    <ListItemButton
-                                        onClick={() => setExpandAdminHr(p => !p)}
-                                        selected={isGroupActive}
-                                        sx={{
-                                            height: 44, borderRadius: '10px', color: '#64748b',
-                                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', px: 2,
-                                            '&.Mui-selected': {
-                                                backgroundColor: '#eff6ff', color: '#059669',
-                                                '&:hover': { backgroundColor: '#d1fae5' },
-                                                '& .MuiListItemIcon-root': { color: '#059669' },
-                                            },
-                                            '&:hover': { backgroundColor: '#f1f5f9', color: '#0f172a' },
-                                        }}
-                                    >
-                                        <ListItemIcon sx={{ minWidth: 32, color: isGroupActive ? '#059669' : '#94a3b8' }}>
-                                            {React.isValidElement(item.icon) ? React.cloneElement(item.icon as React.ReactElement<any>, { sx: { fontSize: 20 } }) : item.icon}
-                                        </ListItemIcon>
-                                        <ListItemText primary={item.text}
-                                            primaryTypographyProps={{ fontWeight: isGroupActive ? 700 : 500, fontSize: '0.875rem' }}
-                                        />
-                                        {expandAdminHr ? <ExpandLessIcon sx={{ fontSize: 18, color: '#94a3b8' }} /> : <ChevronRightIcon sx={{ fontSize: 18, color: '#94a3b8' }} />}
-                                    </ListItemButton>
-                                </ListItem>
-                                <Collapse in={expandAdminHr} timeout="auto" unmountOnExit>
-                                    <List disablePadding sx={{ pl: 2 }}>
-                                        {adminHrSubItems.map(sub => {
-                                            const subActive = location.pathname === sub.path;
-                                            return (
-                                                <ListItem key={sub.path} disablePadding sx={{ mb: 0.5 }}>
-                                                    <ListItemButton
-                                                        onClick={() => { navigate(sub.path); if (mobileOpen) setMobileOpen(false); }}
-                                                        selected={subActive}
-                                                        sx={{
-                                                            height: 38, borderRadius: '8px', color: '#64748b', px: 1.5,
-                                                            '&.Mui-selected': {
-                                                                backgroundColor: '#eff6ff', color: '#059669',
-                                                                '& .MuiListItemIcon-root': { color: '#059669' },
-                                                            },
-                                                            '&:hover': { backgroundColor: '#f1f5f9' },
-                                                        }}
-                                                    >
-                                                        <ListItemIcon sx={{ minWidth: 26, color: subActive ? '#059669' : '#cbd5e1' }}>
-                                                            <BarChartIcon sx={{ fontSize: 16 }} />
-                                                        </ListItemIcon>
-                                                        <ListItemText primary={sub.text}
-                                                            primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: subActive ? 700 : 400 }}
-                                                        />
-                                                    </ListItemButton>
-                                                </ListItem>
-                                            );
-                                        })}
-                                    </List>
-                                </Collapse>
-                            </React.Fragment>
-                        );
-                    }
-
-                    // ── Default menu item
-                    return (
-                        <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
-                            <ListItemButton
-                                onClick={() => {
-                                    navigate(item.path);
-                                    if (mobileOpen) setMobileOpen(false);
-                                }}
-                                selected={isActive}
-                                sx={{
-                                    height: 44,
-                                    borderRadius: '10px',
-                                    color: '#64748b',
-                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                    px: 2,
-                                    '&.Mui-selected': {
-                                        backgroundColor: '#eff6ff',
-                                        color: '#2563eb',
-                                        '&:hover': {
-                                            backgroundColor: '#dbeafe',
-                                        },
-                                        '& .MuiListItemIcon-root': {
-                                            color: '#2563eb',
-                                        },
-                                        '&::after': {
-                                            content: '""',
-                                            position: 'absolute',
-                                            right: 8,
-                                            width: 4,
-                                            height: 16,
-                                            borderRadius: 2,
-                                            backgroundColor: '#2563eb'
-                                        }
-                                    },
-                                    '&:hover': {
-                                        backgroundColor: '#f1f5f9',
-                                        color: '#0f172a',
-                                        '& .MuiListItemIcon-root': {
-                                            color: '#0f172a',
-                                        },
-                                    }
-                                }}
-                            >
-                                <ListItemIcon sx={{
-                                    minWidth: 32,
-                                    color: isActive ? '#2563eb' : '#94a3b8',
-                                    transition: 'color 0.2s'
-                                }}>
-                                    {React.cloneElement(item.icon as React.ReactElement<any>, { 
-                                        sx: { fontSize: 20 } 
-                                    })}
-                                </ListItemIcon>
-                                <ListItemText
-                                    primary={item.text}
-                                    primaryTypographyProps={{
-                                        fontWeight: isActive ? 700 : 500,
-                                        fontSize: '0.875rem',
-                                    }}
-                                />
-                            </ListItemButton>
-                        </ListItem>
-                    );
-                })}
-            </List>
-
-            {/* Bottom User Profile Section */}
-            <Box sx={{ p: 2, borderTop: '1px solid #f1f5f9', mt: 'auto' }}>
-                <ListItemButton 
-                    onClick={handleMenuOpen}
-                    sx={{ 
-                        borderRadius: '12px',
-                        py: 1,
-                        px: 1,
-                        '&:hover': { bgcolor: '#f8fafc' }
+            {/* Bottom logout */}
+            <Box sx={{ p: 1.5, borderTop: '1px solid #f1f5f9' }}>
+                <ListItemButton
+                    onClick={handleLogout}
+                    sx={{
+                        borderRadius: '10px',
+                        py: 1.25,
+                        color: '#ef4444',
+                        '&:hover': { bgcolor: '#fef2f2' },
+                        '&:active': { transform: 'scale(0.98)' },
                     }}
                 >
-                    <Avatar sx={{ 
-                        width: 36, 
-                        height: 36, 
-                        bgcolor: '#2563eb', 
-                        color: 'white', 
-                        fontSize: '0.875rem', 
-                        fontWeight: 700, 
-                        mr: 1.5,
-                        boxShadow: '0 2px 8px rgba(37, 99, 235, 0.2)'
-                    }}>
-                        {profile?.full_name?.charAt(0) || 'A'}
-                    </Avatar>
-                    <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
-                         <Typography variant="body2" sx={{ fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                              {profile?.full_name || 'Administrator'}
-                         </Typography>
-                         <Typography variant="caption" sx={{ color: '#64748b', display: 'block', fontWeight: 600 }}>
-                             {profile?.role === 'admin' || profile?.role === 'manager' ? 'Administrator' : 'Warehouse Staff'}
-                         </Typography>
-                    </Box>
-                    <ExpandMoreIcon sx={{ color: '#94a3b8', fontSize: 18 }} />
+                    <ListItemIcon sx={{ minWidth: 32, color: '#ef4444' }}>
+                        <LogoutIcon sx={{ fontSize: 20 }} />
+                    </ListItemIcon>
+                    <ListItemText
+                        primary="Đăng xuất"
+                        primaryTypographyProps={{ fontWeight: 600, fontSize: '0.875rem', color: '#ef4444' }}
+                    />
                 </ListItemButton>
             </Box>
         </Box>
     );
 
     return (
-        <Box sx={{ display: 'flex' }}>
+        <Box sx={{ display: 'flex', minHeight: '100svh' }}>
             <CssBaseline />
 
-            {/* Header */}
+            {/* ── AppBar (Header) ── */}
             <AppBar
                 position="fixed"
                 sx={{
-                    width: { sm: `calc(100% - ${drawerWidth}px)` },
-                    ml: { sm: `${drawerWidth}px` },
-                    bgcolor: 'white',
+                    width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` },
+                    ml: { sm: `${DRAWER_WIDTH}px` },
+                    bgcolor: 'rgba(255,255,255,0.92)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
                     color: '#0f172a',
                     borderBottom: '1px solid #e2e8f0',
+                    boxShadow: '0 1px 0 #e2e8f0',
                     zIndex: (theme) => theme.zIndex.drawer + 1,
-                    '@media print': { display: 'none' }
+                    '@media print': { display: 'none' },
                 }}
                 elevation={0}
             >
-                <Toolbar sx={{ justifyContent: 'space-between', minHeight: '64px !important', px: { xs: 2, sm: 4 } }}>
-                    <Box display="flex" alignItems="center" gap={2}>
+                <Toolbar sx={{
+                    justifyContent: 'space-between',
+                    minHeight: { xs: '56px !important', sm: '60px !important' },
+                    px: { xs: 1.5, sm: 3 },
+                    gap: 1,
+                }}>
+                    {/* Left: Hamburger + Title */}
+                    <Box display="flex" alignItems="center" gap={1} sx={{ flex: 1, minWidth: 0 }}>
+                        {/* Hamburger - visible on all sizes for tablet, only mobile */}
                         <IconButton
                             color="inherit"
-                            aria-label="open drawer"
-                            edge="start"
+                            aria-label="Mở menu"
                             onClick={handleDrawerToggle}
-                            sx={{ display: { sm: 'none' }, color: '#64748b' }}
+                            sx={{
+                                display: { sm: 'none' },
+                                color: '#475569',
+                                minWidth: 40,
+                                minHeight: 40,
+                                borderRadius: '10px',
+                                '&:hover': { bgcolor: '#f1f5f9' },
+                            }}
                         >
-                            <MenuIcon />
+                            <MenuIcon sx={{ fontSize: 22 }} />
                         </IconButton>
-                        
-                        {/* Breadcrumbs / Page Title */}
-                        <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-                             <Breadcrumbs aria-label="breadcrumb" sx={{ '& .MuiBreadcrumbs-separator': { margin: '0 4px' } }}>
-                                 <Typography color="inherit" sx={{ fontSize: '0.875rem', color: '#64748b', fontWeight: 500 }}>
-                                    Quản lý kho
-                                 </Typography>
-                                 <Typography sx={{ color: '#0f172a', fontWeight: 600, fontSize: '0.875rem' }}>
-                                     {currentMenuItem?.text || 'Trang chủ'}
-                                 </Typography>
-                             </Breadcrumbs>
+
+                        {/* Page Title (mobile) */}
+                        <Box sx={{ display: { xs: 'flex', sm: 'none' }, flexDirection: 'column', minWidth: 0 }}>
+                            <Typography sx={{
+                                fontWeight: 700,
+                                fontSize: '0.95rem',
+                                color: '#0f172a',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                            }}>
+                                {currentMenuItem?.text || 'Quản lý kho'}
+                            </Typography>
+                        </Box>
+
+                        {/* Breadcrumb (desktop) */}
+                        <Box sx={{ display: { xs: 'none', sm: 'flex' }, flexDirection: 'column' }}>
+                            <Typography sx={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600, lineHeight: 1 }}>
+                                Hệ thống quản lý kho
+                            </Typography>
+                            <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', lineHeight: 1.3 }}>
+                                {currentMenuItem?.text || 'Trang chủ'}
+                            </Typography>
                         </Box>
                     </Box>
 
-                    <Box display="flex" alignItems="center" gap={3}>
-                        {/* Global Search */}
-                        <Box sx={{ 
-                            display: { xs: 'none', md: 'flex' }, 
-                            alignItems: 'center',
-                            bgcolor: '#f1f5f9',
-                            borderRadius: 2,
-                            px: 1.5,
-                            py: 0.5,
-                            width: 250,
-                            border: '1px solid transparent',
-                            transition: 'all 0.2s',
-                            '&:focus-within': {
-                                bgcolor: 'white',
-                                border: '1px solid #cbd5e1',
-                                boxShadow: '0 0 0 2px rgba(37,99,235,0.1)'
-                            }
-                        }}>
-                            <SearchIcon sx={{ color: '#94a3b8', fontSize: 20, mr: 1 }} />
-                            <InputBase 
-                                placeholder="Search everything..." 
-                                sx={{ fontSize: '0.875rem', width: '100%', color: '#0f172a' }} 
-                            />
-                            <Typography sx={{ fontSize: '0.7rem', color: '#94a3b8', bgcolor: 'white', px: 0.5, borderRadius: 1, border: '1px solid #e2e8f0' }}>⌘K</Typography>
-                        </Box>
-
-                        {/* Org Switcher (Mocked visually) */}
-                        <Box 
-                            onClick={() => navigate('/')}
-                            sx={{ display: { xs: 'none', lg: 'flex' }, alignItems: 'center', gap: 1, cursor: 'pointer', '&:hover': { opacity: 0.8 } }}
+                    {/* Right: Actions */}
+                    <Box display="flex" alignItems="center" gap={0.5}>
+                        {/* Notifications */}
+                        <IconButton
+                            onClick={handleNotificationOpen}
+                            sx={{
+                                color: '#64748b',
+                                minWidth: 40,
+                                minHeight: 40,
+                                borderRadius: '10px',
+                                '&:hover': { bgcolor: '#f1f5f9', color: '#0f172a' },
+                            }}
                         >
-                            <BusinessIcon sx={{ color: '#64748b', fontSize: 20 }} />
-                            <Typography sx={{ fontSize: '0.875rem', fontWeight: 500, color: '#475569' }}>Main HQ</Typography>
-                            <ExpandMoreIcon sx={{ color: '#94a3b8', fontSize: 16 }} />
+                            <Badge
+                                badgeContent={recentNotifications.length}
+                                color="error"
+                                sx={{
+                                    '& .MuiBadge-badge': {
+                                        fontSize: '0.6rem',
+                                        minWidth: 16,
+                                        height: 16,
+                                        top: 2,
+                                        right: 2,
+                                    }
+                                }}
+                            >
+                                <NotificationsIcon sx={{ fontSize: 22 }} />
+                            </Badge>
+                        </IconButton>
+
+                        {/* User Avatar (desktop shows full, mobile icon only) */}
+                        <Box
+                            onClick={handleMenuOpen}
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
+                                cursor: 'pointer',
+                                py: 0.5,
+                                px: { xs: 0.5, sm: 1 },
+                                borderRadius: '10px',
+                                transition: 'all 0.2s',
+                                '&:hover': { bgcolor: '#f1f5f9' },
+                                '&:active': { transform: 'scale(0.96)' },
+                            }}
+                        >
+                            <Avatar sx={{
+                                width: 34,
+                                height: 34,
+                                background: 'linear-gradient(135deg, #2563eb 0%, #60a5fa 100%)',
+                                color: 'white',
+                                fontSize: '0.825rem',
+                                fontWeight: 700,
+                                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
+                            }}>
+                                {profile?.full_name?.charAt(0)?.toUpperCase() || 'A'}
+                            </Avatar>
+                            <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                                <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>
+                                    {profile?.full_name?.split(' ').slice(-1)[0] || 'Admin'}
+                                </Typography>
+                                <Typography sx={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 600 }}>
+                                    {profile?.role === 'admin' ? 'Admin' : profile?.role === 'manager' ? 'Manager' : 'Staff'}
+                                </Typography>
+                            </Box>
+                            <ExpandMoreIcon sx={{ color: '#94a3b8', fontSize: 16, display: { xs: 'none', md: 'block' } }} />
                         </Box>
                     </Box>
                 </Toolbar>
             </AppBar>
 
-            {/* Profile Menu */}
+            {/* ── User Profile Menu ── */}
             <Menu
                 anchorEl={anchorEl}
-                id="account-menu"
                 open={Boolean(anchorEl)}
                 onClose={handleMenuClose}
                 onClick={handleMenuClose}
@@ -639,18 +701,12 @@ const MainLayout: React.FC = () => {
                 PaperProps={{
                     elevation: 0,
                     sx: {
-                        overflow: 'visible',
-                        filter: 'drop-shadow(0px 4px 12px rgba(0,0,0,0.1))',
-                        mt: 1.5,
                         width: 200,
-                        borderRadius: 2,
+                        borderRadius: '14px',
                         border: '1px solid #e2e8f0',
-                        '& .MuiAvatar-root': {
-                            width: 32,
-                            height: 32,
-                            ml: -0.5,
-                            mr: 1,
-                        },
+                        boxShadow: '0 20px 40px -8px rgba(0,0,0,0.12)',
+                        mt: 1,
+                        overflow: 'visible',
                         '&:before': {
                             content: '""',
                             display: 'block',
@@ -668,51 +724,114 @@ const MainLayout: React.FC = () => {
                     },
                 }}
             >
-                <MenuItem onClick={() => { handleMenuClose(); navigate('/profile'); }} sx={{ fontSize: '0.875rem', py: 1 }}>
-                    <ListItemIcon><PersonIcon fontSize="small" sx={{ color: '#64748b' }} /></ListItemIcon>
-                    Hồ sơ
-                </MenuItem>
-                <MenuItem disabled sx={{ fontSize: '0.875rem', py: 1 }}>
-                    <ListItemIcon><SettingsIcon fontSize="small" sx={{ color: '#64748b' }} /></ListItemIcon>
-                    Cài đặt tài khoản
-                </MenuItem>
-                <Divider sx={{ my: 1 }} />
-                <MenuItem onClick={handleLogout} sx={{ color: '#ef4444', fontSize: '0.875rem', py: 1 }}>
-                    <ListItemIcon><LogoutIcon fontSize="small" sx={{ color: '#ef4444' }} /></ListItemIcon>
-                    Đăng xuất
-                </MenuItem>
+                <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid #f1f5f9' }}>
+                    <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: '#0f172a' }}>
+                        {profile?.full_name || 'Administrator'}
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.75rem', color: '#64748b' }}>
+                        {profile?.email || ''}
+                    </Typography>
+                </Box>
+                <Box sx={{ p: 0.5 }}>
+                    <MenuItem onClick={() => { handleMenuClose(); navigate('/profile'); }} sx={{ borderRadius: '8px', py: 1.25, fontSize: '0.875rem' }}>
+                        <ListItemIcon><PersonIcon fontSize="small" sx={{ color: '#64748b' }} /></ListItemIcon>
+                        Hồ sơ cá nhân
+                    </MenuItem>
+                    <MenuItem onClick={() => { handleMenuClose(); navigate('/change-password'); }} sx={{ borderRadius: '8px', py: 1.25, fontSize: '0.875rem' }}>
+                        <ListItemIcon><SettingsIcon fontSize="small" sx={{ color: '#64748b' }} /></ListItemIcon>
+                        Đổi mật khẩu
+                    </MenuItem>
+                    <Divider sx={{ my: 0.5 }} />
+                    <MenuItem onClick={handleLogout} sx={{ borderRadius: '8px', color: '#ef4444', py: 1.25, fontSize: '0.875rem' }}>
+                        <ListItemIcon><LogoutIcon fontSize="small" sx={{ color: '#ef4444' }} /></ListItemIcon>
+                        Đăng xuất
+                    </MenuItem>
+                </Box>
             </Menu>
 
-            {/* Sidebar */}
+            {/* ── Notification Menu ── */}
+            <Menu
+                anchorEl={notificationAnchorEl}
+                open={Boolean(notificationAnchorEl)}
+                onClose={handleNotificationClose}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                PaperProps={{
+                    elevation: 0,
+                    sx: {
+                        width: { xs: 300, sm: 340 },
+                        maxHeight: 400,
+                        borderRadius: '16px',
+                        border: '1px solid #e2e8f0',
+                        boxShadow: '0 20px 40px -8px rgba(0,0,0,0.12)',
+                        mt: 1,
+                    }
+                }}
+            >
+                <Box sx={{ px: 2.5, py: 2, borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography sx={{ fontWeight: 700, fontSize: '0.95rem' }}>Thông báo</Typography>
+                    <Chip label={`${recentNotifications.length} mới`} size="small" color="primary" sx={{ height: 22, fontSize: '0.7rem' }} />
+                </Box>
+                {recentNotifications.length === 0 ? (
+                    <Box sx={{ p: 4, textAlign: 'center' }}>
+                        <Typography sx={{ color: '#94a3b8', fontSize: '0.875rem' }}>Chưa có thông báo</Typography>
+                    </Box>
+                ) : recentNotifications.map(notif => (
+                    <MenuItem key={notif.id} onClick={handleNotificationClose} sx={{ px: 2.5, py: 1.5, alignItems: 'flex-start', gap: 1.5 }}>
+                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#2563eb', mt: 0.6, flexShrink: 0 }} />
+                        <Box>
+                            <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a', lineHeight: 1.4 }}>
+                                {notif.text}
+                            </Typography>
+                            <Typography sx={{ fontSize: '0.7rem', color: '#94a3b8', mt: 0.25 }}>
+                                {notif.time}
+                            </Typography>
+                        </Box>
+                    </MenuItem>
+                ))}
+            </Menu>
+
+            {/* ── Sidebar (Desktop: permanent, Mobile: SwipeableDrawer) ── */}
             <Box
                 component="nav"
-                sx={{ 
-                    width: { sm: drawerWidth }, 
+                sx={{
+                    width: { sm: DRAWER_WIDTH },
                     flexShrink: { sm: 0 },
-                    '@media print': { display: 'none' }
+                    '@media print': { display: 'none' },
                 }}
-                aria-label="mailbox folders"
             >
-                {/* Mobile Drawer */}
-                <Drawer
+                {/* Mobile SwipeableDrawer */}
+                <SwipeableDrawer
                     variant="temporary"
                     open={mobileOpen}
-                    onClose={handleDrawerToggle}
+                    onOpen={() => setMobileOpen(true)}
+                    onClose={() => setMobileOpen(false)}
+                    disableSwipeToOpen={false}
+                    swipeAreaWidth={16}
                     ModalProps={{ keepMounted: true }}
                     sx={{
                         display: { xs: 'block', sm: 'none' },
-                        '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth, borderRight: 'none' },
+                        '& .MuiDrawer-paper': {
+                            boxSizing: 'border-box',
+                            width: DRAWER_WIDTH,
+                            borderRight: 'none',
+                            boxShadow: '8px 0 32px rgba(0,0,0,0.12)',
+                        },
                     }}
                 >
                     {drawer}
-                </Drawer>
+                </SwipeableDrawer>
 
-                {/* Desktop Drawer */}
+                {/* Desktop permanent Drawer */}
                 <Drawer
                     variant="permanent"
                     sx={{
                         display: { xs: 'none', sm: 'block' },
-                        '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth, borderRight: 'none' },
+                        '& .MuiDrawer-paper': {
+                            boxSizing: 'border-box',
+                            width: DRAWER_WIDTH,
+                            borderRight: '1px solid #e2e8f0',
+                        },
                     }}
                     open
                 >
@@ -720,32 +839,168 @@ const MainLayout: React.FC = () => {
                 </Drawer>
             </Box>
 
-            {/* Main Content */}
+            {/* ── Main Content Area ── */}
             <Box
                 component="main"
                 sx={{
                     flexGrow: 1,
-                    p: { xs: 2, sm: 3, md: 4 },
-                    width: { sm: `calc(100% - ${drawerWidth}px)` },
-                    minHeight: '100vh',
-                    bgcolor: 'background.default',
+                    width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` },
+                    minHeight: '100svh',
+                    bgcolor: '#f1f5f9',
                     overflowX: 'hidden',
-                    '@media print': {
-                        p: 0,
-                        m: 0,
-                        width: '100%',
-                        bgcolor: 'white'
-                    }
+                    display: 'flex',
+                    flexDirection: 'column',
+                    '@media print': { p: 0, m: 0, width: '100%', bgcolor: 'white' },
                 }}
             >
-                <Toolbar sx={{ minHeight: '64px !important', '@media print': { display: 'none' } }} /> {/* Spacer */}
-                <Outlet />
+                {/* AppBar spacer */}
+                <Toolbar sx={{
+                    minHeight: { xs: '56px !important', sm: '60px !important' },
+                    '@media print': { display: 'none' },
+                }} />
+
+                {/* Page content */}
+                <Box sx={{
+                    flex: 1,
+                    p: { xs: 1.5, sm: 2.5, md: 3 },
+                    // Add bottom padding on mobile for bottom nav
+                    pb: { xs: 'calc(72px + env(safe-area-inset-bottom, 0px)) !important', sm: 3 },
+                    '@media print': { p: 0 },
+                }}>
+                    <Outlet />
+                </Box>
             </Box>
-            
+
+            {/* ── Mobile Bottom Navigation ── */}
+            <Box
+                className="mobile-bottom-nav"
+                sx={{
+                    display: { xs: 'block', sm: 'none' },
+                    position: 'fixed',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    zIndex: (theme) => theme.zIndex.appBar,
+                    bgcolor: 'rgba(255,255,255,0.95)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    borderTop: '1px solid #e2e8f0',
+                    paddingBottom: 'env(safe-area-inset-bottom)',
+                    boxShadow: '0 -4px 20px rgba(0,0,0,0.06)',
+                    '@media print': { display: 'none !important' },
+                }}
+            >
+                <BottomNavigation
+                    value={bottomNavValue >= 0 ? bottomNavValue : false}
+                    onChange={(_, newValue) => {
+                        const item = bottomNavItems[newValue];
+                        if (!item) return;
+                        if (item.path === '__menu__') {
+                            setMobileOpen(true);
+                        } else {
+                            navigate(item.path);
+                        }
+                    }}
+                    sx={{
+                        height: '60px',
+                        bgcolor: 'transparent',
+                        '& .MuiBottomNavigationAction-root': {
+                            minWidth: 48,
+                            maxWidth: 80,
+                            padding: '6px 4px 4px',
+                            color: '#94a3b8',
+                            transition: 'all 0.2s',
+                            '&.Mui-selected': {
+                                color: '#2563eb',
+                            },
+                            '& .MuiBottomNavigationAction-label': {
+                                fontSize: '0.6rem',
+                                fontWeight: 600,
+                                mt: '2px',
+                                opacity: 1,
+                                '&.Mui-selected': {
+                                    fontSize: '0.6rem',
+                                }
+                            },
+                            '& .MuiSvgIcon-root': {
+                                fontSize: '1.5rem',
+                                transition: 'transform 0.2s',
+                            },
+                            '&.Mui-selected .MuiSvgIcon-root': {
+                                transform: 'scale(1.1)',
+                            },
+                        },
+                    }}
+                >
+                    {bottomNavItems.map((item, idx) => (
+                        <BottomNavigationAction
+                            key={item.path + idx}
+                            label={item.label}
+                            icon={
+                                item.path === '__menu__'
+                                    ? (
+                                        <Box sx={{
+                                            width: 32, height: 32, borderRadius: '10px',
+                                            bgcolor: mobileOpen ? '#2563eb' : '#f1f5f9',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            transition: 'all 0.2s',
+                                        }}>
+                                            <AppsIcon sx={{ fontSize: '1.2rem !important', color: mobileOpen ? 'white' : '#64748b' }} />
+                                        </Box>
+                                    )
+                                    : item.icon
+                            }
+                        />
+                    ))}
+                </BottomNavigation>
+            </Box>
+
             {/* Global AI Chatbot */}
             <AIChatbot />
         </Box>
     );
 };
+
+// ── Style helpers ──────────────────────────────────────────────────────────────
+const menuItemSx = (isActive: boolean, color = '#2563eb') => ({
+    height: 44,
+    borderRadius: '10px',
+    color: isActive ? color : '#64748b',
+    px: 1.5,
+    transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
+    bgcolor: isActive ? `${color}12` : 'transparent',
+    '&.Mui-selected': {
+        bgcolor: `${color}12`,
+        color: color,
+        '&:hover': { bgcolor: `${color}1a` },
+    },
+    '&:hover': {
+        bgcolor: '#f1f5f9',
+        color: '#0f172a',
+    },
+    '&:active': {
+        transform: 'scale(0.97)',
+    },
+});
+
+const menuIconSx = (isActive: boolean, color = '#2563eb') => ({
+    minWidth: 30,
+    color: isActive ? color : '#94a3b8',
+    transition: 'color 0.18s',
+});
+
+const subItemSx = (isActive: boolean, color = '#2563eb') => ({
+    height: 40,
+    borderRadius: '8px',
+    color: isActive ? color : '#64748b',
+    px: 1.5,
+    bgcolor: isActive ? `${color}10` : 'transparent',
+    '&.Mui-selected': {
+        bgcolor: `${color}10`,
+        '&:hover': { bgcolor: `${color}18` },
+    },
+    '&:hover': { bgcolor: '#f8fafc' },
+    '&:active': { transform: 'scale(0.97)' },
+});
 
 export default MainLayout;

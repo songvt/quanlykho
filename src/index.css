@@ -1,16 +1,65 @@
+/* ============================================================
+   QUẢN LÝ KHO - Mobile-First Global CSS
+   ============================================================ */
+
+/* Google Font: Inter (loaded in index.html) */
 :root {
-  font-family: 'Times New Roman', Times, serif;
-  line-height: 1.5;
-  font-weight: 400;
-  -webkit-tap-highlight-color: transparent;
-  /* Remove blue highlight on mobile tap */
-  touch-action: manipulation;
-  /* Eliminate 300ms tap delay on mobile */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Brand Palette */
+  --brand-primary:   #2563eb;
+  --brand-primary-light: #3b82f6;
+  --brand-primary-dark:  #1d4ed8;
+  --brand-success:   #10b981;
+  --brand-warning:   #f59e0b;
+  --brand-error:     #ef4444;
+  --brand-purple:    #8b5cf6;
+
+  /* Neutral */
+  --gray-50:  #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-300: #cbd5e1;
+  --gray-400: #94a3b8;
+  --gray-500: #64748b;
+  --gray-700: #334155;
+  --gray-900: #0f172a;
+
+  /* Spacing */
+  --safe-bottom: env(safe-area-inset-bottom);
+  --safe-left:   env(safe-area-inset-left);
+  --safe-right:  env(safe-area-inset-right);
+  --safe-top:    env(safe-area-inset-top);
+
+  /* Radius */
+  --radius-sm:  8px;
+  --radius-md:  12px;
+  --radius-lg:  16px;
+  --radius-xl:  20px;
+  --radius-2xl: 24px;
+
+  /* Touch target minimum */
+  --touch-min: 44px;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* ── Reset & Base ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -18,61 +67,236 @@ body {
   display: block;
   min-width: 320px;
   min-height: 100vh;
-  /* Premium modern animated background */
-  background: linear-gradient(-45deg, #e0e7ff, #dbeafe, #f3e8ff, #f8fafc) !important;
-  background-size: 400% 400%;
-  animation: gradientBG 15s ease infinite;
-  background-attachment: fixed;
+  min-height: 100dvh; /* Dynamic viewport on mobile */
+  background: var(--gray-100);
   overflow-x: hidden;
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+  /* Subtle background texture */
+  background-image:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(37, 99, 235, 0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(139, 92, 246, 0.03) 0%, transparent 55%);
 }
 
-@keyframes gradientBG {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
-/* Scrollbar styling */
+/* ── Typography ── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-sans);
+  line-height: 1.25;
+}
+
+/* ── Scrollbar Styling ── */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
+  background: var(--gray-300);
+  border-radius: 3px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--gray-400);
 }
 
-/* --- Tối ưu hoá Visual Performance (Nhanh và mượt) --- */
-/* Thêm transition cho các thành phần chính để UI cảm giác mượt mà hơn */
-.MuiButtonBase-root, 
+/* Hide scrollbar on mobile */
+@media (max-width: 640px) {
+  ::-webkit-scrollbar { width: 0; height: 0; }
+}
+
+/* ── Touch Optimizations ── */
+
+/* All interactive elements must have minimum touch target */
+button,
+[role="button"],
+a,
+.MuiButtonBase-root,
+.MuiIconButton-root,
+.MuiListItemButton-root {
+  min-height: var(--touch-min);
+  cursor: pointer;
+}
+
+/* Override MUI to ensure touch targets */
+.MuiIconButton-root {
+  min-width: var(--touch-min) !important;
+  min-height: var(--touch-min) !important;
+}
+
+/* ── MUI Component Overrides (Mobile Optimized) ── */
+
+/* Smooth transitions everywhere */
+.MuiButtonBase-root,
 .MuiPaper-root,
-.MuiTableRow-root {
+.MuiTableRow-root,
+.MuiListItem-root {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-input.MuiInputBase-input {
+/* Input fields - larger on mobile */
+.MuiInputBase-input {
+  font-size: 16px !important; /* Prevent iOS zoom on focus */
   transition: background-color 0.2s ease, border-color 0.2s ease !important;
 }
 
-/* Hiệu ứng hover cho Table Row */
+/* TableRow hover */
 .MuiTableRow-hover:hover {
-  background-color: rgba(37, 99, 235, 0.045) !important;
+  background-color: rgba(37, 99, 235, 0.04) !important;
 }
+
+/* Table cells - compact on mobile */
+@media (max-width: 640px) {
+  .MuiTableCell-root {
+    padding: 10px 12px !important;
+    font-size: 0.8rem !important;
+  }
+  .MuiTableCell-head {
+    padding: 8px 12px !important;
+    font-size: 0.75rem !important;
+  }
+}
+
+/* Dialog - fullscreen on small screens */
+@media (max-width: 640px) {
+  .MuiDialog-paper {
+    margin: 8px !important;
+    width: calc(100% - 16px) !important;
+    max-width: 100% !important;
+    border-radius: 20px !important;
+  }
+  .MuiDialogTitle-root {
+    font-size: 1.1rem !important;
+    padding: 16px 20px 12px !important;
+  }
+  .MuiDialogContent-root {
+    padding: 16px 20px !important;
+  }
+  .MuiDialogActions-root {
+    padding: 12px 20px 20px !important;
+  }
+}
+
+/* Chip - touch friendly */
+.MuiChip-root {
+  min-height: 32px !important;
+}
+
+/* Select & Autocomplete dropdown */
+.MuiMenu-paper,
+.MuiAutocomplete-paper {
+  border-radius: var(--radius-lg) !important;
+  border: 1px solid var(--gray-200) !important;
+  box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* AppBar height on mobile */
+@media (max-width: 640px) {
+  .MuiToolbar-root {
+    min-height: 56px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}
+
+/* ── Utility Classes ── */
+
+/* Glassmorphism card */
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-xl);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-purple) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Line clamp utilities */
+.line-clamp-1 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
+.line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* ── Bottom Navigation Padding ── */
+/* When bottom nav is visible on mobile, add padding to main content */
+@media (max-width: 600px) {
+  .main-content-mobile-pad {
+    padding-bottom: calc(72px + var(--safe-bottom, 0px)) !important;
+  }
+}
+
+/* ── Animations ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.65; transform: scale(1.15); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes bounceIn {
+  0%   { transform: scale(0.85); opacity: 0; }
+  60%  { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ── Print: hide mobile nav ── */
+@media print {
+  .mobile-bottom-nav,
+  .mobile-top-appbar {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    padding-bottom: 0 !important;
+  }
+}
+
+/* ── Focus Visible (Accessibility) ── */
+:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Form elements ── */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+textarea,
+select {
+  font-family: var(--font-sans);
+}
+
+/* ── Safe area helpers ── */
+.pb-safe { padding-bottom: var(--safe-bottom); }
+.pt-safe { padding-top: var(--safe-top); }
