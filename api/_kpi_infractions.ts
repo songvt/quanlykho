@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets.js';
-import { supabase, fetchAll } from './utils/supabase.js';
+import { getGoogleSheet, getSheetByTitle } from './_utils/googleSheets.js';
+import { supabase, fetchAll } from './_utils/supabase.js';
 import { randomUUID } from 'crypto';
 
 interface InfractionReport {

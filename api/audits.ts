@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets.js';
-import { supabase } from './utils/supabase.js';
+import { getGoogleSheet, getSheetByTitle } from './_utils/googleSheets.js';
+import { supabase } from './_utils/supabase.js';
 import { randomUUID } from 'crypto';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

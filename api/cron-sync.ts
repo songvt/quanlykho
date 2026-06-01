@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabase } from './utils/supabase.js';
-import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets.js';
+import { supabase } from './_utils/supabase.js';
+import { getGoogleSheet, getSheetByTitle } from './_utils/googleSheets.js';
 const formatLocalDate = (date: Date | string) => {
     const d = new Date(date);
     const day = String(d.getDate()).padStart(2, '0');

@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { getGoogleSheet, getSheetByTitle } from './utils/googleSheets.js';
-import { supabase } from './utils/supabase.js';
+import { getGoogleSheet, getSheetByTitle } from './_utils/googleSheets.js';
+import { supabase } from './_utils/supabase.js';
 import crypto from 'crypto';
 
 import hrProfilesHandler from './_hr_profiles.js';

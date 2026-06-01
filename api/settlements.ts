@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabase, fetchAll } from './utils/supabase.js';
-import { normalizeSettlementMonth } from './utils/settlementMonth.js';
+import { supabase, fetchAll } from './_utils/supabase.js';
+import { normalizeSettlementMonth } from './_utils/settlementMonth.js';
 
 function getMonthFormats(monthStr: string): string[] {
     const s = String(monthStr || '').trim();
