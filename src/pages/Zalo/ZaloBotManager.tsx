@@ -20,7 +20,9 @@ import {
     Checkbox,
     Grid,
     InputLabel,
-    FormControl
+    FormControl,
+    Switch,
+    FormControlLabel
 } from '@mui/material';
 import {
     DeleteOutline as DeleteIcon,
@@ -85,6 +87,17 @@ const ZaloBotManager: React.FC = () => {
 
     const [loadingSync, setLoadingSync] = useState<string | null>(null);
     const [syncingAll, setSyncingAll] = useState(false);
+    const [autoSync, setAutoSync] = useState(false);
+
+    useEffect(() => {
+        let interval: any;
+        if (autoSync) {
+            interval = setInterval(() => {
+                if (!syncingAll) handleSyncAllBots(true);
+            }, 15000); // 15 seconds
+        }
+        return () => clearInterval(interval);
+    }, [autoSync, syncingAll, tokens]);
 
     const fetchData = async () => {
         setLoading(true);
@@ -156,9 +169,9 @@ const ZaloBotManager: React.FC = () => {
         }
     };
 
-    const handleSyncAllBots = async () => {
-        setSyncingAll(true);
-        setError(null);
+    const handleSyncAllBots = async (isSilent = false) => {
+        if (!isSilent) setSyncingAll(true);
+        if (!isSilent) setError(null);
         let totalCount = 0;
         let successCount = 0;
         try {
@@ -176,12 +189,17 @@ const ZaloBotManager: React.FC = () => {
                     }
                 } catch (e) {}
             }
-            setSuccess(`Đã quét xong ${successCount}/${tokens.length} bot. ${totalCount > 0 ? `Tìm thấy ${totalCount} liên hệ mới.` : 'Không có tin nhắn mới.'}`);
-            fetchData();
+            if (!isSilent) {
+                setSuccess(`Đã quét xong ${successCount}/${tokens.length} bot. ${totalCount > 0 ? `Tìm thấy ${totalCount} liên hệ mới.` : 'Không có tin nhắn mới.'}`);
+            } else if (totalCount > 0 && typeof setSuccess === 'function') {
+                // If silent but found messages, still notify
+                setSuccess(`Tự động đồng bộ: Tìm thấy ${totalCount} tin nhắn mới.`);
+            }
+            if (totalCount > 0 || !isSilent) fetchData();
         } catch (err: any) {
-            setError('Lỗi đồng bộ tất cả bot');
+            if (!isSilent) setError('Lỗi đồng bộ tất cả bot');
         } finally {
-            setSyncingAll(false);
+            if (!isSilent) setSyncingAll(false);
         }
     };
 
@@ -468,17 +486,23 @@ const ZaloBotManager: React.FC = () => {
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
                     <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827' }}>Nhóm API token Zalo</Typography>
                     {tokens.length > 0 && (
-                        <Button 
-                            variant="contained" 
-                            color="primary" 
-                            size="small" 
-                            startIcon={syncingAll ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
-                            onClick={handleSyncAllBots}
-                            disabled={syncingAll}
-                            sx={{ textTransform: 'none' }}
-                        >
-                            Đồng bộ TẤT CẢ Bot
-                        </Button>
+                        <Box display="flex" gap={2} alignItems="center">
+                            <FormControlLabel
+                                control={<Switch size="small" checked={autoSync} onChange={e => setAutoSync(e.target.checked)} />}
+                                label={<Typography variant="body2" sx={{ fontWeight: 600, color: autoSync ? 'success.main' : 'text.secondary' }}>{autoSync ? 'Đang tự động quét (15s)' : 'Tự động quét'}</Typography>}
+                            />
+                            <Button 
+                                variant="contained" 
+                                color="primary" 
+                                size="small" 
+                                startIcon={syncingAll ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
+                                onClick={() => handleSyncAllBots(false)}
+                                disabled={syncingAll || autoSync}
+                                sx={{ textTransform: 'none' }}
+                            >
+                                Đồng bộ TẤT CẢ Bot
+                            </Button>
+                        </Box>
                     )}
                 </Box>
                 <Typography variant="body2" sx={{ color: '#6b7280', mb: 2 }}>Tạo nhiều nhóm token để gửi tin theo từng tài khoản bot khác nhau.</Typography>
