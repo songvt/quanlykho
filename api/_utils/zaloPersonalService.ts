@@ -24,6 +24,21 @@ export const getBotUpdates = async (botToken: string) => {
 
         const data = await response.json();
         if (!response.ok || !data.ok) {
+            // Xử lý tự động xóa Webhook nếu bị xung đột
+            if (data.error_code === 400 && data.description && data.description.includes('webhook is set')) {
+                console.log(`[Zalo Bot API] Xung đột Webhook: ${botToken}. Đang tự động xóa webhook...`);
+                await fetch(`${API_BASE_URL}/bot${botToken}/deleteWebhook`, { method: 'POST' });
+                
+                // Thử gọi lại getUpdates một lần nữa
+                const retryRes = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ timeout: 10 }),
+                });
+                const retryData = await retryRes.json();
+                if (retryRes.ok && retryData.ok) return retryData.result;
+            }
+
             console.error('[Zalo Bot API] getUpdates Failed:', data);
             throw new Error(data.description || data.error_message || 'Lỗi lấy tin nhắn mới');
         }
