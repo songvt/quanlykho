@@ -187,6 +187,65 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // --- ZALO PERSONAL BOT ---
+        if (action === 'sync_contacts') {
+            if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
+            const { bot_token, bot_name } = req.body;
+            if (!bot_token) return res.status(400).json({ error: 'Thiếu bot_token' });
+
+            // Import getBotUpdates
+            const { getBotUpdates } = await import('./_utils/zaloPersonalService.js');
+            
+            try {
+                const updates = await getBotUpdates(bot_token);
+                if (!updates || updates.length === 0) {
+                    return res.status(200).json({ success: true, count: 0, message: 'Không có tin nhắn mới nào để đồng bộ' });
+                }
+
+                const uniqueUsers = new Map();
+                updates.forEach((update: any) => {
+                    if (update.message && update.message.from) {
+                        const from = update.message.from;
+                        uniqueUsers.set(from.id.toString(), {
+                            zalo_user_id: from.id.toString(),
+                            receiver_name: from.first_name || from.username || `User ${from.id}`
+                        });
+                    }
+                });
+
+                if (uniqueUsers.size === 0) {
+                    return res.status(200).json({ success: true, count: 0, message: 'Không tìm thấy ID người dùng trong các tin nhắn mới' });
+                }
+
+                let addedCount = 0;
+                for (const [id, user] of uniqueUsers.entries()) {
+                    // Check if exists
+                    const { data: existing } = await supabase
+                        .from('zalo_personal_contacts')
+                        .select('id')
+                        .eq('zalo_user_id', id)
+                        .eq('bot_api_token', bot_token)
+                        .single();
+                    
+                    if (!existing) {
+                        await supabase.from('zalo_personal_contacts').insert({
+                            employee_id: `sync_${id}`,
+                            receiver_name: user.receiver_name,
+                            zalo_user_id: user.zalo_user_id,
+                            bot_api_token: bot_token,
+                            bot_name: bot_name || 'Bot Đồng Bộ',
+                            notes: 'Đồng bộ từ tin nhắn',
+                            status: 'Hoạt động'
+                        });
+                        addedCount++;
+                    }
+                }
+
+                return res.status(200).json({ success: true, count: addedCount, message: `Đã đồng bộ thành công ${addedCount} liên hệ mới!` });
+            } catch (err: any) {
+                return res.status(500).json({ error: err.message });
+            }
+        }
+
         if (action === 'send_personal') {
             if (req.method === 'POST') {
                 const { contact_ids, message } = req.body;

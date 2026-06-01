@@ -28,7 +28,8 @@ import {
     Download as DownloadIcon,
     Description as DescriptionIcon,
     Send as SendIcon,
-    Add as AddIcon
+    Add as AddIcon,
+    Sync as SyncIcon
 } from '@mui/icons-material';
 import * as ExcelJS from 'exceljs';
 import { supabase } from '../../config/supabase';
@@ -71,6 +72,8 @@ const ZaloBotManager: React.FC = () => {
     const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
     const [filterToken, setFilterToken] = useState('all');
 
+    const [loadingSync, setLoadingSync] = useState<string | null>(null);
+
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -95,29 +98,46 @@ const ZaloBotManager: React.FC = () => {
         fetchData();
     }, []);
 
-    // --- Token Management ---
-    const handleSaveToken = async () => {
-        if (!newToken.token) return setError('Mã API token là bắt buộc');
+    // --- Tokens ---
+    const handleAddToken = async () => {
+        if (!newToken.token || !newToken.group_name || !newToken.bot_name) return setError('Vui lòng điền đủ thông tin token');
+        setLoading(true);
         try {
-            const { error: saveError } = await supabase.from('zalo_bot_tokens').insert([newToken]);
-            if (saveError) throw saveError;
-            setSuccess('Thêm token thành công!');
+            const { error } = await supabase.from('zalo_bot_tokens').insert([newToken]);
+            if (error) throw error;
+            setSuccess('Đã thêm Token thành công');
             setNewToken({ token: '', group_name: '', bot_name: '', notes: '' });
             fetchData();
-        } catch (err: any) {
-            setError(err.message);
-        }
+        } catch (err: any) { setError(err.message); }
+        setLoading(false);
     };
 
     const handleDeleteToken = async (id: string) => {
         if (!window.confirm('Bạn có chắc muốn xóa token này?')) return;
         try {
-            const { error: delError } = await supabase.from('zalo_bot_tokens').delete().eq('id', id);
-            if (delError) throw delError;
-            setSuccess('Xóa token thành công!');
+            await supabase.from('zalo_bot_tokens').delete().eq('id', id);
             fetchData();
+            setSuccess('Đã xóa token');
+        } catch (err: any) { setError(err.message); }
+    };
+
+    const handleSyncBot = async (tokenObj: any) => {
+        setLoadingSync(tokenObj.id);
+        setError(null);
+        try {
+            const res = await fetch('/api/zalo?action=sync_contacts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bot_token: tokenObj.token, bot_name: tokenObj.bot_name })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Lỗi đồng bộ');
+            setSuccess(data.message);
+            if (data.count > 0) fetchData();
         } catch (err: any) {
             setError(err.message);
+        } finally {
+            setLoadingSync(null);
         }
     };
 
@@ -376,7 +396,10 @@ const ZaloBotManager: React.FC = () => {
                         <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#374151' }}>
                             {t.token.substring(0, 15)}...{t.token.substring(t.token.length - 10)} - {t.group_name} - {t.bot_name}
                         </Typography>
-                        <IconButton size="small" color="error" onClick={() => handleDeleteToken(t.id)} sx={{ ml: 1, p: 0.5 }}><DeleteIcon fontSize="small" /></IconButton>
+                        <IconButton size="small" color="primary" onClick={() => handleSyncBot(t)} sx={{ ml: 1, p: 0.5 }} disabled={loadingSync === t.id} title="Đồng bộ danh bạ từ tin nhắn mới nhất">
+                            {loadingSync === t.id ? <CircularProgress size={16} /> : <SyncIcon fontSize="small" />}
+                        </IconButton>
+                        <IconButton size="small" color="error" onClick={() => handleDeleteToken(t.id)} sx={{ p: 0.5 }}><DeleteIcon fontSize="small" /></IconButton>
                     </Box>
                 ))}
             </Paper>

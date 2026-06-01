@@ -7,8 +7,33 @@
  * Payload: { "chat_id": "<ZALO_USER_ID>", "text": "<MESSAGE_CONTENT>" }
  */
 
-const API_BASE_URL = 'https://api.zaloplatforms.com'; 
-// Thay đổi giá trị này nếu hệ thống API chính thức có đường dẫn khác (ví dụ: https://openapi.zalo.me)
+const API_BASE_URL = 'https://bot-api.zaloplatforms.com';
+
+export const getBotUpdates = async (botToken: string) => {
+    if (!botToken) throw new Error('Chưa cấu hình Zalo Bot Token');
+    
+    const url = `${API_BASE_URL}/bot${botToken}/getUpdates`;
+    console.log(`[Zalo Bot API] Fetching updates via ${url}`);
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ timeout: 10 }), // Short polling
+        });
+
+        const data = await response.json();
+        if (!response.ok || !data.ok) {
+            console.error('[Zalo Bot API] getUpdates Failed:', data);
+            throw new Error(data.description || data.error_message || 'Lỗi lấy tin nhắn mới');
+        }
+
+        return data.result; // Mảng chứa các update
+    } catch (error: any) {
+        console.error('[Zalo Bot API] getUpdates Exception:', error.message);
+        throw error;
+    }
+};
 
 export const sendPersonalZaloMessage = async (
     botToken: string,
