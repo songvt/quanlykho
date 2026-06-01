@@ -88,12 +88,13 @@ const ZaloBotManager: React.FC = () => {
     const [loadingSync, setLoadingSync] = useState<string | null>(null);
     const [syncingAll, setSyncingAll] = useState(false);
     const [autoSync, setAutoSync] = useState(false);
+    const isSyncingRef = React.useRef(false);
 
     useEffect(() => {
         let interval: any;
         if (autoSync) {
             interval = setInterval(() => {
-                if (!syncingAll) handleSyncAllBots(true);
+                if (!syncingAll && !isSyncingRef.current) handleSyncAllBots(true);
             }, 15000); // 15 seconds
         }
         return () => clearInterval(interval);
@@ -172,6 +173,7 @@ const ZaloBotManager: React.FC = () => {
     const handleSyncAllBots = async (isSilent = false) => {
         if (!isSilent) setSyncingAll(true);
         if (!isSilent) setError(null);
+        isSyncingRef.current = true;
         let totalCount = 0;
         let successCount = 0;
         try {
@@ -200,6 +202,7 @@ const ZaloBotManager: React.FC = () => {
             if (!isSilent) setError('Lỗi đồng bộ tất cả bot');
         } finally {
             if (!isSilent) setSyncingAll(false);
+            isSyncingRef.current = false;
         }
     };
 
