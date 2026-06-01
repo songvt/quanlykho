@@ -201,6 +201,106 @@ const ZaloBotManager: React.FC = () => {
         } catch (err: any) { setError(err.message); }
     };
 
+    // --- Export / Template ---
+    const handleDownloadTemplate = async () => {
+        try {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Danh bạ Zalo Bot');
+
+            // Định nghĩa các cột
+            worksheet.columns = [
+                { header: 'Mã nhân viên', key: 'employee_id', width: 15 },
+                { header: 'Tên người nhận', key: 'receiver_name', width: 25 },
+                { header: 'Điện thoại', key: 'phone', width: 15 },
+                { header: 'Zalo_user_id', key: 'zalo_user_id', width: 25 },
+                { header: 'Ghi chú', key: 'notes', width: 20 },
+                { header: 'Trạng thái', key: 'status', width: 15 },
+                { header: 'Mã API token', key: 'bot_api_token', width: 35 },
+                { header: 'API token zalo', key: 'bot_name', width: 25 },
+            ];
+
+            // Làm nổi bật Header
+            worksheet.getRow(1).font = { bold: true };
+            worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+
+            // Thêm 1 dòng ví dụ
+            worksheet.addRow({
+                employee_id: 'NV001',
+                receiver_name: 'Nguyễn Văn A',
+                phone: '0901234567',
+                zalo_user_id: '3fdc585be01709495006',
+                notes: 'Khách VIP',
+                status: 'Đang hoạt động',
+                bot_api_token: '1862629919486206414:...',
+                bot_name: 'Q12 - AI'
+            });
+
+            // Tải file về máy
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            
+            // Xử lý tải xuống
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'Mau_Import_Danh_Ba_Zalo.xlsx';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (err) {
+            console.error('Lỗi tải mẫu import:', err);
+            setError('Không thể tải file mẫu. Vui lòng thử lại.');
+        }
+    };
+
+    const handleExportExcel = async () => {
+        if (contacts.length === 0) return setError('Không có dữ liệu để xuất Excel');
+        
+        try {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Danh bạ Zalo Bot');
+
+            worksheet.columns = [
+                { header: 'Mã nhân viên', key: 'employee_id', width: 15 },
+                { header: 'Tên người nhận', key: 'receiver_name', width: 25 },
+                { header: 'Điện thoại', key: 'phone', width: 15 },
+                { header: 'Zalo_user_id', key: 'zalo_user_id', width: 25 },
+                { header: 'Ghi chú', key: 'notes', width: 20 },
+                { header: 'Trạng thái', key: 'status', width: 15 },
+                { header: 'Mã API token', key: 'bot_api_token', width: 35 },
+                { header: 'API token zalo', key: 'bot_name', width: 25 },
+            ];
+
+            worksheet.getRow(1).font = { bold: true };
+            worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+
+            contacts.forEach(c => {
+                worksheet.addRow({
+                    employee_id: c.employee_id,
+                    receiver_name: c.receiver_name,
+                    phone: c.phone,
+                    zalo_user_id: c.zalo_user_id,
+                    notes: c.notes,
+                    status: c.status,
+                    bot_api_token: c.bot_api_token,
+                    bot_name: c.bot_name
+                });
+            });
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Danh_Ba_Zalo_${new Date().toISOString().split('T')[0]}.xlsx`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (err) {
+            console.error('Lỗi export Excel:', err);
+            setError('Không thể xuất file Excel.');
+        }
+    };
+
     // --- Bulk Sending ---
     const filteredContacts = filterToken === 'all' 
         ? contacts 
@@ -309,8 +409,8 @@ const ZaloBotManager: React.FC = () => {
                         Import Excel
                         <input type="file" hidden accept=".xlsx,.xls,.csv" onChange={handleImportExcel} />
                     </Button>
-                    <Button variant="outlined" startIcon={<DownloadIcon />}>Export Excel</Button>
-                    <Button variant="outlined" startIcon={<DescriptionIcon />}>Mẫu import</Button>
+                    <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExportExcel}>Export Excel</Button>
+                    <Button variant="outlined" startIcon={<DescriptionIcon />} onClick={handleDownloadTemplate}>Mẫu import</Button>
                 </Box>
             </Paper>
 
