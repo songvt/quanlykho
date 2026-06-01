@@ -202,15 +202,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 }
 
                 const uniqueUsers = new Map();
+                const inboxMessages: any[] = [];
+
                 updates.forEach((update: any) => {
                     if (update.message && update.message.from) {
                         const from = update.message.from;
+                        const text = update.message.text || '';
+                        const msgId = update.message.message_id?.toString() || `${from.id}_${update.update_id}`;
+
                         uniqueUsers.set(from.id.toString(), {
                             zalo_user_id: from.id.toString(),
                             receiver_name: from.first_name || from.username || `User ${from.id}`
                         });
+
+                        inboxMessages.push({
+                            zalo_user_id: from.id.toString(),
+                            message_id: msgId,
+                            sender_name: from.first_name || from.username || `User ${from.id}`,
+                            message_content: text,
+                            bot_token: bot_token
+                        });
                     }
                 });
+
+                // Lưu tin nhắn vào inbox
+                if (inboxMessages.length > 0) {
+                    await supabase.from('zalo_bot_inbox').upsert(inboxMessages, { onConflict: 'message_id' });
+                }
 
                 if (uniqueUsers.size === 0) {
                     return res.status(200).json({ success: true, count: 0, message: 'Không tìm thấy ID người dùng trong các tin nhắn mới' });

@@ -50,13 +50,25 @@ interface ZaloContact {
     zalo_user_id: string;
     bot_api_token: string;
     bot_name: string;
+    bot_name: string;
     notes: string;
     status: string;
+}
+
+interface ZaloInboxMessage {
+    id: string;
+    zalo_user_id: string;
+    message_id: string;
+    sender_name: string;
+    message_content: string;
+    bot_token: string;
+    created_at: string;
 }
 
 const ZaloBotManager: React.FC = () => {
     const [tokens, setTokens] = useState<ZaloBotToken[]>([]);
     const [contacts, setContacts] = useState<ZaloContact[]>([]);
+    const [inboxMessages, setInboxMessages] = useState<ZaloInboxMessage[]>([]);
     const [loading, setLoading] = useState(false);
     const [importing, setImporting] = useState(false);
     const [sending, setSending] = useState(false);
@@ -77,16 +89,19 @@ const ZaloBotManager: React.FC = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [tokensRes, contactsRes] = await Promise.all([
+            const [tokensRes, contactsRes, inboxRes] = await Promise.all([
                 supabase.from('zalo_bot_tokens').select('*').order('created_at', { ascending: false }),
-                supabase.from('zalo_personal_contacts').select('*').order('created_at', { ascending: false })
+                supabase.from('zalo_personal_contacts').select('*').order('created_at', { ascending: false }),
+                supabase.from('zalo_bot_inbox').select('*').order('created_at', { ascending: false })
             ]);
             
             if (tokensRes.error) throw tokensRes.error;
             if (contactsRes.error) throw contactsRes.error;
+            if (inboxRes.error) throw inboxRes.error;
             
             setTokens(tokensRes.data || []);
             setContacts(contactsRes.data || []);
+            setInboxMessages(inboxRes.data || []);
         } catch (err: any) {
             setError(err.message || 'Lỗi khi tải dữ liệu');
         } finally {
@@ -321,6 +336,49 @@ const ZaloBotManager: React.FC = () => {
         }
     };
 
+    const handleExportInbox = async () => {
+        if (inboxMessages.length === 0) return setError('Không có dữ liệu Inbox để xuất Excel');
+        
+        try {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Inbox');
+
+            worksheet.columns = [
+                { header: 'ID', key: 'zalo_user_id', width: 25 },
+                { header: 'Message ID', key: 'message_id', width: 35 },
+                { header: 'Tên người dùng', key: 'sender_name', width: 25 },
+                { header: 'Nội dung tin nhắn', key: 'message_content', width: 40 },
+                { header: 'HTTP API', key: 'bot_token', width: 40 },
+            ];
+
+            worksheet.getRow(1).font = { bold: true };
+            worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+
+            inboxMessages.forEach(msg => {
+                worksheet.addRow({
+                    zalo_user_id: msg.zalo_user_id,
+                    message_id: msg.message_id,
+                    sender_name: msg.sender_name,
+                    message_content: msg.message_content,
+                    bot_token: msg.bot_token
+                });
+            });
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Inbox_Zalo_${new Date().toISOString().split('T')[0]}.xlsx`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (err) {
+            console.error('Lỗi export Inbox:', err);
+            setError('Không thể xuất file Excel Inbox.');
+        }
+    };
+
     // --- Bulk Sending ---
     const filteredContacts = filterToken === 'all' 
         ? contacts 
@@ -531,6 +589,49 @@ const ZaloBotManager: React.FC = () => {
                                     </TableCell>
                                 </TableRow>
                             ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </Paper>
+
+            {/* SECTION 4: Inbox */}
+            <Paper sx={{ p: 3, borderRadius: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.05)', mt: 3 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827' }}>Hộp thư đến (Inbox)</Typography>
+                        <Typography variant="body2" sx={{ color: '#6b7280' }}>Tin nhắn nhận được từ Zalo Bot trong quá trình đồng bộ.</Typography>
+                    </Box>
+                    <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExportInbox}>Export Excel</Button>
+                </Box>
+
+                <TableContainer sx={{ maxHeight: 400 }}>
+                    <Table stickyHeader size="small">
+                        <TableHead>
+                            <TableRow>
+                                <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>ID</TableCell>
+                                <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>MESSAGE ID</TableCell>
+                                <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>TÊN NGƯỜI DÙNG</TableCell>
+                                <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>NỘI DUNG TIN NHẮN</TableCell>
+                                <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>HTTP API</TableCell>
+                                <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>THỜI GIAN</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {inboxMessages.map(msg => (
+                                <TableRow key={msg.id} hover>
+                                    <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{msg.zalo_user_id}</TableCell>
+                                    <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{msg.message_id}</TableCell>
+                                    <TableCell sx={{ fontWeight: 500 }}>{msg.sender_name}</TableCell>
+                                    <TableCell>{msg.message_content}</TableCell>
+                                    <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{msg.bot_token.substring(0,25)}...</TableCell>
+                                    <TableCell sx={{ fontSize: '0.75rem' }}>{new Date(msg.created_at).toLocaleString('vi-VN')}</TableCell>
+                                </TableRow>
+                            ))}
+                            {inboxMessages.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={6} align="center" sx={{ py: 3, color: '#6b7280' }}>Chưa có tin nhắn nào</TableCell>
+                                </TableRow>
+                            )}
                         </TableBody>
                     </Table>
                 </TableContainer>
