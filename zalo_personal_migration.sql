@@ -9,8 +9,14 @@ CREATE TABLE IF NOT EXISTS public.zalo_bot_tokens (
 );
 
 ALTER TABLE public.zalo_bot_tokens ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow admin full access to zalo_bot_tokens" ON public.zalo_bot_tokens FOR ALL TO authenticated USING ( (auth.jwt() ->> 'role') = 'admin' );
-CREATE POLICY "Allow public read to zalo_bot_tokens for sending" ON public.zalo_bot_tokens FOR SELECT TO authenticated USING ( true );
+
+DROP POLICY IF EXISTS "Allow admin full access to zalo_bot_tokens" ON public.zalo_bot_tokens;
+DROP POLICY IF EXISTS "Allow public read to zalo_bot_tokens for sending" ON public.zalo_bot_tokens;
+DROP POLICY IF EXISTS "Enable all for authenticated users on zalo_bot_tokens" ON public.zalo_bot_tokens;
+DROP POLICY IF EXISTS "Enable all for anon on zalo_bot_tokens" ON public.zalo_bot_tokens;
+
+CREATE POLICY "Enable all for authenticated users on zalo_bot_tokens" ON public.zalo_bot_tokens FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all for anon on zalo_bot_tokens" ON public.zalo_bot_tokens FOR ALL TO anon USING (true) WITH CHECK (true);
 
 
 -- Table for Personal Contacts
@@ -29,18 +35,13 @@ CREATE TABLE IF NOT EXISTS public.zalo_personal_contacts (
     CONSTRAINT uk_zalo_personal_contact_employee UNIQUE (employee_id)
 );
 
--- Enable RLS
 ALTER TABLE public.zalo_personal_contacts ENABLE ROW LEVEL SECURITY;
 
--- Create policy for admin
-CREATE POLICY "Allow admin full access to zalo_personal_contacts"
-ON public.zalo_personal_contacts
-FOR ALL
-TO authenticated
-USING ( (auth.jwt() ->> 'role') = 'admin' );
+DROP POLICY IF EXISTS "Allow admin full access to zalo_personal_contacts" ON public.zalo_personal_contacts;
+DROP POLICY IF EXISTS "Allow public read to zalo_personal_contacts for sending" ON public.zalo_personal_contacts;
+DROP POLICY IF EXISTS "Enable all for authenticated users on zalo_personal_contacts" ON public.zalo_personal_contacts;
+DROP POLICY IF EXISTS "Enable all for anon on zalo_personal_contacts" ON public.zalo_personal_contacts;
 
-CREATE POLICY "Allow public read to zalo_personal_contacts for sending"
-ON public.zalo_personal_contacts
-FOR SELECT
-TO authenticated
-USING ( true );
+CREATE POLICY "Enable all for authenticated users on zalo_personal_contacts" ON public.zalo_personal_contacts FOR ALL TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Enable all for anon on zalo_personal_contacts" ON public.zalo_personal_contacts FOR ALL TO anon USING (true) WITH CHECK (true);
+
