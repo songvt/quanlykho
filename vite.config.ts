@@ -6,7 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
   plugins: [
-    react(), 
+    react(),
     mode === 'development' && basicSsl(),
     VitePWA({
       registerType: 'autoUpdate',

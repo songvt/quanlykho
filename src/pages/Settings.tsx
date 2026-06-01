@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, Button, IconButton, TextField, Dialog,
@@ -21,22 +21,22 @@ const Settings = () => {
     const [openDialog, setOpenDialog] = useState(false);
     const [editingItem, setEditingItem] = useState<DistrictConfig | null>(null);
 
-    // Form state
     const [district, setDistrict] = useState('');
     const [storekeeperName, setStorekeeperName] = useState('');
     const [error, setError] = useState('');
-    const fetchConfigs = async () => {
+
+    const fetchConfigs = useCallback(async () => {
         try {
             const data = await SupabaseService.getDistrictStorekeepers();
             setConfigs(data);
         } catch (err) {
             console.error(err);
         }
-    };
+    }, []);
 
     useEffect(() => {
-        fetchConfigs();
-    }, []);
+        void fetchConfigs();
+    }, [fetchConfigs]);
 
     const handleOpenCreate = () => {
         setEditingItem(null);
@@ -54,6 +54,8 @@ const Settings = () => {
         setOpenDialog(true);
     };
 
+    const getErrorMessage = (err: unknown) => err instanceof Error ? err.message : 'Không xác định';
+
     const handleSave = async () => {
         if (!district.trim() || !storekeeperName.trim()) {
             setError('Vui lòng nhập đầy đủ thông tin');
@@ -63,9 +65,9 @@ const Settings = () => {
         try {
             await SupabaseService.upsertDistrictStorekeeper(district.trim(), storekeeperName.trim());
             setOpenDialog(false);
-            fetchConfigs();
-        } catch (err: any) {
-            setError('Lỗi lưu dữ liệu: ' + err.message);
+            void fetchConfigs();
+        } catch (err: unknown) {
+            setError('Lỗi lưu dữ liệu: ' + getErrorMessage(err));
         }
     };
 
@@ -73,27 +75,27 @@ const Settings = () => {
         if (window.confirm(`Bạn có chắc muốn xóa cấu hình cho ${districtKey}?`)) {
             try {
                 await SupabaseService.deleteDistrictStorekeeper(districtKey);
-                fetchConfigs();
-            } catch (err: any) {
-                alert('Lỗi xóa: ' + err.message);
+                void fetchConfigs();
+            } catch (err: unknown) {
+                alert('Lỗi xóa: ' + getErrorMessage(err));
             }
         }
     };
 
     return (
         <Box p={3}>
-            <PageHeader 
+            <PageHeader
                 title="Thiết Lập Hệ Thống"
                 subtitle="Cấu hình danh mục quản trị, thủ kho và các thông số hoạt động của hệ thống kho"
                 icon={<SettingsIcon sx={{ fontSize: 30, color: 'white' }} />}
                 gradientType="blue"
                 actions={
-                    <Button 
-                        variant="contained" 
+                    <Button
+                        variant="contained"
                         onClick={handleOpenCreate}
                         startIcon={<AddIcon />}
-                        sx={{ 
-                            bgcolor: '#ffffff', 
+                        sx={{
+                            bgcolor: '#ffffff',
                             color: '#1e3a8a',
                             borderRadius: '12px',
                             px: 3,
@@ -173,7 +175,7 @@ const Settings = () => {
                             onChange={(e) => setDistrict(e.target.value)}
                             fullWidth
                             placeholder="Ví dụ: Quận 12"
-                            disabled={!!editingItem} // Disable editing PK if updating, or allow upsert to overwrite? Upsert overwrites, so editing PK creates new. Better disable to avoid confusion, forcing delete-add for key change.
+                            disabled={!!editingItem}
                             helperText={editingItem ? "Không thể sửa tên Quận/Huyện (Hãy xóa và tạo mới nếu cần)" : ""}
                         />
                         <TextField

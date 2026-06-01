@@ -434,7 +434,6 @@ const EmployeeList = () => {
                         await dispatch(deleteHRProfiles(selectedIds)).unwrap();
                         setNotification({ type: 'success', message: `Đã xóa ${selectedIds.length} hồ sơ nhân sự!` });
                     } else {
-                        // @ts-ignore
                         await dispatch(deleteEmployees(selectedIds)).unwrap();
                         setNotification({ type: 'success', message: `Đã xóa ${selectedIds.length} tài khoản!` });
                     }

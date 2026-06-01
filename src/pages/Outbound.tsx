@@ -7,7 +7,7 @@ import { fetchEmployees } from '../store/slices/employeesSlice';
 import { fetchOrders, updateOrderStatus } from '../store/slices/ordersSlice';
 import type { RootState, AppDispatch } from '../store';
 import {
-    Button, Typography, Box, CircularProgress, Stack, Dialog, DialogTitle, DialogContent, DialogActions
+    Button, Box, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
 import type { Order } from '../types';
 import { useNotification } from '../contexts/NotificationContext';
@@ -42,6 +42,7 @@ export const Outbound = () => {
     const [scannedSerials, setScannedSerials] = useState<string[]>([]);
     const [serialInput, setSerialInput] = useState('');
     const [isProductVerified, setIsProductVerified] = useState(false);
+    const [showScanner, setShowScanner] = useState(false);
     const fulfillmentStock = useSelector((state: RootState) => selectProductStock(state, selectedOrder?.product_id || ''));
 
     useEffect(() => {
@@ -135,8 +136,6 @@ export const Outbound = () => {
     };
 
     if (status === 'loading') return <Box display="flex" justifyContent="center" p={8}><CircularProgress /></Box>;
-
-    const [showScanner, setShowScanner] = useState(false);
 
     const handleScanSuccess = (decodedText: string) => {
         const newSerials = decodedText.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
