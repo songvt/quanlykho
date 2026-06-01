@@ -343,6 +343,7 @@ const ZaloBotManager: React.FC = () => {
             setSuccess(`Đã đưa ${selectedContacts.length} tin nhắn vào hàng đợi xử lý!`);
             setSelectedContacts([]);
             setMessageContent('');
+            fetchData(); // Cập nhật lại UI trạng thái
         } catch (err: any) {
             setError(err.message);
         } finally {

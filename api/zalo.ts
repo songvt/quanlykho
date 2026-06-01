@@ -217,18 +217,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         // Thêm chữ ký tự động theo yêu cầu
                         finalMessage += '\n\nĐây là tin nhắn tự động không trả lời lại bot - liên hệ zalo songvt nhé !';
 
-                        await sendPersonalZaloMessage(contact.bot_api_token, contact.zalo_user_id, finalMessage);
+                        const zaloRes = await sendPersonalZaloMessage(contact.bot_api_token, contact.zalo_user_id, finalMessage);
                         
                         // Cập nhật trạng thái
                         await supabase.from('zalo_personal_contacts')
                             .update({ status: 'Đã gửi' })
                             .eq('id', contact.id);
+
+                        // Ghi log
+                        await supabase.from('zalo_notification_logs').insert({
+                            recipient_phone: contact.phone || contact.zalo_user_id,
+                            status: 'sent',
+                            provider_message_id: zaloRes?.result?.message_id?.toString(),
+                            sent_at: new Date().toISOString(),
+                            params: { message: finalMessage, type: 'personal_bot', bot_name: contact.bot_name }
+                        });
                         
                         successCount++;
                     } catch (e: any) {
                         console.error(`Lỗi gửi tin cho ${contact.receiver_name}:`, e.message);
                         failCount++;
-                        // Có thể ghi log vào zalo_notification_logs nếu muốn
+                        // Ghi log thất bại
+                        await supabase.from('zalo_notification_logs').insert({
+                            recipient_phone: contact.phone || contact.zalo_user_id,
+                            status: 'failed',
+                            error_message: e.message,
+                            failed_at: new Date().toISOString(),
+                            params: { type: 'personal_bot', bot_name: contact.bot_name }
+                        });
                     }
                     
                     // Delay 500ms
