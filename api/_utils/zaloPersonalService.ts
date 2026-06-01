@@ -39,6 +39,11 @@ export const getBotUpdates = async (botToken: string) => {
                 if (retryRes.ok && retryData.ok) return retryData.result;
             }
 
+            // Nếu timeout (không có tin nhắn mới), trả về mảng rỗng
+            if (data.error_code === 408) {
+                return [];
+            }
+
             console.error('[Zalo Bot API] getUpdates Failed:', data);
             throw new Error(data.description || data.error_message || 'Lỗi lấy tin nhắn mới');
         }
