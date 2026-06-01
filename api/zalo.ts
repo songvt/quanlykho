@@ -108,7 +108,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (action === 'logs') {
             if (req.method === 'GET') {
-                const { data, error } = await supabase.from('zalo_notification_logs').select('*, zalo_campaigns(name), zalo_templates(template_name)').order('created_at', { ascending: false }).limit(200);
+                const { data, error } = await supabase.from('zalo_notification_logs').select('*').order('created_at', { ascending: false }).limit(200);
                 if (error) throw error;
                 return res.status(200).json({ success: true, data });
             }
