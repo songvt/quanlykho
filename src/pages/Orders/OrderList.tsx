@@ -421,7 +421,7 @@ const OrderList = () => {
                         filteredOrders.map((order) => {
                             const isSelected = selectedOrderIds.includes(order.id);
                             return (
-                                <Card key={order.id} sx={{ mb: 2, borderRadius: 3, border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                            <Card key={order.id} sx={{ mb: 1.5, borderRadius: 2, border: '1px solid #e5e7eb', boxShadow: 'none' }}>
                                     <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                                         <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={1}>
                                             <Box display="flex" alignItems="center" gap={1}>
@@ -517,7 +517,7 @@ const OrderList = () => {
                     )}
                 </Box>
             ) : (
-                <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 2px 4px -1px rgb(0 0 0 / 0.1)', overflowX: 'auto' }}>
+                <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 2, boxShadow: 'none', overflowX: 'auto', border: '1px solid #e5e7eb' }}>
                     <Table size="small" sx={{ minWidth: 800 }}>
                         <TableHead>
                             <TableRow>

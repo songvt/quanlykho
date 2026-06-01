@@ -63,6 +63,16 @@ import {
 import AIChatbot from '../Chatbot/AIChatbot';
 
 const DRAWER_WIDTH = 268;
+const UI = {
+    primary: '#1d4ed8',
+    primaryHover: '#1e40af',
+    primarySoft: '#eff6ff',
+    border: '#e5e7eb',
+    pageBg: '#f6f8fb',
+    text: '#0f172a',
+    muted: '#64748b',
+    hover: '#f8fafc',
+};
 
 const MainLayout: React.FC = () => {
     const navigate = useNavigate();
@@ -180,7 +190,7 @@ const MainLayout: React.FC = () => {
             flexDirection: 'column',
             height: '100%',
             bgcolor: '#ffffff',
-            borderRight: '1px solid #e2e8f0',
+            borderRight: `1px solid ${UI.border}`,
         }}>
             {/* Logo Area */}
             <Box sx={{
@@ -188,25 +198,25 @@ const MainLayout: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 1.5,
-                borderBottom: '1px solid #f1f5f9',
+                borderBottom: `1px solid ${UI.border}`,
             }}>
                 <Box sx={{
                     width: 40,
                     height: 40,
-                    borderRadius: '12px',
-                    background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+                    borderRadius: '8px',
+                    background: UI.primary,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+                    boxShadow: 'none',
                     flexShrink: 0,
                 }}>
                     <InventoryIcon sx={{ color: 'white', fontSize: 22 }} />
                 </Box>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Typography sx={{
-                        fontWeight: 800,
-                        color: '#0f172a',
+                        fontWeight: 700,
+                        color: UI.text,
                         fontSize: '0.95rem',
                         lineHeight: 1.2,
                         letterSpacing: '-0.3px',
@@ -236,7 +246,7 @@ const MainLayout: React.FC = () => {
             </Box>
 
             {/* User Profile compact card */}
-            <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid #f1f5f9' }}>
+            <Box sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${UI.border}` }}>
                 <Box
                     onClick={handleMenuOpen}
                     sx={{
@@ -244,21 +254,22 @@ const MainLayout: React.FC = () => {
                         alignItems: 'center',
                         gap: 1.5,
                         p: 1.5,
-                        borderRadius: '12px',
+                        borderRadius: '8px',
                         cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        '&:hover': { bgcolor: '#f8fafc' },
-                        '&:active': { bgcolor: '#f1f5f9', transform: 'scale(0.98)' },
+                        transition: 'background-color 0.16s ease, border-color 0.16s ease',
+                        bgcolor: UI.hover,
+                        border: `1px solid ${UI.border}`,
+                        '&:hover': { bgcolor: '#f1f5f9' },
                     }}
                 >
                     <Avatar sx={{
                         width: 36,
                         height: 36,
-                        background: 'linear-gradient(135deg, #2563eb 0%, #60a5fa 100%)',
+                        background: UI.primary,
                         color: 'white',
                         fontSize: '0.875rem',
                         fontWeight: 700,
-                        boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
+                        boxShadow: 'none',
                         flexShrink: 0,
                     }}>
                         {profile?.full_name?.charAt(0)?.toUpperCase() || 'A'}
@@ -604,12 +615,12 @@ const MainLayout: React.FC = () => {
                 sx={{
                     width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` },
                     ml: { sm: `${DRAWER_WIDTH}px` },
-                    bgcolor: 'rgba(255,255,255,0.92)',
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
-                    color: '#0f172a',
-                    borderBottom: '1px solid #e2e8f0',
-                    boxShadow: '0 1px 0 #e2e8f0',
+                    bgcolor: 'rgba(255,255,255,0.98)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    color: UI.text,
+                    borderBottom: `1px solid ${UI.border}`,
+                    boxShadow: 'none',
                     zIndex: (theme) => theme.zIndex.drawer + 1,
                     '@media print': { display: 'none' },
                 }}
@@ -633,8 +644,8 @@ const MainLayout: React.FC = () => {
                                 color: '#475569',
                                 minWidth: 40,
                                 minHeight: 40,
-                                borderRadius: '10px',
-                                '&:hover': { bgcolor: '#f1f5f9' },
+                                borderRadius: '8px',
+                                '&:hover': { bgcolor: UI.hover },
                             }}
                         >
                             <MenuIcon sx={{ fontSize: 22 }} />
@@ -674,8 +685,8 @@ const MainLayout: React.FC = () => {
                                 color: '#64748b',
                                 minWidth: 40,
                                 minHeight: 40,
-                                borderRadius: '10px',
-                                '&:hover': { bgcolor: '#f1f5f9', color: '#0f172a' },
+                                borderRadius: '8px',
+                                '&:hover': { bgcolor: UI.hover, color: UI.text },
                             }}
                         >
                             <Badge
@@ -705,20 +716,20 @@ const MainLayout: React.FC = () => {
                                 cursor: 'pointer',
                                 py: 0.5,
                                 px: { xs: 0.5, sm: 1 },
-                                borderRadius: '10px',
-                                transition: 'all 0.2s',
-                                '&:hover': { bgcolor: '#f1f5f9' },
+                                borderRadius: '8px',
+                                transition: 'background-color 0.16s ease',
+                                '&:hover': { bgcolor: UI.hover },
                                 '&:active': { transform: 'scale(0.96)' },
                             }}
                         >
                             <Avatar sx={{
                                 width: 34,
                                 height: 34,
-                                background: 'linear-gradient(135deg, #2563eb 0%, #60a5fa 100%)',
+                                background: UI.primary,
                                 color: 'white',
                                 fontSize: '0.825rem',
                                 fontWeight: 700,
-                                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)',
+                                boxShadow: 'none',
                             }}>
                                 {profile?.full_name?.charAt(0)?.toUpperCase() || 'A'}
                             </Avatar>
@@ -892,7 +903,7 @@ const MainLayout: React.FC = () => {
                     flexGrow: 1,
                     width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` },
                     minHeight: '100svh',
-                    bgcolor: '#f1f5f9',
+                    bgcolor: UI.pageBg,
                     overflowX: 'hidden',
                     display: 'flex',
                     flexDirection: 'column',
@@ -927,12 +938,12 @@ const MainLayout: React.FC = () => {
                     left: 0,
                     right: 0,
                     zIndex: (theme) => theme.zIndex.appBar,
-                    bgcolor: 'rgba(255,255,255,0.95)',
-                    backdropFilter: 'blur(12px)',
-                    WebkitBackdropFilter: 'blur(12px)',
-                    borderTop: '1px solid #e2e8f0',
+                    bgcolor: 'rgba(255,255,255,0.98)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    borderTop: `1px solid ${UI.border}`,
                     paddingBottom: 'env(safe-area-inset-bottom)',
-                    boxShadow: '0 -4px 20px rgba(0,0,0,0.06)',
+                    boxShadow: 'none',
                     '@media print': { display: 'none !important' },
                 }}
             >
@@ -1009,23 +1020,20 @@ const MainLayout: React.FC = () => {
 
 // ── Style helpers ──────────────────────────────────────────────────────────────
 const menuItemSx = (isActive: boolean, color = '#2563eb') => ({
-    height: 44,
-    borderRadius: '10px',
-    color: isActive ? color : '#64748b',
+    height: 40,
+    borderRadius: '8px',
+    color: isActive ? color : UI.muted,
     px: 1.5,
-    transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
+    transition: 'background-color 0.16s ease, color 0.16s ease',
     bgcolor: isActive ? `${color}12` : 'transparent',
     '&.Mui-selected': {
         bgcolor: `${color}12`,
-        color: color,
-        '&:hover': { bgcolor: `${color}1a` },
+        color,
+        '&:hover': { bgcolor: `${color}12` },
     },
     '&:hover': {
-        bgcolor: '#f1f5f9',
-        color: '#0f172a',
-    },
-    '&:active': {
-        transform: 'scale(0.97)',
+        bgcolor: UI.hover,
+        color: UI.text,
     },
 });
 
@@ -1036,17 +1044,16 @@ const menuIconSx = (isActive: boolean, color = '#2563eb') => ({
 });
 
 const subItemSx = (isActive: boolean, color = '#2563eb') => ({
-    height: 40,
+    height: 36,
     borderRadius: '8px',
-    color: isActive ? color : '#64748b',
+    color: isActive ? color : UI.muted,
     px: 1.5,
     bgcolor: isActive ? `${color}10` : 'transparent',
     '&.Mui-selected': {
         bgcolor: `${color}10`,
-        '&:hover': { bgcolor: `${color}18` },
+        '&:hover': { bgcolor: `${color}10` },
     },
-    '&:hover': { bgcolor: '#f8fafc' },
-    '&:active': { transform: 'scale(0.97)' },
+    '&:hover': { bgcolor: UI.hover },
 });
 
 export default MainLayout;
