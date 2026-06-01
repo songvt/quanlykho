@@ -387,7 +387,7 @@ const ZaloBotManager: React.FC = () => {
                     <Grid item xs={12} md={3}><TextField fullWidth size="small" label="API token Zalo (Tên bot hiển thị)" value={newToken.bot_name} onChange={e => setNewToken({...newToken, bot_name: e.target.value})} /></Grid>
                     <Grid item xs={12} md={2}><TextField fullWidth size="small" label="Ghi chú nhóm" value={newToken.notes} onChange={e => setNewToken({...newToken, notes: e.target.value})} /></Grid>
                     <Grid item xs={12} md={1}>
-                        <Button fullWidth variant="contained" color="success" onClick={handleSaveToken} startIcon={<AddIcon />}>Lưu</Button>
+                        <Button fullWidth variant="contained" color="success" onClick={handleAddToken} startIcon={<AddIcon />}>Lưu</Button>
                     </Grid>
                 </Grid>
 
