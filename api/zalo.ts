@@ -214,6 +214,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                             finalMessage = finalMessage.replace(/\{name\}/g, contact.receiver_name);
                         }
 
+                        // Thêm chữ ký tự động theo yêu cầu
+                        finalMessage += '\n\nĐây là tin nhắn tự động không trả lời lại bot - liên hệ zalo songvt nhé !';
+
                         await sendPersonalZaloMessage(contact.bot_api_token, contact.zalo_user_id, finalMessage);
                         
                         // Cập nhật trạng thái
