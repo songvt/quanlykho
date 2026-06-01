@@ -278,6 +278,91 @@ const ZaloBotManager: React.FC = () => {
         }
     };
 
+    const handleImportSendExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setSending(true);
+        setError(null);
+        try {
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.load(await file.arrayBuffer());
+            const worksheet = workbook.worksheets[0];
+            
+            const headers: string[] = [];
+            worksheet.getRow(1).eachCell((cell, colNumber) => {
+                headers[colNumber] = cell.value?.toString().trim() || '';
+            });
+
+            const zaloIdIdx = headers.findIndex(h => h.toLowerCase().includes('zalo'));
+            const phoneIdx = headers.findIndex(h => h.toLowerCase().includes('điện thoại') || h.toLowerCase().includes('phone'));
+            const empIdIdx = headers.findIndex(h => h.toLowerCase().includes('mã nv') || h.toLowerCase().includes('mã nhân viên'));
+            const messageIdx = headers.findIndex(h => h.toLowerCase().includes('nội dung') || h.toLowerCase().includes('tin nhắn'));
+
+            if (messageIdx === -1) {
+                throw new Error("File Excel phải có cột chứa chữ 'Nội dung' hoặc 'Tin nhắn'");
+            }
+            if (zaloIdIdx === -1 && phoneIdx === -1 && empIdIdx === -1) {
+                throw new Error("File Excel phải có cột Zalo_user_id, Điện thoại, hoặc Mã nhân viên để ghép nối");
+            }
+
+            const customMessages: Record<string, string> = {};
+            const matchedIds: string[] = [];
+
+            worksheet.eachRow((row, rowNumber) => {
+                if (rowNumber === 1) return;
+                const zaloId = zaloIdIdx > -1 ? row.getCell(zaloIdIdx).value?.toString() : null;
+                const phone = phoneIdx > -1 ? row.getCell(phoneIdx).value?.toString() : null;
+                const empId = empIdIdx > -1 ? row.getCell(empIdIdx).value?.toString() : null;
+                const msg = row.getCell(messageIdx).value?.toString();
+
+                if (!msg) return;
+
+                const matchedContact = filteredContacts.find(c => 
+                    (zaloId && c.zalo_user_id === zaloId) ||
+                    (phone && c.phone === phone) ||
+                    (empId && c.employee_id === empId)
+                );
+
+                if (matchedContact) {
+                    customMessages[matchedContact.id] = msg;
+                    if (!matchedIds.includes(matchedContact.id)) {
+                        matchedIds.push(matchedContact.id);
+                    }
+                }
+            });
+
+            if (matchedIds.length === 0) {
+                throw new Error("Không tìm thấy liên hệ nào khớp với dữ liệu trong file Excel. Vui lòng kiểm tra lại ID/SĐT.");
+            }
+
+            if (window.confirm(`Tìm thấy ${matchedIds.length} liên hệ khớp với file Excel. Bạn có chắc chắn muốn gửi ${matchedIds.length} tin nhắn với nội dung tùy chỉnh này không?`)) {
+                setSelectedContacts(matchedIds);
+                
+                const res = await fetch('/api/zalo?action=send_personal', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        contact_ids: matchedIds, 
+                        message: '', 
+                        custom_messages: customMessages
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Lỗi gửi tin');
+                
+                setSuccess(`Đã gửi thành công ${data.successCount}, thất bại ${data.failCount}`);
+                fetchData();
+                setSelectedContacts([]);
+            }
+        } catch (err: any) {
+            setError(err.message || 'Lỗi import Excel');
+        } finally {
+            setSending(false);
+            if (e.target) e.target.value = ''; 
+        }
+    };
+
     const handleDeleteContact = async (id: string) => {
         if (!window.confirm('Xóa liên hệ này?')) return;
         try {
@@ -582,15 +667,27 @@ const ZaloBotManager: React.FC = () => {
                         <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827' }}>Gửi tin hàng loạt</Typography>
                         <Typography variant="body2" sx={{ color: '#6b7280' }}>Gửi tin nhắn qua Bot cá nhân theo chính sách.</Typography>
                     </Box>
-                    <Button 
-                        variant="contained" 
-                        color="success" 
-                        onClick={handleSendBulk}
-                        disabled={sending || selectedContacts.length === 0}
-                        startIcon={sending ? <CircularProgress size={16} color="inherit"/> : <SendIcon />}
-                    >
-                        Gửi đã chọn ({selectedContacts.length})
-                    </Button>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button 
+                            variant="outlined" 
+                            color="primary" 
+                            component="label"
+                            disabled={sending}
+                            startIcon={sending ? <CircularProgress size={16} color="inherit"/> : <UploadFileIcon />}
+                        >
+                            Import Gửi Bằng Excel
+                            <input type="file" hidden accept=".xlsx,.xls,.csv" onChange={handleImportSendExcel} />
+                        </Button>
+                        <Button 
+                            variant="contained" 
+                            color="success" 
+                            onClick={handleSendBulk}
+                            disabled={sending || selectedContacts.length === 0}
+                            startIcon={sending ? <CircularProgress size={16} color="inherit"/> : <SendIcon />}
+                        >
+                            Gửi đã chọn ({selectedContacts.length})
+                        </Button>
+                    </Box>
                 </Box>
 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>

@@ -345,7 +345,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (action === 'send_personal') {
             if (req.method === 'POST') {
-                const { contact_ids, message } = req.body;
+                const { contact_ids, message, custom_messages } = req.body;
                 
                 // Lấy danh sách contact
                 const { data: contacts, error: contactError } = await supabase
@@ -365,7 +365,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 // Gửi tuần tự để tránh rate limit
                 for (const contact of contacts) {
                     try {
-                        let finalMessage = message;
+                        let finalMessage = custom_messages && custom_messages[contact.id] ? custom_messages[contact.id] : message;
                         if (contact.receiver_name) {
                             finalMessage = finalMessage.replace(/\{name\}/g, contact.receiver_name);
                         }
