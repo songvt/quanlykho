@@ -31,7 +31,8 @@ import {
     Description as DescriptionIcon,
     Send as SendIcon,
     Add as AddIcon,
-    Sync as SyncIcon
+    Sync as SyncIcon,
+    Edit as EditIcon
 } from '@mui/icons-material';
 import * as ExcelJS from 'exceljs';
 import { supabase } from '../../config/supabase';
@@ -78,7 +79,7 @@ const ZaloBotManager: React.FC = () => {
 
     // Form states
     const [newToken, setNewToken] = useState({ token: '', group_name: '', bot_name: '', notes: '' });
-    const [newContact, setNewContact] = useState({ employee_id: '', receiver_name: '', phone: '', zalo_user_id: '', notes: '', bot_api_token: '' });
+    const [newContact, setNewContact] = useState({ id: '', employee_id: '', receiver_name: '', phone: '', zalo_user_id: '', notes: '', bot_api_token: '' });
     
     // Bulk send states
     const [messageContent, setMessageContent] = useState('');
@@ -231,18 +232,43 @@ const ZaloBotManager: React.FC = () => {
         if (!newContact.employee_id || !newContact.zalo_user_id) return setError('Mã NV và Zalo user_id là bắt buộc');
         try {
             const tokenInfo = tokens.find(t => t.token === newContact.bot_api_token);
-            const dataToSave = {
-                ...newContact,
-                bot_name: tokenInfo ? tokenInfo.bot_name : ''
+            const dataToSave: any = {
+                employee_id: newContact.employee_id,
+                receiver_name: newContact.receiver_name,
+                phone: newContact.phone,
+                zalo_user_id: newContact.zalo_user_id,
+                bot_api_token: newContact.bot_api_token,
+                bot_name: tokenInfo ? tokenInfo.bot_name : '',
+                notes: newContact.notes,
+                status: 'Hoạt động'
             };
-            const { error: saveError } = await supabase.from('zalo_personal_contacts').upsert(dataToSave, { onConflict: 'employee_id' });
-            if (saveError) throw saveError;
-            setSuccess('Thêm liên hệ thành công!');
-            setNewContact({ employee_id: '', receiver_name: '', phone: '', zalo_user_id: '', notes: '', bot_api_token: '' });
+            if (newContact.id) {
+                const { error: saveError } = await supabase.from('zalo_personal_contacts').update(dataToSave).eq('id', newContact.id);
+                if (saveError) throw saveError;
+                setSuccess('Cập nhật liên hệ thành công!');
+            } else {
+                const { error: saveError } = await supabase.from('zalo_personal_contacts').insert(dataToSave);
+                if (saveError) throw saveError;
+                setSuccess('Thêm liên hệ thành công!');
+            }
+            setNewContact({ id: '', employee_id: '', receiver_name: '', phone: '', zalo_user_id: '', notes: '', bot_api_token: '' });
             fetchData();
         } catch (err: any) {
             setError(err.message);
         }
+    };
+
+    const handleEditContact = (c: any) => {
+        setNewContact({
+            id: c.id,
+            employee_id: c.employee_id || '',
+            receiver_name: c.receiver_name || '',
+            phone: c.phone || '',
+            zalo_user_id: c.zalo_user_id || '',
+            bot_api_token: c.bot_api_token || '',
+            notes: c.notes || ''
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -391,7 +417,6 @@ const ZaloBotManager: React.FC = () => {
         } catch (err: any) { setError(err.message); }
     };
 
-    // --- Export / Template ---
     const handleDownloadTemplate = async () => {
         try {
             const workbook = new ExcelJS.Workbook();
@@ -437,8 +462,35 @@ const ZaloBotManager: React.FC = () => {
             link.click();
             document.body.removeChild(link);
         } catch (err) {
-            console.error('Lỗi tải mẫu import:', err);
-            setError('Không thể tải file mẫu. Vui lòng thử lại.');
+            console.error(err);
+        }
+    };
+
+    const handleDownloadSendTemplate = async () => {
+        try {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Gửi Tin Zalo');
+            worksheet.columns = [
+                { header: 'Zalo_user_id', key: 'zalo_user_id', width: 25 },
+                { header: 'Nội dung tin nhắn', key: 'message', width: 50 },
+                { header: 'Mã API token', key: 'bot_api_token', width: 35 }
+            ];
+            
+            worksheet.getRow(1).font = { bold: true };
+            worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+
+            worksheet.addRow({ zalo_user_id: '1234567890123456789', message: 'Xin chào, đơn hàng của bạn đã được xuất kho.', bot_api_token: '1862629919486206414:...' });
+            
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.download = 'Mau_Import_Gui_Tin_Zalo.xlsx';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (err) {
+            console.error(err);
         }
     };
 
@@ -677,8 +729,15 @@ const ZaloBotManager: React.FC = () => {
                     </Grid>
                     <Grid size={{ xs: 12, md: 1 }}><TextField fullWidth size="small" label="Ghi chú" value={newContact.notes} onChange={e => setNewContact({...newContact, notes: e.target.value})} /></Grid>
                     <Grid size={{ xs: 12, md: 1 }}>
-                        <Button fullWidth variant="contained" color="success" onClick={handleSaveContact} startIcon={<AddIcon />}>Thêm</Button>
+                        <Button fullWidth variant="contained" color={newContact.id ? "warning" : "success"} onClick={handleSaveContact} startIcon={newContact.id ? <EditIcon /> : <AddIcon />}>
+                            {newContact.id ? "Lưu" : "Thêm"}
+                        </Button>
                     </Grid>
+                    {newContact.id && (
+                        <Grid size={{ xs: 12, md: 1 }}>
+                            <Button fullWidth variant="outlined" color="inherit" onClick={() => setNewContact({ id: '', employee_id: '', receiver_name: '', phone: '', zalo_user_id: '', notes: '', bot_api_token: '' })}>Hủy</Button>
+                        </Grid>
+                    )}
                 </Grid>
 
                 <Box sx={{ display: 'flex', gap: 2 }}>
@@ -699,6 +758,7 @@ const ZaloBotManager: React.FC = () => {
                         <Typography variant="body2" sx={{ color: '#6b7280' }}>Gửi tin nhắn qua Bot cá nhân theo chính sách.</Typography>
                     </Box>
                     <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button variant="outlined" startIcon={<DescriptionIcon />} onClick={handleDownloadSendTemplate}>Mẫu gửi Excel</Button>
                         <Button 
                             variant="outlined" 
                             color="primary" 
@@ -783,7 +843,8 @@ const ZaloBotManager: React.FC = () => {
                                     <TableCell>
                                         <Chip label={c.status} size="small" color="success" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }}/>
                                     </TableCell>
-                                    <TableCell align="right">
+                                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+                                        <IconButton size="small" color="primary" onClick={() => handleEditContact(c)}><EditIcon fontSize="small"/></IconButton>
                                         <IconButton size="small" color="error" onClick={() => handleDeleteContact(c.id)}><DeleteIcon fontSize="small"/></IconButton>
                                     </TableCell>
                                 </TableRow>
