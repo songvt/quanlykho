@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Paper, TextField, Button, Grid, MenuItem, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Tabs, Tab, FormControl, Select, Checkbox } from '@mui/material';
+import { Box, Typography, Paper, TextField, Button, Grid, MenuItem, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, FormControl, Select, Checkbox } from '@mui/material';
 import { Send, Add, UploadFile, Description } from '@mui/icons-material';
 import { useNotification } from '../../contexts/NotificationContext';
 import { supabase } from '../../config/supabase';
@@ -21,7 +21,6 @@ interface Campaign {
 
 const ZaloCampaigns: React.FC = () => {
     const { notify, success, warning, error: notifyError } = useNotification();
-    const [tab, setTab] = useState(0);
 
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [templates, setTemplates] = useState<any[]>([]);
@@ -330,148 +329,76 @@ const handleDownloadSendTemplate = async () => {
         <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 1400, mx: 'auto', bgcolor: '#f8fafc', minHeight: '100vh' }}>
             <Typography variant="h4" sx={{ fontWeight: 800, background: 'linear-gradient(90deg, #2563eb, #7c3aed)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', mb: 1, letterSpacing: '-1px' }}>Chiến dịch Zalo</Typography>
             <Typography variant="body2" color="text.secondary" mb={3}>Quản lý các đợt gửi tin nhắn hàng loạt qua Zalo.</Typography>
-            
-            <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ mb: 4, '& .MuiTabs-indicator': { height: 3, borderRadius: '3px 3px 0 0', background: 'linear-gradient(90deg, #2563eb, #7c3aed)' }, '& .MuiTab-root': { textTransform: 'none', fontWeight: 600, fontSize: '1rem', minWidth: 120, color: '#64748b' }, '& .Mui-selected': { color: '#0f172a !important' }, borderBottom: '1px solid #e2e8f0' }}>
-                <Tab label="Gửi Zalo Notification Service (ZNS)" />
-                <Tab label="Gửi qua Zalo Bot Cá Nhân (Miễn phí)" />
-            </Tabs>
 
-            {tab === 0 && (
-                <Box>
-                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                        <Typography variant="h6" fontWeight={600}>Chiến dịch ZNS</Typography>
-                        {!showForm && <Button variant="contained" startIcon={<Add />} onClick={() => setShowForm(true)} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.39)', background: 'linear-gradient(90deg, #3b82f6, #6366f1)', '&:hover': { boxShadow: '0 6px 20px rgba(59, 130, 246, 0.23)' } }}>Tạo chiến dịch mới</Button>}
+            <Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600 }}>Gửi tin nhắn qua Bot cá nhân</Typography>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button variant="outlined" startIcon={<Description />} onClick={handleDownloadSendTemplate}>Mẫu gửi Excel</Button>
+                        <Button variant="outlined" color="primary" component="label" disabled={sendingBulk} startIcon={sendingBulk ? <CircularProgress size={16} color="inherit"/> : <UploadFile />}>
+                            Import Gửi Bằng Excel
+                            <input type="file" hidden accept=".xlsx,.xls,.csv" onChange={handleImportSendExcel} />
+                        </Button>
+                        <Button variant="contained" color="success" onClick={handleSendBulkBot} disabled={sendingBulk || selectedContacts.length === 0} startIcon={sendingBulk ? <CircularProgress size={16} color="inherit"/> : <Send />} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.39)', background: 'linear-gradient(90deg, #10b981, #059669)', '&:hover': { boxShadow: '0 6px 20px rgba(16, 185, 129, 0.23)' } }}>
+                            Gửi đã chọn ({selectedContacts.length})
+                        </Button>
                     </Box>
-
-                    {showForm && (
-                        <Paper sx={{ p: 3, mb: 4, borderRadius: 2, border: '1px solid #e2e8f0', boxShadow: 'none' }}>
-                            <Typography variant="subtitle1" mb={3} fontWeight={600}>Tạo chiến dịch ZNS mới</Typography>
-                            <Grid container spacing={3}>
-                                <Grid size={{ xs: 12, md: 6 }}>
-                                    <TextField fullWidth label="Tên chiến dịch" value={form.name} onChange={e => setForm({...form, name: e.target.value})} size="small" />
-                                </Grid>
-                                <Grid size={{ xs: 12, md: 6 }}>
-                                    <TextField select fullWidth label="Chọn Template" value={form.template_id} onChange={e => setForm({...form, template_id: e.target.value})} size="small">
-                                        {templates.map(t => <MenuItem key={t.id} value={t.id}>{t.template_name} ({t.template_id})</MenuItem>)}
-                                    </TextField>
-                                </Grid>
-                                <Grid size={{ xs: 12, md: 6 }}>
-                                    <TextField fullWidth multiline rows={4} label="Danh sách SĐT" value={form.phones} onChange={e => setForm({...form, phones: e.target.value})} placeholder="84912345678, 84987654321" />
-                                </Grid>
-                                <Grid size={{ xs: 12, md: 6 }}>
-                                    <TextField fullWidth multiline rows={4} label="Tham số Template (JSON)" value={form.params_json} onChange={e => setForm({...form, params_json: e.target.value})} sx={{ fontFamily: 'monospace' }} />
-                                </Grid>
-                            </Grid>
-                            <Box mt={3} display="flex" gap={2} justifyContent="flex-end">
-                                <Button onClick={() => setShowForm(false)} disabled={sendingZns}>Hủy</Button>
-                                <Button variant="contained" startIcon={sendingZns ? <CircularProgress size={20} color="inherit" /> : <Send />} onClick={handleCreateZns} disabled={sendingZns} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.39)', background: 'linear-gradient(90deg, #3b82f6, #6366f1)' }}>Tạo và gửi</Button>
-                            </Box>
-                        </Paper>
-                    )}
-
-                    <TableContainer component={Paper} sx={{ borderRadius: 2, border: '1px solid #e2e8f0', boxShadow: 'none' }}>
-                        <Table size="small" sx={{ '& .MuiTableCell-root': { borderColor: '#f1f5f9', py: 1.5 } }}>
-                            <TableHead sx={{ '& th': { bgcolor: '#eff6ff', color: '#1e40af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' } }}>
-                                <TableRow>
-                                    <TableCell sx={{ fontWeight: 600 }}>Chiến dịch</TableCell>
-                                    <TableCell sx={{ fontWeight: 600 }}>Template</TableCell>
-                                    <TableCell sx={{ fontWeight: 600 }}>Số lượng</TableCell>
-                                    <TableCell sx={{ fontWeight: 600 }}>Trạng thái</TableCell>
-                                    <TableCell sx={{ fontWeight: 600 }}>Ngày tạo</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {loading ? (
-                                    <TableRow><TableCell colSpan={5} align="center" sx={{ py: 4 }}><CircularProgress /></TableCell></TableRow>
-                                ) : campaigns.length === 0 ? (
-                                    <TableRow><TableCell colSpan={5} align="center" sx={{ py: 4, color: '#64748b' }}>Chưa có chiến dịch nào.</TableCell></TableRow>
-                                ) : (
-                                    campaigns.map(c => (
-                                        <TableRow key={c.id}>
-                                            <TableCell sx={{ fontWeight: 500 }}>{c.name}</TableCell>
-                                            <TableCell>{c.zalo_templates?.template_name}</TableCell>
-                                            <TableCell>{c.total_recipients}</TableCell>
-                                            <TableCell><Chip label={c.status === 'processing' ? 'Đang xử lý' : c.status} color={c.status === 'processing' ? 'warning' : 'default'} size="small" /></TableCell>
-                                            <TableCell>{new Date(c.created_at).toLocaleString('vi-VN')}</TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
                 </Box>
-            )}
 
-            {tab === 1 && (
-                <Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="h6" sx={{ fontWeight: 600 }}>Gửi tin nhắn qua Bot cá nhân</Typography>
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Button variant="outlined" startIcon={<Description />} onClick={handleDownloadSendTemplate}>Mẫu gửi Excel</Button>
-                            <Button variant="outlined" color="primary" component="label" disabled={sendingBulk} startIcon={sendingBulk ? <CircularProgress size={16} color="inherit"/> : <UploadFile />}>
-                                Import Gửi Bằng Excel
-                                <input type="file" hidden accept=".xlsx,.xls,.csv" onChange={handleImportSendExcel} />
-                            </Button>
-                            <Button variant="contained" color="success" onClick={handleSendBulkBot} disabled={sendingBulk || selectedContacts.length === 0} startIcon={sendingBulk ? <CircularProgress size={16} color="inherit"/> : <Send />} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.39)', background: 'linear-gradient(90deg, #10b981, #059669)', '&:hover': { boxShadow: '0 6px 20px rgba(16, 185, 129, 0.23)' } }}>
-                                Gửi đã chọn ({selectedContacts.length})
-                            </Button>
-                        </Box>
-                    </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                    <FormControl size="small" sx={{ minWidth: 200 }}>
+                        <Select value={filterToken} onChange={e => setFilterToken(e.target.value)}>
+                            <MenuItem value="all">Tất cả nhóm token</MenuItem>
+                            {tokens.map(t => <MenuItem key={t.id} value={t.token}>{t.group_name} ({t.bot_name})</MenuItem>)}
+                        </Select>
+                    </FormControl>
+                    <FormControl size="small" sx={{ minWidth: 200 }}>
+                        <Select value={filterNote} onChange={e => setFilterNote(e.target.value)} displayEmpty>
+                            <MenuItem value="all">Tất cả nhóm (Ghi chú)</MenuItem>
+                            {uniqueNotes.map(n => <MenuItem key={n} value={n}>{n}</MenuItem>)}
+                        </Select>
+                    </FormControl>
+                    <Typography variant="body2" sx={{ color: '#6b7280' }}>
+                        Đang hiển thị {filteredContacts.length} người nhận, đã chọn {selectedContacts.length}.
+                    </Typography>
+                </Box>
 
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                        <FormControl size="small" sx={{ minWidth: 200 }}>
-                            <Select value={filterToken} onChange={e => setFilterToken(e.target.value)}>
-                                <MenuItem value="all">Tất cả nhóm token</MenuItem>
-                                {tokens.map(t => <MenuItem key={t.id} value={t.token}>{t.group_name} ({t.bot_name})</MenuItem>)}
-                            </Select>
-                        </FormControl>
-                        <FormControl size="small" sx={{ minWidth: 200 }}>
-                            <Select value={filterNote} onChange={e => setFilterNote(e.target.value)} displayEmpty>
-                                <MenuItem value="all">Tất cả nhóm (Ghi chú)</MenuItem>
-                                {uniqueNotes.map(n => <MenuItem key={n} value={n}>{n}</MenuItem>)}
-                            </Select>
-                        </FormControl>
-                        <Typography variant="body2" sx={{ color: '#6b7280' }}>
-                            Đang hiển thị {filteredContacts.length} người nhận, đã chọn {selectedContacts.length}.
-                        </Typography>
-                    </Box>
+                <TextField fullWidth multiline rows={4} placeholder="Nhập nội dung tin nhắn cần gửi..." value={messageContent} onChange={e => setMessageContent(e.target.value)} sx={{ mb: 3, bgcolor: '#fff' }} />
 
-                    <TextField fullWidth multiline rows={4} placeholder="Nhập nội dung tin nhắn cần gửi..." value={messageContent} onChange={e => setMessageContent(e.target.value)} sx={{ mb: 3, bgcolor: '#fff' }} />
-
-                    <TableContainer component={Paper} sx={{ maxHeight: 500, borderRadius: 2, border: '1px solid #e2e8f0', boxShadow: 'none' }}>
-                        <Table stickyHeader size="small" sx={{ '& .MuiTableCell-root': { borderColor: '#f1f5f9', py: 1.5 } }}>
-                            <TableHead sx={{ '& th': { bgcolor: '#eff6ff', color: '#1e40af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' } }}>
-                                <TableRow>
+                <TableContainer component={Paper} sx={{ maxHeight: 500, borderRadius: 2, border: '1px solid #e2e8f0', boxShadow: 'none' }}>
+                    <Table stickyHeader size="small" sx={{ '& .MuiTableCell-root': { borderColor: '#f1f5f9', py: 1.5 } }}>
+                        <TableHead sx={{ '& th': { bgcolor: '#eff6ff', color: '#1e40af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' } }}>
+                            <TableRow>
+                                <TableCell padding="checkbox">
+                                    <Checkbox checked={filteredContacts.length > 0 && selectedContacts.length === filteredContacts.length} indeterminate={selectedContacts.length > 0 && selectedContacts.length < filteredContacts.length} onChange={handleSelectAll} />
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>MÃ NV</TableCell>
+                                <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>TÊN NGƯỜI NHẬN</TableCell>
+                                <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>ZALO USER_ID</TableCell>
+                                <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>MÃ TOKEN</TableCell>
+                                <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>NHÓM TOKEN</TableCell>
+                                <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>TRẠNG THÁI</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {filteredContacts.map(c => (
+                                <TableRow key={c.id} hover selected={selectedContacts.includes(c.id)}>
                                     <TableCell padding="checkbox">
-                                        <Checkbox checked={filteredContacts.length > 0 && selectedContacts.length === filteredContacts.length} indeterminate={selectedContacts.length > 0 && selectedContacts.length < filteredContacts.length} onChange={handleSelectAll} />
+                                        <Checkbox checked={selectedContacts.includes(c.id)} onChange={() => handleSelectOne(c.id)} />
                                     </TableCell>
-                                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>MÃ NV</TableCell>
-                                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>TÊN NGƯỜI NHẬN</TableCell>
-                                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>ZALO USER_ID</TableCell>
-                                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>MÃ TOKEN</TableCell>
-                                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>NHÓM TOKEN</TableCell>
-                                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>TRẠNG THÁI</TableCell>
+                                    <TableCell>{c.employee_id}</TableCell>
+                                    <TableCell sx={{ fontWeight: 500 }}>{c.receiver_name}</TableCell>
+                                    <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{c.zalo_user_id.substring(0,10)}...</TableCell>
+                                    <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{c.bot_api_token.substring(0,10)}...</TableCell>
+                                    <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{tokens.find(t => t.token === c.bot_api_token)?.group_name || c.bot_name}</Typography></TableCell>
+                                    <TableCell><Chip label={c.status} size="small" color="success" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }}/></TableCell>
                                 </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {filteredContacts.map(c => (
-                                    <TableRow key={c.id} hover selected={selectedContacts.includes(c.id)}>
-                                        <TableCell padding="checkbox">
-                                            <Checkbox checked={selectedContacts.includes(c.id)} onChange={() => handleSelectOne(c.id)} />
-                                        </TableCell>
-                                        <TableCell>{c.employee_id}</TableCell>
-                                        <TableCell sx={{ fontWeight: 500 }}>{c.receiver_name}</TableCell>
-                                        <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{c.zalo_user_id.substring(0,10)}...</TableCell>
-                                        <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{c.bot_api_token.substring(0,10)}...</TableCell>
-                                        <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{tokens.find(t => t.token === c.bot_api_token)?.group_name || c.bot_name}</Typography></TableCell>
-                                        <TableCell><Chip label={c.status} size="small" color="success" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }}/></TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-                </Box>
-            )}
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </Box>
+        </Box>
         </Box>
     );
 };
