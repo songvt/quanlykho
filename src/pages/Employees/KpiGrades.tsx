@@ -610,7 +610,7 @@ const KpiGrades = () => {
             case 'performance':
             default:
                 explanation = '';
-                conclusion = `Đồng chí ${violatorNameUpper} chưa hoàn thành nhiệm vụ theo điều ${clauseValue}. Yêu cầu đồng chí chấn chỉnh ngay tinh thần làm việc, tập trung khắc phục nhanh các tồn đọng . Trừ điểm đánh giá KPI tháng này của đồng chí, nếu còn tái phạm sẽ chuyển lên hội đồng xem xét kỷ luật bậc tiếp theo.`;
+                conclusion = `Đồng chí ${violatorNameUpper} vi phạm nội quy lao động theo điều ${clauseValue}.`;
                 mitigationReq = `Yêu cầu đồng chí ${violatorNameUpper} tập trung cải thiện tinh thần làm việc, khẩn trương hoàn thành đúng tiến độ và chất lượng các công việc được giao để đảm bảo chỉ tiêu KPI chung của đơn vị. Chỉ huy trực tiếp sẽ tăng cường giám sát, đánh giá hiệu quả hàng ngày để hỗ trợ đồng chí khắc phục lỗi.`;
                 break;
         }
@@ -639,7 +639,7 @@ const KpiGrades = () => {
                 `Đồng chí [TÊN NHÂN VIÊN] vi phạm nội quy về giờ giấc/tác phong làm việc tại điều [Mục vi phạm]. Ban giám đốc nhắc nhở phê bình nghiêm túc trước tập thể đơn vị, yêu cầu đồng chí chấn chỉnh ngay lập tức, nếu tái phạm sẽ chuyển Hội đồng kỷ luật xử lý hạ thi đua.`,
                 `Đồng chí [TÊN NHÂN VIÊN] vi phạm quy trình kỹ thuật và quản lý tài sản, vật tư theo điều [Mục vi phạm]. Yêu cầu đồng chí thực hiện khắc phục hoàn toàn hậu quả, bồi hoàn thiết bị (nếu có) dưới sự giám sát chặt chẽ của Chỉ huy trực tiếp. Nếu tiếp tục tái phạm sẽ xử lý kỷ luật sa thải.`,
                 `Hành vi vi phạm của đồng chí [TÊN NHÂN VIÊN] tại điều [Mục vi phạm] là đặc biệt nghiêm trọng, gây ảnh hưởng xấu trực tiếp đến danh tiếng và hoạt động của đơn vị. Ban Giám đốc quyết định lập hồ sơ chuyển toàn bộ sự việc lên Hội đồng Kỷ luật Công ty để xem xét áp dụng hình thức xử lý kỷ luật ở mức cao nhất (Sa thải/Đình chỉ công tác/Truy cứu trách nhiệm).`,
-                `Đồng chí [TÊN NHÂN VIÊN] chưa hoàn thành nhiệm vụ theo điều [Mục vi phạm]. Yêu cầu đồng chí chấn chỉnh ngay tinh thần làm việc, tập trung khắc phục nhanh các tồn đọng . Trừ điểm đánh giá KPI tháng này của đồng chí, nếu còn tái phạm sẽ chuyển lên hội đồng xem xét kỷ luật bậc tiếp theo.`
+                `Đồng chí [TÊN NHÂN VIÊN] vi phạm nội quy lao động theo điều [Mục vi phạm].`
             ];
 
             // Normalize current fields by replacing ANY employee's name with placeholders
