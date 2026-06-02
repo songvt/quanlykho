@@ -327,11 +327,11 @@ const handleDownloadSendTemplate = async () => {
     };
 
     return (
-        <Box p={3}>
-            <Typography variant="h5" fontWeight={700} color="primary" gutterBottom>Chiến dịch Zalo</Typography>
+        <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 1400, mx: 'auto', bgcolor: '#f8fafc', minHeight: '100vh' }}>
+            <Typography variant="h4" sx={{ fontWeight: 800, background: 'linear-gradient(90deg, #2563eb, #7c3aed)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', mb: 1, letterSpacing: '-1px' }}>Chiến dịch Zalo</Typography>
             <Typography variant="body2" color="text.secondary" mb={3}>Quản lý các đợt gửi tin nhắn hàng loạt qua Zalo.</Typography>
             
-            <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ mb: 3, borderBottom: '1px solid #e2e8f0' }}>
+            <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ mb: 4, '& .MuiTabs-indicator': { height: 3, borderRadius: '3px 3px 0 0', background: 'linear-gradient(90deg, #2563eb, #7c3aed)' }, '& .MuiTab-root': { textTransform: 'none', fontWeight: 600, fontSize: '1rem', minWidth: 120, color: '#64748b' }, '& .Mui-selected': { color: '#0f172a !important' }, borderBottom: '1px solid #e2e8f0' }}>
                 <Tab label="Gửi Zalo Notification Service (ZNS)" />
                 <Tab label="Gửi qua Zalo Bot Cá Nhân (Miễn phí)" />
             </Tabs>
@@ -370,8 +370,8 @@ const handleDownloadSendTemplate = async () => {
                     )}
 
                     <TableContainer component={Paper} sx={{ borderRadius: 2, border: '1px solid #e2e8f0', boxShadow: 'none' }}>
-                        <Table size="small">
-                            <TableHead sx={{ bgcolor: '#f8fafc' }}>
+                        <Table size="small" sx={{ '& .MuiTableCell-root': { borderColor: '#f1f5f9', py: 1.5 } }}>
+                            <TableHead sx={{ '& th': { bgcolor: '#f8fafc', color: '#475569', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' } }}>
                                 <TableRow>
                                     <TableCell sx={{ fontWeight: 600 }}>Chiến dịch</TableCell>
                                     <TableCell sx={{ fontWeight: 600 }}>Template</TableCell>
@@ -439,8 +439,8 @@ const handleDownloadSendTemplate = async () => {
                     <TextField fullWidth multiline rows={4} placeholder="Nhập nội dung tin nhắn cần gửi..." value={messageContent} onChange={e => setMessageContent(e.target.value)} sx={{ mb: 3, bgcolor: '#fff' }} />
 
                     <TableContainer component={Paper} sx={{ maxHeight: 500, borderRadius: 2, border: '1px solid #e2e8f0', boxShadow: 'none' }}>
-                        <Table stickyHeader size="small">
-                            <TableHead>
+                        <Table stickyHeader size="small" sx={{ '& .MuiTableCell-root': { borderColor: '#f1f5f9', py: 1.5 } }}>
+                            <TableHead sx={{ '& th': { bgcolor: '#f8fafc', color: '#475569', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' } }}>
                                 <TableRow>
                                     <TableCell padding="checkbox">
                                         <Checkbox checked={filteredContacts.length > 0 && selectedContacts.length === filteredContacts.length} indeterminate={selectedContacts.length > 0 && selectedContacts.length < filteredContacts.length} onChange={handleSelectAll} />
