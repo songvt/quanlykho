@@ -2180,7 +2180,7 @@ const KpiGrades = () => {
 };
 
 // ── COMPONENT DỰA TRÊN DÒNG KẺ ĐỨT THỰC TẾ A4 ─────────────────────────────
-const DottedTextLines = ({ text, clausePrefix, totalLines = 5 }: { text: string; clausePrefix?: string; totalLines?: number }) => {
+const DottedTextLines = ({ text, clausePrefix, totalLines = 5, onlyShowTextLines = false }: { text: string; clausePrefix?: string; totalLines?: number; onlyShowTextLines?: boolean }) => {
     // Tách text theo dòng
     const rawLines = text ? text.split('\n') : [];
     
@@ -2194,8 +2194,10 @@ const DottedTextLines = ({ text, clausePrefix, totalLines = 5 }: { text: string;
     
     // Bổ sung các dòng trống cho đủ chỉ tiêu dòng kẻ đứt của mẫu
     const renderedLines = [...lines];
-    while (renderedLines.length < totalLines) {
-        renderedLines.push('');
+    if (!onlyShowTextLines) {
+        while (renderedLines.length < totalLines) {
+            renderedLines.push('');
+        }
     }
     
     return (
@@ -2331,7 +2333,7 @@ const PrintableReportTemplate = ({ report }: { report: InfractionReport }) => {
                     <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', mb: 0.2, fontFamily: "'Times New Roman', Times, serif" }}>
                         1. Lỗi vi phạm (theo Nội quy LĐ) và mô tả chi tiết lỗi vi phạm, mức độ thiệt hại, bằng chứng đính kèm (nếu có)
                     </Typography>
-                    <DottedTextLines clausePrefix={cleanClause} text={report.description} totalLines={5} />
+                    <DottedTextLines clausePrefix={cleanClause} text={report.description} totalLines={5} onlyShowTextLines={true} />
                 </Box>
 
                 {/* SECTION 2 */}
@@ -2339,7 +2341,7 @@ const PrintableReportTemplate = ({ report }: { report: InfractionReport }) => {
                     <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', mb: 0.2, fontFamily: "'Times New Roman', Times, serif" }}>
                         2. Yêu cầu của người phát hiện/kiểm tra về việc khắc phục lỗi
                     </Typography>
-                    <DottedTextLines text={report.mitigationReq} totalLines={5} />
+                    <DottedTextLines text={report.mitigationReq} totalLines={5} onlyShowTextLines={true} />
                 </Box>
 
                 {/* SECTION 3 */}
@@ -2355,7 +2357,7 @@ const PrintableReportTemplate = ({ report }: { report: InfractionReport }) => {
                     <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', mb: 0.2, fontFamily: "'Times New Roman', Times, serif" }}>
                         4. Kết luận lỗi của Ban GĐ đơn vị : (CBNV vi phạm mục nào của điều 30 của Nội quy LĐ hoặc lỗi khác)
                     </Typography>
-                    <DottedTextLines text={report.conclusion} totalLines={3} />
+                    <DottedTextLines text={report.conclusion} totalLines={3} onlyShowTextLines={true} />
                 </Box>
 
             </Stack>
