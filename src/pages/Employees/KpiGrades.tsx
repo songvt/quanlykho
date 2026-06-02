@@ -611,7 +611,7 @@ const KpiGrades = () => {
             default:
                 explanation = '';
                 conclusion = `Đồng chí ${violatorNameUpper} vi phạm nội quy lao động theo điều ${clauseValue}.`;
-                mitigationReq = `Yêu cầu đồng chí ${violatorNameUpper} tập trung cải thiện tinh thần làm việc, khẩn trương hoàn thành đúng tiến độ và chất lượng các công việc được giao để đảm bảo chỉ tiêu KPI chung của đơn vị. Chỉ huy trực tiếp sẽ tăng cường giám sát, đánh giá hiệu quả hàng ngày để hỗ trợ đồng chí khắc phục lỗi.`;
+                mitigationReq = `Yêu cầu đồng chí ${violatorNameUpper} tập trung cải thiện tinh thần làm việc, khẩn trương hoàn thành đúng tiến độ và chất lượng các công việc được giao để đảm bảo chỉ tiêu KPI chung của đơn vị. nếu còn tái phạm sẽ chuyển lên hội đồng xem xét kỷ luật bậc tiếp theo.`;
                 break;
         }
 
@@ -631,7 +631,7 @@ const KpiGrades = () => {
                 `Yêu cầu đồng chí [TÊN NHÂN VIÊN] chấn chỉnh ngay tác phong làm việc, nghiêm túc tuân thủ quy định thời gian làm việc của Công ty (đi làm đúng giờ, không tự ý rời vị trí). Mọi trường hợp vắng mặt hoặc đi muộn phải có lý do chính đáng và báo cáo xin phép Chỉ huy trực tiếp trước theo đúng quy trình.`,
                 `Yêu cầu đồng chí [TÊN NHÂN VIÊN] nghiêm túc kiểm điểm sai sót trong quản lý thiết bị/vật tư, thực hiện ngay các biện pháp khắc phục thiệt hại và bàn giao, bảo quản tài sản công ty đúng quy định. Tuân thủ tuyệt đối quy trình kỹ thuật để tránh hao hụt, thất thoát tài sản chung.`,
                 `Yêu cầu đồng chí [TÊN NHÂN VIÊN] lập tức dừng các hành vi vi phạm kỷ luật lao động, thực hiện bàn giao đầy đủ công việc, hồ sơ và tài sản liên quan cho Chỉ huy trực tiếp. Có mặt tại văn phòng đơn vị để giải trình chi tiết sự việc và chịu sự xử lý trực tiếp từ Hội đồng kỷ luật Công ty.`,
-                `Yêu cầu đồng chí [TÊN NHÂN VIÊN] tập trung cải thiện tinh thần làm việc, khẩn trương hoàn thành đúng tiến độ và chất lượng các công việc được giao để đảm bảo chỉ tiêu KPI chung của đơn vị. Chỉ huy trực tiếp sẽ tăng cường giám sát, đánh giá hiệu quả hàng ngày để hỗ trợ đồng chí khắc phục lỗi.`
+                `Yêu cầu đồng chí [TÊN NHÂN VIÊN] tập trung cải thiện tinh thần làm việc, khẩn trương hoàn thành đúng tiến độ và chất lượng các công việc được giao để đảm bảo chỉ tiêu KPI chung của đơn vị. nếu còn tái phạm sẽ chuyển lên hội đồng xem xét kỷ luật bậc tiếp theo.`
             ];
 
             // Generate generic conclusions for all categories
