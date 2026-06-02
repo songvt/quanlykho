@@ -22,7 +22,8 @@ import {
     InputLabel,
     FormControl,
     Switch,
-    FormControlLabel
+    FormControlLabel,
+    Autocomplete
 } from '@mui/material';
 import {
     DeleteOutline as DeleteIcon,
@@ -71,6 +72,7 @@ const ZaloBotManager: React.FC = () => {
     const [tokens, setTokens] = useState<ZaloBotToken[]>([]);
     const [contacts, setContacts] = useState<ZaloContact[]>([]);
     const [inboxMessages, setInboxMessages] = useState<ZaloInboxMessage[]>([]);
+    const [hrProfiles, setHrProfiles] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [importing, setImporting] = useState(false);
     const [sending, setSending] = useState(false);
@@ -104,10 +106,11 @@ const ZaloBotManager: React.FC = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [tokensRes, contactsRes, inboxRes] = await Promise.all([
+            const [tokensRes, contactsRes, inboxRes, hrRes] = await Promise.all([
                 supabase.from('zalo_bot_tokens').select('*').order('created_at', { ascending: false }),
                 supabase.from('zalo_personal_contacts').select('*').order('created_at', { ascending: false }),
-                supabase.from('zalo_bot_inbox').select('*').order('created_at', { ascending: false })
+                supabase.from('zalo_bot_inbox').select('*').order('created_at', { ascending: false }),
+                supabase.from('hr_profiles').select('id, full_name, phone_number').order('full_name', { ascending: true })
             ]);
             
             if (tokensRes.error) throw tokensRes.error;
@@ -117,6 +120,7 @@ const ZaloBotManager: React.FC = () => {
             setTokens(tokensRes.data || []);
             setContacts(contactsRes.data || []);
             setInboxMessages(inboxRes.data || []);
+            setHrProfiles(hrRes.data || []);
         } catch (err: any) {
             setError(err.message || 'Lỗi khi tải dữ liệu');
         } finally {
@@ -271,6 +275,31 @@ const ZaloBotManager: React.FC = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    const handleAddContactFromInbox = (msg: any) => {
+        // Try to match an employee in hrProfiles by name
+        const matchedEmp = hrProfiles.find(p => 
+            p.full_name?.toLowerCase().trim() === msg.sender_name?.toLowerCase().trim()
+        );
+
+        setNewContact({
+            id: '',
+            employee_id: matchedEmp ? matchedEmp.id : '',
+            receiver_name: matchedEmp ? matchedEmp.full_name : msg.sender_name || '',
+            phone: matchedEmp ? matchedEmp.phone_number || '' : '',
+            zalo_user_id: msg.zalo_user_id,
+            bot_api_token: msg.bot_token || '',
+            notes: `Thêm từ tin nhắn Inbox`,
+        });
+
+        // Scroll to the Contact Management form
+        const formElement = document.getElementById('contact-form-section');
+        if (formElement) {
+            formElement.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            window.scrollTo({ top: 500, behavior: 'smooth' });
+        }
+    };
+
     const handleEditInboxMessage = async (msg: any) => {
         const newContent = window.prompt("Chỉnh sửa nội dung tin nhắn:", msg.message_content);
         if (newContent !== null && newContent !== msg.message_content) {
@@ -337,7 +366,25 @@ const ZaloBotManager: React.FC = () => {
 
             if (parsedData.length === 0) throw new Error('Không có dữ liệu hợp lệ.');
 
-            const { error: upsertError } = await supabase.from('zalo_personal_contacts').upsert(parsedData, { onConflict: 'employee_id' });
+            // Check duplicate employee_ids + bot_api_tokens in the import file
+            const keyCounts = new Map<string, number>();
+            const duplicatesInFile: string[] = [];
+            for (const item of parsedData) {
+                const key = `${item.employee_id}_${item.bot_api_token}`;
+                if (item.employee_id && item.bot_api_token) {
+                    const count = keyCounts.get(key) || 0;
+                    if (count === 1) {
+                        duplicatesInFile.push(`${item.receiver_name || item.employee_id} (Token: ${item.bot_api_token.substring(0, 8)}...)`);
+                    }
+                    keyCounts.set(key, count + 1);
+                }
+            }
+
+            if (duplicatesInFile.length > 0) {
+                throw new Error(`File import chứa các bản ghi trùng lặp (cùng Mã nhân viên và Mã API token): ${duplicatesInFile.slice(0, 5).join(', ')}${duplicatesInFile.length > 5 ? '...' : ''}. Vui lòng sửa lại trước khi nhập.`);
+            }
+
+            const { error: upsertError } = await supabase.from('zalo_personal_contacts').upsert(parsedData, { onConflict: 'employee_id,bot_api_token' });
             if (upsertError) throw upsertError;
 
             setSuccess(`Đã import thành công ${parsedData.length} liên hệ.`);
@@ -568,16 +615,49 @@ const ZaloBotManager: React.FC = () => {
             </Paper>
 
             {/* SECTION 2: Contact Management */}
-            <Paper sx={{ p: 4, mb: 4, borderRadius: 3, boxShadow: '0 10px 40px -10px rgba(0,0,0,0.08)', border: '1px solid rgba(226, 232, 240, 0.8)', bgcolor: '#ffffff', overflow: 'hidden' }}>
+            <Paper id="contact-form-section" sx={{ p: 4, mb: 4, borderRadius: 3, boxShadow: '0 10px 40px -10px rgba(0,0,0,0.08)', border: '1px solid rgba(226, 232, 240, 0.8)', bgcolor: '#ffffff', overflow: 'hidden' }}>
                 <Typography variant="h5" sx={{ fontWeight: 800, mb: 1, color: '#1e3a8a', letterSpacing: '-0.5px' }}>Thông báo Zalo</Typography>
                 <Typography variant="body2" sx={{ color: '#64748b', mb: 3 }}>Thêm liên hệ nhận tin qua Zalo Bot.</Typography>
 
                 <Grid container spacing={2} sx={{ mb: 2 }}>
+                    <Grid size={{ xs: 12, md: 4 }}>
+                        <Autocomplete
+                            options={hrProfiles}
+                            getOptionLabel={(option) => `${option.full_name} (${option.id})`}
+                            value={hrProfiles.find(p => p.id === newContact.employee_id) || null}
+                            onChange={(_, newVal) => {
+                                if (newVal) {
+                                    setNewContact(prev => ({
+                                        ...prev,
+                                        employee_id: newVal.id,
+                                        receiver_name: newVal.full_name,
+                                        phone: newVal.phone_number || ''
+                                    }));
+                                } else {
+                                    setNewContact(prev => ({
+                                        ...prev,
+                                        employee_id: '',
+                                        receiver_name: '',
+                                        phone: ''
+                                    }));
+                                }
+                            }}
+                            renderInput={(params) => (
+                                <TextField 
+                                    {...params} 
+                                    label="Chọn nhanh từ nhân sự" 
+                                    size="small" 
+                                    placeholder="Tìm theo tên hoặc mã nhân viên..."
+                                />
+                            )}
+                        />
+                    </Grid>
                     <Grid size={{ xs: 12, md: 2 }}><TextField fullWidth size="small" label="Mã nhân viên" value={newContact.employee_id} onChange={e => setNewContact({...newContact, employee_id: e.target.value})} /></Grid>
-                    <Grid size={{ xs: 12, md: 2 }}><TextField fullWidth size="small" label="Tên người nhận" value={newContact.receiver_name} onChange={e => setNewContact({...newContact, receiver_name: e.target.value})} /></Grid>
-                    <Grid size={{ xs: 12, md: 2 }}><TextField fullWidth size="small" label="Điện thoại" value={newContact.phone} onChange={e => setNewContact({...newContact, phone: e.target.value})} /></Grid>
-                    <Grid size={{ xs: 12, md: 2 }}><TextField fullWidth size="small" label="Zalo user_id" value={newContact.zalo_user_id} onChange={e => setNewContact({...newContact, zalo_user_id: e.target.value})} /></Grid>
-                    <Grid size={{ xs: 12, md: 2 }}>
+                    <Grid size={{ xs: 12, md: 3 }}><TextField fullWidth size="small" label="Tên người nhận" value={newContact.receiver_name} onChange={e => setNewContact({...newContact, receiver_name: e.target.value})} /></Grid>
+                    <Grid size={{ xs: 12, md: 3 }}><TextField fullWidth size="small" label="Điện thoại" value={newContact.phone} onChange={e => setNewContact({...newContact, phone: e.target.value})} /></Grid>
+                    
+                    <Grid size={{ xs: 12, md: 3 }}><TextField fullWidth size="small" label="Zalo user_id" value={newContact.zalo_user_id} onChange={e => setNewContact({...newContact, zalo_user_id: e.target.value})} /></Grid>
+                    <Grid size={{ xs: 12, md: 3 }}>
                         <FormControl fullWidth size="small">
                             <InputLabel>Chọn nhóm token</InputLabel>
                             <Select label="Chọn nhóm token" value={newContact.bot_api_token} onChange={e => setNewContact({...newContact, bot_api_token: e.target.value})}>
@@ -585,17 +665,15 @@ const ZaloBotManager: React.FC = () => {
                             </Select>
                         </FormControl>
                     </Grid>
-                    <Grid size={{ xs: 12, md: 1 }}><TextField fullWidth size="small" label="Ghi chú" value={newContact.notes} onChange={e => setNewContact({...newContact, notes: e.target.value})} /></Grid>
-                    <Grid size={{ xs: 12, md: 1 }}>
+                    <Grid size={{ xs: 12, md: 4 }}><TextField fullWidth size="small" label="Ghi chú" value={newContact.notes} onChange={e => setNewContact({...newContact, notes: e.target.value})} /></Grid>
+                    <Grid size={{ xs: 12, md: 2 }} display="flex" gap={1}>
                         <Button fullWidth variant="contained" color={newContact.id ? "warning" : "success"} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.39)', background: newContact.id ? 'linear-gradient(90deg, #f59e0b, #d97706)' : 'linear-gradient(90deg, #10b981, #059669)', '&:hover': { boxShadow: '0 6px 20px rgba(16, 185, 129, 0.23)' } }} onClick={handleSaveContact} startIcon={newContact.id ? <EditIcon /> : <AddIcon />}>
                             {newContact.id ? "Lưu" : "Thêm"}
                         </Button>
+                        {newContact.id && (
+                            <Button variant="outlined" color="inherit" onClick={() => setNewContact({ id: '', employee_id: '', receiver_name: '', phone: '', zalo_user_id: '', notes: '', bot_api_token: '' })}>Hủy</Button>
+                        )}
                     </Grid>
-                    {newContact.id && (
-                        <Grid size={{ xs: 12, md: 1 }}>
-                            <Button fullWidth variant="outlined" color="inherit" onClick={() => setNewContact({ id: '', employee_id: '', receiver_name: '', phone: '', zalo_user_id: '', notes: '', bot_api_token: '' })}>Hủy</Button>
-                        </Grid>
-                    )}
                 </Grid>
 
                 <Box sx={{ display: 'flex', gap: 2 }}>
@@ -687,8 +765,9 @@ const ZaloBotManager: React.FC = () => {
                             {inboxMessages.map(msg => (
                                 <TableRow key={msg.id} hover sx={{ '&:hover': { bgcolor: '#eff6ff' }, transition: 'background-color 0.2s ease' }}>
                                     <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                                        <IconButton size="small" color="primary" onClick={() => handleEditInboxMessage(msg)}><EditIcon fontSize="small"/></IconButton>
-                                        <IconButton size="small" color="error" onClick={() => handleDeleteInboxMessage(msg.id)}><DeleteIcon fontSize="small"/></IconButton>
+                                        <IconButton size="small" color="primary" title="Sửa tin nhắn" onClick={() => handleEditInboxMessage(msg)}><EditIcon fontSize="small"/></IconButton>
+                                        <IconButton size="small" color="success" title="Tạo liên hệ" onClick={() => handleAddContactFromInbox(msg)}><AddIcon fontSize="small"/></IconButton>
+                                        <IconButton size="small" color="error" title="Xóa tin nhắn" onClick={() => handleDeleteInboxMessage(msg.id)}><DeleteIcon fontSize="small"/></IconButton>
                                     </TableCell>
                                     <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{msg.zalo_user_id}</TableCell>
                                     <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{msg.message_id}</TableCell>

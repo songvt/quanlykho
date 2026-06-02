@@ -232,6 +232,24 @@ const AssetList = () => {
                     rented_type:              parseStr(row['Loại thuê']),
                 })).filter((a: any) => a.asset_code && a.asset_name);
 
+                // Check for duplicates in the uploaded excel file itself
+                const codeCounts = new Map<string, number>();
+                const duplicatesInFile: string[] = [];
+                for (const item of mappedData) {
+                    if (item.asset_code) {
+                        const count = codeCounts.get(item.asset_code) || 0;
+                        if (count === 1) {
+                            duplicatesInFile.push(item.asset_code);
+                        }
+                        codeCounts.set(item.asset_code, count + 1);
+                    }
+                }
+
+                if (duplicatesInFile.length > 0) {
+                    notifyError(`File import chứa các mã tài sản bị trùng lặp: ${duplicatesInFile.slice(0, 10).join(', ')}${duplicatesInFile.length > 10 ? '...' : ''}. Vui lòng sửa lại trước khi nhập.`);
+                    e.target.value = '';
+                    return;
+                }
 
                 // 1. Filter out duplicates (check if asset_code already exists in current state)
                 const existingCodes = new Set(assets.map(a => a.asset_code));

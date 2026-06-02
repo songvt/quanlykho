@@ -127,7 +127,7 @@ const ZaloPersonalContacts: React.FC = () => {
             // Send to backend via Supabase UPSERT
             const { error: upsertError } = await supabase
                 .from('zalo_personal_contacts')
-                .upsert(parsedData, { onConflict: 'employee_id' });
+                .upsert(parsedData, { onConflict: 'employee_id,bot_api_token' });
 
             if (upsertError) throw upsertError;
 
