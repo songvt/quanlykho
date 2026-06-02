@@ -207,36 +207,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             let sender_name = '';
             let message_content = '';
 
-            // Trường hợp 1: Giống Telegram Bot API (Zalo Zapps Bot API)
-            if (payload.message) {
-                const msg = payload.message;
-                const from = msg.from || {};
-                const chat = msg.chat || {};
+            // --- Parse Payload y hệt Apps Script ---
+            try {
+                const data = Array.isArray(payload) ? payload[0] : payload;
+                const msg = data.message;
                 
-                // Lấy ID từ chat.id hoặc from.id (ưu tiên chat.id như code Apps Script của user)
-                zalo_user_id = (chat.id || from.id)?.toString() || '';
-                message_id = msg.message_id?.toString() || `${zalo_user_id}_${Date.now()}`;
-                // Lấy Tên từ from.display_name hoặc các field khác
-                sender_name = from.display_name || from.first_name || from.username || `User ${zalo_user_id}`;
-                message_content = msg.text || '';
-            } 
-            // Trường hợp 2: Format Zalo OA Webhook chuẩn (sender.id, message.text)
-            else if (payload.sender && payload.sender.id) {
-                zalo_user_id = payload.sender.id.toString();
-                message_id = payload.message?.msg_id || `${zalo_user_id}_${Date.now()}`;
-                sender_name = `User ${zalo_user_id}`; // Webhook thường ko gửi tên, hoặc gửi trong profile
-                message_content = payload.message?.text || '';
-            }
-            // Trường hợp 3: Nằm trong mảng
-            else if (Array.isArray(payload) && payload.length > 0 && payload[0].message) {
-                const msg = payload[0].message;
-                const from = msg.from || {};
-                const chat = msg.chat || {};
-                
-                zalo_user_id = (chat.id || from.id)?.toString() || '';
-                message_id = msg.message_id?.toString() || `${zalo_user_id}_${Date.now()}`;
-                sender_name = from.display_name || from.first_name || from.username || `User ${zalo_user_id}`;
-                message_content = msg.text || '';
+                if (msg) {
+                    zalo_user_id = msg.chat?.id?.toString() || "";
+                    message_id = msg.message_id?.toString() || `${zalo_user_id}_${Date.now()}`;
+                    sender_name = msg.from?.display_name || "";
+                    message_content = msg.text || "";
+                } else if (data.sender && data.sender.id) {
+                    // Fallback cho Zalo OA chuẩn
+                    zalo_user_id = data.sender.id.toString();
+                    message_id = data.message?.msg_id?.toString() || `${zalo_user_id}_${Date.now()}`;
+                    sender_name = `User ${zalo_user_id}`;
+                    message_content = data.message?.text || "";
+                }
+            } catch (error) {
+                console.log("Webhook parse error:", error);
             }
 
             if (zalo_user_id && message_id) {
