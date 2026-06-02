@@ -14,6 +14,7 @@ interface Log {
     sent_at?: string;
     zalo_campaigns?: { name: string };
     zalo_templates?: { template_name: string };
+    params?: any;
 }
 
 const ZaloLogs: React.FC = () => {
@@ -86,6 +87,7 @@ const ZaloLogs: React.FC = () => {
                         <TableRow>
                             <TableCell sx={{ fontWeight: 600 }}>SĐT Nhận</TableCell>
                             <TableCell sx={{ fontWeight: 600 }}>Chiến dịch / Template</TableCell>
+                            <TableCell sx={{ fontWeight: 600 }}>Nội dung gửi</TableCell>
                             <TableCell sx={{ fontWeight: 600 }}>Trạng thái</TableCell>
                             <TableCell sx={{ fontWeight: 600 }}>Thời gian tạo</TableCell>
                             <TableCell sx={{ fontWeight: 600 }}>Lỗi (Nếu có)</TableCell>
@@ -94,11 +96,11 @@ const ZaloLogs: React.FC = () => {
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={5} align="center" sx={{ py: 6 }}><CircularProgress /></TableCell>
+                                <TableCell colSpan={6} align="center" sx={{ py: 6 }}><CircularProgress /></TableCell>
                             </TableRow>
                         ) : logs.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={5} align="center" sx={{ py: 6, color: '#64748b' }}>Chưa có log gửi tin.</TableCell>
+                                <TableCell colSpan={6} align="center" sx={{ py: 6, color: '#64748b' }}>Chưa có log gửi tin.</TableCell>
                             </TableRow>
                         ) : (
                             logs.map(log => (
@@ -107,6 +109,9 @@ const ZaloLogs: React.FC = () => {
                                     <TableCell>
                                         <Typography variant="body2" fontWeight={500}>{log.zalo_campaigns?.name || 'Gửi lẻ'}</Typography>
                                         <Typography variant="caption" color="text.secondary">{log.zalo_templates?.template_name}</Typography>
+                                    </TableCell>
+                                    <TableCell sx={{ maxWidth: 350, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
+                                        {log.params?.message || (log.params ? (typeof log.params === 'string' ? log.params : JSON.stringify(log.params)) : '')}
                                     </TableCell>
                                     <TableCell>
                                         <Chip 
