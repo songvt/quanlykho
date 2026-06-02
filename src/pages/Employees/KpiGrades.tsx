@@ -20,6 +20,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { exportStandardReport } from '../../utils/excelUtils';
+import { supabase } from '../../config/supabase';
 
 // Redux Actions
 import { fetchHRProfiles } from '../../store/slices/hrProfilesSlice';
@@ -211,19 +212,44 @@ const KpiGrades = () => {
     // Infraction Reports State
     const [reports, setReports] = useState<InfractionReport[]>([]);
 
-    // Load Infraction Reports from localStorage on mount
-    useEffect(() => {
-        const saved = localStorage.getItem('qlkho_kpi_reports');
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed)) {
-                    setReports(parsed);
-                }
-            } catch (e) {
-                console.error("Failed to parse saved infraction reports", e);
+    const fetchReports = async () => {
+        try {
+            const { data, error } = await supabase.from('kpi_infractions').select('*').order('created_at', { ascending: false });
+            if (error) throw error;
+            if (data) {
+                const mapped = data.map((item: any) => ({
+                    id: item.id,
+                    reportDate: item.report_date,
+                    violatorId: item.violator_id,
+                    violatorName: item.violator_name,
+                    violatorCode: item.violator_code,
+                    violatorJob: item.violator_job,
+                    violatorUnit: item.violator_unit,
+                    violatorPhone: item.violator_phone,
+                    inspectorId: item.inspector_id,
+                    inspectorName: item.inspector_name,
+                    inspectorCode: item.inspector_code,
+                    inspectorJob: item.inspector_job,
+                    inspectorUnit: item.inspector_unit,
+                    inspectorPhone: item.inspector_phone,
+                    supervisorName: item.supervisor_name,
+                    clause: item.clause,
+                    description: item.description,
+                    mitigationReq: item.mitigation_req,
+                    explanation: item.explanation,
+                    conclusion: item.conclusion,
+                    status: item.status,
+                    createdAt: item.created_at
+                }));
+                setReports(mapped);
             }
+        } catch (e) {
+            console.error("Failed to fetch reports from Supabase", e);
         }
+    };
+
+    useEffect(() => {
+        fetchReports();
     }, []);
 
     interface LeaveHandoverRow {
@@ -286,51 +312,106 @@ const KpiGrades = () => {
         }))
     });
 
-    // Load Leave Requests from localStorage on mount
-    useEffect(() => {
-        const saved = localStorage.getItem('qlkho_kpi_leave_requests');
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed)) {
-                    setLeaveRequests(parsed);
-                }
-            } catch (e) {
-                console.error("Failed to parse saved leave requests", e);
+    const fetchLeaveRequests = async () => {
+        try {
+            const { data, error } = await supabase.from('kpi_leave_requests').select('*').order('created_at', { ascending: false });
+            if (error) throw error;
+            if (data) {
+                const mapped = data.map((item: any) => ({
+                    id: item.id,
+                    requestDate: item.request_date,
+                    employeeId: item.employee_id,
+                    employeeName: item.employee_name,
+                    employeeCode: item.employee_code,
+                    employeeJob: item.employee_job,
+                    employeeUnit: item.employee_unit,
+                    employeePhone: item.employee_phone,
+                    startDate: item.start_date,
+                    startTime: item.start_time,
+                    endDate: item.end_date,
+                    endTime: item.end_time,
+                    totalDays: Number(item.total_days),
+                    leaveType: item.leave_type,
+                    customLeaveType: item.custom_leave_type,
+                    reason: item.reason,
+                    location: item.location,
+                    handovers: typeof item.handovers === 'string' ? JSON.parse(item.handovers) : item.handovers,
+                    status: item.status,
+                    createdAt: item.created_at
+                }));
+                setLeaveRequests(mapped);
             }
+        } catch (e) {
+            console.error("Failed to fetch leave requests", e);
         }
+    };
+
+    useEffect(() => {
+        fetchLeaveRequests();
     }, []);
+
+    const fetchKpiScores = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('kpi_scores')
+                .select('*')
+                .eq('month', kpiMonth)
+                .eq('year', kpiYear);
+                
+            if (error) throw error;
+            
+            if (data && data.length > 0) {
+                const mapped = data.map((item: any) => ({
+                    employeeId: item.employee_id,
+                    employeeName: item.employee_name,
+                    jobPosition: item.job_position,
+                    department: item.department,
+                    score: item.score,
+                    notes: item.notes || ''
+                }));
+                
+                // Merge with activeProfilesList to include new employees
+                if (activeProfilesList.length > 0) {
+                    const merged = activeProfilesList.map(emp => {
+                        const existing = mapped.find((m: any) => m.employeeId === emp.id);
+                        if (existing) return existing;
+                        return {
+                            employeeId: emp.id,
+                            employeeName: emp.full_name,
+                            jobPosition: emp.job_position || 'Nhân viên',
+                            department: emp.department || 'BẮC SÀI GÒN',
+                            score: 100,
+                            notes: ''
+                        };
+                    });
+                    setKpiScores(merged);
+                } else {
+                    setKpiScores(mapped);
+                }
+            } else {
+                // Default to activeProfilesList
+                if (activeProfilesList.length > 0) {
+                    const defaults = activeProfilesList.map(emp => ({
+                        employeeId: emp.id,
+                        employeeName: emp.full_name,
+                        jobPosition: emp.job_position || 'Nhân viên',
+                        department: emp.department || 'BẮC SÀI GÒN',
+                        score: 100, // Default perfect score
+                        notes: ''
+                    }));
+                    setKpiScores(defaults);
+                } else {
+                    setKpiScores([]);
+                }
+            }
+        } catch (e) {
+            console.error("Failed to fetch KPI scores", e);
+        }
+    };
 
     // Load / Initialize KPI scores
     useEffect(() => {
-        const key = `qlkho_kpi_scores_${kpiYear}_${String(kpiMonth).padStart(2, '0')}`;
-        const saved = localStorage.getItem(key);
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    setKpiScores(parsed);
-                    return;
-                }
-            } catch (e) {
-                console.error("Failed to parse saved KPI scores", e);
-            }
-        }
-        
-        // Default to activeProfilesList
-        if (activeProfilesList.length > 0) {
-            const defaults = activeProfilesList.map(emp => ({
-                employeeId: emp.id,
-                employeeName: emp.full_name,
-                jobPosition: emp.job_position || 'Nhân viên',
-                department: emp.department || 'BẮC SÀI GÒN',
-                score: 100, // Default perfect score
-                notes: ''
-            }));
-            setKpiScores(defaults);
-        } else {
-            setKpiScores([]);
-        }
+        fetchKpiScores();
     }, [kpiMonth, kpiYear, activeProfilesList]);
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -586,11 +667,14 @@ const KpiGrades = () => {
             currentGenericConclusion = currentGenericConclusion.replace(/điều 30\.\d+(\.\d+)?/g, 'điều [Mục vi phạm]');
             currentGenericConclusion = currentGenericConclusion.replace(/điều custom/g, 'điều [Mục vi phạm]');
 
+            // Clean history prefix from currentGenericDesc for checking
+            const cleanCurrentGenericDesc = currentGenericDesc.replace(/\[TÁI PHẠM LẦN \d+\].*?\.\n/, '');
+            
             // Check if current fields are pristine (default or empty) before auto-filling
             const isDescriptionPristine = !formData.description ||
                 formData.description === 'Không thực hiện CÔNG VIỆC đúng thời gian qui định, nhắc nhở nhiều lần' ||
                 formData.description.trim() === '' ||
-                genericDesc.includes(currentGenericDesc);
+                genericDesc.includes(cleanCurrentGenericDesc);
 
             const isExplanationPristine = !formData.explanation || 
                 formData.explanation.includes('Tôi cam kết nếu tái phạm sẽ không nhận hàng hóa') ||
@@ -608,8 +692,23 @@ const KpiGrades = () => {
                 formData.mitigationReq.trim() === '' ||
                 genericMitigations.includes(currentGenericMitigation);
 
+            const pastInfractions = reports.filter(r => r.violatorId === formData.violatorId && r.id !== formData.id);
+            let historyText = '';
+            if (pastInfractions.length > 0) {
+                const historyParts = pastInfractions.map(r => {
+                    if (!r.reportDate) return '';
+                    const parts = r.reportDate.split('-');
+                    const dateStr = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : r.reportDate;
+                    return `Ngày ${dateStr} (Điều ${r.clause})`;
+                }).filter(Boolean);
+                if (historyParts.length > 0) {
+                    historyText = `[TÁI PHẠM LẦN ${pastInfractions.length + 1}] Lịch sử vi phạm trước đó: ${historyParts.join(', ')}.\n`;
+                }
+            }
+
+            const generatedDesc = generateInfractionDescription(formData.clause, violator.full_name);
             const newDescription = isDescriptionPristine
-                ? generateInfractionDescription(formData.clause, violator.full_name)
+                ? (historyText + generatedDesc)
                 : formData.description;
 
             const { explanation, conclusion, mitigationReq } = generateNaturalCommitmentAndConclusion(
@@ -643,7 +742,23 @@ const KpiGrades = () => {
         const violator = activeProfilesList.find(p => p.id === formData.violatorId);
         const violatorName = violator ? violator.full_name : '[TÊN NHÂN VIÊN]';
         
-        const description = generateInfractionDescription(formData.clause, violatorName);
+        const pastInfractions = reports.filter(r => r.violatorId === formData.violatorId && r.id !== formData.id);
+        let historyText = '';
+        if (pastInfractions.length > 0) {
+            const historyParts = pastInfractions.map(r => {
+                if (!r.reportDate) return '';
+                const parts = r.reportDate.split('-');
+                const dateStr = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : r.reportDate;
+                return `Ngày ${dateStr} (Điều ${r.clause})`;
+            }).filter(Boolean);
+            if (historyParts.length > 0) {
+                historyText = `[TÁI PHẠM LẦN ${pastInfractions.length + 1}] Lịch sử vi phạm trước đó: ${historyParts.join(', ')}.\n`;
+            }
+        }
+
+        const generatedDesc = generateInfractionDescription(formData.clause, violatorName);
+        const description = historyText + generatedDesc;
+        
         const { explanation, conclusion, mitigationReq } = generateNaturalCommitmentAndConclusion(
             violatorName,
             formData.clause,
@@ -678,10 +793,35 @@ const KpiGrades = () => {
     }, [profile, activeProfilesList]);
 
     // ── Save KPI Grades ───────────────────────────────────────────────────────
-    const handleSaveKpiScores = () => {
-        const key = `qlkho_kpi_scores_${kpiYear}_${String(kpiMonth).padStart(2, '0')}`;
-        localStorage.setItem(key, JSON.stringify(kpiScores));
-        setNotification({ type: 'success', message: `Đã lưu bảng điểm KPI Tháng ${kpiMonth}/${kpiYear} thành công!` });
+    const handleSaveKpiScores = async () => {
+        try {
+            // First, delete existing scores for this month/year to replace them
+            await supabase
+                .from('kpi_scores')
+                .delete()
+                .eq('month', kpiMonth)
+                .eq('year', kpiYear);
+                
+            // Then insert the current scores
+            const payload = kpiScores.map(score => ({
+                month: kpiMonth,
+                year: kpiYear,
+                employee_id: score.employeeId,
+                employee_name: score.employeeName,
+                job_position: score.jobPosition,
+                department: score.department,
+                score: score.score,
+                notes: score.notes
+            }));
+            
+            const { error } = await supabase.from('kpi_scores').insert(payload);
+            if (error) throw error;
+            
+            setNotification({ type: 'success', message: `Đã lưu bảng điểm KPI Tháng ${kpiMonth}/${kpiYear} thành công!` });
+        } catch (e) {
+            console.error("Lỗi khi lưu bảng điểm KPI:", e);
+            setNotification({ type: 'error', message: 'Có lỗi xảy ra khi lưu bảng điểm KPI!' });
+        }
         setTimeout(() => setNotification(null), 3000);
     };
 
@@ -736,7 +876,7 @@ const KpiGrades = () => {
         setIsFormOpen(true);
     };
 
-    const handleSaveReport = () => {
+    const handleSaveReport = async () => {
         const violator = activeProfilesList.find(p => p.id === formData.violatorId);
         const inspector = activeProfilesList.find(p => p.id === formData.inspectorId);
         
@@ -751,55 +891,64 @@ const KpiGrades = () => {
             return;
         }
 
-        const reportPayload: InfractionReport = {
-            id: formMode === 'create' ? `RP-${Date.now()}` : formData.id,
-            reportDate: formData.reportDate,
-            violatorId: violator.id,
-            violatorName: violator.full_name,
-            violatorCode: violator.id,
-            violatorJob: violator.job_position || 'Nhân viên',
-            violatorUnit: violator.department || 'BẮC SÀI GÒN',
-            violatorPhone: violator.phone_number || '',
+        const reportPayload = {
+            report_date: formData.reportDate,
+            violator_id: violator.id,
+            violator_name: violator.full_name,
+            violator_code: violator.id,
+            violator_job: violator.job_position || 'Nhân viên',
+            violator_unit: violator.department || 'BẮC SÀI GÒN',
+            violator_phone: violator.phone_number || '',
             
-            inspectorId: inspector.id,
-            inspectorName: inspector.full_name,
-            inspectorCode: inspector.id,
-            inspectorJob: inspector.job_position || 'Quản lý kho',
-            inspectorUnit: inspector.department || 'KHO TRUNG TÂM',
-            inspectorPhone: inspector.phone_number || '',
+            inspector_id: inspector.id,
+            inspector_name: inspector.full_name,
+            inspector_code: inspector.id,
+            inspector_job: inspector.job_position || 'Quản lý kho',
+            inspector_unit: inspector.department || 'KHO TRUNG TÂM',
+            inspector_phone: inspector.phone_number || '',
             
-            supervisorName: formData.supervisorName || 'TRẦN KIM HÙNG',
+            supervisor_name: formData.supervisorName || 'TRẦN KIM HÙNG',
             
             clause: clauseText,
             description: formData.description,
-            mitigationReq: formData.mitigationReq,
+            mitigation_req: formData.mitigationReq,
             explanation: formData.explanation,
             conclusion: formData.conclusion,
-            status: formData.status,
-            createdAt: formMode === 'create' ? new Date().toISOString() : reports.find(r => r.id === formData.id)?.createdAt || new Date().toISOString()
+            status: formData.status
         };
 
-        let updatedReports: InfractionReport[];
-        if (formMode === 'create') {
-            updatedReports = [reportPayload, ...reports];
-            setNotification({ type: 'success', message: 'Tạo biên bản vi phạm mới thành công!' });
-        } else {
-            updatedReports = reports.map(r => r.id === formData.id ? reportPayload : r);
-            setNotification({ type: 'success', message: 'Cập nhật biên bản vi phạm thành công!' });
-        }
+        try {
+            if (formMode === 'create') {
+                const { error } = await supabase.from('kpi_infractions').insert([reportPayload]);
+                if (error) throw error;
+                setNotification({ type: 'success', message: 'Tạo biên bản vi phạm mới thành công!' });
+            } else {
+                const { error } = await supabase.from('kpi_infractions').update(reportPayload).eq('id', formData.id);
+                if (error) throw error;
+                setNotification({ type: 'success', message: 'Cập nhật biên bản vi phạm thành công!' });
+            }
 
-        setReports(updatedReports);
-        localStorage.setItem('qlkho_kpi_reports', JSON.stringify(updatedReports));
-        setIsFormOpen(false);
+            fetchReports(); // Refresh data
+            setIsFormOpen(false);
+        } catch (e) {
+            console.error("Lỗi khi lưu biên bản:", e);
+            setNotification({ type: 'error', message: 'Có lỗi xảy ra khi lưu biên bản vi phạm!' });
+        }
+        
         setTimeout(() => setNotification(null), 3000);
     };
 
-    const handleDeleteReport = (id: string, name: string) => {
+    const handleDeleteReport = async (id: string, name: string) => {
         if (window.confirm(`Bạn có chắc chắn muốn xóa biên bản vi phạm của nhân viên "${name}"?`)) {
-            const updated = reports.filter(r => r.id !== id);
-            setReports(updated);
-            localStorage.setItem('qlkho_kpi_reports', JSON.stringify(updated));
-            setNotification({ type: 'success', message: 'Đã xóa biên bản vi phạm!' });
+            try {
+                const { error } = await supabase.from('kpi_infractions').delete().eq('id', id);
+                if (error) throw error;
+                fetchReports(); // Refresh data
+                setNotification({ type: 'success', message: 'Đã xóa biên bản thành công!' });
+            } catch (e) {
+                console.error("Lỗi khi xóa biên bản:", e);
+                setNotification({ type: 'error', message: 'Có lỗi xảy ra khi xóa biên bản!' });
+            }
             setTimeout(() => setNotification(null), 3000);
         }
     };
@@ -907,62 +1056,69 @@ const KpiGrades = () => {
         });
     };
 
-    const handleSaveLeaveRequest = () => {
+    const handleSaveLeaveRequest = async () => {
         const emp = activeProfilesList.find(p => p.id === leaveFormData.employeeId);
         if (!emp) {
             setNotification({ type: 'error', message: 'Vui lòng chọn nhân viên làm đơn!' });
             return;
         }
 
-        const payload: LeaveRequest = {
-            id: leaveFormMode === 'create' ? `LR-${Date.now()}` : leaveFormData.id,
-            requestDate: leaveFormData.requestDate,
+        const payload = {
+            request_date: leaveFormData.requestDate,
+            employee_id: emp.id,
+            employee_name: emp.full_name,
+            employee_code: emp.id,
+            employee_job: emp.job_position || 'Nhân viên',
+            employee_unit: emp.department || 'Bộ phận Kỹ thuật - Hạ tầng Bắc Sài Gòn',
+            employee_phone: emp.phone_number || '',
             
-            employeeId: emp.id,
-            employeeName: emp.full_name,
-            employeeCode: emp.id,
-            employeeJob: emp.job_position || 'Nhân viên',
-            employeeUnit: emp.department || 'Bộ phận Kỹ thuật - Hạ tầng Bắc Sài Gòn',
-            employeePhone: emp.phone_number || '',
+            start_date: leaveFormData.startDate,
+            start_time: leaveFormData.startTime,
+            end_date: leaveFormData.endDate,
+            end_time: leaveFormData.endTime,
+            total_days: Number(leaveFormData.totalDays) || 1,
             
-            startDate: leaveFormData.startDate,
-            startTime: leaveFormData.startTime,
-            endDate: leaveFormData.endDate,
-            endTime: leaveFormData.endTime,
-            totalDays: Number(leaveFormData.totalDays) || 1,
-            
-            leaveType: leaveFormData.leaveType,
-            customLeaveType: leaveFormData.customLeaveType,
+            leave_type: leaveFormData.leaveType,
+            custom_leave_type: leaveFormData.customLeaveType,
             reason: leaveFormData.reason,
             location: leaveFormData.location,
             
             handovers: leaveFormData.handovers.filter(h => h.task.trim() !== '' || h.target.trim() !== ''),
-            
-            status: 'approved',
-            createdAt: leaveFormMode === 'create' ? new Date().toISOString() : leaveRequests.find(r => r.id === leaveFormData.id)?.createdAt || new Date().toISOString()
+            status: 'approved'
         };
 
-        let updated: LeaveRequest[];
-        if (leaveFormMode === 'create') {
-            updated = [payload, ...leaveRequests];
-            setNotification({ type: 'success', message: 'Tạo đơn xin nghỉ mới thành công!' });
-        } else {
-            updated = leaveRequests.map(r => r.id === leaveFormData.id ? payload : r);
-            setNotification({ type: 'success', message: 'Cập nhật đơn xin nghỉ thành công!' });
-        }
+        try {
+            if (leaveFormMode === 'create') {
+                const { error } = await supabase.from('kpi_leave_requests').insert([payload]);
+                if (error) throw error;
+                setNotification({ type: 'success', message: 'Tạo đơn xin nghỉ mới thành công!' });
+            } else {
+                const { error } = await supabase.from('kpi_leave_requests').update(payload).eq('id', leaveFormData.id);
+                if (error) throw error;
+                setNotification({ type: 'success', message: 'Cập nhật đơn xin nghỉ thành công!' });
+            }
 
-        setLeaveRequests(updated);
-        localStorage.setItem('qlkho_kpi_leave_requests', JSON.stringify(updated));
-        setIsLeaveFormOpen(false);
+            fetchLeaveRequests(); // Refresh data
+            setIsLeaveFormOpen(false);
+        } catch (e) {
+            console.error("Lỗi khi lưu đơn xin nghỉ:", e);
+            setNotification({ type: 'error', message: 'Có lỗi xảy ra khi lưu đơn xin nghỉ!' });
+        }
+        
         setTimeout(() => setNotification(null), 3000);
     };
 
-    const handleDeleteLeaveRequest = (id: string, name: string) => {
+    const handleDeleteLeaveRequest = async (id: string, name: string) => {
         if (window.confirm(`Bạn có chắc chắn muốn xóa đơn xin nghỉ của nhân viên "${name}"?`)) {
-            const updated = leaveRequests.filter(r => r.id !== id);
-            setLeaveRequests(updated);
-            localStorage.setItem('qlkho_kpi_leave_requests', JSON.stringify(updated));
-            setNotification({ type: 'success', message: 'Đã xóa đơn xin nghỉ!' });
+            try {
+                const { error } = await supabase.from('kpi_leave_requests').delete().eq('id', id);
+                if (error) throw error;
+                fetchLeaveRequests(); // Refresh data
+                setNotification({ type: 'success', message: 'Đã xóa đơn xin nghỉ!' });
+            } catch (e) {
+                console.error("Lỗi khi xóa đơn xin nghỉ:", e);
+                setNotification({ type: 'error', message: 'Có lỗi xảy ra khi xóa đơn xin nghỉ!' });
+            }
             setTimeout(() => setNotification(null), 3000);
         }
     };
