@@ -335,10 +335,27 @@ const ZaloBotManager: React.FC = () => {
             await workbook.xlsx.load(await file.arrayBuffer());
             const worksheet = workbook.worksheets[0];
             
+            let headerRowIndex = 1;
             const headers: string[] = [];
-            worksheet.getRow(1).eachCell((cell, colNumber) => {
-                headers[colNumber] = cell.value?.toString().trim() || '';
-            });
+            
+            // Tìm dòng tiêu đề (có chứa cột nội dung hoặc zalo_user_id)
+            for (let i = 1; i <= 10; i++) {
+                const row = worksheet.getRow(i);
+                let hasHeader = false;
+                row.eachCell((cell) => {
+                    const val = cell.value?.toString().toLowerCase() || '';
+                    if (val.includes('nội dung') || val.includes('zalo') || val.includes('mã nhân viên')) {
+                        hasHeader = true;
+                    }
+                });
+                if (hasHeader) {
+                    headerRowIndex = i;
+                    row.eachCell((cell, colNumber) => {
+                        headers[colNumber] = cell.value?.toString().trim() || '';
+                    });
+                    break;
+                }
+            }
 
             const zaloIdIdx = headers.findIndex(h => h.toLowerCase().includes('zalo'));
             const phoneIdx = headers.findIndex(h => h.toLowerCase().includes('điện thoại') || h.toLowerCase().includes('phone'));
@@ -356,7 +373,7 @@ const ZaloBotManager: React.FC = () => {
             const matchedIds: string[] = [];
 
             worksheet.eachRow((row, rowNumber) => {
-                if (rowNumber === 1) return;
+                if (rowNumber <= headerRowIndex) return;
                 const zaloId = zaloIdIdx > -1 ? row.getCell(zaloIdIdx).value?.toString() : null;
                 const phone = phoneIdx > -1 ? row.getCell(phoneIdx).value?.toString() : null;
                 const empId = empIdIdx > -1 ? row.getCell(empIdIdx).value?.toString() : null;
@@ -471,15 +488,42 @@ const ZaloBotManager: React.FC = () => {
             const workbook = new ExcelJS.Workbook();
             const worksheet = workbook.addWorksheet('Gửi Tin Zalo');
             worksheet.columns = [
-                { header: 'Zalo_user_id', key: 'zalo_user_id', width: 25 },
-                { header: 'Nội dung tin nhắn', key: 'message', width: 50 },
-                { header: 'Mã API token', key: 'bot_api_token', width: 35 }
+                { key: 'employee_id', width: 15 },
+                { key: 'receiver_name', width: 25 },
+                { key: 'phone', width: 15 },
+                { key: 'zalo_user_id', width: 25 },
+                { key: 'message', width: 50 },
             ];
             
-            worksheet.getRow(1).font = { bold: true };
-            worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD3D3D3' } };
+            // Row 1: Title
+            const titleRow = worksheet.addRow(['MẪU GỬI TIN ZALO HÀNG LOẠT']);
+            worksheet.mergeCells('A1:E1');
+            titleRow.getCell(1).font = { size: 16, bold: true };
+            titleRow.getCell(1).alignment = { horizontal: 'center' };
 
-            worksheet.addRow({ zalo_user_id: '1234567890123456789', message: 'Xin chào, đơn hàng của bạn đã được xuất kho.', bot_api_token: '1862629919486206414:...' });
+            // Row 2: Campaign
+            worksheet.addRow(['Chiến dịch: Tất cả']);
+
+            // Row 3: Date
+            const now = new Date();
+            worksheet.addRow([`Ngày xuất báo cáo: ${now.toLocaleTimeString('vi-VN')} ${now.toLocaleDateString('vi-VN')}`]);
+
+            // Row 4: Headers
+            const headerRow = worksheet.addRow(['Mã nhân viên', 'Tên người nhận', 'Điện thoại', 'Zalo user_id', 'Nội dung']);
+            headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            headerRow.eachCell(cell => {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF008080' } }; // Teal green
+            });
+
+            // Populate some data from contacts
+            const topContacts = contacts.slice(0, 10);
+            if (topContacts.length > 0) {
+                topContacts.forEach(c => {
+                    worksheet.addRow([c.employee_id, c.receiver_name, c.phone, c.zalo_user_id, '']);
+                });
+            } else {
+                worksheet.addRow(['332377', 'Cao Bá Thuận', '', '3fdc585be01709495006', '']);
+            }
             
             const buffer = await workbook.xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
