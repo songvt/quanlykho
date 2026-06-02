@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Paper, TextField, Button, Grid, MenuItem, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip } from '@mui/material';
-import { Send, Add } from '@mui/icons-material';
+import { Box, Typography, Paper, TextField, Button, Grid, MenuItem, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, Tabs, Tab, FormControl, Select, Checkbox } from '@mui/material';
+import { Send, Add, UploadFile, Description } from '@mui/icons-material';
 import { useNotification } from '../../contexts/NotificationContext';
+import { supabase } from '../../config/supabase';
+import * as ExcelJS from 'exceljs';
 
 const API_CAMPAIGNS = '/api/zalo?action=campaigns';
 const API_TEMPLATES = '/api/zalo?action=templates';
@@ -19,19 +21,28 @@ interface Campaign {
 
 const ZaloCampaigns: React.FC = () => {
     const { notify, success, warning, error: notifyError } = useNotification();
+    const [tab, setTab] = useState(0);
+
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [templates, setTemplates] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [sending, setSending] = useState(false);
+    const [sendingZns, setSendingZns] = useState(false);
     const [showForm, setShowForm] = useState(false);
 
-    // Form state
     const [form, setForm] = useState({
         name: '',
         template_id: '',
-        phones: '', // comma separated or new lines
+        phones: '',
         params_json: '{}'
     });
+
+    // Bulk Send States
+    const [tokens, setTokens] = useState<any[]>([]);
+    const [contacts, setContacts] = useState<any[]>([]);
+    const [filterToken, setFilterToken] = useState('all');
+    const [messageContent, setMessageContent] = useState('');
+    const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+    const [sendingBulk, setSendingBulk] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -40,15 +51,25 @@ const ZaloCampaigns: React.FC = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [campRes, tempRes] = await Promise.all([
+            const [campRes, tempRes, tokensRes, contactsRes] = await Promise.all([
                 fetch(API_CAMPAIGNS),
-                fetch(API_TEMPLATES)
+                fetch(API_TEMPLATES),
+                supabase.from('zalo_bot_tokens').select('*').order('created_at', { ascending: false }),
+                supabase.from('zalo_personal_contacts').select('*').order('created_at', { ascending: false })
             ]);
-            const campJson = await campRes.json();
-            const tempJson = await tempRes.json();
-
-            if (campJson.success) setCampaigns(campJson.data);
-            if (tempJson.success) setTemplates(tempJson.data.filter((t: any) => t.is_active));
+            
+            if (campRes.ok) {
+                const campJson = await campRes.json();
+                if (campJson.success) setCampaigns(campJson.data);
+            }
+            if (tempRes.ok) {
+                const tempJson = await tempRes.json();
+                if (tempJson.success) setTemplates(tempJson.data.filter((t: any) => t.is_active));
+            }
+            
+            if (!tokensRes.error) setTokens(tokensRes.data || []);
+            if (!contactsRes.error) setContacts(contactsRes.data || []);
+            
         } catch (error) {
             notifyError('Lỗi khi tải dữ liệu');
         } finally {
@@ -56,11 +77,10 @@ const ZaloCampaigns: React.FC = () => {
         }
     };
 
-    const handleCreate = async () => {
+    const handleCreateZns = async () => {
         if (!form.name || !form.template_id || !form.phones) {
             return warning('Vui lòng điền đủ thông tin');
         }
-
         const phoneList = form.phones.split(/[\n,]+/).map(p => p.trim()).filter(p => p);
         if (phoneList.length === 0) return warning('Không có số điện thoại hợp lệ');
 
@@ -71,22 +91,14 @@ const ZaloCampaigns: React.FC = () => {
             return notifyError('JSON tham số không hợp lệ');
         }
 
-        setSending(true);
+        setSendingZns(true);
         try {
-            const payload = {
-                name: form.name,
-                template_id: form.template_id,
-                recipients: phoneList.map(phone => ({ phone })),
-                template_data
-            };
-
             const res = await fetch(API_CAMPAIGNS, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ name: form.name, template_id: form.template_id, recipients: phoneList.map(phone => ({ phone })), template_data })
             });
             const json = await res.json();
-
             if (json.success) {
                 success('Đã tạo chiến dịch gửi ZNS');
                 setShowForm(false);
@@ -98,139 +110,355 @@ const ZaloCampaigns: React.FC = () => {
         } catch (error) {
             notifyError('Lỗi kết nối máy chủ');
         } finally {
+            setSendingZns(false);
+        }
+    };
+
+    const filteredContacts = filterToken === 'all' ? contacts : contacts.filter(c => c.bot_api_token === filterToken);
+
+    const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.checked) setSelectedContacts(filteredContacts.map(c => c.id));
+        else setSelectedContacts([]);
+    };
+
+    const handleSelectOne = (id: string) => {
+        setSelectedContacts(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
+    };
+
+    const setSending = setSendingBulk;
+    const setError = notifyError;
+    const setSuccess = success;
+    
+const handleSendBulkBot = async () => {
+        if (selectedContacts.length === 0) return setError('Chưa chọn người nhận');
+        if (!messageContent.trim()) return setError('Chưa nhập nội dung tin nhắn');
+        
+        setSending(true);
+
+        try {
+            const payload = {
+                action: 'send_personal',
+                contact_ids: selectedContacts,
+                message: messageContent
+            };
+
+            const response = await fetch('/api/zalo?action=send_personal', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Lỗi gửi tin');
+
+            setSuccess(`Đã đưa ${selectedContacts.length} tin nhắn vào hàng đợi xử lý!`);
+            setSelectedContacts([]);
+            setMessageContent('');
+            fetchData(); // Cập nhật lại UI trạng thái
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
             setSending(false);
+        }
+    };
+
+const handleImportSendExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setSending(true);
+
+        try {
+            const workbook = new ExcelJS.Workbook();
+            await workbook.xlsx.load(await file.arrayBuffer());
+            const worksheet = workbook.worksheets[0];
+            
+            let headerRowIndex = 1;
+            const headers: string[] = [];
+            
+            // Tìm dòng tiêu đề (có chứa cột nội dung hoặc zalo_user_id)
+            for (let i = 1; i <= 10; i++) {
+                const row = worksheet.getRow(i);
+                let hasHeader = false;
+                row.eachCell((cell) => {
+                    const val = cell.value?.toString().toLowerCase() || '';
+                    if (val.includes('nội dung') || val.includes('zalo') || val.includes('mã nhân viên')) {
+                        hasHeader = true;
+                    }
+                });
+                if (hasHeader) {
+                    headerRowIndex = i;
+                    row.eachCell((cell, colNumber) => {
+                        headers[colNumber] = cell.value?.toString().trim() || '';
+                    });
+                    break;
+                }
+            }
+
+            const zaloIdIdx = headers.findIndex(h => h.toLowerCase().includes('zalo'));
+            const phoneIdx = headers.findIndex(h => h.toLowerCase().includes('điện thoại') || h.toLowerCase().includes('phone'));
+            const empIdIdx = headers.findIndex(h => h.toLowerCase().includes('mã nv') || h.toLowerCase().includes('mã nhân viên'));
+            const messageIdx = headers.findIndex(h => h.toLowerCase().includes('nội dung') || h.toLowerCase().includes('tin nhắn'));
+
+            if (messageIdx === -1) {
+                throw new Error("File Excel phải có cột chứa chữ 'Nội dung' hoặc 'Tin nhắn'");
+            }
+            if (zaloIdIdx === -1 && phoneIdx === -1 && empIdIdx === -1) {
+                throw new Error("File Excel phải có cột Zalo_user_id, Điện thoại, hoặc Mã nhân viên để ghép nối");
+            }
+
+            const customMessages: Record<string, string> = {};
+            const matchedIds: string[] = [];
+
+            worksheet.eachRow((row, rowNumber) => {
+                if (rowNumber <= headerRowIndex) return;
+                const zaloId = zaloIdIdx > -1 ? row.getCell(zaloIdIdx).value?.toString() : null;
+                const phone = phoneIdx > -1 ? row.getCell(phoneIdx).value?.toString() : null;
+                const empId = empIdIdx > -1 ? row.getCell(empIdIdx).value?.toString() : null;
+                const msg = row.getCell(messageIdx).value?.toString();
+
+                if (!msg) return;
+
+                const matchedContact = filteredContacts.find(c => 
+                    (zaloId && c.zalo_user_id === zaloId) ||
+                    (phone && c.phone === phone) ||
+                    (empId && c.employee_id === empId)
+                );
+
+                if (matchedContact) {
+                    customMessages[matchedContact.id] = msg;
+                    if (!matchedIds.includes(matchedContact.id)) {
+                        matchedIds.push(matchedContact.id);
+                    }
+                }
+            });
+
+            if (matchedIds.length === 0) {
+                throw new Error("Không tìm thấy liên hệ nào khớp với dữ liệu trong file Excel. Vui lòng kiểm tra lại ID/SĐT.");
+            }
+
+            if (window.confirm(`Tìm thấy ${matchedIds.length} liên hệ khớp với file Excel. Bạn có chắc chắn muốn gửi ${matchedIds.length} tin nhắn với nội dung tùy chỉnh này không?`)) {
+                setSelectedContacts(matchedIds);
+                
+                const res = await fetch('/api/zalo?action=send_personal', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        contact_ids: matchedIds, 
+                        message: '', 
+                        custom_messages: customMessages
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Lỗi gửi tin');
+                
+                setSuccess(`Đã gửi thành công ${data.successCount}, thất bại ${data.failCount}`);
+                fetchData();
+                setSelectedContacts([]);
+            }
+        } catch (err: any) {
+            setError(err.message || 'Lỗi import Excel');
+        } finally {
+            setSending(false);
+            if (e.target) e.target.value = ''; 
+        }
+    };
+
+const handleDownloadSendTemplate = async () => {
+        try {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Gửi Tin Zalo');
+            worksheet.columns = [
+                { key: 'employee_id', width: 15 },
+                { key: 'receiver_name', width: 25 },
+                { key: 'phone', width: 15 },
+                { key: 'zalo_user_id', width: 25 },
+                { key: 'message', width: 50 },
+            ];
+            
+            // Row 1: Title
+            const titleRow = worksheet.addRow(['MẪU GỬI TIN ZALO HÀNG LOẠT']);
+            worksheet.mergeCells('A1:E1');
+            titleRow.getCell(1).font = { size: 16, bold: true };
+            titleRow.getCell(1).alignment = { horizontal: 'center' };
+
+            // Row 2: Campaign
+            worksheet.addRow(['Chiến dịch: Tất cả']);
+
+            // Row 3: Date
+            const now = new Date();
+            worksheet.addRow([`Ngày xuất báo cáo: ${now.toLocaleTimeString('vi-VN')} ${now.toLocaleDateString('vi-VN')}`]);
+
+            // Row 4: Headers
+            const headerRow = worksheet.addRow(['Mã nhân viên', 'Tên người nhận', 'Điện thoại', 'Zalo user_id', 'Nội dung']);
+            headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            headerRow.eachCell(cell => {
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF008080' } }; // Teal green
+            });
+
+            // Populate some data from contacts
+            const topContacts = contacts.slice(0, 10);
+            if (topContacts.length > 0) {
+                topContacts.forEach(c => {
+                    worksheet.addRow([c.employee_id, c.receiver_name, c.phone, c.zalo_user_id, '']);
+                });
+            } else {
+                worksheet.addRow(['332377', 'Cao Bá Thuận', '', '3fdc585be01709495006', '']);
+            }
+            
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.download = 'Mau_Import_Gui_Tin_Zalo.xlsx';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (err) {
+            console.error(err);
         }
     };
 
     return (
         <Box p={3}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-                <Box>
-                    <Typography variant="h5" fontWeight={700} color="primary" gutterBottom>
-                        Chiến dịch gửi ZNS
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        Tạo và quản lý các đợt gửi tin nhắn hàng loạt.
-                    </Typography>
-                </Box>
-                {!showForm && (
-                    <Button 
-                        variant="contained" 
-                        startIcon={<Add />} 
-                        onClick={() => setShowForm(true)}
-                        sx={{ boxShadow: 'none' }}
-                    >
-                        Tạo chiến dịch mới
-                    </Button>
-                )}
-            </Box>
+            <Typography variant="h5" fontWeight={700} color="primary" gutterBottom>Chiến dịch Zalo</Typography>
+            <Typography variant="body2" color="text.secondary" mb={3}>Quản lý các đợt gửi tin nhắn hàng loạt qua Zalo.</Typography>
+            
+            <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ mb: 3, borderBottom: '1px solid #e2e8f0' }}>
+                <Tab label="Gửi Zalo Notification Service (ZNS)" />
+                <Tab label="Gửi qua Zalo Bot Cá Nhân (Miễn phí)" />
+            </Tabs>
 
-            {showForm && (
-                <Paper sx={{ p: 3, mb: 4, borderRadius: 2, border: '1px solid #e2e8f0', boxShadow: 'none' }}>
-                    <Typography variant="h6" mb={3} fontWeight={600}>Tạo chiến dịch mới</Typography>
-                    <Grid container spacing={3}>
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <TextField
-                                fullWidth
-                                label="Tên chiến dịch"
-                                value={form.name}
-                                onChange={e => setForm({...form, name: e.target.value})}
-                                size="small"
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <TextField
-                                select
-                                fullWidth
-                                label="Chọn Template"
-                                value={form.template_id}
-                                onChange={e => setForm({...form, template_id: e.target.value})}
-                                size="small"
-                            >
-                                {templates.map(t => (
-                                    <MenuItem key={t.id} value={t.id}>{t.template_name} ({t.template_id})</MenuItem>
-                                ))}
-                            </TextField>
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <TextField
-                                fullWidth
-                                multiline
-                                rows={4}
-                                label="Danh sách SĐT (cách nhau dấu phẩy hoặc xuống dòng)"
-                                value={form.phones}
-                                onChange={e => setForm({...form, phones: e.target.value})}
-                                placeholder="84912345678, 84987654321"
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <TextField
-                                fullWidth
-                                multiline
-                                rows={4}
-                                label="Tham số Template (JSON)"
-                                value={form.params_json}
-                                onChange={e => setForm({...form, params_json: e.target.value})}
-                                placeholder={'{\n  "customer_name": "Nguyễn Văn A",\n  "order_code": "12345"\n}'}
-                                sx={{ fontFamily: 'monospace' }}
-                            />
-                        </Grid>
-                    </Grid>
-                    <Box mt={3} display="flex" gap={2} justifyContent="flex-end">
-                        <Button onClick={() => setShowForm(false)} disabled={sending}>Hủy</Button>
-                        <Button 
-                            variant="contained" 
-                            startIcon={sending ? <CircularProgress size={20} color="inherit" /> : <Send />}
-                            onClick={handleCreate}
-                            disabled={sending}
-                            sx={{ boxShadow: 'none' }}
-                        >
-                            Tạo và gửi
-                        </Button>
+            {tab === 0 && (
+                <Box>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                        <Typography variant="h6" fontWeight={600}>Chiến dịch ZNS</Typography>
+                        {!showForm && <Button variant="contained" startIcon={<Add />} onClick={() => setShowForm(true)} sx={{ boxShadow: 'none' }}>Tạo chiến dịch mới</Button>}
                     </Box>
-                </Paper>
+
+                    {showForm && (
+                        <Paper sx={{ p: 3, mb: 4, borderRadius: 2, border: '1px solid #e2e8f0', boxShadow: 'none' }}>
+                            <Typography variant="subtitle1" mb={3} fontWeight={600}>Tạo chiến dịch ZNS mới</Typography>
+                            <Grid container spacing={3}>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField fullWidth label="Tên chiến dịch" value={form.name} onChange={e => setForm({...form, name: e.target.value})} size="small" />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField select fullWidth label="Chọn Template" value={form.template_id} onChange={e => setForm({...form, template_id: e.target.value})} size="small">
+                                        {templates.map(t => <MenuItem key={t.id} value={t.id}>{t.template_name} ({t.template_id})</MenuItem>)}
+                                    </TextField>
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField fullWidth multiline rows={4} label="Danh sách SĐT" value={form.phones} onChange={e => setForm({...form, phones: e.target.value})} placeholder="84912345678, 84987654321" />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField fullWidth multiline rows={4} label="Tham số Template (JSON)" value={form.params_json} onChange={e => setForm({...form, params_json: e.target.value})} sx={{ fontFamily: 'monospace' }} />
+                                </Grid>
+                            </Grid>
+                            <Box mt={3} display="flex" gap={2} justifyContent="flex-end">
+                                <Button onClick={() => setShowForm(false)} disabled={sendingZns}>Hủy</Button>
+                                <Button variant="contained" startIcon={sendingZns ? <CircularProgress size={20} color="inherit" /> : <Send />} onClick={handleCreateZns} disabled={sendingZns} sx={{ boxShadow: 'none' }}>Tạo và gửi</Button>
+                            </Box>
+                        </Paper>
+                    )}
+
+                    <TableContainer component={Paper} sx={{ borderRadius: 2, border: '1px solid #e2e8f0', boxShadow: 'none' }}>
+                        <Table size="small">
+                            <TableHead sx={{ bgcolor: '#f8fafc' }}>
+                                <TableRow>
+                                    <TableCell sx={{ fontWeight: 600 }}>Chiến dịch</TableCell>
+                                    <TableCell sx={{ fontWeight: 600 }}>Template</TableCell>
+                                    <TableCell sx={{ fontWeight: 600 }}>Số lượng</TableCell>
+                                    <TableCell sx={{ fontWeight: 600 }}>Trạng thái</TableCell>
+                                    <TableCell sx={{ fontWeight: 600 }}>Ngày tạo</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {loading ? (
+                                    <TableRow><TableCell colSpan={5} align="center" sx={{ py: 4 }}><CircularProgress /></TableCell></TableRow>
+                                ) : campaigns.length === 0 ? (
+                                    <TableRow><TableCell colSpan={5} align="center" sx={{ py: 4, color: '#64748b' }}>Chưa có chiến dịch nào.</TableCell></TableRow>
+                                ) : (
+                                    campaigns.map(c => (
+                                        <TableRow key={c.id}>
+                                            <TableCell sx={{ fontWeight: 500 }}>{c.name}</TableCell>
+                                            <TableCell>{c.zalo_templates?.template_name}</TableCell>
+                                            <TableCell>{c.total_recipients}</TableCell>
+                                            <TableCell><Chip label={c.status === 'processing' ? 'Đang xử lý' : c.status} color={c.status === 'processing' ? 'warning' : 'default'} size="small" /></TableCell>
+                                            <TableCell>{new Date(c.created_at).toLocaleString('vi-VN')}</TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                </Box>
             )}
 
-            <TableContainer component={Paper} sx={{ borderRadius: 2, border: '1px solid #e2e8f0', boxShadow: 'none' }}>
-                <Table>
-                    <TableHead sx={{ bgcolor: '#f8fafc' }}>
-                        <TableRow>
-                            <TableCell sx={{ fontWeight: 600 }}>Chiến dịch</TableCell>
-                            <TableCell sx={{ fontWeight: 600 }}>Template</TableCell>
-                            <TableCell sx={{ fontWeight: 600 }}>Số lượng</TableCell>
-                            <TableCell sx={{ fontWeight: 600 }}>Trạng thái</TableCell>
-                            <TableCell sx={{ fontWeight: 600 }}>Ngày tạo</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {loading ? (
-                            <TableRow>
-                                <TableCell colSpan={5} align="center" sx={{ py: 4 }}><CircularProgress /></TableCell>
-                            </TableRow>
-                        ) : campaigns.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={5} align="center" sx={{ py: 4, color: '#64748b' }}>Chưa có chiến dịch nào.</TableCell>
-                            </TableRow>
-                        ) : (
-                            campaigns.map(c => (
-                                <TableRow key={c.id}>
-                                    <TableCell sx={{ fontWeight: 500 }}>{c.name}</TableCell>
-                                    <TableCell>{c.zalo_templates?.template_name}</TableCell>
-                                    <TableCell>{c.total_recipients}</TableCell>
-                                    <TableCell>
-                                        <Chip 
-                                            label={c.status === 'processing' ? 'Đang xử lý' : c.status} 
-                                            color={c.status === 'processing' ? 'warning' : 'default'}
-                                            size="small"
-                                        />
+            {tab === 1 && (
+                <Box>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>Gửi tin nhắn qua Bot cá nhân</Typography>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button variant="outlined" startIcon={<Description />} onClick={handleDownloadSendTemplate}>Mẫu gửi Excel</Button>
+                            <Button variant="outlined" color="primary" component="label" disabled={sendingBulk} startIcon={sendingBulk ? <CircularProgress size={16} color="inherit"/> : <UploadFile />}>
+                                Import Gửi Bằng Excel
+                                <input type="file" hidden accept=".xlsx,.xls,.csv" onChange={handleImportSendExcel} />
+                            </Button>
+                            <Button variant="contained" color="success" onClick={handleSendBulkBot} disabled={sendingBulk || selectedContacts.length === 0} startIcon={sendingBulk ? <CircularProgress size={16} color="inherit"/> : <Send />}>
+                                Gửi đã chọn ({selectedContacts.length})
+                            </Button>
+                        </Box>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                        <FormControl size="small" sx={{ minWidth: 200 }}>
+                            <Select value={filterToken} onChange={e => setFilterToken(e.target.value)}>
+                                <MenuItem value="all">Tất cả nhóm token</MenuItem>
+                                {tokens.map(t => <MenuItem key={t.id} value={t.token}>{t.group_name} ({t.bot_name})</MenuItem>)}
+                            </Select>
+                        </FormControl>
+                        <Typography variant="body2" sx={{ color: '#6b7280' }}>
+                            Đang hiển thị {filteredContacts.length} người nhận, đã chọn {selectedContacts.length}.
+                        </Typography>
+                    </Box>
+
+                    <TextField fullWidth multiline rows={4} placeholder="Nhập nội dung tin nhắn cần gửi..." value={messageContent} onChange={e => setMessageContent(e.target.value)} sx={{ mb: 3, bgcolor: '#fff' }} />
+
+                    <TableContainer component={Paper} sx={{ maxHeight: 500, borderRadius: 2, border: '1px solid #e2e8f0', boxShadow: 'none' }}>
+                        <Table stickyHeader size="small">
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell padding="checkbox">
+                                        <Checkbox checked={filteredContacts.length > 0 && selectedContacts.length === filteredContacts.length} indeterminate={selectedContacts.length > 0 && selectedContacts.length < filteredContacts.length} onChange={handleSelectAll} />
                                     </TableCell>
-                                    <TableCell>{new Date(c.created_at).toLocaleString('vi-VN')}</TableCell>
+                                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>MÃ NV</TableCell>
+                                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>TÊN NGƯỜI NHẬN</TableCell>
+                                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>ZALO USER_ID</TableCell>
+                                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>MÃ TOKEN</TableCell>
+                                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>NHÓM TOKEN</TableCell>
+                                    <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>TRẠNG THÁI</TableCell>
                                 </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                            </TableHead>
+                            <TableBody>
+                                {filteredContacts.map(c => (
+                                    <TableRow key={c.id} hover selected={selectedContacts.includes(c.id)}>
+                                        <TableCell padding="checkbox">
+                                            <Checkbox checked={selectedContacts.includes(c.id)} onChange={() => handleSelectOne(c.id)} />
+                                        </TableCell>
+                                        <TableCell>{c.employee_id}</TableCell>
+                                        <TableCell sx={{ fontWeight: 500 }}>{c.receiver_name}</TableCell>
+                                        <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{c.zalo_user_id.substring(0,10)}...</TableCell>
+                                        <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{c.bot_api_token.substring(0,10)}...</TableCell>
+                                        <TableCell><Typography variant="body2" sx={{ fontWeight: 600 }}>{tokens.find(t => t.token === c.bot_api_token)?.group_name || c.bot_name}</Typography></TableCell>
+                                        <TableCell><Chip label={c.status} size="small" color="success" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }}/></TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                </Box>
+            )}
         </Box>
     );
 };

@@ -324,107 +324,7 @@ const ZaloBotManager: React.FC = () => {
         }
     };
 
-    const handleImportSendExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        setSending(true);
-        setError(null);
-        try {
-            const workbook = new ExcelJS.Workbook();
-            await workbook.xlsx.load(await file.arrayBuffer());
-            const worksheet = workbook.worksheets[0];
-            
-            let headerRowIndex = 1;
-            const headers: string[] = [];
-            
-            // Tìm dòng tiêu đề (có chứa cột nội dung hoặc zalo_user_id)
-            for (let i = 1; i <= 10; i++) {
-                const row = worksheet.getRow(i);
-                let hasHeader = false;
-                row.eachCell((cell) => {
-                    const val = cell.value?.toString().toLowerCase() || '';
-                    if (val.includes('nội dung') || val.includes('zalo') || val.includes('mã nhân viên')) {
-                        hasHeader = true;
-                    }
-                });
-                if (hasHeader) {
-                    headerRowIndex = i;
-                    row.eachCell((cell, colNumber) => {
-                        headers[colNumber] = cell.value?.toString().trim() || '';
-                    });
-                    break;
-                }
-            }
-
-            const zaloIdIdx = headers.findIndex(h => h.toLowerCase().includes('zalo'));
-            const phoneIdx = headers.findIndex(h => h.toLowerCase().includes('điện thoại') || h.toLowerCase().includes('phone'));
-            const empIdIdx = headers.findIndex(h => h.toLowerCase().includes('mã nv') || h.toLowerCase().includes('mã nhân viên'));
-            const messageIdx = headers.findIndex(h => h.toLowerCase().includes('nội dung') || h.toLowerCase().includes('tin nhắn'));
-
-            if (messageIdx === -1) {
-                throw new Error("File Excel phải có cột chứa chữ 'Nội dung' hoặc 'Tin nhắn'");
-            }
-            if (zaloIdIdx === -1 && phoneIdx === -1 && empIdIdx === -1) {
-                throw new Error("File Excel phải có cột Zalo_user_id, Điện thoại, hoặc Mã nhân viên để ghép nối");
-            }
-
-            const customMessages: Record<string, string> = {};
-            const matchedIds: string[] = [];
-
-            worksheet.eachRow((row, rowNumber) => {
-                if (rowNumber <= headerRowIndex) return;
-                const zaloId = zaloIdIdx > -1 ? row.getCell(zaloIdIdx).value?.toString() : null;
-                const phone = phoneIdx > -1 ? row.getCell(phoneIdx).value?.toString() : null;
-                const empId = empIdIdx > -1 ? row.getCell(empIdIdx).value?.toString() : null;
-                const msg = row.getCell(messageIdx).value?.toString();
-
-                if (!msg) return;
-
-                const matchedContact = filteredContacts.find(c => 
-                    (zaloId && c.zalo_user_id === zaloId) ||
-                    (phone && c.phone === phone) ||
-                    (empId && c.employee_id === empId)
-                );
-
-                if (matchedContact) {
-                    customMessages[matchedContact.id] = msg;
-                    if (!matchedIds.includes(matchedContact.id)) {
-                        matchedIds.push(matchedContact.id);
-                    }
-                }
-            });
-
-            if (matchedIds.length === 0) {
-                throw new Error("Không tìm thấy liên hệ nào khớp với dữ liệu trong file Excel. Vui lòng kiểm tra lại ID/SĐT.");
-            }
-
-            if (window.confirm(`Tìm thấy ${matchedIds.length} liên hệ khớp với file Excel. Bạn có chắc chắn muốn gửi ${matchedIds.length} tin nhắn với nội dung tùy chỉnh này không?`)) {
-                setSelectedContacts(matchedIds);
-                
-                const res = await fetch('/api/zalo?action=send_personal', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        contact_ids: matchedIds, 
-                        message: '', 
-                        custom_messages: customMessages
-                    })
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || 'Lỗi gửi tin');
-                
-                setSuccess(`Đã gửi thành công ${data.successCount}, thất bại ${data.failCount}`);
-                fetchData();
-                setSelectedContacts([]);
-            }
-        } catch (err: any) {
-            setError(err.message || 'Lỗi import Excel');
-        } finally {
-            setSending(false);
-            if (e.target) e.target.value = ''; 
-        }
-    };
+    
 
     const handleDeleteContact = async (id: string) => {
         if (!window.confirm('Xóa liên hệ này?')) return;
@@ -483,60 +383,7 @@ const ZaloBotManager: React.FC = () => {
         }
     };
 
-    const handleDownloadSendTemplate = async () => {
-        try {
-            const workbook = new ExcelJS.Workbook();
-            const worksheet = workbook.addWorksheet('Gửi Tin Zalo');
-            worksheet.columns = [
-                { key: 'employee_id', width: 15 },
-                { key: 'receiver_name', width: 25 },
-                { key: 'phone', width: 15 },
-                { key: 'zalo_user_id', width: 25 },
-                { key: 'message', width: 50 },
-            ];
-            
-            // Row 1: Title
-            const titleRow = worksheet.addRow(['MẪU GỬI TIN ZALO HÀNG LOẠT']);
-            worksheet.mergeCells('A1:E1');
-            titleRow.getCell(1).font = { size: 16, bold: true };
-            titleRow.getCell(1).alignment = { horizontal: 'center' };
-
-            // Row 2: Campaign
-            worksheet.addRow(['Chiến dịch: Tất cả']);
-
-            // Row 3: Date
-            const now = new Date();
-            worksheet.addRow([`Ngày xuất báo cáo: ${now.toLocaleTimeString('vi-VN')} ${now.toLocaleDateString('vi-VN')}`]);
-
-            // Row 4: Headers
-            const headerRow = worksheet.addRow(['Mã nhân viên', 'Tên người nhận', 'Điện thoại', 'Zalo user_id', 'Nội dung']);
-            headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-            headerRow.eachCell(cell => {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF008080' } }; // Teal green
-            });
-
-            // Populate some data from contacts
-            const topContacts = contacts.slice(0, 10);
-            if (topContacts.length > 0) {
-                topContacts.forEach(c => {
-                    worksheet.addRow([c.employee_id, c.receiver_name, c.phone, c.zalo_user_id, '']);
-                });
-            } else {
-                worksheet.addRow(['332377', 'Cao Bá Thuận', '', '3fdc585be01709495006', '']);
-            }
-            
-            const buffer = await workbook.xlsx.writeBuffer();
-            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-            const link = document.createElement('a');
-            link.href = window.URL.createObjectURL(blob);
-            link.download = 'Mau_Import_Gui_Tin_Zalo.xlsx';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        } catch (err) {
-            console.error(err);
-        }
-    };
+    
 
     const handleExportExcel = async () => {
         if (contacts.length === 0) return setError('Không có dữ liệu để xuất Excel');
@@ -647,38 +494,7 @@ const ZaloBotManager: React.FC = () => {
         setSelectedContacts(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
     };
 
-    const handleSendBulk = async () => {
-        if (selectedContacts.length === 0) return setError('Chưa chọn người nhận');
-        if (!messageContent.trim()) return setError('Chưa nhập nội dung tin nhắn');
-        
-        setSending(true);
-        setError(null);
-        try {
-            const payload = {
-                action: 'send_personal',
-                contact_ids: selectedContacts,
-                message: messageContent
-            };
-
-            const response = await fetch('/api/zalo?action=send_personal', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || 'Lỗi gửi tin');
-
-            setSuccess(`Đã đưa ${selectedContacts.length} tin nhắn vào hàng đợi xử lý!`);
-            setSelectedContacts([]);
-            setMessageContent('');
-            fetchData(); // Cập nhật lại UI trạng thái
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setSending(false);
-        }
-    };
+    
 
     return (
         <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto', bgcolor: '#f4f6f8', minHeight: '100vh' }}>
