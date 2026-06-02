@@ -689,25 +689,7 @@ const ZaloBotManager: React.FC = () => {
             <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
                     <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827' }}>Nhóm API token Zalo</Typography>
-                    {tokens.length > 0 && (
-                        <Box display="flex" gap={2} alignItems="center">
-                            <FormControlLabel
-                                control={<Switch size="small" checked={autoSync} onChange={e => setAutoSync(e.target.checked)} />}
-                                label={<Typography variant="body2" sx={{ fontWeight: 600, color: autoSync ? 'success.main' : 'text.secondary' }}>{autoSync ? 'Đang tự động quét (15s)' : 'Tự động quét'}</Typography>}
-                            />
-                            <Button 
-                                variant="contained" 
-                                color="primary" 
-                                size="small" 
-                                startIcon={syncingAll ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
-                                onClick={() => handleSyncAllBots(false)}
-                                disabled={syncingAll || autoSync}
-                                sx={{ textTransform: 'none' }}
-                            >
-                                Đồng bộ TẤT CẢ Bot
-                            </Button>
-                        </Box>
-                    )}
+                    {/* Removed obsolete sync buttons */}
                 </Box>
                 <Typography variant="body2" sx={{ color: '#6b7280', mb: 2 }}>Tạo nhiều nhóm token để gửi tin theo từng tài khoản bot khác nhau.</Typography>
                 
@@ -726,17 +708,7 @@ const ZaloBotManager: React.FC = () => {
                         <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#374151', mr: 1 }}>
                             {t.token.substring(0, 15)}... - {t.group_name} - {t.bot_name}
                         </Typography>
-                        <Button 
-                            variant="outlined" 
-                            color="info" 
-                            size="small" 
-                            onClick={() => handleSyncBot(t)} 
-                            disabled={loadingSync === t.id}
-                            startIcon={loadingSync === t.id ? <CircularProgress size={16} /> : <SyncIcon fontSize="small" />}
-                            sx={{ textTransform: 'none', px: 1, py: 0.25, minWidth: 'auto', fontSize: '0.75rem' }}
-                        >
-                            Lấy ID Chat
-                        </Button>
+                    {/* Removed Get Chat ID button */}
                         <Button 
                             variant="outlined" 
                             color="secondary" 
@@ -792,40 +764,8 @@ const ZaloBotManager: React.FC = () => {
                     <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExportExcel}>Export Excel</Button>
                     <Button variant="outlined" startIcon={<DescriptionIcon />} onClick={handleDownloadTemplate}>Mẫu import</Button>
                 </Box>
-            </Paper>
 
-            {/* SECTION 3: Bulk Sending */}
-            <Paper sx={{ p: 3, borderRadius: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Box>
-                        <Typography variant="h6" sx={{ fontWeight: 700, color: '#111827' }}>Gửi tin hàng loạt</Typography>
-                        <Typography variant="body2" sx={{ color: '#6b7280' }}>Gửi tin nhắn qua Bot cá nhân theo chính sách.</Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Button variant="outlined" startIcon={<DescriptionIcon />} onClick={handleDownloadSendTemplate}>Mẫu gửi Excel</Button>
-                        <Button 
-                            variant="outlined" 
-                            color="primary" 
-                            component="label"
-                            disabled={sending}
-                            startIcon={sending ? <CircularProgress size={16} color="inherit"/> : <UploadFileIcon />}
-                        >
-                            Import Gửi Bằng Excel
-                            <input type="file" hidden accept=".xlsx,.xls,.csv" onChange={handleImportSendExcel} />
-                        </Button>
-                        <Button 
-                            variant="contained" 
-                            color="success" 
-                            onClick={handleSendBulk}
-                            disabled={sending || selectedContacts.length === 0}
-                            startIcon={sending ? <CircularProgress size={16} color="inherit"/> : <SendIcon />}
-                        >
-                            Gửi đã chọn ({selectedContacts.length})
-                        </Button>
-                    </Box>
-                </Box>
-
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, mt: 3 }}>
                     <FormControl size="small" sx={{ minWidth: 200 }}>
                         <Select value={filterToken} onChange={e => setFilterToken(e.target.value)}>
                             <MenuItem value="all">Tất cả nhóm token</MenuItem>
@@ -833,31 +773,15 @@ const ZaloBotManager: React.FC = () => {
                         </Select>
                     </FormControl>
                     <Typography variant="body2" sx={{ color: '#6b7280' }}>
-                        Đang hiển thị {filteredContacts.length} người nhận, đã chọn {selectedContacts.length}.
+                        Đang hiển thị {filteredContacts.length} liên hệ.
                     </Typography>
                 </Box>
-
-                <TextField
-                    fullWidth
-                    multiline
-                    rows={4}
-                    placeholder="Nhập nội dung tin nhắn cần gửi..."
-                    value={messageContent}
-                    onChange={e => setMessageContent(e.target.value)}
-                    sx={{ mb: 3, bgcolor: '#fff' }}
-                />
 
                 <TableContainer sx={{ maxHeight: 500 }}>
                     <Table stickyHeader size="small">
                         <TableHead>
                             <TableRow>
-                                <TableCell padding="checkbox">
-                                    <Checkbox 
-                                        checked={filteredContacts.length > 0 && selectedContacts.length === filteredContacts.length}
-                                        indeterminate={selectedContacts.length > 0 && selectedContacts.length < filteredContacts.length}
-                                        onChange={handleSelectAll}
-                                    />
-                                </TableCell>
+                                <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', width: 80 }}>THAO TÁC</TableCell>
                                 <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>MÃ NV</TableCell>
                                 <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>TÊN NGƯỜI NHẬN</TableCell>
                                 <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>ĐIỆN THOẠI</TableCell>
@@ -866,14 +790,14 @@ const ZaloBotManager: React.FC = () => {
                                 <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>NHÓM TOKEN</TableCell>
                                 <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>GHI CHÚ</TableCell>
                                 <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>TRẠNG THÁI</TableCell>
-                                <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }} align="right">THAO TÁC</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {filteredContacts.map(c => (
-                                <TableRow key={c.id} hover selected={selectedContacts.includes(c.id)}>
-                                    <TableCell padding="checkbox">
-                                        <Checkbox checked={selectedContacts.includes(c.id)} onChange={() => handleSelectOne(c.id)} />
+                                <TableRow key={c.id} hover>
+                                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                        <IconButton size="small" color="primary" onClick={() => handleEditContact(c)}><EditIcon fontSize="small"/></IconButton>
+                                        <IconButton size="small" color="error" onClick={() => handleDeleteContact(c.id)}><DeleteIcon fontSize="small"/></IconButton>
                                     </TableCell>
                                     <TableCell>{c.employee_id}</TableCell>
                                     <TableCell sx={{ fontWeight: 500 }}>{c.receiver_name}</TableCell>
@@ -886,10 +810,6 @@ const ZaloBotManager: React.FC = () => {
                                     <TableCell>{c.notes}</TableCell>
                                     <TableCell>
                                         <Chip label={c.status} size="small" color="success" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }}/>
-                                    </TableCell>
-                                    <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                                        <IconButton size="small" color="primary" onClick={() => handleEditContact(c)}><EditIcon fontSize="small"/></IconButton>
-                                        <IconButton size="small" color="error" onClick={() => handleDeleteContact(c.id)}><DeleteIcon fontSize="small"/></IconButton>
                                     </TableCell>
                                 </TableRow>
                             ))}
