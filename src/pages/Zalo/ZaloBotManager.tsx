@@ -271,6 +271,32 @@ const ZaloBotManager: React.FC = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
+    const handleEditInboxMessage = async (msg: any) => {
+        const newContent = window.prompt("Chỉnh sửa nội dung tin nhắn:", msg.message_content);
+        if (newContent !== null && newContent !== msg.message_content) {
+            try {
+                const { error: saveError } = await supabase.from('zalo_bot_inbox').update({ message_content: newContent }).eq('id', msg.id);
+                if (saveError) throw saveError;
+                setSuccess("Sửa nội dung tin nhắn thành công");
+                fetchData();
+            } catch (err: any) {
+                setError(err.message || "Lỗi khi sửa tin nhắn");
+            }
+        }
+    };
+
+    const handleDeleteInboxMessage = async (id: string) => {
+        if (!window.confirm("Bạn có chắc chắn muốn xóa tin nhắn này khỏi hộp thư?")) return;
+        try {
+            const { error: delError } = await supabase.from('zalo_bot_inbox').delete().eq('id', id);
+            if (delError) throw delError;
+            setSuccess("Xóa tin nhắn thành công");
+            fetchData();
+        } catch (err: any) {
+            setError(err.message || "Lỗi khi xóa tin nhắn");
+        }
+    };
+
     const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -648,6 +674,7 @@ const ZaloBotManager: React.FC = () => {
                     <Table stickyHeader size="small">
                         <TableHead>
                             <TableRow>
+                                <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', width: 80 }}>THAO TÁC</TableCell>
                                 <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>ID</TableCell>
                                 <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>MESSAGE ID</TableCell>
                                 <TableCell sx={{ fontWeight: 600, fontSize: '0.75rem' }}>TÊN NGƯỜI DÙNG</TableCell>
@@ -659,6 +686,10 @@ const ZaloBotManager: React.FC = () => {
                         <TableBody>
                             {inboxMessages.map(msg => (
                                 <TableRow key={msg.id} hover>
+                                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                        <IconButton size="small" color="primary" onClick={() => handleEditInboxMessage(msg)}><EditIcon fontSize="small"/></IconButton>
+                                        <IconButton size="small" color="error" onClick={() => handleDeleteInboxMessage(msg.id)}><DeleteIcon fontSize="small"/></IconButton>
+                                    </TableCell>
                                     <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{msg.zalo_user_id}</TableCell>
                                     <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{msg.message_id}</TableCell>
                                     <TableCell sx={{ fontWeight: 500 }}>{msg.sender_name}</TableCell>
@@ -669,7 +700,7 @@ const ZaloBotManager: React.FC = () => {
                             ))}
                             {inboxMessages.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={6} align="center" sx={{ py: 3, color: '#6b7280' }}>Chưa có tin nhắn nào</TableCell>
+                                    <TableCell colSpan={7} align="center" sx={{ py: 3, color: '#6b7280' }}>Chưa có tin nhắn nào</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
