@@ -216,7 +216,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const bot_token = req.query.token as string;
             
             // Hoặc kiểm tra event từ req.body
-            const payload = req.body;
+            let payload = req.body;
+            if (typeof payload === 'string') {
+                try { payload = JSON.parse(payload); } catch(e) {}
+            }
+            
+            // LOG TO DB TO DEBUG
+            try {
+                await supabase.from('zalo_webhook_events').insert({
+                    event_name: 'bot_webhook',
+                    app_id: bot_token || 'unknown',
+                    sender_id: '',
+                    message_text: '',
+                    raw_payload: payload
+                });
+            } catch(e) {}
+
             console.log('[Zalo Webhook Payload]:', JSON.stringify(payload));
             
             // Xử lý event tin nhắn mới
