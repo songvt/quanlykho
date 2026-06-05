@@ -168,6 +168,7 @@ const QRGeneratorHCM = () => {
             box-shadow: 0 0 15px rgba(0,0,0,0.06);
             overflow: hidden;
             border-radius: 6px;
+            font-family: "Times New Roman", Times, serif !important;
         }
         
         .label-wrapper:last-child {
@@ -180,16 +181,16 @@ const QRGeneratorHCM = () => {
         }
         
         .header-text-print { 
-            font-size: 30pt; 
+            font-size: 72pt; 
             font-weight: 900; 
             text-align: center; 
             text-transform: uppercase;
             line-height: 1.35;
             margin-bottom: 0;
             letter-spacing: 0.5px;
-            background: #facc15 !important;
+            background: white !important;
             color: black !important;
-            padding: 12px 15px;
+            padding: 5px 15px;
             border-bottom: 4.5px solid #000000;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
@@ -211,8 +212,8 @@ const QRGeneratorHCM = () => {
         
         .label-body {
             display: grid;
-            grid-template-columns: 95mm 95mm 95mm;
-            grid-template-rows: repeat(4, 45mm);
+            grid-template-columns: 110mm 110mm 65mm;
+            grid-template-rows: repeat(4, 1fr);
             flex: 1;
             min-height: 0;
             background: white;
@@ -231,20 +232,22 @@ const QRGeneratorHCM = () => {
         }
         
         .grid-cell-label {
-            justify-content: flex-start;
-            padding-left: 18mm;
-            font-size: 26pt;
+            justify-content: center;
+            padding: 0 12px;
+            font-size: 72pt;
             font-weight: 900;
             border-right: 2px solid #000000;
             z-index: 5;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: #1e293b;
+            color: #000000;
+            text-align: center;
+            white-space: nowrap;
         }
         
         .grid-cell-value {
-            background-color: #fef08a !important; /* Premium softer yellow background */
-            font-size: 32pt; 
+            background-color: white !important; /* Premium softer yellow background */
+            font-size: 72pt; 
             font-weight: 900; 
             text-align: center;
             padding: 0 12px;
@@ -258,8 +261,8 @@ const QRGeneratorHCM = () => {
         }
         
         .grid-cell-value-lg {
-            background-color: #facc15 !important; /* Bold yellow for primary numbers */
-            font-size: 48pt; 
+            background-color: white !important; /* Bold yellow for primary numbers */
+            font-size: 72pt; 
             font-weight: 900; 
             text-align: center;
             border-right: 2px solid #000000;
@@ -295,11 +298,11 @@ const QRGeneratorHCM = () => {
             font-weight: 900;
             margin-bottom: 6px;
             text-transform: uppercase;
-            background-color: #e2e8f0;
+            background-color: white;
             color: black;
             padding: 2px 10px;
             border-radius: 10px;
-            border: 1px solid #cbd5e1;
+            border: 1px solid #000000;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
@@ -418,7 +421,7 @@ const QRGeneratorHCM = () => {
             const A4_WIDTH_PX = 1200;
             const A4_HEIGHT_PX = Math.round(A4_WIDTH_PX / 1.4142); // Exact A4 Landscape ratio
 
-            for (let i = 0; i < wrappers.length; i += 2) {
+            for (let i = 0; i < wrappers.length; i++) {
                 const tempContainer = document.createElement('div');
                 Object.assign(tempContainer.style, {
                     position: 'fixed', 
@@ -440,12 +443,9 @@ const QRGeneratorHCM = () => {
                 pairWrapper.style.height = '100%';
                 pairWrapper.style.display = 'flex';
                 pairWrapper.style.flexDirection = 'column';
-                pairWrapper.style.justifyContent = 'space-around';
+                pairWrapper.style.justifyContent = 'center';
                 
                 pairWrapper.appendChild(wrappers[i].cloneNode(true));
-                if (wrappers[i+1]) {
-                    pairWrapper.appendChild(wrappers[i+1].cloneNode(true));
-                }
                 tempContainer.appendChild(pairWrapper);
                 document.body.appendChild(tempContainer);
                 
@@ -1121,65 +1121,110 @@ const QRGeneratorHCM = () => {
                             {groupedBoxes.map((group, groupIdx) => (
                                 <div className="print-container" key={groupIdx}>
                                     <div className="label-wrapper">
-                                        {/* Header */}
-                                        <div className="header-text-print">
-                                            <span className="header-decor-line"></span>
-                                            {group.tieu_de || 'TIÊU ĐỀ IN ẤN'}
-                                            <span className="header-decor-line"></span>
-                                        </div>
-
                                         {/* Helper for auto-shrink font size */}
                                         {(() => {
-                                            const getShrinkFontSize = (text: string | number, baseSize: number) => {
-                                                const str = String(text);
-                                                if (str.length > 20) return `${Math.floor(baseSize * 0.55)}pt`;
-                                                if (str.length > 15) return `${Math.floor(baseSize * 0.72)}pt`;
-                                                if (str.length > 10) return `${Math.floor(baseSize * 0.85)}pt`;
-                                                return `${baseSize}pt`;
+                                            const SvgFitText = ({ text, fontSizePt, maxWidthPt }: { text: string, fontSizePt: number, maxWidthPt: number }) => {
+                                                const len = text.length;
+                                                const charRatio = 0.65;
+                                                const estWidth = len * (fontSizePt * charRatio); 
+                                                const needsSquash = estWidth > maxWidthPt;
+                                                const finalFontSize = needsSquash ? Math.floor(fontSizePt * (maxWidthPt / estWidth)) : fontSizePt;
+                                                
+                                                return (
+                                                    <div style={{ 
+                                                        fontSize: `${finalFontSize}pt`, 
+                                                        fontWeight: 900, 
+                                                        fontFamily: '"Times New Roman", Times, serif',
+                                                        color: 'black',
+                                                        whiteSpace: 'nowrap',
+                                                        lineHeight: 1
+                                                    }}>
+                                                        {text}
+                                                    </div>
+                                                );
                                             };
+
+                                            const GRID_SIZE_LARGE = 65;
+                                            const GRID_SIZE_SMALL = 65;
+                                            const GRID_MAX_WIDTH = 290;
+                                            const HEADER_SIZE = 72;
+                                            const HEADER_MAX_WIDTH = 800;
+
                                             return (
-                                                <div className="label-body">
-                                                    {/* Row 1 */}
-                                                    <div className="grid-cell grid-cell-label">THÙNG</div>
-                                                    <div className="grid-cell grid-cell-value-lg" style={{ fontSize: getShrinkFontSize(group.thung, 48) }}>
-                                                        {group.thung}
-                                                    </div>
-                                                    <div className="grid-cell grid-cell-qr" style={{ gridRow: group.qrChunks.length > 1 ? 'span 2' : 'span 4', borderBottom: group.qrChunks.length > 1 ? '2.5px solid #000000' : 'none' }}>
-                                                        {group.qrChunks[0] && (
-                                                            <>
-                                                                {group.qrChunks.length > 1 && <div className="qr-label-small">{group.qrChunks[0].label} ({group.qrChunks[0].serials.length} QR)</div>}
-                                                                <QRCodeSVG value={group.qrChunks[0].qrValue} size={group.qrChunks.length > 1 ? 165 : 265} level="M" includeMargin={false} />
-                                                            </>
-                                                        )}
+                                                <>
+                                                    {/* Header */}
+                                                    <div className="header-text-print">
+                                                        <span className="header-decor-line" style={{ margin: '0 15px' }}></span>
+                                                        <SvgFitText text={group.tieu_de || 'TIÊU ĐỀ IN ẤN'} fontSizePt={HEADER_SIZE} maxWidthPt={HEADER_MAX_WIDTH} />
+                                                        <span className="header-decor-line" style={{ margin: '0 15px' }}></span>
                                                     </div>
 
-                                                    {/* Row 2 */}
-                                                    <div className="grid-cell grid-cell-label">Số lượng</div>
-                                                    <div className="grid-cell grid-cell-value-lg" style={{ fontSize: getShrinkFontSize(group.totalQuantity, 48) }}>
-                                                        {group.totalQuantity} <span style={{ fontSize: '20pt', fontWeight: 'normal' }}>pcs</span>
-                                                    </div>
-                                                    {/* Col 3 is spanned from Row 1 */}
-
-                                                    {/* Row 3 */}
-                                                    <div className="grid-cell grid-cell-label">Thiết bị</div>
-                                                    <div className="grid-cell grid-cell-value" style={{ fontSize: getShrinkFontSize(group.thiet_bi, 32) }}>
-                                                        {group.thiet_bi}
-                                                    </div>
-                                                    {group.qrChunks.length > 1 ? (
-                                                        <div className="grid-cell grid-cell-qr" style={{ gridRow: 'span 2', borderBottom: 'none' }}>
-                                                            <div className="qr-label-small">{group.qrChunks[1].label} ({group.qrChunks[1].serials.length} QR)</div>
-                                                            <QRCodeSVG value={group.qrChunks[1].qrValue} size={165} level="M" includeMargin={false} />
+                                                    <div className="label-body">
+                                                        {/* Row 1 */}
+                                                        <div className="grid-cell grid-cell-label">
+                                                            <SvgFitText text="THÙNG" fontSizePt={GRID_SIZE_LARGE} maxWidthPt={GRID_MAX_WIDTH} />
                                                         </div>
-                                                    ) : (
-                                                        null // Spanned from Row 1
-                                                    )}
+                                                        <div className="grid-cell grid-cell-value-lg">
+                                                            <SvgFitText text={String(group.thung)} fontSizePt={GRID_SIZE_LARGE} maxWidthPt={GRID_MAX_WIDTH} />
+                                                        </div>
+                                                        <div className="grid-cell grid-cell-qr" style={{ gridRow: group.qrChunks.length > 1 ? 'span 2' : 'span 4', borderBottom: group.qrChunks.length > 1 ? '2.5px solid #000000' : 'none' }}>
+                                                            {group.qrChunks[0] && (
+                                                                <>
+                                                                    <div style={{ width: '45mm', height: '45mm', minWidth: '45mm', minHeight: '45mm', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                        <QRCodeSVG value={group.qrChunks[0].qrValue} size={165} level="M" includeMargin={false} />
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                        </div>
 
-                                                    {/* Row 4 */}
-                                                    <div className="grid-cell grid-cell-label">Tình trạng</div>
-                                                    <div className="grid-cell grid-cell-value" style={{ fontSize: getShrinkFontSize(group.tinh_trang, 30), borderBottom: 'none' }}>
-                                                        {group.tinh_trang}
+                                                        {/* Row 2 */}
+                                                        <div className="grid-cell grid-cell-label">
+                                                            <SvgFitText text="SỐ LƯỢNG" fontSizePt={GRID_SIZE_LARGE} maxWidthPt={GRID_MAX_WIDTH} />
+                                                        </div>
+                                                        <div className="grid-cell grid-cell-value-lg">
+                                                            <div style={{ 
+                                                                display: 'flex', 
+                                                                alignItems: 'baseline', 
+                                                                justifyContent: 'center',
+                                                                gap: '6px',
+                                                                fontSize: `${GRID_SIZE_LARGE}pt`, 
+                                                                fontWeight: 900, 
+                                                                fontFamily: '"Times New Roman", Times, serif',
+                                                                color: 'black',
+                                                                whiteSpace: 'nowrap'
+                                                            }}>
+                                                                <span>{group.totalQuantity}</span>
+                                                                <span style={{ fontSize: '20pt', fontWeight: 'normal' }}>pcs</span>
+                                                            </div>
+                                                        </div>
+                                                        {/* Col 3 is spanned from Row 1 */}
+
+                                                        {/* Row 3 */}
+                                                        <div className="grid-cell grid-cell-label">
+                                                            <SvgFitText text="THIẾT BỊ" fontSizePt={GRID_SIZE_SMALL} maxWidthPt={GRID_MAX_WIDTH} />
+                                                        </div>
+                                                        <div className="grid-cell grid-cell-value">
+                                                            <SvgFitText text={String(group.thiet_bi)} fontSizePt={GRID_SIZE_SMALL} maxWidthPt={GRID_MAX_WIDTH} />
+                                                        </div>
+                                                        {group.qrChunks.length > 1 ? (
+                                                            <div className="grid-cell grid-cell-qr" style={{ gridRow: 'span 2', borderBottom: 'none' }}>
+                                                                <div style={{ width: '45mm', height: '45mm', minWidth: '45mm', minHeight: '45mm', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                    <QRCodeSVG value={group.qrChunks[1].qrValue} size={165} level="M" includeMargin={false} />
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            null // Spanned from Row 1
+                                                        )}
+
+                                                        {/* Row 4 */}
+                                                        <div className="grid-cell grid-cell-label">
+                                                            <SvgFitText text="TÌNH TRẠNG" fontSizePt={GRID_SIZE_SMALL} maxWidthPt={GRID_MAX_WIDTH} />
+                                                        </div>
+                                                        <div className="grid-cell grid-cell-value" style={{ borderBottom: 'none' }}>
+                                                            <SvgFitText text={String(group.tinh_trang)} fontSizePt={GRID_SIZE_SMALL} maxWidthPt={GRID_MAX_WIDTH} />
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                </>
                                             );
                                         })()}
                                         
