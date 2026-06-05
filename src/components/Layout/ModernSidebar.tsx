@@ -33,7 +33,23 @@ import {
     Truck,
     CornerUpLeft,
     PieChart,
-    CheckSquare
+    CheckSquare,
+    List as ListIcon,
+    ArrowRightLeft,
+    FileSearch,
+    AlertTriangle,
+    FileText,
+    TrendingDown,
+    Calculator,
+    CalendarCheck,
+    ClipboardList,
+    FileSignature,
+    Target,
+    Banknote,
+    Calculator as CalculatorIcon,
+    Mailbox,
+    Bot,
+    Send
 } from 'lucide-react';
 import type { RootState, AppDispatch } from '../../store';
 import { logoutUser } from '../../store/slices/authSlice';
@@ -257,14 +273,14 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                         if (item.path === '/assets') {
                             const canViewReports = hasAnyPermission(['assets.view', 'assets.manage', '*']);
                             const assetSubItems = [
-                                { text: 'Danh sách tài sản', path: '/assets' },
-                                { text: 'Bàn giao CCDC-BHLĐ', path: '/assets/handover-bhl' },
+                                { text: 'Danh sách tài sản', path: '/assets', icon: <ListIcon size={18} /> },
+                                { text: 'Bàn giao CCDC-BHLĐ', path: '/assets/handover-bhl', icon: <ArrowRightLeft size={18} /> },
                                 ...(canViewReports ? [
-                                    { text: 'BC tổng hợp CCDC-TSNT', path: '/assets/report-ccdc' },
-                                    { text: 'Chi tiết CCDC-TSNT', path: '/assets/detail-ccdc' },
-                                    { text: 'BC tổng hợp TBVP', path: '/assets/report-tbvp' },
-                                    { text: 'Chi tiết TBVP', path: '/assets/detail-tbvp' },
-                                    { text: 'BC CCDC-TBVP hỏng', path: '/assets/broken-report' },
+                                    { text: 'BC tổng hợp CCDC-TSNT', path: '/assets/report-ccdc', icon: <PieChart size={18} /> },
+                                    { text: 'Chi tiết CCDC-TSNT', path: '/assets/detail-ccdc', icon: <FileSearch size={18} /> },
+                                    { text: 'BC tổng hợp TBVP', path: '/assets/report-tbvp', icon: <FileText size={18} /> },
+                                    { text: 'Chi tiết TBVP', path: '/assets/detail-tbvp', icon: <FileSearch size={18} /> },
+                                    { text: 'BC CCDC-TBVP hỏng', path: '/assets/broken-report', icon: <AlertTriangle size={18} /> },
                                 ] : []),
                             ];
                             const isGroupActive = location.pathname.startsWith('/assets');
@@ -295,7 +311,9 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                                             onClick={() => { navigate(sub.path); if(isMobile) handleDrawerToggle(); }}
                                                             sx={subItemSx(subActive)}
                                                         >
-                                                            <Box sx={{ width: 6, height: 6, borderRadius: '50%', mr: 1.5, bgcolor: subActive ? UI.primary : UI.muted }} />
+                                                            <ListItemIcon sx={{ minWidth: 32, color: subActive ? UI.primary : UI.muted }}>
+                                                                {sub.icon}
+                                                            </ListItemIcon>
                                                             <ListItemText
                                                                 primary={sub.text}
                                                                 primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: subActive ? 600 : 400 }}
@@ -324,10 +342,10 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                             ];
 
                             const settlementSubItems = [
-                                { text: 'Báo cáo 17 - XNT', path: '/inventory-report' },
-                                { text: 'Báo cáo Xuất trong kỳ', path: '/detailed-outbound-report' },
-                                { text: 'Quyết toán vật tư', path: '/monthly-settlement' },
-                                { text: 'Quyết toán hàng hóa', path: '/goods-settlement' },
+                                { text: 'Báo cáo 17 - XNT', path: '/inventory-report', icon: <FileText size={18} /> },
+                                { text: 'Báo cáo Xuất trong kỳ', path: '/detailed-outbound-report', icon: <TrendingDown size={18} /> },
+                                { text: 'Quyết toán vật tư', path: '/monthly-settlement', icon: <Calculator size={18} /> },
+                                { text: 'Quyết toán hàng hóa', path: '/goods-settlement', icon: <Calculator size={18} /> },
                             ];
                             const isSettlementGroupActive = ['/inventory-report', '/detailed-outbound-report', '/monthly-settlement', '/goods-settlement'].includes(location.pathname);
                             const isGroupActive = xnkSubItems.some(sub => location.pathname === sub.path) || isSettlementGroupActive;
@@ -380,7 +398,9 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                                                                     onClick={() => { navigate(sSub.path); if(isMobile) handleDrawerToggle(); }}
                                                                                     sx={subItemSx(sSubActive)}
                                                                                 >
-                                                                                    <Box sx={{ width: 4, height: 4, borderRadius: '50%', mr: 1.5, bgcolor: sSubActive ? UI.primary : UI.muted }} />
+                                                                                    <ListItemIcon sx={{ minWidth: 32, color: sSubActive ? UI.primary : UI.muted }}>
+                                                                                        {sSub.icon}
+                                                                                    </ListItemIcon>
                                                                                     <ListItemText
                                                                                         primary={sSub.text}
                                                                                         primaryTypographyProps={{ fontSize: '0.75rem', fontWeight: sSubActive ? 600 : 400 }}
@@ -421,16 +441,16 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                         // ── Expandable Admin/HR group
                         if (item.path === '/admin-hr') {
                             const adminHrSubItems = [
-                                ...(hasPermission('employees.view') ? [{ text: 'Nhân viên', path: '/employees' }] : []),
+                                ...(hasPermission('employees.view') ? [{ text: 'Nhân viên', path: '/employees', icon: <Users size={18} /> }] : []),
                                 ...(profile?.role === 'admin' || profile?.role === 'manager' ? [
-                                    { text: 'Chấm công', path: '/attendance' },
-                                    { text: 'Tổng hợp chấm công', path: '/attendance-summary' },
-                                    { text: 'Phiếu hành chính', path: '/admin-requests' },
-                                    { text: 'Chấm điểm KPI', path: '/kpi-grades' },
-                                    { text: 'Bảng lương', path: '/payroll' },
-                                    { text: 'Điểm cộng trừ', path: '/bonus-penalty' },
-                                    { text: 'Thiết lập công lương', path: '/payroll-settings' },
-                                    { text: 'Hòm thư góp ý', path: '/feedback-box' },
+                                    { text: 'Chấm công', path: '/attendance', icon: <CalendarCheck size={18} /> },
+                                    { text: 'Tổng hợp chấm công', path: '/attendance-summary', icon: <ClipboardList size={18} /> },
+                                    { text: 'Phiếu hành chính', path: '/admin-requests', icon: <FileSignature size={18} /> },
+                                    { text: 'Chấm điểm KPI', path: '/kpi-grades', icon: <Target size={18} /> },
+                                    { text: 'Bảng lương', path: '/payroll', icon: <Banknote size={18} /> },
+                                    { text: 'Điểm cộng trừ', path: '/bonus-penalty', icon: <CalculatorIcon size={18} /> },
+                                    { text: 'Thiết lập công lương', path: '/payroll-settings', icon: <Settings size={18} /> },
+                                    { text: 'Hòm thư góp ý', path: '/feedback-box', icon: <Mailbox size={18} /> },
                                 ] : [])
                             ];
                             const isGroupActive = ['/employees', '/attendance', '/attendance-summary', '/admin-requests', '/kpi-grades', '/payroll', '/bonus-penalty', '/payroll-settings', '/feedback-box'].includes(location.pathname);
@@ -461,7 +481,9 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                                             onClick={() => { navigate(sub.path); if(isMobile) handleDrawerToggle(); }}
                                                             sx={subItemSx(subActive, '#10B981')}
                                                         >
-                                                            <Box sx={{ width: 6, height: 6, borderRadius: '50%', mr: 1.5, bgcolor: subActive ? '#10B981' : UI.muted }} />
+                                                            <ListItemIcon sx={{ minWidth: 32, color: subActive ? '#10B981' : UI.muted }}>
+                                                                {sub.icon}
+                                                            </ListItemIcon>
                                                             <ListItemText
                                                                 primary={sub.text}
                                                                 primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: subActive ? 600 : 400 }}
@@ -479,9 +501,9 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                         // ── Expandable Zalo Notification group
                         if (item.path === '/zalo') {
                             const zaloSubItems = [
-                                { text: 'Quản lý Bot', path: '/zalo/contacts' },
-                                { text: 'Chiến dịch gửi', path: '/zalo/campaigns' },
-                                { text: 'Lịch sử gửi', path: '/zalo/logs' }
+                                { text: 'Quản lý Bot', path: '/zalo/contacts', icon: <Bot size={18} /> },
+                                { text: 'Chiến dịch gửi', path: '/zalo/campaigns', icon: <Send size={18} /> },
+                                { text: 'Lịch sử gửi', path: '/zalo/logs', icon: <History size={18} /> }
                             ];
                             const isGroupActive = location.pathname.startsWith('/zalo');
                             return (
@@ -511,7 +533,9 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                                             onClick={() => { navigate(sub.path); if(isMobile) handleDrawerToggle(); }}
                                                             sx={subItemSx(subActive, '#0ea5e9')}
                                                         >
-                                                            <Box sx={{ width: 6, height: 6, borderRadius: '50%', mr: 1.5, bgcolor: subActive ? '#0ea5e9' : UI.muted }} />
+                                                            <ListItemIcon sx={{ minWidth: 32, color: subActive ? '#0ea5e9' : UI.muted }}>
+                                                                {sub.icon}
+                                                            </ListItemIcon>
                                                             <ListItemText
                                                                 primary={sub.text}
                                                                 primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: subActive ? 600 : 400 }}
