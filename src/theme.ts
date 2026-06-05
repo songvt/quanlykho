@@ -1,18 +1,18 @@
 import { createTheme, alpha } from '@mui/material/styles';
 
 const colors = {
-    primary: '#1d4ed8',
-    primaryHover: '#1e40af',
-    slate900: '#0f172a',
-    slate700: '#334155',
-    slate600: '#475569',
-    slate500: '#64748b',
-    slate400: '#94a3b8',
-    slate300: '#cbd5e1',
-    slate200: '#e2e8f0',
-    slate100: '#f1f5f9',
-    slate50: '#f8fafc',
-    surface: '#ffffff',
+    primary: 'var(--brand-primary)',
+    primaryHover: 'var(--brand-secondary)',
+    slate900: 'var(--text-primary)',
+    slate700: 'var(--text-primary)',
+    slate600: 'var(--text-secondary)',
+    slate500: 'var(--text-secondary)',
+    slate400: 'var(--border-color)',
+    slate300: 'var(--border-color)',
+    slate200: 'var(--border-color)',
+    slate100: 'var(--bg-default)',
+    slate50: 'var(--bg-default)',
+    surface: 'var(--bg-card)',
 };
 
 const theme = createTheme({
@@ -69,22 +69,22 @@ const theme = createTheme({
         },
     },
     typography: {
-        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-        h1: { fontWeight: 700, letterSpacing: 0 },
-        h2: { fontWeight: 700, letterSpacing: 0 },
-        h3: { fontWeight: 700, letterSpacing: 0 },
-        h4: { fontWeight: 700, letterSpacing: 0 },
-        h5: { fontWeight: 700, letterSpacing: 0 },
-        h6: { fontWeight: 700, letterSpacing: 0 },
-        subtitle1: { fontWeight: 600, letterSpacing: 0 },
-        subtitle2: { fontWeight: 600, letterSpacing: 0 },
-        body1: { fontSize: '0.9375rem', lineHeight: 1.55, letterSpacing: 0 },
-        body2: { fontSize: '0.875rem', lineHeight: 1.5, letterSpacing: 0 },
-        caption: { fontSize: '0.75rem', letterSpacing: 0 },
-        button: { fontWeight: 600, textTransform: 'none', letterSpacing: 0 },
+        fontFamily: "var(--font-sans)",
+        h1: { fontWeight: 700, letterSpacing: '-0.02em', fontSize: '32px' },
+        h2: { fontWeight: 700, letterSpacing: '-0.01em', fontSize: '24px' },
+        h3: { fontWeight: 600, letterSpacing: 0, fontSize: '20px' },
+        h4: { fontWeight: 600, letterSpacing: 0, fontSize: '18px' },
+        h5: { fontWeight: 600, letterSpacing: 0, fontSize: '16px' },
+        h6: { fontWeight: 600, letterSpacing: 0, fontSize: '14px' },
+        subtitle1: { fontWeight: 600, letterSpacing: 0, fontSize: '16px' },
+        subtitle2: { fontWeight: 600, letterSpacing: 0, fontSize: '14px' },
+        body1: { fontSize: '14px', lineHeight: 1.6, letterSpacing: 0 },
+        body2: { fontSize: '14px', lineHeight: 1.5, letterSpacing: 0 },
+        caption: { fontSize: '12px', letterSpacing: 0 },
+        button: { fontWeight: 600, textTransform: 'none', letterSpacing: 0, fontSize: '14px' },
     },
     shape: {
-        borderRadius: 8,
+        borderRadius: 12,
     },
     shadows: [
         'none',
@@ -186,13 +186,15 @@ const theme = createTheme({
         MuiCard: {
             styleOverrides: {
                 root: {
-                    borderRadius: 10,
-                    border: `1px solid ${colors.slate200}`,
+                    borderRadius: 20,
+                    border: '1px solid var(--border-color)',
                     boxShadow: 'none',
-                    transition: 'border-color 0.16s ease, box-shadow 0.16s ease',
+                    backgroundColor: 'var(--bg-card)',
+                    transition: 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
                     '&:hover': {
-                        borderColor: colors.slate300,
-                        boxShadow: '0 4px 12px rgba(15, 23, 42, 0.06)',
+                        borderColor: 'var(--brand-primary)',
+                        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.08)',
+                        transform: 'translateY(-2px)'
                     },
                 },
             },

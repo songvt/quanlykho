@@ -6,16 +6,22 @@
 :root {
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
-  /* Brand Palette */
-  --brand-primary:   #1d4ed8;
-  --brand-primary-light: #3b82f6;
-  --brand-primary-dark:  #1e40af;
-  --brand-success:   #059669;
-  --brand-warning:   #d97706;
-  --brand-error:     #dc2626;
-  --brand-purple:    #7c3aed;
+  /* Brand Palette - SaaS Modern */
+  --brand-primary:   #2563EB;
+  --brand-secondary: #4F46E5;
+  --brand-success:   #10B981;
+  --brand-warning:   #F59E0B;
+  --brand-danger:    #EF4444;
 
-  /* Neutral */
+  /* Neutral - Light Mode */
+  --bg-default:      #F8FAFC;
+  --bg-sidebar:      #FFFFFF;
+  --bg-card:         #FFFFFF;
+  --text-primary:    #0F172A;
+  --text-secondary:  #64748B;
+  --border-color:    #E2E8F0;
+  
+  /* Shared Grays */
   --gray-50:  #f8fafc;
   --gray-100: #f1f5f9;
   --gray-200: #e2e8f0;
@@ -33,10 +39,10 @@
 
   /* Radius */
   --radius-sm:  8px;
-  --radius-md:  10px;
-  --radius-lg:  12px;
-  --radius-xl:  14px;
-  --radius-2xl: 16px;
+  --radius-md:  12px;
+  --radius-lg:  16px;
+  --radius-xl:  20px;
+  --radius-2xl: 24px;
 
   /* Touch target minimum */
   --touch-min: 44px;
@@ -68,11 +74,22 @@ body {
   min-width: 320px;
   min-height: 100vh;
   min-height: 100dvh; /* Dynamic viewport on mobile */
-  background: #f6f8fb;
+  background: var(--bg-default);
+  color: var(--text-primary);
   overflow-x: hidden;
   padding-bottom: var(--safe-bottom);
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+[data-theme='dark'] {
+  --bg-default:      #0F172A;
+  --bg-sidebar:      #111827;
+  --bg-card:         #1E293B;
+  --text-primary:    #F8FAFC;
+  --text-secondary:  #CBD5E1;
+  --border-color:    #334155;
 }
 
 #root {
@@ -205,9 +222,17 @@ a,
 
 /* Glassmorphism card */
 .glass-card {
-  background: #ffffff;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+}
+[data-theme='dark'] .glass-card {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
 }
 
 /* Gradient text */

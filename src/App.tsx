@@ -46,6 +46,8 @@ const ZaloTemplates  = lazy(() => import('./pages/Zalo/ZaloTemplates'));
 const ZaloCampaigns  = lazy(() => import('./pages/Zalo/ZaloCampaigns'));
 const ZaloLogs       = lazy(() => import('./pages/Zalo/ZaloLogs'));
 
+const FullScreenScanner = lazy(() => import('./pages/FullScreenScanner'));
+
 const NotFound = lazy(() => import('./pages/NotFound').catch(() => ({
     default: () => <Box p={6} textAlign="center" sx={{ color: 'text.secondary', fontSize: 24 }}>404 — Không tìm thấy trang</Box>
 })));
@@ -73,6 +75,8 @@ function App() {
 
                         <Route element={<ProtectedRoute />}>
                             <Route path="/change-password" element={<ChangePassword />} />
+                            
+                            <Route path="/scanner" element={<FullScreenScanner />} />
 
                             <Route path="/" element={<MainLayout />}>
                                 <Route index element={<Dashboard />} />
