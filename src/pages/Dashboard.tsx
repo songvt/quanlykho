@@ -146,7 +146,7 @@ const Dashboard = () => {
         let text = 'Chào buổi tối';
         if (hr < 12) text = 'Chào buổi sáng';
         else if (hr < 18) text = 'Chào buổi chiều';
-        return `${text}, ${profile?.full_name?.split(' ')[0] || 'bạn'}`;
+        return `${text}, ${profile?.full_name || 'bạn'}`;
     }, [profile]);
 
     const stats = useMemo(() => {
