@@ -143,10 +143,10 @@ const Dashboard = () => {
 
     const greeting = useMemo(() => {
         const hr = new Date().getHours();
-        let text = 'Good evening';
-        if (hr < 12) text = 'Good morning';
-        else if (hr < 18) text = 'Good afternoon';
-        return `${text}, ${profile?.full_name?.split(' ')[0] || 'User'}`;
+        let text = 'Chào buổi tối';
+        if (hr < 12) text = 'Chào buổi sáng';
+        else if (hr < 18) text = 'Chào buổi chiều';
+        return `${text}, ${profile?.full_name?.split(' ')[0] || 'bạn'}`;
     }, [profile]);
 
     const stats = useMemo(() => {
@@ -234,12 +234,12 @@ const Dashboard = () => {
                         {greeting}
                     </Typography>
                     <Typography sx={{ color: 'var(--text-secondary)', fontSize: '0.9rem', mt: 0.5 }}>
-                        Here's what's happening in your warehouse today.
+                        Dưới đây là tình hình kho hàng của bạn hôm nay.
                     </Typography>
                 </Box>
                 <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 2 }}>
                     <Typography sx={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-                        Last updated: {lastUpdated.toLocaleTimeString()}
+                        Cập nhật: {lastUpdated.toLocaleTimeString()}
                     </Typography>
                     <IconButton onClick={refreshAll} disabled={isLoading} sx={{ bgcolor: 'var(--bg-default)', border: '1px solid var(--border-color)' }}>
                         <RefreshCw size={16} />
