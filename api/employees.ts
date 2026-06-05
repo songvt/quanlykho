@@ -69,16 +69,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     if (!error && data) {
                         const { password: _, ...user } = data;
                         try {
+                            const ip = (req.headers['x-forwarded-for'] as string || req.socket?.remoteAddress || 'Unknown').split(',')[0].trim();
                             await supabase.from('qr_logs').insert([{
                                 action: 'LOGIN',
                                 doc_title: 'Đăng nhập hệ thống',
                                 created_by: email,
                                 total_serials: 0,
                                 total_qrs: 0,
-                                details: JSON.stringify({ ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'Unknown' })
+                                details: JSON.stringify({ ip })
+                            }]);
+
+                            // Ghi nhận thiết bị đăng nhập
+                            const ua = req.headers['user-agent'] || '';
+                            let deviceName = 'Máy tính';
+                            if (/iphone|ipad|ipod/i.test(ua)) deviceName = 'iPhone/iPad';
+                            else if (/android/i.test(ua)) deviceName = 'Thiết bị Android';
+                            else if (/macintosh/i.test(ua)) deviceName = 'Mac';
+                            else if (/windows/i.test(ua)) deviceName = 'Windows PC';
+                            else if (/linux/i.test(ua)) deviceName = 'Linux PC';
+
+                            let browserName = 'Trình duyệt Web';
+                            if (/chrome/i.test(ua) && !/edge|edg/i.test(ua)) browserName = 'Chrome';
+                            else if (/safari/i.test(ua) && !/chrome/i.test(ua)) browserName = 'Safari';
+                            else if (/firefox/i.test(ua)) browserName = 'Firefox';
+                            else if (/edge|edg/i.test(ua)) browserName = 'Edge';
+
+                            await supabase.from('logged_in_devices').insert([{
+                                user_id: data.id,
+                                email: email,
+                                device_name: deviceName,
+                                browser_name: browserName,
+                                ip_address: ip,
+                                last_active: new Date().toISOString()
                             }]);
                         } catch (logErr) {
-                            console.error('Lỗi insert QR log khi login:', logErr);
+                            console.error('Lỗi ghi log/thiết bị khi login:', logErr);
                         }
                         return res.status(200).json({ ...user, permissions: typeof data.permissions === 'string' ? JSON.parse(data.permissions) : data.permissions });
                     }
@@ -93,16 +118,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         const user = userRow.toObject();
                         delete user.password;
                         try {
+                            const ip = (req.headers['x-forwarded-for'] as string || req.socket?.remoteAddress || 'Unknown').split(',')[0].trim();
                             await supabase.from('qr_logs').insert([{
                                 action: 'LOGIN',
                                 doc_title: 'Đăng nhập hệ thống (GS)',
                                 created_by: email,
                                 total_serials: 0,
                                 total_qrs: 0,
-                                details: JSON.stringify({ ip: req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'Unknown' })
+                                details: JSON.stringify({ ip })
+                            }]);
+
+                            // Ghi nhận thiết bị đăng nhập từ GS fallback
+                            const ua = req.headers['user-agent'] || '';
+                            let deviceName = 'Máy tính';
+                            if (/iphone|ipad|ipod/i.test(ua)) deviceName = 'iPhone/iPad';
+                            else if (/android/i.test(ua)) deviceName = 'Thiết bị Android';
+                            else if (/macintosh/i.test(ua)) deviceName = 'Mac';
+                            else if (/windows/i.test(ua)) deviceName = 'Windows PC';
+                            else if (/linux/i.test(ua)) deviceName = 'Linux PC';
+
+                            let browserName = 'Trình duyệt Web';
+                            if (/chrome/i.test(ua) && !/edge|edg/i.test(ua)) browserName = 'Chrome';
+                            else if (/safari/i.test(ua) && !/chrome/i.test(ua)) browserName = 'Safari';
+                            else if (/firefox/i.test(ua)) browserName = 'Firefox';
+                            else if (/edge|edg/i.test(ua)) browserName = 'Edge';
+
+                            await supabase.from('logged_in_devices').insert([{
+                                user_id: user.id,
+                                email: email,
+                                device_name: deviceName,
+                                browser_name: browserName,
+                                ip_address: ip,
+                                last_active: new Date().toISOString()
                             }]);
                         } catch (logErr) {
-                            console.error('Lỗi insert QR log khi login GS:', logErr);
+                            console.error('Lỗi ghi log/thiết bị khi login GS:', logErr);
                         }
                         return res.status(200).json({ ...user, permissions: typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions });
                     } catch (gsErr: any) {

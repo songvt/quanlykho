@@ -624,4 +624,69 @@ export const GoogleSheetService = {
             body: JSON.stringify({ payload }),
         });
     },
+
+    // --- Security & Configuration ---
+    async getCompanyInfo() {
+        return apiRequest('system_config?tab=company');
+    },
+
+    async updateCompanyInfo(payload: any) {
+        return apiRequest('system_config?tab=company', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+    },
+
+    async getBranches() {
+        return apiRequest('system_config?tab=branches');
+    },
+
+    async createBranch(payload: any) {
+        return apiRequest('system_config?tab=branches', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+    },
+
+    async updateBranch(payload: any) {
+        return apiRequest('system_config?tab=branches', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+    },
+
+    async deleteBranch(id: string) {
+        return apiRequest('system_config?tab=branches', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+        });
+    },
+
+    async getDevices() {
+        return apiRequest('system_config?tab=devices');
+    },
+
+    async deleteDevice(id: string) {
+        return apiRequest('system_config?tab=devices', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id })
+        });
+    },
+
+    async getBackupData() {
+        return apiRequest('system_config?tab=backup');
+    },
+
+    async restoreBackupData(payload: any) {
+        return apiRequest('system_config?tab=restore', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+    },
 };

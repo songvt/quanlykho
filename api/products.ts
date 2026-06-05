@@ -123,7 +123,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const { error: sbError } = await supabase.from('products').delete().in('id', targetIds);
                 if (sbError) {
                     console.error('SB Delete Error:', sbError);
-                    return res.status(500).json({ error: 'Supabase Delete Failed' });
+                    let customMsg = 'Xóa dữ liệu thất bại từ Supabase.';
+                    if (sbError.code === '23503') {
+                        customMsg = `Không thể xóa mã sản phẩm này vì nó đang tồn tại trong các biên bản giao dịch khác (như lịch sử xuất/nhập kho).`;
+                    }
+                    return res.status(500).json({ error: customMsg, details: sbError.message });
                 }
 
                 // 2. Google Sheets
