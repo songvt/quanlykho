@@ -31,12 +31,12 @@ import { formatNumber } from '../utils/numberUtils';
 
 // Premium SaaS Color Tokens
 const COLORS = {
-    primary: 'var(--brand-primary)',
-    secondary: 'var(--brand-secondary)',
-    success: 'var(--brand-success)',
-    warning: 'var(--brand-warning)',
-    danger: 'var(--brand-danger)',
-    slate: 'var(--text-secondary)'
+    primary: '#2563EB', // var(--brand-primary)
+    secondary: '#4F46E5', // var(--brand-secondary)
+    success: '#10B981', // var(--brand-success)
+    warning: '#F59E0B', // var(--brand-warning)
+    danger: '#EF4444', // var(--brand-danger)
+    slate: '#64748B' // var(--text-secondary)
 };
 
 // ── Metric Card Component ──
