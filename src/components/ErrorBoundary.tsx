@@ -60,14 +60,6 @@ class ErrorBoundary extends Component<Props, State> {
     public componentDidCatch(error: any, errorInfo: ErrorInfo) {
         console.error('[ErrorBoundary] Caught error:', error);
         this.setState({ errorInfo });
-
-        // Tự động hard reload khi phát hiện lỗi chunk cũ sau deploy mới
-        if (isChunkLoadError(error)) {
-            console.warn('[ErrorBoundary] Stale chunk detected — auto-reloading in 1s...');
-            setTimeout(() => {
-                clearCacheAndReload();
-            }, 1000);
-        }
     }
 
     public render() {
@@ -96,10 +88,8 @@ class ErrorBoundary extends Component<Props, State> {
                             {isChunkErr ? 'Đang cập nhật phiên bản...' : 'Có lỗi xảy ra'}
                         </Typography>
                         
-                        <Typography variant="body1" color="text.secondary" mb={4} sx={{ lineHeight: 1.6 }}>
-                            {isChunkErr
-                                ? 'Hệ thống đã có bản cập nhật mới. Chúng tôi đang tải lại dữ liệu mới nhất cho bạn (vui lòng chờ trong giây lát)...'
-                                : (this.state.error?.message || 'Lỗi không xác định. Vui lòng tải lại trang để tiếp tục.')}
+                        <Typography variant="body1" color="text.secondary" mb={4} sx={{ lineHeight: 1.6, textAlign: 'left', whiteSpace: 'pre-wrap', maxHeight: '300px', overflow: 'auto', p: 2, bgcolor: '#f1f5f9', borderRadius: 2 }}>
+                            {this.state.error?.stack || this.state.error?.message || 'Lỗi không xác định. Vui lòng tải lại trang để tiếp tục.'}
                         </Typography>
                         
                         <Button

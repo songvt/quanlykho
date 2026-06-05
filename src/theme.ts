@@ -1,18 +1,18 @@
 import { createTheme, alpha } from '@mui/material/styles';
 
 const colors = {
-    primary: 'var(--brand-primary)',
-    primaryHover: 'var(--brand-secondary)',
-    slate900: 'var(--text-primary)',
-    slate700: 'var(--text-primary)',
-    slate600: 'var(--text-secondary)',
-    slate500: 'var(--text-secondary)',
-    slate400: 'var(--border-color)',
-    slate300: 'var(--border-color)',
-    slate200: 'var(--border-color)',
-    slate100: 'var(--bg-default)',
-    slate50: 'var(--bg-default)',
-    surface: 'var(--bg-card)',
+    primary: '#2563EB', // --brand-primary
+    primaryHover: '#4F46E5', // --brand-secondary
+    slate900: '#0F172A',
+    slate700: '#334155',
+    slate600: '#475569',
+    slate500: '#64748B',
+    slate400: '#94A3B8',
+    slate300: '#CBD5E1',
+    slate200: '#E2E8F0',
+    slate100: '#F1F5F9',
+    slate50: '#F8FAFC',
+    surface: '#FFFFFF',
 };
 
 const theme = createTheme({
