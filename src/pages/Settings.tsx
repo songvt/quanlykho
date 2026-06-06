@@ -87,6 +87,7 @@ const Settings = () => {
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [selectedEmployee, setSelectedEmployee] = useState<any | null>(null);
     const [openPermDialog, setOpenPermDialog] = useState(false);
+    const [userSearchQuery, setUserSearchQuery] = useState('');
 
     // --- 5. Devices State ---
     const [devices, setDevices] = useState<ActiveDevice[]>([]);
@@ -246,6 +247,7 @@ const Settings = () => {
         setLoading(true);
         await fetchEmployeesData();
         setLoading(false);
+        setUserSearchQuery('');
         setActiveDialog('permissions');
     };
 
@@ -368,7 +370,7 @@ const Settings = () => {
             {/* Menu Catalog Grid */}
             <Grid container spacing={2.5} sx={{ mb: 4 }}>
                 {/* 1. Company Info Card */}
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <Card
                         onClick={() => { void fetchCompanyInfo(); setActiveDialog('company'); }}
                         sx={{
@@ -397,7 +399,7 @@ const Settings = () => {
                 </Grid>
 
                 {/* 2. Branches Card */}
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <Card
                         onClick={() => { void fetchBranches(); setActiveDialog('branches'); }}
                         sx={{
@@ -426,7 +428,7 @@ const Settings = () => {
                 </Grid>
 
                 {/* 3. Roles & Permissions Card */}
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <Card
                         onClick={handleOpenPermissions}
                         sx={{
@@ -455,7 +457,7 @@ const Settings = () => {
                 </Grid>
 
                 {/* 4. Backup & Restore Card */}
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <Card
                         onClick={() => setActiveDialog('backup')}
                         sx={{
@@ -484,7 +486,7 @@ const Settings = () => {
                 </Grid>
 
                 {/* 5. Logged-in Devices Card */}
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <Card
                         onClick={handleOpenDevices}
                         sx={{
@@ -520,7 +522,7 @@ const Settings = () => {
                 <DialogTitle sx={{ fontWeight: 'bold' }}>Cấu hình thông tin công ty</DialogTitle>
                 <DialogContent dividers>
                     <Grid container spacing={2} pt={1}>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Tên công ty pháp nhân"
                                 fullWidth
@@ -529,7 +531,7 @@ const Settings = () => {
                                 size="small"
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Mã số thuế"
                                 fullWidth
@@ -538,7 +540,7 @@ const Settings = () => {
                                 size="small"
                             />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 label="Địa chỉ trụ sở chính"
                                 fullWidth
@@ -547,7 +549,7 @@ const Settings = () => {
                                 size="small"
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Số điện thoại"
                                 fullWidth
@@ -556,7 +558,7 @@ const Settings = () => {
                                 size="small"
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Email liên hệ"
                                 fullWidth
@@ -565,7 +567,7 @@ const Settings = () => {
                                 size="small"
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Người đại diện pháp luật"
                                 fullWidth
@@ -574,7 +576,7 @@ const Settings = () => {
                                 size="small"
                             />
                         </Grid>
-                        <Grid item xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField
                                 label="Website công ty"
                                 fullWidth
@@ -583,7 +585,7 @@ const Settings = () => {
                                 size="small"
                             />
                         </Grid>
-                        <Grid item xs={12}>
+                        <Grid size={12}>
                             <TextField
                                 label="URL Logo công ty"
                                 fullWidth
@@ -783,9 +785,24 @@ const Settings = () => {
             {/* ========================================================================= */}
             {/* 3. DIALOG: PERMISSIONS */}
             {/* ========================================================================= */}
-            <Dialog open={activeDialog === 'permissions'} onClose={() => setActiveDialog(null)} fullWidth maxWidth="lg">
+            <Dialog open={activeDialog === 'permissions'} onClose={() => { setActiveDialog(null); setUserSearchQuery(''); }} fullWidth maxWidth="lg">
                 <DialogTitle sx={{ fontWeight: 'bold' }}>Quản lý vai trò & Phân quyền thao tác</DialogTitle>
                 <DialogContent dividers>
+                    <Box sx={{ mb: 2.5 }}>
+                        <TextField
+                            placeholder="Tìm kiếm tài khoản theo tên, email, khu vực..."
+                            variant="outlined"
+                            size="small"
+                            fullWidth
+                            value={userSearchQuery}
+                            onChange={(e) => setUserSearchQuery(e.target.value)}
+                            slotProps={{
+                                htmlInput: {
+                                    style: { padding: '8.5px 14px' }
+                                }
+                            }}
+                        />
+                    </Box>
                     <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #eee' }}>
                         <Table size="small">
                             <TableHead sx={{ bgcolor: '#f8fafc' }}>
@@ -799,42 +816,65 @@ const Settings = () => {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {employees.map(emp => (
-                                    <TableRow key={emp.id} hover>
-                                        <TableCell><b>{emp.full_name}</b> {emp.username ? `(${emp.username})` : ''}</TableCell>
-                                        <TableCell>{emp.email}</TableCell>
-                                        <TableCell>{emp.district || 'Không có'}</TableCell>
-                                        <TableCell>
-                                            <Select
-                                                value={emp.role}
-                                                size="small"
-                                                onChange={e => handleChangeUserRole(emp.id, e.target.value as any)}
-                                                sx={{ minWidth: 120 }}
-                                            >
-                                                <MenuItem value="admin">Quản trị (admin)</MenuItem>
-                                                <MenuItem value="manager">Quản lý (manager)</MenuItem>
-                                                <MenuItem value="staff">Nhân viên (staff)</MenuItem>
-                                            </Select>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Chip
-                                                label={emp.role === 'admin' ? 'Full access (*)' : `${emp.permissions?.length || 0} quyền`}
-                                                color={emp.role === 'admin' ? 'error' : 'primary'}
-                                                size="small"
-                                            />
-                                        </TableCell>
-                                        <TableCell align="right">
-                                            <Button
-                                                size="small"
-                                                variant="outlined"
-                                                onClick={() => handleEditUserPermissions(emp)}
-                                                disabled={emp.role === 'admin'}
-                                            >
-                                                Thiết lập quyền
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                {(() => {
+                                    const filtered = employees.filter(emp => {
+                                        if (!userSearchQuery) return true;
+                                        const q = userSearchQuery.toLowerCase();
+                                        return (
+                                            emp.full_name?.toLowerCase().includes(q) ||
+                                            emp.email?.toLowerCase().includes(q) ||
+                                            emp.username?.toLowerCase().includes(q) ||
+                                            emp.district?.toLowerCase().includes(q)
+                                        );
+                                    });
+
+                                    if (filtered.length === 0) {
+                                        return (
+                                            <TableRow>
+                                                <TableCell colSpan={6} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                                                    Không tìm thấy tài khoản nào phù hợp.
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    }
+
+                                    return filtered.map(emp => (
+                                        <TableRow key={emp.id} hover>
+                                            <TableCell><b>{emp.full_name}</b> {emp.username ? `(${emp.username})` : ''}</TableCell>
+                                            <TableCell>{emp.email}</TableCell>
+                                            <TableCell>{emp.district || 'Không có'}</TableCell>
+                                            <TableCell>
+                                                <Select
+                                                    value={emp.role}
+                                                    size="small"
+                                                    onChange={e => handleChangeUserRole(emp.id, e.target.value as any)}
+                                                    sx={{ minWidth: 120 }}
+                                                >
+                                                    <MenuItem value="admin">Quản trị (admin)</MenuItem>
+                                                    <MenuItem value="manager">Quản lý (manager)</MenuItem>
+                                                    <MenuItem value="staff">Nhân viên (staff)</MenuItem>
+                                                </Select>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Chip
+                                                    label={emp.role === 'admin' ? 'Full access (*)' : `${emp.permissions?.length || 0} quyền`}
+                                                    color={emp.role === 'admin' ? 'error' : 'primary'}
+                                                    size="small"
+                                                />
+                                            </TableCell>
+                                            <TableCell align="right">
+                                                <Button
+                                                    size="small"
+                                                    variant="outlined"
+                                                    onClick={() => handleEditUserPermissions(emp)}
+                                                    disabled={emp.role === 'admin'}
+                                                >
+                                                    Thiết lập quyền
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ));
+                                })()}
                             </TableBody>
                         </Table>
                     </TableContainer>
