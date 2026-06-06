@@ -659,14 +659,25 @@ const Reports = () => {
                 return;
             }
             try {
-                const canvas = await html2canvas(input, { 
+                // Safe resolution of constructors
+                const html2canvasFn = typeof html2canvas === 'function' ? html2canvas : (html2canvas as any).default;
+                const jsPDFClass = typeof jsPDF === 'function' ? jsPDF : (jsPDF as any).jsPDF || (jsPDF as any).default;
+
+                if (!html2canvasFn) {
+                    throw new Error('html2canvas library is not loaded correctly.');
+                }
+                if (!jsPDFClass) {
+                    throw new Error('jsPDF library is not loaded correctly.');
+                }
+
+                const canvas = await html2canvasFn(input, { 
                     scale: 2, 
                     useCORS: true,
                     windowWidth: 1000,
                     width: 900
                 });
                 const imgData = canvas.toDataURL('image/png');
-                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdf = new jsPDFClass('p', 'mm', 'a4');
                 const pdfWidth = pdf.internal.pageSize.getWidth();
                 const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
                 pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
@@ -676,9 +687,9 @@ const Reports = () => {
                 const prefix = handoverType === 'inbound' ? 'BBNK' : 'BBXK';
                 const empName = selectedEmployee ? selectedEmployee.trim() : 'NhanVien';
                 pdf.save(`${prefix}_${empName} ${dateFormatted}.pdf`);
-            } catch (error) {
+            } catch (error: any) {
                 console.error("Error exporting PDF:", error);
-                setNotification({ type: 'error', message: 'Lỗi xuất PDF. Thử lại sau.' });
+                setNotification({ type: 'error', message: 'Lỗi xuất PDF: ' + (error?.message || error) });
             } finally {
                 setIsExportingPDF(false);
                 setOpenHandover(false);
@@ -1880,8 +1891,8 @@ const Reports = () => {
             </Dialog>
 
             {/* Hidden container for PDF Generation */}
-            {isExportingPDF && (
-                <Box sx={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '900px' }}>
+            {previewData && (
+                <Box sx={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '900px', zIndex: -1000, pointerEvents: 'none' }}>
                     <div id="hidden-pdf-container" style={{ padding: '30px', background: 'white' }}>
                         {handoverType === 'inbound' ? (
                             <ReturnsReportPreview

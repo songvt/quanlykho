@@ -785,13 +785,23 @@ const MonthlySettlementReport: React.FC = () => {
             // Scroll to top to ensure clean capture
             window.scrollTo(0, 0);
 
-            const canvas = await html2canvas(input, { 
+            const html2canvasFn = typeof html2canvas === 'function' ? html2canvas : (html2canvas as any).default;
+            const jsPDFClass = typeof jsPDF === 'function' ? jsPDF : (jsPDF as any).jsPDF || (jsPDF as any).default;
+
+            if (!html2canvasFn) {
+                throw new Error('html2canvas library is not loaded correctly.');
+            }
+            if (!jsPDFClass) {
+                throw new Error('jsPDF library is not loaded correctly.');
+            }
+
+            const canvas = await html2canvasFn(input, { 
                 scale: 3, // Tăng độ nét
                 useCORS: true,
                 logging: false,
                 backgroundColor: '#ffffff',
                 windowWidth: 1600, // Cố định chiều rộng để layout ổn định
-                onclone: (clonedDoc) => {
+                onclone: (clonedDoc: any) => {
                     const clonedInput = clonedDoc.getElementById('settlement-report-content');
                     if (clonedInput) {
                         clonedInput.style.width = '1600px';
@@ -846,7 +856,7 @@ const MonthlySettlementReport: React.FC = () => {
             });
 
             const imgData = canvas.toDataURL('image/png', 1.0);
-            const pdf = new jsPDF('l', 'mm', 'a4');
+            const pdf = new jsPDFClass('l', 'mm', 'a4');
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = pdf.internal.pageSize.getHeight();
             

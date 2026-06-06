@@ -394,34 +394,63 @@ const AdminRequests = () => {
         if (!selectedLeaveRequest) return;
         setIsExportingPDF(true);
         setTimeout(async () => {
-            const input = document.getElementById('printable-leave-request-area');
+            const input = document.getElementById('hidden-pdf-container');
             if (!input) {
+                alert('Lỗi: Không tìm thấy phần tử ẩn để xuất PDF!');
                 setIsExportingPDF(false);
                 return;
             }
             try {
-                const canvas = await html2canvas(input, { 
+                // Safe resolution of constructors
+                const html2canvasFn = typeof html2canvas === 'function' ? html2canvas : (html2canvas as any).default;
+                const jsPDFClass = typeof jsPDF === 'function' ? jsPDF : (jsPDF as any).jsPDF || (jsPDF as any).default;
+
+                if (!html2canvasFn) {
+                    throw new Error('html2canvas library is not loaded correctly.');
+                }
+                if (!jsPDFClass) {
+                    throw new Error('jsPDF library is not loaded correctly.');
+                }
+
+                const canvas = await html2canvasFn(input, { 
                     scale: 2, 
                     useCORS: true,
-                    windowWidth: 800,
-                    width: 794
+                    scrollX: 0,
+                    scrollY: 0,
+                    windowWidth: 794,
+                    width: 794,
+                    windowHeight: input.scrollHeight,
+                    height: input.scrollHeight
                 });
                 const imgData = canvas.toDataURL('image/png');
-                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdf = new jsPDFClass('p', 'mm', 'a4');
                 const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+                
+                const imgWidth = pdfWidth;
+                const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+                
+                if (imgHeight > pdfHeight) {
+                    const ratio = pdfHeight / imgHeight;
+                    const finalWidth = imgWidth * ratio;
+                    const finalHeight = pdfHeight;
+                    const x = (pdfWidth - finalWidth) / 2;
+                    pdf.addImage(imgData, 'PNG', x, 0, finalWidth, finalHeight);
+                } else {
+                    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+                }
                 
                 const empName = selectedLeaveRequest.employeeName ? selectedLeaveRequest.employeeName.trim() : 'NhanVien';
                 const dateFormatted = selectedLeaveRequest.requestDate ? selectedLeaveRequest.requestDate.replace(/-/g, '') : '';
                 pdf.save(`Don_Xin_Nghi_${empName}_${dateFormatted}.pdf`);
-            } catch (error) {
+            } catch (error: any) {
                 console.error("Error exporting PDF:", error);
-                setNotification({ type: 'error', message: 'Lỗi xuất PDF. Thử lại sau.' });
+                alert("Lỗi xuất PDF: " + (error?.message || error));
+                setNotification({ type: 'error', message: 'Lỗi xuất PDF: ' + (error?.message || error) });
             } finally {
                 setIsExportingPDF(false);
             }
-        }, 300);
+        }, 150);
     };
 
     const handleExportLeaveExcel = async () => {
@@ -979,8 +1008,8 @@ const AdminRequests = () => {
                 </Dialog>
 
                 {/* Hidden container for PDF Generation */}
-                {isExportingPDF && selectedLeaveRequest && (
-                    <Box sx={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '794px', bgcolor: 'white' }}>
+                {selectedLeaveRequest && (
+                    <Box sx={{ position: 'absolute', top: '20000px', left: '0px', width: '794px', bgcolor: 'white', zIndex: -1000, pointerEvents: 'none' }}>
                         <div id="hidden-pdf-container">
                             <PrintableLeaveRequestTemplate leaveRequest={selectedLeaveRequest} />
                         </div>
@@ -1059,9 +1088,8 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
     return (
         <Box
             sx={{
-                width: '100%',
-                maxWidth: '794px', // Standard A4 width at 96 DPI
-                minHeight: '1123px', // Standard A4 height at 96 DPI (297mm)
+                width: '794px',
+                height: '1123px',
                 p: '20mm 15mm 20mm 30mm',
                 bgcolor: 'white',
                 color: '#000000',
@@ -1069,8 +1097,8 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
                 boxSizing: 'border-box',
                 '@media print': {
                     p: '20mm 15mm 20mm 30mm !important',
-                    maxWidth: '100%',
-                    minHeight: 'auto',
+                    width: '794px',
+                    height: '1123px',
                 }
             }}
         >
@@ -1098,14 +1126,14 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
             </Box>
 
             {/* Document Title */}
-            <Box sx={{ textAlign: 'center', my: 4 }}>
+            <Box sx={{ textAlign: 'center', my: 2 }}>
                 <Typography sx={{ fontWeight: 'bold', fontSize: '15pt', letterSpacing: '0.5px', fontFamily: "'Times New Roman', Times, serif" }}>
                     ĐƠN XIN NGHỈ
                 </Typography>
             </Box>
 
             {/* Content Body */}
-            <Stack spacing={2.5} sx={{ mb: 4, fontSize: '11.5pt', lineHeight: 1.6 }}>
+            <Stack spacing={1.2} sx={{ mb: 2, fontSize: '11.5pt', lineHeight: 1.5 }}>
                 
                 {/* SECTION I */}
                 <Box>
@@ -1252,7 +1280,7 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
                 </Box>
 
                 {/* HANDOVER DETAILS */}
-                <Box sx={{ mt: 2 }}>
+                <Box sx={{ mt: 1 }}>
                     <Typography sx={{ fontStyle: 'italic', mb: 1, fontFamily: "'Times New Roman', Times, serif" }}>
                         Trong thời gian nghỉ, tôi đã bàn giao công việc như sau:
                     </Typography>
@@ -1291,7 +1319,7 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
             </Stack>
 
             {/* Under Table Promises */}
-            <Stack spacing={1} sx={{ mt: 3, fontSize: '11.5pt', lineHeight: 1.5, pl: 2 }}>
+            <Stack spacing={0.8} sx={{ mt: 1.5, fontSize: '11.5pt', lineHeight: 1.4, pl: 2 }}>
                 <Typography sx={{ textIndent: '20px', textAlign: 'justify', fontFamily: "'Times New Roman', Times, serif" }}>
                     Tôi cam kết sẽ trở lại làm việc tại Công ty sau khi hết thời gian xin nghỉ nêu trên, nếu không tôi xin hoàn toàn chịu trách nhiệm.
                 </Typography>
@@ -1304,9 +1332,9 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
             </Stack>
 
             {/* Bottom Signatures Layout matching image */}
-            <Box sx={{ mt: 4, '@media print': { mt: 3 } }}>
+            <Box sx={{ mt: 2, '@media print': { mt: 2 } }}>
                 {/* Director Title Centered */}
-                <Box sx={{ textAlign: 'center', width: '100%', mb: 12 }}>
+                <Box sx={{ textAlign: 'center', width: '100%', mb: 5 }}>
                     <Typography sx={{ fontWeight: 'bold', fontSize: '11.5pt', fontFamily: "'Times New Roman', Times, serif" }}>
                         BAN GIÁM ĐỐC TRUNG TÂM
                     </Typography>
@@ -1315,15 +1343,15 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
                 {/* Sub signatures spaced apart */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <Box sx={{ textAlign: 'center', width: '45%' }}>
-                        <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", mb: 8 }}>
+                        <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", mb: 4 }}>
                             NGƯỜI LÀM ĐƠN
                         </Typography>
                         <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', textTransform: 'uppercase', fontFamily: "'Times New Roman', Times, serif" }}>
-                            {leaveRequest.employeeName}
+                            {'\u00A0'}
                         </Typography>
                     </Box>
                     <Box sx={{ textAlign: 'center', width: '45%' }}>
-                        <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", mb: 8 }}>
+                        <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", mb: 4 }}>
                             NGƯỜI NHẬN BÀN GIAO
                         </Typography>
                         <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', textTransform: 'uppercase', fontFamily: "'Times New Roman', Times, serif" }}>
