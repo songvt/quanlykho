@@ -158,7 +158,7 @@ const DEFAULT_HANDOVER_TASKS = [
 
 const getDefaultHandovers = () => DEFAULT_HANDOVER_TASKS.map(task => ({
     task,
-    target: '',
+    target: '100%',
     recipientName: ''
 }));
 
@@ -970,9 +970,12 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
     }, [leaveRequest.handovers]);
 
     // Find unique recipient name(s) for signature
-    const primaryRecipient = useMemo(() => {
-        const nonEmp = leaveRequest.handovers.find((h: any) => h.recipientName && h.recipientName.trim() !== '');
-        return nonEmp ? nonEmp.recipientName : '';
+    const uniqueRecipients = useMemo(() => {
+        if (!leaveRequest.handovers || !Array.isArray(leaveRequest.handovers)) return [];
+        const names = leaveRequest.handovers
+            .map((h: any) => h.recipientName?.trim())
+            .filter((name: string) => name && name !== '');
+        return Array.from(new Set(names)) as string[];
     }, [leaveRequest.handovers]);
 
     return (
@@ -1244,8 +1247,8 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
                 </Box>
 
                 {/* Sub signatures spaced apart */}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <Box sx={{ textAlign: 'center', width: '45%' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2 }}>
+                    <Box sx={{ textAlign: 'center', flex: 1, minWidth: '120px' }}>
                         <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", mb: 8 }}>
                             NGƯỜI LÀM ĐƠN
                         </Typography>
@@ -1253,14 +1256,27 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
                             {leaveRequest.employeeName}
                         </Typography>
                     </Box>
-                    <Box sx={{ textAlign: 'center', width: '45%' }}>
-                        <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", mb: 8 }}>
-                            NGƯỜI NHẬN BÀN GIAO
-                        </Typography>
-                        <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', textTransform: 'uppercase', fontFamily: "'Times New Roman', Times, serif" }}>
-                            {primaryRecipient || '\u00A0'}
-                        </Typography>
-                    </Box>
+                    {uniqueRecipients.length === 0 ? (
+                        <Box sx={{ textAlign: 'center', flex: 1, minWidth: '120px' }}>
+                            <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", mb: 8 }}>
+                                NGƯỜI NHẬN BÀN GIAO
+                            </Typography>
+                            <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', textTransform: 'uppercase', fontFamily: "'Times New Roman', Times, serif" }}>
+                                &nbsp;
+                            </Typography>
+                        </Box>
+                    ) : (
+                        uniqueRecipients.map((recipient: string, idx: number) => (
+                            <Box key={idx} sx={{ textAlign: 'center', flex: 1, minWidth: '120px' }}>
+                                <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", mb: 8 }}>
+                                    NGƯỜI NHẬN BÀN GIAO
+                                </Typography>
+                                <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', textTransform: 'uppercase', fontFamily: "'Times New Roman', Times, serif" }}>
+                                    {recipient}
+                                </Typography>
+                            </Box>
+                        ))
+                    )}
                 </Box>
             </Box>
         </Box>
