@@ -22,9 +22,8 @@ import { exportStandardReport } from '../../utils/excelUtils';
 import { fetchHRProfiles } from '../../store/slices/hrProfilesSlice';
 import { fetchEmployees } from '../../store/slices/employeesSlice';
 import type { RootState, AppDispatch } from '../../store';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 
 // Interfaces
 interface LeaveHandoverRow {
@@ -954,7 +953,7 @@ const AdminRequests = () => {
                             <Button
                                 variant="contained"
                                 color="error"
-                                startIcon={<PictureAsPdfIcon />}
+                                startIcon={<FileDownloadIcon />}
                                 onClick={handleExportPDF}
                                 disabled={isExportingPDF}
                                 sx={{ borderRadius: '8px', textTransform: 'none', bgcolor: '#ef4444', '&:hover': { bgcolor: '#dc2626' } }}
@@ -1305,27 +1304,28 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
             </Stack>
 
             {/* Bottom Signatures Layout matching image */}
-            <Box sx={{ mt: 4, '@media print': { mt: 3 } }}>
-                {/* Director Title Centered */}
-                <Box sx={{ textAlign: 'center', width: '100%', mb: 12 }}>
-                    <Typography sx={{ fontWeight: 'bold', fontSize: '11.5pt', fontFamily: "'Times New Roman', Times, serif" }}>
-                        BAN GIÁM ĐỐC TRUNG TÂM
-                    </Typography>
-                </Box>
-
-                {/* Sub signatures spaced apart */}
+            <Box sx={{ mt: 5, '@media print': { mt: 4 } }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <Box sx={{ textAlign: 'center', width: '45%' }}>
-                        <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", mb: 8 }}>
+                    <Box sx={{ textAlign: 'center', width: '30%' }}>
+                        <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", mb: 10 }}>
                             NGƯỜI LÀM ĐƠN
                         </Typography>
                         <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', textTransform: 'uppercase', fontFamily: "'Times New Roman', Times, serif" }}>
                             {leaveRequest.employeeName}
                         </Typography>
                     </Box>
-                    <Box sx={{ textAlign: 'center', width: '45%' }}>
-                        <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", mb: 8 }}>
+                    <Box sx={{ textAlign: 'center', width: '30%' }}>
+                        <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", mb: 10 }}>
                             NGƯỜI NHẬN BÀN GIAO
+                        </Typography>
+                        <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', textTransform: 'uppercase', fontFamily: "'Times New Roman', Times, serif" }}>
+                            {/* Empty space for signature, title kept as per user request */}
+                            {'\u00A0'}
+                        </Typography>
+                    </Box>
+                    <Box sx={{ textAlign: 'center', width: '30%' }}>
+                        <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", mb: 10 }}>
+                            BAN GIÁM ĐỐC TRUNG TÂM
                         </Typography>
                         <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', textTransform: 'uppercase', fontFamily: "'Times New Roman', Times, serif" }}>
                             {'\u00A0'}
