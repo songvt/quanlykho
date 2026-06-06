@@ -174,6 +174,20 @@ const timesTheme = createTheme({
     },
 });
 
+const DEFAULT_HANDOVER_TASKS = [
+    "Quản lý nhập xuất kho hàng hóa theo quy trình quy định.",
+    "Quản lý số lượng, chất lượng hàng hoá trong kho đảm bảo an toàn",
+    "Quản lý xuất nhập kho cho nhân viên, hàng thu hồi chuyển đổi, hàng mới hỏng,….. theo đúng quy trình quy định",
+    "Nhận hàng từ kho tổng ACT/kho Viettel HCM về kho, cấp phát cho lực lượng kỹ thuật đảm bảo công việc.",
+    "Xử lý các công việc phát sinh liên quan (Nếu có)."
+];
+
+const getDefaultHandovers = () => DEFAULT_HANDOVER_TASKS.map(task => ({
+    task,
+    target: '',
+    recipientName: ''
+}));
+
 const KpiGrades = () => {
     const dispatch = useDispatch<AppDispatch>();
     
@@ -305,11 +319,7 @@ const KpiGrades = () => {
         customLeaveType: '',
         reason: 'Nghỉ giải quyết việc gia đình',
         location: 'Thành phố Hồ Chí Minh',
-        handovers: Array.from({ length: 5 }, () => ({
-            task: '',
-            target: '',
-            recipientName: ''
-        }))
+        handovers: getDefaultHandovers()
     });
 
     const fetchLeaveRequests = async () => {
@@ -1038,11 +1048,7 @@ const KpiGrades = () => {
                 customLeaveType: '',
                 reason: 'Nghỉ giải quyết việc gia đình',
                 location: 'Thành phố Hồ Chí Minh',
-                handovers: Array.from({ length: 5 }, () => ({
-                    task: '',
-                    target: '',
-                    recipientName: ''
-                }))
+                handovers: getDefaultHandovers()
             });
         }
         setIsLeaveFormOpen(true);
