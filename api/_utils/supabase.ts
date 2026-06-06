@@ -29,28 +29,36 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-/**
- * Helper to fetch all rows from a Supabase table handling the 1000-row limit.
- * Optimized to fetch sequentially to avoid database connection pool exhaustion.
- */
 export const fetchAll = async (table: string, select: string = '*', queryModifier?: (query: any) => any) => {
-    // Get total count first
+    // Fetch first 1000 rows directly
+    let query = supabase.from(table).select(select).range(0, 999);
+    if (queryModifier) query = queryModifier(query);
+    
+    const { data, error } = await query;
+    if (error) throw error;
+    if (!data || data.length < 1000) return data || [];
+
+    // If we hit exactly 1000 rows, there might be more. Now get total count to fetch the rest.
     let countQuery = supabase.from(table).select('*', { count: 'exact', head: true });
     if (queryModifier) countQuery = queryModifier(countQuery);
     
     const { count, error: countError } = await countQuery;
     if (countError) throw countError;
-    if (!count || count === 0) return [];
+    if (!count) return data;
 
     const step = 1000;
-    let allData: any[] = [];
+    let allData: any[] = [...data];
     
-    // Fetch sequentially to prevent overloading the database connections
-    for (let from = 0; from < count; from += step) {
-        let query = supabase.from(table).select(select).range(from, from + step - 1);
-        if (queryModifier) query = queryModifier(query);
-        
-        const res = await query;
+    // Fetch remaining data concurrently
+    const promises = [];
+    for (let from = 1000; from < count; from += step) {
+        let nextQuery = supabase.from(table).select(select).range(from, from + step - 1);
+        if (queryModifier) nextQuery = queryModifier(nextQuery);
+        promises.push(nextQuery);
+    }
+    
+    const results = await Promise.all(promises);
+    for (const res of results) {
         if (res.error) throw res.error;
         if (res.data) allData = allData.concat(res.data);
     }

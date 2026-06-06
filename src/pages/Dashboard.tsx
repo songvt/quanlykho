@@ -18,11 +18,11 @@ import {
 } from 'recharts';
 
 import type { RootState, AppDispatch } from '../store';
-import { fetchProducts } from '../store/slices/productsSlice';
-import { fetchTransactions } from '../store/slices/transactionsSlice';
+import { fetchProducts, fetchProductsForce } from '../store/slices/productsSlice';
+import { fetchTransactions, fetchTransactionsForce } from '../store/slices/transactionsSlice';
 import { fetchInventory, selectStockMap } from '../store/slices/inventorySlice';
-import { fetchOrders } from '../store/slices/ordersSlice';
-import { fetchEmployees } from '../store/slices/employeesSlice';
+import { fetchOrders, fetchOrdersForce } from '../store/slices/ordersSlice';
+import { fetchEmployees, fetchEmployeesForce } from '../store/slices/employeesSlice';
 
 import DashboardSkeleton from './DashboardSkeleton';
 import { useTabVisibility } from '../hooks/useTabVisibility';
@@ -123,11 +123,11 @@ const Dashboard = () => {
     const isLoading = productStatus === 'loading' || transactionStatus === 'loading' || inventoryStatus === 'loading';
 
     const refreshAll = useCallback(() => {
-        dispatch(fetchProducts());
-        dispatch(fetchTransactions());
-        dispatch(fetchOrders());
+        dispatch(fetchProductsForce());
+        dispatch(fetchTransactionsForce());
+        dispatch(fetchOrdersForce());
         dispatch(fetchInventory());
-        dispatch(fetchEmployees());
+        dispatch(fetchEmployeesForce());
         setLastUpdated(new Date());
     }, [dispatch]);
 
@@ -247,6 +247,45 @@ const Dashboard = () => {
                 </Box>
             </Box>
 
+            {/* Apps Grid */}
+            <Box sx={{ mb: 5 }}>
+                <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', mb: 2, color: 'var(--text-primary)' }}>Apps & Modules</Typography>
+                <Grid container spacing={2}>
+                    {modulesData.map(mod => (
+                        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={mod.id}>
+                            <Box 
+                                onClick={() => navigate(mod.path)}
+                                sx={{
+                                    p: 2,
+                                    borderRadius: '12px',
+                                    bgcolor: 'var(--bg-default)',
+                                    border: '1px solid var(--border-color)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 2,
+                                    '&:hover': {
+                                        bgcolor: 'var(--bg-card)',
+                                        borderColor: mod.color,
+                                        transform: 'translateY(-2px)',
+                                        boxShadow: 'var(--shadow-soft)'
+                                    }
+                                }}
+                            >
+                                <Box sx={{ color: mod.color, p: 1, bgcolor: alpha(mod.color, 0.1), borderRadius: '8px' }}>
+                                    {React.cloneElement(mod.icon, { size: 20 })}
+                                </Box>
+                                <Box>
+                                    <Typography sx={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{mod.title}</Typography>
+                                    <Typography sx={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{mod.desc.slice(0, 30)}...</Typography>
+                                </Box>
+                            </Box>
+                        </Grid>
+                    ))}
+                </Grid>
+            </Box>
+
             {/* Metrics */}
             <Grid container spacing={2.5} mb={5}>
                 <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
@@ -293,46 +332,7 @@ const Dashboard = () => {
             </Grid>
 
             <Grid container spacing={4} mb={4}>
-                {/* Apps Grid */}
                 <Grid size={{ xs: 12, lg: 8 }}>
-                    <Box sx={{ mb: 4 }}>
-                        <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', mb: 2, color: 'var(--text-primary)' }}>Apps & Modules</Typography>
-                        <Grid container spacing={2}>
-                            {modulesData.map(mod => (
-                                <Grid size={{ xs: 12, sm: 6, md: 4 }} key={mod.id}>
-                                    <Box 
-                                        onClick={() => navigate(mod.path)}
-                                        sx={{
-                                            p: 2,
-                                            borderRadius: '12px',
-                                            bgcolor: 'var(--bg-default)',
-                                            border: '1px solid var(--border-color)',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 2,
-                                            '&:hover': {
-                                                bgcolor: 'var(--bg-card)',
-                                                borderColor: mod.color,
-                                                transform: 'translateY(-2px)',
-                                                boxShadow: 'var(--shadow-soft)'
-                                            }
-                                        }}
-                                    >
-                                        <Box sx={{ color: mod.color, p: 1, bgcolor: alpha(mod.color, 0.1), borderRadius: '8px' }}>
-                                            {React.cloneElement(mod.icon, { size: 20 })}
-                                        </Box>
-                                        <Box>
-                                            <Typography sx={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{mod.title}</Typography>
-                                            <Typography sx={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{mod.desc.slice(0, 30)}...</Typography>
-                                        </Box>
-                                    </Box>
-                                </Grid>
-                            ))}
-                        </Grid>
-                    </Box>
-
                     {/* Chart */}
                     <Box sx={{ p: 3, borderRadius: '16px', border: '1px solid var(--border-color)', bgcolor: 'var(--bg-card)' }}>
                         <Box display="flex" justifyContent="space-between" mb={3}>

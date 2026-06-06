@@ -1146,6 +1146,7 @@ const QRGeneratorHCM = () => {
 
                                             const GRID_SIZE_LARGE = 65;
                                             const GRID_SIZE_SMALL = 65;
+                                            const GRID_SIZE_VALUE_LARGE = 72;
                                             const GRID_MAX_WIDTH = 290;
                                             const HEADER_SIZE = 72;
                                             const HEADER_MAX_WIDTH = 800;
@@ -1165,7 +1166,7 @@ const QRGeneratorHCM = () => {
                                                             <SvgFitText text="THÙNG" fontSizePt={GRID_SIZE_LARGE} maxWidthPt={GRID_MAX_WIDTH} />
                                                         </div>
                                                         <div className="grid-cell grid-cell-value-lg">
-                                                            <SvgFitText text={String(group.thung)} fontSizePt={GRID_SIZE_LARGE} maxWidthPt={GRID_MAX_WIDTH} />
+                                                            <SvgFitText text={String(group.thung)} fontSizePt={GRID_SIZE_VALUE_LARGE} maxWidthPt={GRID_MAX_WIDTH} />
                                                         </div>
                                                         <div className="grid-cell grid-cell-qr" style={{ gridRow: group.qrChunks.length > 1 ? 'span 2' : 'span 4', borderBottom: group.qrChunks.length > 1 ? '2.5px solid #000000' : 'none' }}>
                                                             {group.qrChunks[0] && (
@@ -1187,7 +1188,7 @@ const QRGeneratorHCM = () => {
                                                                 alignItems: 'baseline', 
                                                                 justifyContent: 'center',
                                                                 gap: '6px',
-                                                                fontSize: `${GRID_SIZE_LARGE}pt`, 
+                                                                fontSize: `${GRID_SIZE_VALUE_LARGE}pt`, 
                                                                 fontWeight: 900, 
                                                                 fontFamily: '"Times New Roman", Times, serif',
                                                                 color: 'black',

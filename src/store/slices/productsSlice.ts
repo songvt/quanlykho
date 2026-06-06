@@ -1,6 +1,9 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { GoogleSheetService as SupabaseService } from '../../services/GoogleSheetService';
 import type { Product } from '../../types';
+import type { RootState } from '../index';
+
+const CACHE_TTL_MS = 30_000; // 30 seconds cache
 
 interface ProductsState {
     items: Product[];
@@ -16,7 +19,24 @@ const initialState: ProductsState = {
     lastFetched: null,
 };
 
-export const fetchProducts = createAsyncThunk('products/fetchProducts', async () => {
+export const fetchProducts = createAsyncThunk(
+    'products/fetchProducts',
+    async () => {
+        const data = await SupabaseService.fetchProducts();
+        return data;
+    },
+    {
+        condition: (_, { getState }) => {
+            const state = getState() as RootState;
+            const { status, lastFetched } = state.products;
+            if (status === 'loading') return false;
+            if (lastFetched && Date.now() - lastFetched < CACHE_TTL_MS) return false;
+            return true;
+        }
+    }
+);
+
+export const fetchProductsForce = createAsyncThunk('products/fetchProductsForce', async () => {
     const data = await SupabaseService.fetchProducts();
     return data;
 });
@@ -57,6 +77,19 @@ const productsSlice = createSlice({
                 state.lastFetched = Date.now();
             })
             .addCase(fetchProducts.rejected, (state, action) => {
+                state.status = 'failed';
+                state.error = action.error.message || 'Failed to fetch products';
+            })
+            // Fetch Force
+            .addCase(fetchProductsForce.pending, (state) => {
+                state.status = 'loading';
+            })
+            .addCase(fetchProductsForce.fulfilled, (state, action) => {
+                state.status = 'succeeded';
+                state.items = Array.isArray(action.payload) ? action.payload : [];
+                state.lastFetched = Date.now();
+            })
+            .addCase(fetchProductsForce.rejected, (state, action) => {
                 state.status = 'failed';
                 state.error = action.error.message || 'Failed to fetch products';
             })

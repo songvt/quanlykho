@@ -1,21 +1,42 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
-
 import { GoogleSheetService as SupabaseService } from '../../services/GoogleSheetService';
 import type { Order } from '../../types';
+import type { RootState } from '../index';
+
+const CACHE_TTL_MS = 30_000; // 30 seconds cache
 
 interface OrdersState {
     items: Order[];
     status: 'idle' | 'loading' | 'succeeded' | 'failed';
     error: string | null;
+    lastFetched: number | null;
 }
 
 const initialState: OrdersState = {
     items: [],
     status: 'idle',
     error: null,
+    lastFetched: null,
 };
 
-export const fetchOrders = createAsyncThunk('orders/fetchOrders', async () => {
+export const fetchOrders = createAsyncThunk(
+    'orders/fetchOrders',
+    async () => {
+        const data = await SupabaseService.fetchOrders();
+        return data as Order[];
+    },
+    {
+        condition: (_, { getState }) => {
+            const state = getState() as RootState;
+            const { status, lastFetched } = state.orders;
+            if (status === 'loading') return false;
+            if (lastFetched && Date.now() - lastFetched < CACHE_TTL_MS) return false;
+            return true;
+        }
+    }
+);
+
+export const fetchOrdersForce = createAsyncThunk('orders/fetchOrdersForce', async () => {
     const data = await SupabaseService.fetchOrders();
     return data as Order[];
 });
@@ -56,8 +77,22 @@ const ordersSlice = createSlice({
             .addCase(fetchOrders.fulfilled, (state, action: PayloadAction<Order[]>) => {
                 state.status = 'succeeded';
                 state.items = Array.isArray(action.payload) ? action.payload : [];
+                state.lastFetched = Date.now();
             })
             .addCase(fetchOrders.rejected, (state, action) => {
+                state.status = 'failed';
+                state.error = action.error.message || 'Failed to fetch orders';
+            })
+            // Fetch Force
+            .addCase(fetchOrdersForce.pending, (state) => {
+                state.status = 'loading';
+            })
+            .addCase(fetchOrdersForce.fulfilled, (state, action: PayloadAction<Order[]>) => {
+                state.status = 'succeeded';
+                state.items = Array.isArray(action.payload) ? action.payload : [];
+                state.lastFetched = Date.now();
+            })
+            .addCase(fetchOrdersForce.rejected, (state, action) => {
                 state.status = 'failed';
                 state.error = action.error.message || 'Failed to fetch orders';
             })

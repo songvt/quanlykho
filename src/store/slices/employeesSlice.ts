@@ -1,20 +1,42 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { GoogleSheetService as SupabaseService } from '../../services/GoogleSheetService';
 import type { Employee } from '../../types';
+import type { RootState } from '../index';
+
+const CACHE_TTL_MS = 30_000; // 30 seconds cache
 
 interface EmployeesState {
     items: Employee[];
     status: 'idle' | 'loading' | 'succeeded' | 'failed';
     error: string | null;
+    lastFetched: number | null;
 }
 
 const initialState: EmployeesState = {
     items: [],
     status: 'idle',
     error: null,
+    lastFetched: null,
 };
 
-export const fetchEmployees = createAsyncThunk('employees/fetchEmployees', async () => {
+export const fetchEmployees = createAsyncThunk(
+    'employees/fetchEmployees',
+    async () => {
+        const data = await SupabaseService.fetchEmployees();
+        return data;
+    },
+    {
+        condition: (_, { getState }) => {
+            const state = getState() as RootState;
+            const { status, lastFetched } = state.employees;
+            if (status === 'loading') return false;
+            if (lastFetched && Date.now() - lastFetched < CACHE_TTL_MS) return false;
+            return true;
+        }
+    }
+);
+
+export const fetchEmployeesForce = createAsyncThunk('employees/fetchEmployeesForce', async () => {
     const data = await SupabaseService.fetchEmployees();
     return data;
 });
@@ -56,8 +78,22 @@ const employeesSlice = createSlice({
             .addCase(fetchEmployees.fulfilled, (state, action) => {
                 state.status = 'succeeded';
                 state.items = Array.isArray(action.payload) ? action.payload : [];
+                state.lastFetched = Date.now();
             })
             .addCase(fetchEmployees.rejected, (state, action) => {
+                state.status = 'failed';
+                state.error = action.error.message || 'Failed to fetch employees';
+            })
+            // Fetch Force
+            .addCase(fetchEmployeesForce.pending, (state) => {
+                state.status = 'loading';
+            })
+            .addCase(fetchEmployeesForce.fulfilled, (state, action) => {
+                state.status = 'succeeded';
+                state.items = Array.isArray(action.payload) ? action.payload : [];
+                state.lastFetched = Date.now();
+            })
+            .addCase(fetchEmployeesForce.rejected, (state, action) => {
                 state.status = 'failed';
                 state.error = action.error.message || 'Failed to fetch employees';
             })
