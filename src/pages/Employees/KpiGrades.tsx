@@ -2202,13 +2202,18 @@ const KpiGrades = () => {
                 </DialogTitle>
 
                 <DialogContent sx={{ p: { xs: 1, sm: 4 }, display: 'flex', justifyContent: 'center' }}>
-                    {selectedLeaveRequest && (
-                        <div id="printable-leave-request-area" style={{ width: '100%', display: 'flex', justifyContent: 'center', background: 'white' }}>
-                            <PrintableLeaveRequestTemplate leaveRequest={selectedLeaveRequest} />
-                        </div>
-                    )}
+                    {selectedLeaveRequest && <PrintableLeaveRequestTemplate leaveRequest={selectedLeaveRequest} />}
                 </DialogContent>
             </Dialog>
+
+            {/* Hidden container for PDF Generation */}
+            {isExportingPDF && selectedLeaveRequest && (
+                <Box sx={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '794px', bgcolor: 'white' }}>
+                    <div id="hidden-pdf-container">
+                        <PrintableLeaveRequestTemplate leaveRequest={selectedLeaveRequest} />
+                    </div>
+                </Box>
+            )}
 
             {/* Portal Printable */}
             {selectedReport && createPortal(
@@ -2245,7 +2250,7 @@ const KpiGrades = () => {
                         }
                         @page {
                             size: A4 portrait;
-                            margin: 15mm 12mm 15mm 15mm;
+                            margin: 0;
                         }
                     }
                     #print-portal-root {
@@ -2521,14 +2526,14 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
             sx={{
                 width: '100%',
                 maxWidth: '794px', // Standard A4 width at 96 DPI
-                minHeight: '1050px',
-                p: '40px 48px',
+                minHeight: '1123px', // Standard A4 height at 96 DPI (297mm)
+                p: '20mm 15mm 20mm 30mm',
                 bgcolor: 'white',
                 color: '#000000',
                 fontFamily: "'Times New Roman', Times, serif",
                 boxSizing: 'border-box',
                 '@media print': {
-                    p: '0px',
+                    p: '20mm 15mm 20mm 30mm !important',
                     maxWidth: '100%',
                     minHeight: 'auto',
                 }
