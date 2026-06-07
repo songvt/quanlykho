@@ -26,6 +26,7 @@ import { fetchEmployees, fetchEmployeesForce } from '../store/slices/employeesSl
 
 import DashboardSkeleton from './DashboardSkeleton';
 import { useTabVisibility } from '../hooks/useTabVisibility';
+import { usePermission } from '../hooks/usePermission';
 import { formatDate, parseDate } from '../utils/dateUtils';
 import { formatNumber } from '../utils/numberUtils';
 
@@ -109,6 +110,7 @@ const modulesData = [
 const Dashboard = () => {
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
+    const { hasPermission, hasAnyPermission } = usePermission();
     const { items: products, status: productStatus } = useSelector((state: RootState) => state.products);
     const { items: transactions, status: transactionStatus } = useSelector((state: RootState) => state.transactions);
     const { items: orders, status: orderStatus } = useSelector((state: RootState) => state.orders);
@@ -116,6 +118,45 @@ const Dashboard = () => {
     const { items: employees, status: employeeStatus } = useSelector((state: RootState) => state.employees);
     const { profile } = useSelector((state: RootState) => state.auth);
     const stockMap = useSelector(selectStockMap);
+
+    const filteredModules = useMemo(() => {
+        return modulesData.map(mod => {
+            if (mod.id === 'admin-hr') {
+                const targetPath = hasPermission('employees.view') ? '/employees' : '/admin-requests';
+                return { ...mod, path: targetPath };
+            }
+            return mod;
+        }).filter(mod => {
+            if (mod.id === 'assets') {
+                return hasAnyPermission(['assets.view', 'assets.manage', 'assets.list_only', '*']);
+            }
+            if (mod.id === 'products') {
+                return hasAnyPermission(['inventory.view', 'inventory.manage']);
+            }
+            if (mod.id === 'inbound') {
+                return hasAnyPermission(['inbound.view', 'inbound.create']);
+            }
+            if (mod.id === 'outbound') {
+                return hasAnyPermission(['outbound.view', 'outbound.create']);
+            }
+            if (mod.id === 'orders') {
+                return hasAnyPermission(['orders.create', 'orders.view_own', 'orders.view_all']);
+            }
+            if (mod.id === 'audit') {
+                return hasAnyPermission(['audit.view', 'audit.create']);
+            }
+            if (mod.id === 'qr-generator') {
+                return hasPermission('qr.view');
+            }
+            if (mod.id === 'action-history') {
+                return hasAnyPermission(['reports.view_all', 'reports.handover']);
+            }
+            if (mod.id === 'admin-hr') {
+                return profile?.role === 'admin' || profile?.role === 'manager' || hasPermission('employees.view');
+            }
+            return true;
+        });
+    }, [profile, hasPermission, hasAnyPermission]);
     
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
     const [placeholderModule, setPlaceholderModule] = useState<string | null>(null);
@@ -251,7 +292,7 @@ const Dashboard = () => {
             <Box sx={{ mb: 5 }}>
                 <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', mb: 2, color: 'var(--text-primary)' }}>Apps & Modules</Typography>
                 <Grid container spacing={2}>
-                    {modulesData.map(mod => (
+                    {filteredModules.map(mod => (
                         <Grid size={{ xs: 12, sm: 6, md: 4 }} key={mod.id}>
                             <Box 
                                 onClick={() => navigate(mod.path)}
