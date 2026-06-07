@@ -153,3 +153,10 @@ CREATE POLICY "Allow insert for all authenticated users" ON assets FOR INSERT TO
 CREATE POLICY "Allow update for all authenticated users" ON assets FOR UPDATE TO authenticated USING (true);
 CREATE POLICY "Allow delete for all authenticated users" ON assets FOR DELETE TO authenticated USING (true);
 
+-- 7. PERFORMANCE OPTIMIZATION INDEXES
+CREATE INDEX IF NOT EXISTS idx_inbound_product_id ON inbound_transactions (product_id);
+CREATE INDEX IF NOT EXISTS idx_outbound_product_id ON outbound_transactions (product_id);
+CREATE INDEX IF NOT EXISTS idx_inbound_serial_code ON inbound_transactions (serial_code) WHERE serial_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_outbound_serial_code ON outbound_transactions (serial_code) WHERE serial_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_orders_product_id ON orders (product_id);
+
