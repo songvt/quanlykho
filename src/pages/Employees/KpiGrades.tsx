@@ -6,7 +6,7 @@ import {
     Box, Paper, Typography, Button, Grid, TextField, Dialog, DialogTitle, DialogContent,
     DialogActions, Alert, Stack, Table, TableBody, TableCell, TableContainer, TableHead,
     TableRow, Tab, Tabs, MenuItem, Select, FormControl, InputLabel, Card, CardContent,
-    IconButton, InputAdornment, Tooltip, Zoom, Autocomplete
+    IconButton, InputAdornment, Tooltip, Zoom, Autocomplete, useTheme, useMediaQuery, Divider
 } from '@mui/material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import AddIcon from '@mui/icons-material/Add';
@@ -210,6 +210,8 @@ const getLeaveTypeLabel = (value: string) => {
 };
 
 const KpiGrades = () => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const dispatch = useDispatch<AppDispatch>();
     
     // Selectors
@@ -1508,39 +1510,42 @@ const KpiGrades = () => {
                     </Paper>
 
                     {/* Table View */}
-                    <TableContainer component={Paper} sx={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
-                        <Table size="small">
-                            <TableHead sx={{ bgcolor: '#f1f5f9' }}>
-                                <TableRow>
-                                    <TableCell sx={{ fontWeight: 800, py: 2, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Ngày lập</TableCell>
-                                    <TableCell sx={{ fontWeight: 800, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Mã NV</TableCell>
-                                    <TableCell sx={{ fontWeight: 800, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Nhân viên vi phạm</TableCell>
-                                    <TableCell sx={{ fontWeight: 800, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Đơn vị</TableCell>
-                                    <TableCell sx={{ fontWeight: 800, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Điều khoản vi phạm</TableCell>
-                                    <TableCell sx={{ fontWeight: 800, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Người phát hiện</TableCell>
-                                    <TableCell align="center" sx={{ fontWeight: 800, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Trạng thái</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 800, fontSize: '0.95rem', color: '#334155', pr: 3, fontFamily: "'Times New Roman', Times, serif" }}>Thao tác</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {filteredReports.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={8} align="center" sx={{ py: 6, color: '#64748b' }}>
-                                            Chưa có biên bản ghi nhận lỗi vi phạm nào được tạo.
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    filteredReports.map((report) => (
-                                        <TableRow key={report.id} sx={{ '&:hover': { bgcolor: '#f8fafc' } }}>
-                                            <TableCell sx={{ py: 1.5 }}>{new Date(report.reportDate).toLocaleDateString('vi-VN')}</TableCell>
-                                            <TableCell sx={{ fontWeight: 600 }}>{report.violatorCode}</TableCell>
-                                            <TableCell sx={{ fontWeight: 600 }}>{report.violatorName}</TableCell>
-                                            <TableCell>{report.violatorUnit}</TableCell>
-                                            <TableCell sx={{ color: '#ef4444', fontWeight: 500 }}>
-                                                {report.clause.substring(0, 45)}{report.clause.length > 45 ? '...' : ''}
-                                            </TableCell>
-                                            <TableCell>{report.inspectorName}</TableCell>
-                                            <TableCell align="center">
+                    {isMobile ? (
+                        <Stack spacing={2}>
+                            {filteredReports.length === 0 ? (
+                                <Paper sx={{ p: 4, textAlign: 'center', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                                    <Typography color="text.secondary" sx={{ fontFamily: "'Times New Roman', Times, serif" }}>
+                                        Chưa có biên bản ghi nhận lỗi vi phạm nào được tạo.
+                                    </Typography>
+                                </Paper>
+                            ) : (
+                                filteredReports.map((report) => (
+                                    <Card key={report.id} variant="outlined" sx={{ borderRadius: '16px', borderColor: '#e2e8f0', fontFamily: "'Times New Roman', Times, serif" }}>
+                                        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                                            <Stack direction="row" justifyContent="space-between" mb={1}>
+                                                <Typography variant="subtitle2" fontWeight="bold">
+                                                    {report.violatorName}
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    Mã NV: {report.violatorCode}
+                                                </Typography>
+                                            </Stack>
+
+                                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                                Đơn vị: {report.violatorUnit}
+                                            </Typography>
+
+                                            <Divider sx={{ my: 1 }} />
+
+                                            <Typography variant="body2" sx={{ my: 0.5 }}>
+                                                <b>Lỗi vi phạm:</b> <span style={{ color: '#ef4444' }}>{report.clause.substring(0, 45)}{report.clause.length > 45 ? '...' : ''}</span>
+                                            </Typography>
+
+                                            <Typography variant="body2" sx={{ my: 0.5 }}>
+                                                <b>Người phát hiện:</b> {report.inspectorName}
+                                            </Typography>
+
+                                            <Stack direction="row" justifyContent="space-between" alignItems="center" mt={2}>
                                                 <Typography 
                                                     variant="caption" 
                                                     sx={{ 
@@ -1551,30 +1556,92 @@ const KpiGrades = () => {
                                                 >
                                                     {report.status === 'approved' ? 'Đã duyệt' : 'Bản nháp'}
                                                 </Typography>
-                                            </TableCell>
-                                            <TableCell align="right" sx={{ pr: 2 }}>
-                                                <Tooltip title="Xem & In Biên Bản (A4)" TransitionComponent={Zoom}>
-                                                    <IconButton size="small" color="primary" onClick={() => handlePrint(report)} sx={{ mr: 0.5 }}>
+                                                <Stack direction="row" spacing={1}>
+                                                    <IconButton size="small" color="primary" onClick={() => handlePrint(report)} sx={{ bgcolor: '#f8fafc' }}>
                                                         <PrintIcon fontSize="small" />
                                                     </IconButton>
-                                                </Tooltip>
-                                                <Tooltip title="Chỉnh sửa">
-                                                    <IconButton size="small" color="info" onClick={() => handleOpenForm(report)} sx={{ mr: 0.5 }}>
+                                                    <IconButton size="small" color="info" onClick={() => handleOpenForm(report)} sx={{ bgcolor: '#f8fafc' }}>
                                                         <EditIcon fontSize="small" />
                                                     </IconButton>
-                                                </Tooltip>
-                                                <Tooltip title="Xóa">
-                                                    <IconButton size="small" color="error" onClick={() => handleDeleteReport(report.id, report.violatorName)}>
+                                                    <IconButton size="small" color="error" onClick={() => handleDeleteReport(report.id, report.violatorName)} sx={{ bgcolor: '#f8fafc' }}>
                                                         <DeleteIcon fontSize="small" />
                                                     </IconButton>
-                                                </Tooltip>
+                                                </Stack>
+                                            </Stack>
+                                        </CardContent>
+                                    </Card>
+                                ))
+                            )}
+                        </Stack>
+                    ) : (
+                        <TableContainer component={Paper} sx={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
+                            <Table size="small">
+                                <TableHead sx={{ bgcolor: '#f1f5f9' }}>
+                                    <TableRow>
+                                        <TableCell sx={{ fontWeight: 800, py: 2, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Ngày lập</TableCell>
+                                        <TableCell sx={{ fontWeight: 800, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Mã NV</TableCell>
+                                        <TableCell sx={{ fontWeight: 800, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Nhân viên vi phạm</TableCell>
+                                        <TableCell sx={{ fontWeight: 800, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Đơn vị</TableCell>
+                                        <TableCell sx={{ fontWeight: 800, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Điều khoản vi phạm</TableCell>
+                                        <TableCell sx={{ fontWeight: 800, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Người phát hiện</TableCell>
+                                        <TableCell align="center" sx={{ fontWeight: 800, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Trạng thái</TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 800, fontSize: '0.95rem', color: '#334155', pr: 3, fontFamily: "'Times New Roman', Times, serif" }}>Thao tác</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {filteredReports.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={8} align="center" sx={{ py: 6, color: '#64748b' }}>
+                                                Chưa có biên bản ghi nhận lỗi vi phạm nào được tạo.
                                             </TableCell>
                                         </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
+                                    ) : (
+                                        filteredReports.map((report) => (
+                                            <TableRow key={report.id} sx={{ '&:hover': { bgcolor: '#f8fafc' } }}>
+                                                <TableCell sx={{ py: 1.5 }}>{new Date(report.reportDate).toLocaleDateString('vi-VN')}</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }}>{report.violatorCode}</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }}>{report.violatorName}</TableCell>
+                                                <TableCell>{report.violatorUnit}</TableCell>
+                                                <TableCell sx={{ color: '#ef4444', fontWeight: 500 }}>
+                                                    {report.clause.substring(0, 45)}{report.clause.length > 45 ? '...' : ''}
+                                                </TableCell>
+                                                <TableCell>{report.inspectorName}</TableCell>
+                                                <TableCell align="center">
+                                                    <Typography 
+                                                        variant="caption" 
+                                                        sx={{ 
+                                                            px: 1.5, py: 0.5, borderRadius: '12px', fontWeight: 'bold',
+                                                            bgcolor: report.status === 'approved' ? '#d1fae5' : '#fef9c3',
+                                                            color: report.status === 'approved' ? '#065f46' : '#854d0e'
+                                                        }}
+                                                    >
+                                                        {report.status === 'approved' ? 'Đã duyệt' : 'Bản nháp'}
+                                                    </Typography>
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ pr: 2 }}>
+                                                    <Tooltip title="Xem & In Biên Bản (A4)" TransitionComponent={Zoom}>
+                                                        <IconButton size="small" color="primary" onClick={() => handlePrint(report)} sx={{ mr: 0.5 }}>
+                                                            <PrintIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="Chỉnh sửa">
+                                                        <IconButton size="small" color="info" onClick={() => handleOpenForm(report)} sx={{ mr: 0.5 }}>
+                                                            <EditIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="Xóa">
+                                                        <IconButton size="small" color="error" onClick={() => handleDeleteReport(report.id, report.violatorName)}>
+                                                            <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    )}
                 </Box>
             )}
 
@@ -1656,35 +1723,43 @@ const KpiGrades = () => {
                             </Stack>
                         </Stack>
 
-                        <TableContainer component={Paper} sx={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
-                            <Table size="small">
-                                <TableHead sx={{ bgcolor: '#f1f5f9' }}>
-                                    <TableRow>
-                                        <TableCell align="center" sx={{ fontWeight: 800, width: 60, py: 2, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>STT</TableCell>
-                                        <TableCell sx={{ fontWeight: 800, width: 120, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Mã NV</TableCell>
-                                        <TableCell sx={{ fontWeight: 800, width: 220, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Cán bộ nhân viên</TableCell>
-                                        <TableCell sx={{ fontWeight: 800, width: 180, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Chức danh</TableCell>
-                                        <TableCell sx={{ fontWeight: 800, width: 180, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Đơn vị/Bộ phận</TableCell>
-                                        <TableCell align="center" sx={{ fontWeight: 800, width: 140, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Điểm KPI (0-100)</TableCell>
-                                        <TableCell sx={{ fontWeight: 800, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Nhận xét / Đánh giá chi tiết</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {filteredKpiScores.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
-                                                Không tìm thấy cán bộ nhân viên phù hợp.
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        filteredKpiScores.map((score, index) => (
-                                            <TableRow key={score.employeeId} sx={{ '&:hover': { bgcolor: '#f8fafc' } }}>
-                                                <TableCell align="center" sx={{ py: 1 }}>{index + 1}</TableCell>
-                                                <TableCell sx={{ fontWeight: 600 }}>{score.employeeId}</TableCell>
-                                                <TableCell sx={{ fontWeight: 600 }}>{score.employeeName}</TableCell>
-                                                <TableCell>{score.jobPosition}</TableCell>
-                                                <TableCell>{score.department}</TableCell>
-                                                <TableCell align="center">
+                        {isMobile ? (
+                            <Stack spacing={2}>
+                                {filteredKpiScores.length === 0 ? (
+                                    <Paper sx={{ p: 4, textAlign: 'center', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                                        <Typography color="text.secondary" sx={{ fontFamily: "'Times New Roman', Times, serif" }}>
+                                            Không tìm thấy cán bộ nhân viên phù hợp.
+                                        </Typography>
+                                    </Paper>
+                                ) : (
+                                    filteredKpiScores.map((score, index) => (
+                                        <Card key={score.employeeId} variant="outlined" sx={{ borderRadius: '16px', borderColor: '#e2e8f0', p: 2, fontFamily: "'Times New Roman', Times, serif" }}>
+                                            <Stack spacing={2}>
+                                                <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                                                    <Typography variant="subtitle1" fontWeight="bold">
+                                                        {index + 1}. {score.employeeName}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        Mã NV: {score.employeeId}
+                                                    </Typography>
+                                                </Stack>
+                                                
+                                                <Stack direction="row" spacing={1} flexWrap="wrap">
+                                                    <Typography variant="body2" color="text.secondary">
+                                                        {score.jobPosition}
+                                                    </Typography>
+                                                    <Typography variant="body2" color="text.secondary">•</Typography>
+                                                    <Typography variant="body2" color="text.secondary">
+                                                        {score.department}
+                                                    </Typography>
+                                                </Stack>
+
+                                                <Divider />
+
+                                                <Stack direction="row" spacing={2} alignItems="center">
+                                                    <Typography variant="body2" fontWeight="bold" sx={{ minWidth: 100 }}>
+                                                        Điểm KPI (0-100):
+                                                    </Typography>
                                                     <TextField
                                                         size="small"
                                                         type="number"
@@ -1696,25 +1771,87 @@ const KpiGrades = () => {
                                                             handleKpiScoreChange(score.employeeId, 'score', val);
                                                         }}
                                                         inputProps={{ min: 0, max: 100, style: { textAlign: 'center', fontWeight: 'bold' } }}
-                                                        sx={{ width: 80 }}
+                                                        sx={{ width: 100 }}
                                                     />
-                                                </TableCell>
-                                                <TableCell>
-                                                    <TextField
-                                                        size="small"
-                                                        fullWidth
-                                                        placeholder="Nhập nhận xét về hiệu quả công việc..."
-                                                        value={score.notes}
-                                                        onChange={(e) => handleKpiScoreChange(score.employeeId, 'notes', e.target.value)}
-                                                        InputProps={{ sx: { borderRadius: '6px' } }}
-                                                    />
+                                                </Stack>
+
+                                                <TextField
+                                                    size="small"
+                                                    fullWidth
+                                                    multiline
+                                                    rows={2}
+                                                    label="Nhận xét / Đánh giá chi tiết"
+                                                    placeholder="Nhập nhận xét..."
+                                                    value={score.notes}
+                                                    onChange={(e) => handleKpiScoreChange(score.employeeId, 'notes', e.target.value)}
+                                                    InputProps={{ sx: { borderRadius: '6px' } }}
+                                                />
+                                            </Stack>
+                                        </Card>
+                                    ))
+                                )}
+                            </Stack>
+                        ) : (
+                            <TableContainer component={Paper} sx={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
+                                <Table size="small">
+                                    <TableHead sx={{ bgcolor: '#f1f5f9' }}>
+                                        <TableRow>
+                                            <TableCell align="center" sx={{ fontWeight: 800, width: 60, py: 2, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>STT</TableCell>
+                                            <TableCell sx={{ fontWeight: 800, width: 120, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Mã NV</TableCell>
+                                            <TableCell sx={{ fontWeight: 800, width: 220, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Cán bộ nhân viên</TableCell>
+                                            <TableCell sx={{ fontWeight: 800, width: 180, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Chức danh</TableCell>
+                                            <TableCell sx={{ fontWeight: 800, width: 180, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Đơn vị/Bộ phận</TableCell>
+                                            <TableCell align="center" sx={{ fontWeight: 800, width: 140, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Điểm KPI (0-100)</TableCell>
+                                            <TableCell sx={{ fontWeight: 800, fontSize: '0.95rem', color: '#334155', fontFamily: "'Times New Roman', Times, serif" }}>Nhận xét / Đánh giá chi tiết</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {filteredKpiScores.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                                                    Không tìm thấy cán bộ nhân viên phù hợp.
                                                 </TableCell>
                                             </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
+                                        ) : (
+                                            filteredKpiScores.map((score, index) => (
+                                                <TableRow key={score.employeeId} sx={{ '&:hover': { bgcolor: '#f8fafc' } }}>
+                                                    <TableCell align="center" sx={{ py: 1 }}>{index + 1}</TableCell>
+                                                    <TableCell sx={{ fontWeight: 600 }}>{score.employeeId}</TableCell>
+                                                    <TableCell sx={{ fontWeight: 600 }}>{score.employeeName}</TableCell>
+                                                    <TableCell>{score.jobPosition}</TableCell>
+                                                    <TableCell>{score.department}</TableCell>
+                                                    <TableCell align="center">
+                                                        <TextField
+                                                            size="small"
+                                                            type="number"
+                                                            value={score.score}
+                                                            onChange={(e) => {
+                                                                let val = Number(e.target.value);
+                                                                if (val < 0) val = 0;
+                                                                if (val > 100) val = 100;
+                                                                handleKpiScoreChange(score.employeeId, 'score', val);
+                                                            }}
+                                                            inputProps={{ min: 0, max: 100, style: { textAlign: 'center', fontWeight: 'bold' } }}
+                                                            sx={{ width: 80 }}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <TextField
+                                                            size="small"
+                                                            fullWidth
+                                                            placeholder="Nhập nhận xét về hiệu quả công việc..."
+                                                            value={score.notes}
+                                                            onChange={(e) => handleKpiScoreChange(score.employeeId, 'notes', e.target.value)}
+                                                            InputProps={{ sx: { borderRadius: '6px' } }}
+                                                        />
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        )}
                     </Paper>
                 </Box>
             )}

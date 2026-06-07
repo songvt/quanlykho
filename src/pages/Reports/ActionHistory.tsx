@@ -3,7 +3,7 @@ import {
     Box, Typography, Paper, Table, TableBody, TableCell, 
     TableContainer, TableHead, TableRow, Chip, CircularProgress,
     IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Button,
-    Divider, Grid, Avatar
+    Divider, Grid, Avatar, Card, CardContent, useTheme, useMediaQuery, Stack
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import InfoIcon from '@mui/icons-material/Info';
@@ -76,6 +76,8 @@ const getActionColor = (action: string) => {
 };
 
 const ActionHistory: React.FC = () => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [tabValue, setTabValue] = useState(0);
     const [qrLogs, setQrLogs] = useState<ActionLog[]>([]);
     const [assetLogs, setAssetLogs] = useState<AssetLog[]>([]);
@@ -284,53 +286,158 @@ const ActionHistory: React.FC = () => {
                 </Button>
             </Box>
 
-            {/* Main Log Table */}
-            <TableContainer component={Paper} sx={{ 
-                borderRadius: '20px', 
-                overflow: 'hidden',
-                border: '1px solid #e2e8f0',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)'
-            }}>
-                <Table size="medium">
-                    <TableHead sx={{ bgcolor: '#f8fafc' }}>
-                        <TableRow>
-                            <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase', py: 2 }}>
-                                <Box display="flex" alignItems="center" gap={0.5}><EventNoteIcon sx={{ fontSize: 16 }} /> Thời gian</Box>
-                            </TableCell>
-                            <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase', py: 2 }}>
-                                Hành động
-                            </TableCell>
-                            <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase', py: 2 }}>
-                                <Box display="flex" alignItems="center" gap={0.5}><PersonIcon sx={{ fontSize: 16 }} /> {tabValue === 0 ? 'Người dùng' : 'Tài sản'}</Box>
-                            </TableCell>
-                            <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase', py: 2 }}>
-                                Chi tiết tác động
-                            </TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {loading ? (
+            {/* Main Log Table or Card View */}
+            {loading ? (
+                <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" sx={{ py: 8 }}>
+                    <CircularProgress size={36} thickness={4} sx={{ color: '#4f46e5' }} />
+                    <Typography variant="body2" sx={{ mt: 2, color: '#64748b', fontWeight: 500 }}>
+                        Đang tải dữ liệu lịch sử...
+                    </Typography>
+                </Box>
+            ) : (tabValue === 0 ? qrLogs : assetLogs).length === 0 ? (
+                <Paper sx={{ p: 6, textAlign: 'center', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
+                    <Typography variant="h6" sx={{ color: '#94a3b8', fontWeight: 700 }}>
+                        Chưa có dữ liệu lịch sử
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: '#cbd5e1', mt: 0.5 }}>
+                        Các hoạt động hệ thống phát sinh sẽ hiển thị tại đây
+                    </Typography>
+                </Paper>
+            ) : isMobile ? (
+                <Stack spacing={2}>
+                    {(tabValue === 0 ? qrLogs : assetLogs).map((log: any) => {
+                        const cfg = getActionColor(log.action);
+                        return (
+                            <Card key={log.id} variant="outlined" sx={{ borderRadius: '16px', borderColor: '#e2e8f0', p: 2 }}>
+                                <Stack spacing={1.5}>
+                                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                        <Typography variant="caption" sx={{ fontWeight: 500, color: '#334155' }}>
+                                            {log.created_at ? new Date(log.created_at).toLocaleString('vi-VN') : 'N/A'}
+                                        </Typography>
+                                        <Box sx={{ 
+                                            display: 'inline-flex', 
+                                            alignItems: 'center', 
+                                            px: 1.5, 
+                                            py: 0.4, 
+                                            borderRadius: '20px', 
+                                            bgcolor: cfg.bg, 
+                                            color: cfg.color, 
+                                            fontSize: '0.7rem', 
+                                            fontWeight: 800,
+                                            border: `1px solid ${cfg.border}`
+                                        }}>
+                                            {cfg.label}
+                                        </Box>
+                                    </Stack>
+                                    <Divider />
+                                    {tabValue === 0 ? (
+                                        <Box>
+                                            <Box display="flex" alignItems="center" gap={1} mb={1}>
+                                                <AccountCircleIcon sx={{ color: '#94a3b8', fontSize: 20 }} />
+                                                <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                                                    {log.created_by}
+                                                </Typography>
+                                            </Box>
+                                            {log.action === 'LOGIN' ? (
+                                                <Typography variant="body2" sx={{ color: '#64748b' }}>Đăng nhập vào hệ thống</Typography>
+                                            ) : (
+                                                <Box display="flex" alignItems="flex-start" justifyContent="space-between" gap={1}>
+                                                    <Box sx={{ flex: 1 }}>
+                                                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#334155' }}>
+                                                            {log.doc_title}
+                                                        </Typography>
+                                                        <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500, display: 'block', mt: 0.5 }}>
+                                                            Tổng số: <b>{log.total_qrs} mã QR</b> ({log.total_serials} dòng)
+                                                        </Typography>
+                                                    </Box>
+                                                    {log.details && (
+                                                        <IconButton 
+                                                            size="small" 
+                                                            onClick={() => setSelectedDetails(log.details)}
+                                                            sx={{ 
+                                                                bgcolor: 'rgba(79, 70, 229, 0.05)', 
+                                                                color: '#4f46e5',
+                                                                p: 1.2,
+                                                                '&:hover': { bgcolor: 'rgba(79, 70, 229, 0.15)' }
+                                                            }}
+                                                        >
+                                                            <InfoIcon fontSize="small" />
+                                                        </IconButton>
+                                                    )}
+                                                </Box>
+                                            )}
+                                        </Box>
+                                    ) : (
+                                        <Box>
+                                            <Box mb={1}>
+                                                <Typography variant="body2" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                                                    {log.asset_name}
+                                                </Typography>
+                                                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, bgcolor: '#f1f5f9', px: 1, py: 0.2, borderRadius: '4px', display: 'inline-block', mt: 0.5 }}>
+                                                    Mã: {log.asset_code}
+                                                </Typography>
+                                            </Box>
+                                            <Stack spacing={0.5}>
+                                                <Typography variant="body2" sx={{ color: '#475569' }}>
+                                                    Tác nhân: <b>{log.performed_by || 'Hệ thống'}</b>
+                                                </Typography>
+                                                {log.details ? (
+                                                    <Paper variant="outlined" sx={{ p: 1, bgcolor: '#f8fafc', borderColor: '#e2e8f0', borderRadius: '8px', mt: 0.5 }}>
+                                                        <Typography variant="body2" sx={{ color: '#1e293b', fontWeight: 500 }}>
+                                                            {log.details}
+                                                        </Typography>
+                                                    </Paper>
+                                                ) : (
+                                                    log.employee_name && (
+                                                        <Paper variant="outlined" sx={{ p: 1, bgcolor: '#f8fafc', borderColor: '#e2e8f0', borderRadius: '8px', mt: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                            <ArrowForwardIcon sx={{ fontSize: 14, color: '#4f46e5' }} />
+                                                            <Box>
+                                                                <Typography variant="body2" sx={{ color: '#1e293b', fontWeight: 600 }}>
+                                                                    Người nhận: {log.employee_name}
+                                                                </Typography>
+                                                                {log.department && (
+                                                                    <Typography variant="caption" sx={{ color: '#64748b', display: 'block' }}>
+                                                                        Bộ phận: {log.department}
+                                                                    </Typography>
+                                                                )}
+                                                            </Box>
+                                                        </Paper>
+                                                    )
+                                                )}
+                                            </Stack>
+                                        </Box>
+                                    )}
+                                </Stack>
+                            </Card>
+                        );
+                    })}
+                </Stack>
+            ) : (
+                <TableContainer component={Paper} sx={{ 
+                    borderRadius: '20px', 
+                    overflow: 'hidden',
+                    border: '1px solid #e2e8f0',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)'
+                }}>
+                    <Table size="medium">
+                        <TableHead sx={{ bgcolor: '#f8fafc' }}>
                             <TableRow>
-                                <TableCell colSpan={4} align="center" sx={{ py: 8 }}>
-                                    <CircularProgress size={36} thickness={4} sx={{ color: '#4f46e5' }} />
-                                    <Typography variant="body2" sx={{ mt: 2, color: '#64748b', fontWeight: 500 }}>
-                                        Đang tải dữ liệu lịch sử...
-                                    </Typography>
+                                <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase', py: 2 }}>
+                                    <Box display="flex" alignItems="center" gap={0.5}><EventNoteIcon sx={{ fontSize: 16 }} /> Thời gian</Box>
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase', py: 2 }}>
+                                    Hành động
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase', py: 2 }}>
+                                    <Box display="flex" alignItems="center" gap={0.5}><PersonIcon sx={{ fontSize: 16 }} /> {tabValue === 0 ? 'Người dùng' : 'Tài sản'}</Box>
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase', py: 2 }}>
+                                    Chi tiết tác động
                                 </TableCell>
                             </TableRow>
-                        ) : (tabValue === 0 ? qrLogs : assetLogs).length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={4} align="center" sx={{ py: 10 }}>
-                                    <Typography variant="h6" sx={{ color: '#94a3b8', fontWeight: 700 }}>
-                                        Chưa có dữ liệu lịch sử
-                                    </Typography>
-                                    <Typography variant="body2" sx={{ color: '#cbd5e1', mt: 0.5 }}>
-                                        Các hoạt động hệ thống phát sinh sẽ hiển thị tại đây
-                                    </Typography>
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            (tabValue === 0 ? qrLogs : assetLogs).map((log: any) => {
+                        </TableHead>
+                        <TableBody>
+                            {(tabValue === 0 ? qrLogs : assetLogs).map((log: any) => {
                                 const cfg = getActionColor(log.action);
                                 return (
                                     <TableRow key={log.id} hover sx={{ '&:hover': { bgcolor: '#f8fafc !important' } }}>
@@ -445,11 +552,11 @@ const ActionHistory: React.FC = () => {
                                         </TableCell>
                                     </TableRow>
                                 );
-                            })
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                            })}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            )}
 
             {/* Luxury Interactive Details Dialog */}
             <Dialog 

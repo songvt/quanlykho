@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
     Box, Typography, Paper, Table, TableBody, TableCell, 
     TableContainer, TableHead, TableRow, TextField, Button,
-    Chip, Alert, Snackbar, CircularProgress, IconButton, TablePagination, Autocomplete, Grid, Dialog, DialogTitle, DialogContent
+    Chip, Alert, Snackbar, CircularProgress, IconButton, TablePagination, Autocomplete, Grid, Dialog, DialogTitle, DialogContent,
+    useTheme, useMediaQuery, Card, CardContent, Divider, Stack
 } from '@mui/material';
 import { Save as SaveIcon, Print as PrintIcon } from '@mui/icons-material';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
@@ -33,6 +34,8 @@ interface AuditItem {
 
 const Audit: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const products = useSelector((state: RootState) => state.products.items);
     const prodStatus = useSelector((state: RootState) => state.products.status);
     const transStatus = useSelector((state: RootState) => state.transactions.status);
@@ -473,103 +476,217 @@ const Audit: React.FC = () => {
                 </Grid>
             </Paper>
 
-            <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 2, border: '1px solid #e2e8f0' }}>
-                <Table>
-                    <TableHead sx={{ bgcolor: '#f8fafc' }}>
-                        <TableRow>
-                            <TableCell sx={{ fontWeight: 700, width: '10%' }}>Mã VT</TableCell>
-                            <TableCell sx={{ fontWeight: 700, width: '20%' }}>Tên vật tư</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 700, width: '10%' }}>Tồn HT</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 700, width: '10%' }}>Thực Tế</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 700, width: '10%' }}>Lệch</TableCell>
-                            <TableCell sx={{ fontWeight: 700, width: '20%' }}>Serial / Quét QR</TableCell>
-                            <TableCell sx={{ fontWeight: 700, width: '20%' }}>Ghi chú / Tình trạng</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {paginatedItems.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                                    Không có dữ liệu tồn kho.
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            paginatedItems.map((item) => (
-                                <TableRow key={item.product_id} hover>
-                                    <TableCell sx={{ fontWeight: 500 }}>{item.item_code}</TableCell>
-                                    <TableCell>{item.name}</TableCell>
-                                    <TableCell align="center">
-                                        <Chip label={item.system_qty} color="default" sx={{ fontWeight: 600, minWidth: 60 }} />
-                                    </TableCell>
-                                    <TableCell align="center">
-                                        <TextField 
-                                            size="small" 
-                                            type="number"
-                                            value={item.actual_qty}
-                                            onChange={(e) => handleQtyChange(item.product_id, e.target.value)}
-                                            inputProps={{ min: 0 }}
-                                            sx={{ width: 100 }}
-                                            placeholder="Nhập..."
-                                        />
-                                    </TableCell>
-                                    <TableCell align="center">
-                                        {item.actual_qty !== '' ? (
-                                            <Typography 
-                                                fontWeight={700} 
-                                                color={item.discrepancy > 0 ? 'success.main' : item.discrepancy < 0 ? 'error.main' : 'text.primary'}
-                                            >
-                                                {item.discrepancy > 0 ? `+${item.discrepancy}` : item.discrepancy}
+            {isMobile ? (
+                <Stack spacing={2}>
+                    {paginatedItems.length === 0 ? (
+                        <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 2, border: '1px solid #e2e8f0' }}>
+                            <Typography color="text.secondary">
+                                Không có dữ liệu tồn kho.
+                            </Typography>
+                        </Paper>
+                    ) : (
+                        paginatedItems.map((item) => (
+                            <Card key={item.product_id} variant="outlined" sx={{ borderRadius: '16px', borderColor: '#e2e8f0', p: 2 }}>
+                                <Stack spacing={1.5}>
+                                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                                        <Box sx={{ maxWidth: '70%' }}>
+                                            <Typography variant="subtitle2" fontWeight="bold" sx={{ wordBreak: 'break-word' }}>
+                                                {item.name}
                                             </Typography>
-                                        ) : '-'}
-                                    </TableCell>
-                                    <TableCell>
-                                        {item.category?.toLowerCase() === 'hàng hóa' ? (
-                                            <Box display="flex" flexDirection="column" gap={0.5}>
-                                                <Box display="flex" gap={0.5}>
-                                                    <TextField
-                                                        size="small"
-                                                        placeholder="Quét mã..."
-                                                        fullWidth
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === 'Enter') {
-                                                                e.preventDefault();
-                                                                const val = (e.target as HTMLInputElement).value;
-                                                                if (val.trim()) {
-                                                                    handleAddSerial(item.product_id, val.trim());
-                                                                    (e.target as HTMLInputElement).value = '';
-                                                                }
-                                                            }
-                                                        }}
-                                                    />
-                                                    <IconButton color="primary" size="small" onClick={() => setOpenScannerFor(item.product_id)}>
-                                                        <QrCodeScannerIcon />
-                                                    </IconButton>
-                                                </Box>
-                                                {(item.scanned_serials?.length || 0) > 0 && (
-                                                    <Typography variant="caption" color="text.secondary">
-                                                        Đã quét: <b>{item.scanned_serials.length}</b> serial
-                                                    </Typography>
-                                                )}
-                                            </Box>
-                                        ) : (
-                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center' }}>-</Typography>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        <TextField 
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                                                Mã VT: <b>{item.item_code}</b>
+                                            </Typography>
+                                        </Box>
+                                        <Chip 
+                                            label={`Tồn HT: ${item.system_qty}`} 
                                             size="small" 
-                                            fullWidth
-                                            placeholder="Hỏng, thất lạc, đếm dư..."
-                                            value={item.notes}
-                                            onChange={(e) => handleNoteChange(item.product_id, e.target.value)}
+                                            sx={{ fontWeight: 600, bgcolor: '#f1f5f9' }} 
                                         />
+                                    </Stack>
+
+                                    <Divider />
+
+                                    <Grid container spacing={2} alignItems="center">
+                                        <Grid size={{ xs: 6 }}>
+                                            <TextField 
+                                                size="small" 
+                                                type="number"
+                                                label="Thực tế"
+                                                value={item.actual_qty}
+                                                onChange={(e) => handleQtyChange(item.product_id, e.target.value)}
+                                                inputProps={{ min: 0 }}
+                                                fullWidth
+                                                placeholder="Số lượng..."
+                                            />
+                                        </Grid>
+                                        <Grid size={{ xs: 6 }} sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                            <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
+                                                Lệch:
+                                            </Typography>
+                                            {item.actual_qty !== '' ? (
+                                                <Typography 
+                                                    fontWeight={700} 
+                                                    color={item.discrepancy > 0 ? 'success.main' : item.discrepancy < 0 ? 'error.main' : 'text.primary'}
+                                                >
+                                                    {item.discrepancy > 0 ? `+${item.discrepancy}` : item.discrepancy}
+                                                </Typography>
+                                            ) : (
+                                                <Typography color="text.secondary">-</Typography>
+                                            )}
+                                        </Grid>
+                                    </Grid>
+
+                                    {item.category?.toLowerCase() === 'hàng hóa' && (
+                                        <Box display="flex" flexDirection="column" gap={0.5}>
+                                            <Box display="flex" gap={0.5}>
+                                                <TextField
+                                                    size="small"
+                                                    placeholder="Quét mã..."
+                                                    fullWidth
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.preventDefault();
+                                                            const val = (e.target as HTMLInputElement).value;
+                                                            if (val.trim()) {
+                                                                handleAddSerial(item.product_id, val.trim());
+                                                                (e.target as HTMLInputElement).value = '';
+                                                            }
+                                                        }
+                                                    }}
+                                                />
+                                                <IconButton 
+                                                    color="primary" 
+                                                    onClick={() => setOpenScannerFor(item.product_id)}
+                                                    sx={{ 
+                                                        border: '1px solid #e2e8f0', 
+                                                        borderRadius: '8px', 
+                                                        width: 40, 
+                                                        height: 40 
+                                                    }}
+                                                >
+                                                    <QrCodeScannerIcon />
+                                                </IconButton>
+                                            </Box>
+                                            {(item.scanned_serials?.length || 0) > 0 && (
+                                                <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
+                                                    Đã quét: <b>{item.scanned_serials.length}</b> serial ({item.scanned_serials.join(', ')})
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                    )}
+
+                                    <TextField 
+                                        size="small" 
+                                        fullWidth
+                                        placeholder="Hỏng, thất lạc, đếm dư..."
+                                        label="Ghi chú / Tình trạng"
+                                        value={item.notes}
+                                        onChange={(e) => handleNoteChange(item.product_id, e.target.value)}
+                                    />
+                                </Stack>
+                            </Card>
+                        ))
+                    )}
+                </Stack>
+            ) : (
+                <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 2, border: '1px solid #e2e8f0' }}>
+                    <Table>
+                        <TableHead sx={{ bgcolor: '#f8fafc' }}>
+                            <TableRow>
+                                <TableCell sx={{ fontWeight: 700, width: '10%' }}>Mã VT</TableCell>
+                                <TableCell sx={{ fontWeight: 700, width: '20%' }}>Tên vật tư</TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 700, width: '10%' }}>Tồn HT</TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 700, width: '10%' }}>Thực Tế</TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 700, width: '10%' }}>Lệch</TableCell>
+                                <TableCell sx={{ fontWeight: 700, width: '20%' }}>Serial / Quét QR</TableCell>
+                                <TableCell sx={{ fontWeight: 700, width: '20%' }}>Ghi chú / Tình trạng</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {paginatedItems.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
+                                        Không có dữ liệu tồn kho.
                                     </TableCell>
                                 </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                            ) : (
+                                paginatedItems.map((item) => (
+                                    <TableRow key={item.product_id} hover>
+                                        <TableCell sx={{ fontWeight: 500 }}>{item.item_code}</TableCell>
+                                        <TableCell>{item.name}</TableCell>
+                                        <TableCell align="center">
+                                            <Chip label={item.system_qty} color="default" sx={{ fontWeight: 600, minWidth: 60 }} />
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <TextField 
+                                                size="small" 
+                                                type="number"
+                                                value={item.actual_qty}
+                                                onChange={(e) => handleQtyChange(item.product_id, e.target.value)}
+                                                inputProps={{ min: 0 }}
+                                                sx={{ width: 100 }}
+                                                placeholder="Nhập..."
+                                            />
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            {item.actual_qty !== '' ? (
+                                                <Typography 
+                                                    fontWeight={700} 
+                                                    color={item.discrepancy > 0 ? 'success.main' : item.discrepancy < 0 ? 'error.main' : 'text.primary'}
+                                                >
+                                                    {item.discrepancy > 0 ? `+${item.discrepancy}` : item.discrepancy}
+                                                </Typography>
+                                            ) : '-'}
+                                        </TableCell>
+                                        <TableCell>
+                                            {item.category?.toLowerCase() === 'hàng hóa' ? (
+                                                <Box display="flex" flexDirection="column" gap={0.5}>
+                                                    <Box display="flex" gap={0.5}>
+                                                        <TextField
+                                                            size="small"
+                                                            placeholder="Quét mã..."
+                                                            fullWidth
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    e.preventDefault();
+                                                                    const val = (e.target as HTMLInputElement).value;
+                                                                    if (val.trim()) {
+                                                                        handleAddSerial(item.product_id, val.trim());
+                                                                        (e.target as HTMLInputElement).value = '';
+                                                                    }
+                                                                }
+                                                            }}
+                                                        />
+                                                        <IconButton color="primary" size="small" onClick={() => setOpenScannerFor(item.product_id)}>
+                                                            <QrCodeScannerIcon />
+                                                        </IconButton>
+                                                    </Box>
+                                                    {(item.scanned_serials?.length || 0) > 0 && (
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            Đã quét: <b>{item.scanned_serials.length}</b> serial
+                                                        </Typography>
+                                                    )}
+                                                </Box>
+                                            ) : (
+                                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center' }}>-</Typography>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            <TextField 
+                                                size="small" 
+                                                fullWidth
+                                                placeholder="Hỏng, thất lạc, đếm dư..."
+                                                value={item.notes}
+                                                onChange={(e) => handleNoteChange(item.product_id, e.target.value)}
+                                            />
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            )}
             
             <TablePagination
                 rowsPerPageOptions={[25, 50, 100]}

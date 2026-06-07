@@ -5,7 +5,8 @@ import { createTheme, ThemeProvider } from '@mui/material/styles';
 import {
     Box, Paper, Typography, Button, Grid, TextField, Dialog, DialogTitle, DialogContent,
     DialogActions, Alert, Stack, Table, TableBody, TableCell, TableContainer, TableHead,
-    TableRow, MenuItem, Select, FormControl, InputLabel, IconButton, InputAdornment, Tooltip, Zoom, Autocomplete
+    TableRow, MenuItem, Select, FormControl, InputLabel, IconButton, InputAdornment, Tooltip, Zoom, Autocomplete,
+    useTheme, useMediaQuery, Card, CardContent, Divider
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import PrintIcon from '@mui/icons-material/Print';
@@ -185,6 +186,8 @@ const getLeaveTypeLabel = (value: string) => {
 };
 
 const AdminRequests = () => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const dispatch = useDispatch<AppDispatch>();
     
     // Selectors
@@ -662,6 +665,67 @@ const AdminRequests = () => {
                 </Paper>
 
                 {/* Table View */}
+            {isMobile ? (
+                <Stack spacing={2}>
+                    {filteredLeaveRequests.length === 0 ? (
+                        <Paper sx={{ p: 4, textAlign: 'center', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                            <Typography color="text.secondary" sx={{ fontFamily: "'Times New Roman', Times, serif" }}>
+                                Chưa có đơn xin nghỉ phép nào được tạo.
+                            </Typography>
+                        </Paper>
+                    ) : (
+                        filteredLeaveRequests.map((req) => (
+                            <Card key={req.id} variant="outlined" sx={{ borderRadius: '16px', borderColor: '#e2e8f0', fontFamily: "'Times New Roman', Times, serif" }}>
+                                <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                                    <Stack direction="row" justifyContent="space-between" mb={1}>
+                                        <Typography variant="subtitle2" fontWeight="bold">
+                                            {req.employeeName}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            Mã: {req.employeeCode}
+                                        </Typography>
+                                    </Stack>
+
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                        Đơn vị: {req.employeeUnit}
+                                    </Typography>
+
+                                    <Divider sx={{ my: 1 }} />
+
+                                    <Typography variant="body2" sx={{ my: 0.5 }}>
+                                        <b>Thời gian:</b> {req.startTime} {new Date(req.startDate).toLocaleDateString('vi-VN')} - {req.endTime} {new Date(req.endDate).toLocaleDateString('vi-VN')}
+                                    </Typography>
+
+                                    <Typography variant="body2" sx={{ my: 0.5 }}>
+                                        <b>Số ngày:</b> <span style={{ color: '#2563eb', fontWeight: 'bold' }}>{req.totalDays} ngày</span>
+                                    </Typography>
+
+                                    <Typography variant="body2" sx={{ my: 0.5 }}>
+                                        <b>Lý do:</b> {req.reason}
+                                    </Typography>
+
+                                    <Stack direction="row" justifyContent="space-between" alignItems="center" mt={2}>
+                                        <Typography variant="caption" color="text.secondary">
+                                            Ngày lập: {new Date(req.requestDate).toLocaleDateString('vi-VN')}
+                                        </Typography>
+                                        <Stack direction="row" spacing={1}>
+                                            <IconButton size="small" color="primary" onClick={() => handlePrintLeaveRequest(req)} sx={{ bgcolor: '#f8fafc' }}>
+                                                <PrintIcon fontSize="small" />
+                                            </IconButton>
+                                            <IconButton size="small" color="info" onClick={() => handleOpenLeaveForm(req)} sx={{ bgcolor: '#f8fafc' }}>
+                                                <EditIcon fontSize="small" />
+                                            </IconButton>
+                                            <IconButton size="small" color="error" onClick={() => handleDeleteLeaveRequest(req.id, req.employeeName)} sx={{ bgcolor: '#f8fafc' }}>
+                                                <DeleteIcon fontSize="small" />
+                                            </IconButton>
+                                        </Stack>
+                                    </Stack>
+                                </CardContent>
+                            </Card>
+                        ))
+                    )}
+                </Stack>
+            ) : (
                 <TableContainer component={Paper} sx={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', overflow: 'hidden' }}>
                     <Table size="small">
                         <TableHead sx={{ bgcolor: '#f1f5f9' }}>
@@ -718,6 +782,7 @@ const AdminRequests = () => {
                         </TableBody>
                     </Table>
                 </TableContainer>
+            )}
 
                 {/* ── FORM DIALOG: CREATE/EDIT LEAVE REQUEST ───────────────────────────── */}
                 <Dialog 
