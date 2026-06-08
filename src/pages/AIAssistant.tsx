@@ -120,15 +120,20 @@ export default function AIAssistant() {
                 })
             });
 
-            if (!response.ok) {
-                throw new Error('Không thể kết nối đến máy chủ AI');
+            let data;
+            try {
+                data = await response.json();
+            } catch (err) {
+                throw new Error('Không thể phân tích dữ liệu phản hồi từ máy chủ.');
             }
 
-            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error || 'Không thể kết nối đến máy chủ AI.');
+            }
 
             setMessages(prev => [...prev, {
                 id: (Date.now() + 1).toString(),
-                text: data.text || data.error || 'Đã có lỗi xảy ra. Vui lòng thử lại.',
+                text: data.text || 'Đã có lỗi xảy ra. Vui lòng thử lại.',
                 sender: 'bot',
                 timestamp: new Date()
             }]);
@@ -136,7 +141,7 @@ export default function AIAssistant() {
             console.error('Error contacting AI:', error);
             setMessages(prev => [...prev, {
                 id: (Date.now() + 1).toString(),
-                text: 'Không thể kết nối với máy chủ AI. Hãy đảm bảo bạn đã cấu hình `GEMINI_API_KEY` trong biến môi trường.',
+                text: error.message || 'Không thể kết nối với máy chủ AI. Hãy đảm bảo bạn đã cấu hình `GEMINI_API_KEY` trong biến môi trường.',
                 sender: 'bot',
                 timestamp: new Date()
             }]);

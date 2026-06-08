@@ -165,6 +165,9 @@ LƯU Ý KHI TRẢ LỜI:
         if (!response.ok) {
             const errBody = await response.text();
             console.error('Gemini API request failed:', errBody);
+            if (response.status === 429) {
+                return res.status(429).json({ error: 'Mã API Key của bạn đang vượt quá giới hạn lượt gọi miễn phí (Rate Limit - 429). Vui lòng thử lại sau khoảng 1 phút.' });
+            }
             throw new Error(`Gemini API returned status ${response.status}`);
         }
 
