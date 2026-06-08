@@ -22,6 +22,7 @@ import { exportStandardReport } from '../../utils/excelUtils';
 // Redux Actions
 import { fetchHRProfiles } from '../../store/slices/hrProfilesSlice';
 import { fetchEmployees } from '../../store/slices/employeesSlice';
+import { supabase } from '../../config/supabase';
 import type { RootState, AppDispatch } from '../../store';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -234,19 +235,111 @@ const AdminRequests = () => {
         handovers: getDefaultHandovers()
     });
 
-    // Load existing requests from localStorage
-    useEffect(() => {
-        const saved = localStorage.getItem('qlkho_kpi_leave_requests');
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed)) {
-                    setLeaveRequests(parsed);
+    const fetchLeaveRequests = async () => {
+        try {
+            const { data, error } = await supabase.from('kpi_leave_requests').select('*').order('created_at', { ascending: false });
+            if (error) throw error;
+            if (data) {
+                const mapped = data.map((item: any) => ({
+                    id: item.id,
+                    requestDate: item.request_date,
+                    employeeId: item.employee_id,
+                    employeeName: item.employee_name,
+                    employeeCode: item.employee_code,
+                    employeeJob: item.employee_job,
+                    employeeUnit: item.employee_unit,
+                    employeePhone: item.employee_phone,
+                    startDate: item.start_date,
+                    startTime: item.start_time,
+                    endDate: item.end_date,
+                    endTime: item.end_time,
+                    totalDays: Number(item.total_days),
+                    leaveType: item.leave_type,
+                    customLeaveType: item.custom_leave_type,
+                    reason: item.reason,
+                    location: item.location,
+                    handovers: typeof item.handovers === 'string' ? JSON.parse(item.handovers) : item.handovers,
+                    status: item.status,
+                    createdAt: item.created_at
+                }));
+                
+                // Migrate any local storage items that aren't in Supabase yet
+                const saved = localStorage.getItem('qlkho_kpi_leave_requests');
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            const missing = parsed.filter(p => !mapped.some(m => m.id === p.id));
+                            if (missing.length > 0) {
+                                for (const item of missing) {
+                                    const payload = {
+                                        id: item.id,
+                                        request_date: item.requestDate,
+                                        employee_id: item.employeeId,
+                                        employee_name: item.employeeName,
+                                        employee_code: item.employeeCode,
+                                        employee_job: item.employeeJob,
+                                        employee_unit: item.employeeUnit,
+                                        employee_phone: item.employeePhone,
+                                        start_date: item.startDate,
+                                        start_time: item.startTime,
+                                        end_date: item.endDate,
+                                        end_time: item.endTime,
+                                        total_days: item.totalDays,
+                                        leave_type: item.leaveType,
+                                        custom_leave_type: item.customLeaveType,
+                                        reason: item.reason,
+                                        location: item.location,
+                                        handovers: typeof item.handovers === 'object' ? JSON.stringify(item.handovers) : item.handovers,
+                                        status: item.status || 'approved'
+                                    };
+                                    await supabase.from('kpi_leave_requests').insert([payload]);
+                                }
+                                // Re-fetch
+                                const { data: freshData } = await supabase.from('kpi_leave_requests').select('*').order('created_at', { ascending: false });
+                                if (freshData) {
+                                    const freshMapped = freshData.map((item: any) => ({
+                                        id: item.id,
+                                        requestDate: item.request_date,
+                                        employeeId: item.employee_id,
+                                        employeeName: item.employee_name,
+                                        employeeCode: item.employee_code,
+                                        employeeJob: item.employee_job,
+                                        employeeUnit: item.employee_unit,
+                                        employeePhone: item.employee_phone,
+                                        startDate: item.start_date,
+                                        startTime: item.start_time,
+                                        endDate: item.end_date,
+                                        endTime: item.end_time,
+                                        totalDays: Number(item.total_days),
+                                        leaveType: item.leave_type,
+                                        customLeaveType: item.custom_leave_type,
+                                        reason: item.reason,
+                                        location: item.location,
+                                        handovers: typeof item.handovers === 'string' ? JSON.parse(item.handovers) : item.handovers,
+                                        status: item.status,
+                                        createdAt: item.created_at
+                                    }));
+                                    setLeaveRequests(freshMapped);
+                                }
+                                localStorage.removeItem('qlkho_kpi_leave_requests');
+                                return;
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Failed to migrate leave requests from localstorage", e);
+                    }
                 }
-            } catch (e) {
-                console.error("Failed to parse saved leave requests", e);
+
+                setLeaveRequests(mapped);
             }
+        } catch (e) {
+            console.error("Failed to fetch leave requests", e);
         }
+    };
+
+    useEffect(() => {
+        fetchLeaveRequests();
     }, []);
 
     // Reactive auto-calculation for total days off
@@ -321,63 +414,68 @@ const AdminRequests = () => {
         }
         setIsLeaveFormOpen(true);
     };
-
-    const handleSaveLeaveRequest = () => {
+    const handleSaveLeaveRequest = async () => {
         const emp = activeProfilesList.find(p => p.id === leaveFormData.employeeId);
         if (!emp) {
             setNotification({ type: 'error', message: 'Vui lòng chọn nhân viên làm đơn!' });
             return;
         }
 
-        const payload: LeaveRequest = {
-            id: leaveFormMode === 'create' ? `LR-${Date.now()}` : leaveFormData.id,
-            requestDate: leaveFormData.requestDate,
-            
-            employeeId: emp.id,
-            employeeName: emp.full_name,
-            employeeCode: emp.id,
-            employeeJob: emp.job_position || 'Nhân viên',
-            employeeUnit: emp.department || 'Bộ phận Kỹ thuật - Hạ tầng Bắc Sài Gòn',
-            employeePhone: emp.phone_number || '',
-            
-            startDate: leaveFormData.startDate,
-            startTime: leaveFormData.startTime,
-            endDate: leaveFormData.endDate,
-            endTime: leaveFormData.endTime,
-            totalDays: Number(leaveFormData.totalDays) || 0,
-            
-            leaveType: leaveFormData.leaveType,
-            customLeaveType: leaveFormData.customLeaveType,
+        const id = leaveFormMode === 'create' ? `LR-${Date.now()}` : leaveFormData.id;
+        const payload = {
+            id,
+            request_date: leaveFormData.requestDate,
+            employee_id: emp.id,
+            employee_name: emp.full_name,
+            employee_code: emp.id,
+            employee_job: emp.job_position || 'Nhân viên',
+            employee_unit: emp.department || 'Bộ phận Kỹ thuật - Hạ tầng Bắc Sài Gòn',
+            employee_phone: emp.phone_number || '',
+            start_date: leaveFormData.startDate,
+            start_time: leaveFormData.startTime,
+            end_date: leaveFormData.endDate,
+            end_time: leaveFormData.endTime,
+            total_days: Number(leaveFormData.totalDays) || 0,
+            leave_type: leaveFormData.leaveType,
+            custom_leave_type: leaveFormData.customLeaveType,
             reason: leaveFormData.reason,
             location: leaveFormData.location,
-            
             handovers: leaveFormData.handovers.filter(h => h.task.trim() !== '' || h.target.trim() !== ''),
-            
-            status: 'approved',
-            createdAt: leaveFormMode === 'create' ? new Date().toISOString() : leaveRequests.find(r => r.id === leaveFormData.id)?.createdAt || new Date().toISOString()
+            status: 'approved'
         };
 
-        let updated: LeaveRequest[];
-        if (leaveFormMode === 'create') {
-            updated = [payload, ...leaveRequests];
-            setNotification({ type: 'success', message: 'Tạo đơn xin nghỉ mới thành công!' });
-        } else {
-            updated = leaveRequests.map(r => r.id === leaveFormData.id ? payload : r);
-            setNotification({ type: 'success', message: 'Cập nhật đơn xin nghỉ thành công!' });
-        }
+        try {
+            if (leaveFormMode === 'create') {
+                const { error } = await supabase.from('kpi_leave_requests').insert([payload]);
+                if (error) throw error;
+                setNotification({ type: 'success', message: 'Tạo đơn xin nghỉ mới thành công!' });
+            } else {
+                const { error } = await supabase.from('kpi_leave_requests').update(payload).eq('id', leaveFormData.id);
+                if (error) throw error;
+                setNotification({ type: 'success', message: 'Cập nhật đơn xin nghỉ thành công!' });
+            }
 
-        setLeaveRequests(updated);
-        localStorage.setItem('qlkho_kpi_leave_requests', JSON.stringify(updated));
-        setIsLeaveFormOpen(false);
+            fetchLeaveRequests();
+            setIsLeaveFormOpen(false);
+        } catch (e: any) {
+            console.error("Lỗi khi lưu đơn xin nghỉ:", e);
+            setNotification({ type: 'error', message: 'Có lỗi xảy ra khi lưu đơn xin nghỉ: ' + e.message });
+        }
+        
         setTimeout(() => setNotification(null), 3000);
     };
 
-    const handleDeleteLeaveRequest = (id: string, name: string) => {
+    const handleDeleteLeaveRequest = async (id: string, name: string) => {
         if (window.confirm(`Bạn có chắc chắn muốn xóa đơn xin nghỉ của nhân viên "${name}"?`)) {
-            const updated = leaveRequests.filter(r => r.id !== id);
-            setLeaveRequests(updated);
-            localStorage.setItem('qlkho_kpi_leave_requests', JSON.stringify(updated));
-            setNotification({ type: 'success', message: 'Đã xóa đơn xin nghỉ!' });
+            try {
+                const { error } = await supabase.from('kpi_leave_requests').delete().eq('id', id);
+                if (error) throw error;
+                fetchLeaveRequests();
+                setNotification({ type: 'success', message: 'Đã xóa đơn xin nghỉ!' });
+            } catch (e: any) {
+                console.error("Lỗi khi xóa đơn xin nghỉ:", e);
+                setNotification({ type: 'error', message: 'Có lỗi xảy ra khi xóa đơn xin nghỉ: ' + e.message });
+            }
             setTimeout(() => setNotification(null), 3000);
         }
     };
@@ -951,72 +1049,122 @@ const AdminRequests = () => {
                             </Paper>
 
                             {/* Section C: Handovers Table */}
-                            <Paper elevation={0} sx={{ p: 3, borderRadius: '12px', border: '1px solid #e2e8f0', bgcolor: 'white' }}>
+                            <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, borderRadius: '12px', border: '1px solid #e2e8f0', bgcolor: 'white' }}>
                                 <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#64748b', mb: 2.5, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                     Bàn giao công việc (Tối đa 5 công việc)
                                 </Typography>
-                                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden' }}>
-                                    <Table size="small">
-                                        <TableHead sx={{ bgcolor: '#f8fafc' }}>
-                                            <TableRow>
-                                                <TableCell align="center" sx={{ fontWeight: 'bold', width: 60 }}>STT</TableCell>
-                                                <TableCell sx={{ fontWeight: 'bold', width: '40%' }}>CÔNG VIỆC</TableCell>
-                                                <TableCell sx={{ fontWeight: 'bold', width: '35%' }}>MỤC TIÊU / KẾT QUẢ</TableCell>
-                                                <TableCell sx={{ fontWeight: 'bold', width: '25%' }}>NGƯỜI NHẬN BÀN GIAO</TableCell>
-                                            </TableRow>
-                                        </TableHead>
-                                        <TableBody>
-                                            {leaveFormData.handovers.map((row, index) => (
-                                                <TableRow key={index}>
-                                                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>{index + 1}</TableCell>
-                                                    <TableCell sx={{ py: 1 }}>
-                                                        <TextField
-                                                            size="small"
-                                                            fullWidth
-                                                            placeholder="Nhập nội dung công việc..."
-                                                            value={row.task}
-                                                            onChange={(e) => handleHandoverChange(index, 'task', e.target.value)}
-                                                            InputProps={{ sx: { borderRadius: '6px' } }}
-                                                        />
-                                                    </TableCell>
-                                                    <TableCell sx={{ py: 1 }}>
-                                                        <TextField
-                                                            size="small"
-                                                            fullWidth
-                                                            placeholder="Nhập mục tiêu/kết quả cần đạt..."
-                                                            value={row.target}
-                                                            onChange={(e) => handleHandoverChange(index, 'target', e.target.value)}
-                                                            InputProps={{ sx: { borderRadius: '6px' } }}
-                                                        />
-                                                    </TableCell>
-                                                    <TableCell sx={{ py: 1 }}>
-                                                        <Autocomplete
-                                                            size="small"
-                                                            options={activeProfilesList as any[]}
-                                                            getOptionLabel={(option) => `${option.full_name} (${option.id})`}
-                                                            value={(activeProfilesList as any[]).find(p => p.full_name === row.recipientName) || null}
-                                                            onChange={(_, newValue) => {
-                                                                handleHandoverChange(index, 'recipientName', newValue ? newValue.full_name : '');
-                                                            }}
-                                                            renderInput={(params) => (
-                                                                <TextField 
-                                                                    {...params} 
-                                                                    placeholder="Chọn người nhận..." 
-                                                                    variant="outlined" 
-                                                                    fullWidth
-                                                                    InputProps={{
-                                                                        ...params.InputProps,
-                                                                        sx: { borderRadius: '6px' }
-                                                                    }}
-                                                                />
-                                                            )}
-                                                        />
-                                                    </TableCell>
+                                {isMobile ? (
+                                    <Stack spacing={2.5}>
+                                        {leaveFormData.handovers.map((row, index) => (
+                                            <Box key={index} sx={{ p: 2, borderRadius: '12px', border: '1px solid #e2e8f0', bgcolor: '#f8fafc' }}>
+                                                <Typography variant="subtitle2" fontWeight="bold" color="primary" mb={2}>
+                                                    Công việc #{index + 1}
+                                                </Typography>
+                                                <Stack spacing={2}>
+                                                    <TextField
+                                                        size="small"
+                                                        label="Nội dung công việc"
+                                                        fullWidth
+                                                        placeholder="Nhập nội dung công việc..."
+                                                        value={row.task}
+                                                        onChange={(e) => handleHandoverChange(index, 'task', e.target.value)}
+                                                        InputProps={{ sx: { borderRadius: '6px', bgcolor: 'white' } }}
+                                                    />
+                                                    <TextField
+                                                        size="small"
+                                                        label="Mục tiêu / Kết quả cần đạt"
+                                                        fullWidth
+                                                        placeholder="Nhập mục tiêu/kết quả cần đạt..."
+                                                        value={row.target}
+                                                        onChange={(e) => handleHandoverChange(index, 'target', e.target.value)}
+                                                        InputProps={{ sx: { borderRadius: '6px', bgcolor: 'white' } }}
+                                                    />
+                                                    <Autocomplete
+                                                        size="small"
+                                                        options={activeProfilesList as any[]}
+                                                        getOptionLabel={(option) => `${option.full_name} (${option.id})`}
+                                                        value={(activeProfilesList as any[]).find(p => p.full_name === row.recipientName) || null}
+                                                        onChange={(_, newValue) => {
+                                                            handleHandoverChange(index, 'recipientName', newValue ? newValue.full_name : '');
+                                                        }}
+                                                        renderInput={(params) => (
+                                                            <TextField 
+                                                                {...params} 
+                                                                label="Người nhận bàn giao" 
+                                                                fullWidth 
+                                                                InputProps={{
+                                                                    ...params.InputProps,
+                                                                    sx: { borderRadius: '6px', bgcolor: 'white' }
+                                                                }}
+                                                            />
+                                                        )}
+                                                    />
+                                                </Stack>
+                                            </Box>
+                                        ))}
+                                    </Stack>
+                                ) : (
+                                    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden' }}>
+                                        <Table size="small">
+                                            <TableHead sx={{ bgcolor: '#f8fafc' }}>
+                                                <TableRow>
+                                                    <TableCell align="center" sx={{ fontWeight: 'bold', width: 60 }}>STT</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold', width: '40%' }}>CÔNG VIỆC</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold', width: '35%' }}>MỤC TIÊU / KẾT QUẢ</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold', width: '25%' }}>NGƯỜI NHẬN BÀN GIAO</TableCell>
                                                 </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </TableContainer>
+                                            </TableHead>
+                                            <TableBody>
+                                                {leaveFormData.handovers.map((row, index) => (
+                                                    <TableRow key={index}>
+                                                        <TableCell align="center" sx={{ fontWeight: 'bold' }}>{index + 1}</TableCell>
+                                                        <TableCell sx={{ py: 1 }}>
+                                                            <TextField
+                                                                size="small"
+                                                                fullWidth
+                                                                placeholder="Nhập nội dung công việc..."
+                                                                value={row.task}
+                                                                onChange={(e) => handleHandoverChange(index, 'task', e.target.value)}
+                                                                InputProps={{ sx: { borderRadius: '6px' } }}
+                                                            />
+                                                        </TableCell>
+                                                        <TableCell sx={{ py: 1 }}>
+                                                            <TextField
+                                                                size="small"
+                                                                fullWidth
+                                                                placeholder="Nhập mục tiêu/kết quả cần đạt..."
+                                                                value={row.target}
+                                                                onChange={(e) => handleHandoverChange(index, 'target', e.target.value)}
+                                                                InputProps={{ sx: { borderRadius: '6px' } }}
+                                                            />
+                                                        </TableCell>
+                                                        <TableCell sx={{ py: 1 }}>
+                                                            <Autocomplete
+                                                                size="small"
+                                                                options={activeProfilesList as any[]}
+                                                                getOptionLabel={(option) => `${option.full_name} (${option.id})`}
+                                                                value={(activeProfilesList as any[]).find(p => p.full_name === row.recipientName) || null}
+                                                                onChange={(_, newValue) => {
+                                                                    handleHandoverChange(index, 'recipientName', newValue ? newValue.full_name : '');
+                                                                }}
+                                                                renderInput={(params) => (
+                                                                    <TextField 
+                                                                        {...params} 
+                                                                        placeholder="Chọn..." 
+                                                                        InputProps={{
+                                                                            ...params.InputProps,
+                                                                            sx: { borderRadius: '6px' }
+                                                                        }}
+                                                                    />
+                                                                )}
+                                                            />
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                )}
                             </Paper>
                         </Stack>
                     </DialogContent>

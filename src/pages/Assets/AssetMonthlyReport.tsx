@@ -31,11 +31,9 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
     const { items: allAssets, logs: allLogs, status } = useSelector((s: RootState) => s.assets);
 
     useEffect(() => {
-        if (status === 'idle') {
-            dispatch(fetchAssets());
-            dispatch(fetchAssetLogs());
-        }
-    }, [status, dispatch]);
+        dispatch(fetchAssets());
+        dispatch(fetchAssetLogs());
+    }, [dispatch]);
 
     const now = new Date();
     const [month, setMonth] = useState(now.getMonth() + 1);
@@ -43,24 +41,30 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
     const printRef = useRef<HTMLDivElement>(null);
 
     const groupedAssets = useMemo(() => {
-        const filtered = allAssets.filter((a: Asset) => {
-            const typeCode = (a.asset_type || '').trim().toUpperCase();
-            const grpCode  = (a.asset_group || '').trim().toUpperCase();
+        const groups: Record<string, any> = {};
+
+        // Helper to check if name/type matches reportType
+        const matchesType = (type: string, group: string) => {
+            const typeCode = (type || '').trim().toUpperCase();
+            const grpCode  = (group || '').trim().toUpperCase();
             if (reportType === 'CCDC') {
                 return typeCode.startsWith('CCDC') || typeCode.startsWith('TSNT') ||
                        grpCode.startsWith('CCDC') || grpCode.startsWith('TSNT');
             } else {
                 return typeCode.startsWith('TBVP') || grpCode.startsWith('TBVP');
             }
-        });
+        };
 
-        const groups: Record<string, any> = {};
-        filtered.forEach(a => {
+        // 1. Process currently active assets
+        allAssets.forEach((a: Asset) => {
+            if (!matchesType(a.asset_type || '', a.asset_group || '')) return;
+
             const key = `${(a.asset_name || 'N/A').trim()}_${(a.asset_type || '').trim()}`;
             if (!groups[key]) {
                 groups[key] = { 
                     name: a.asset_name, 
                     type: a.asset_type, 
+                    currentQty: 0,
                     totalQty: 0, 
                     usingQty: 0, 
                     brokenQty: 0, 
@@ -72,7 +76,8 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                 };
             }
             const qty = a.quantity || 0;
-            groups[key].totalQty += qty;
+            groups[key].currentQty += qty;
+
             const s = (a.status || '').trim();
             if (STATUS_USING.some(prefix => s.includes(prefix))) groups[key].usingQty += qty;
             else if (STATUS_BROKEN.some(prefix => s.includes(prefix))) groups[key].brokenQty += qty;
@@ -85,36 +90,95 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
             else if (a.management_unit_name) groups[key].departments.add(a.management_unit_name);
         });
 
-        // Add increase/decrease from logs
+        // 2. Process logs
         allLogs.forEach(log => {
-            const logDate = new Date(log.created_at);
-            if (logDate.getMonth() + 1 === month && logDate.getFullYear() === year) {
-                const key = `${(log.asset_name || 'N/A').trim()}_${(log.asset_type || '').trim()}`;
-                // We search by name/type since codes might change or be deleted
-                // However, logs usually have name/type. Let's find matching group or create one
-                let targetKey = key;
-                if (!groups[targetKey]) {
-                    // Try to find a group that starts with this name (legacy match)
-                    const foundKey = Object.keys(groups).find(k => k.startsWith((log.asset_name || 'N/A').trim()));
-                    if (foundKey) targetKey = foundKey;
-                }
+            if (!matchesType(log.asset_type || '', log.asset_group || '')) return;
 
-                if (groups[targetKey]) {
-                    const action = (log.action || '').toLowerCase();
-                    const isIncrease = ['tăng', 'thêm mới', 'thêm', 'tạo mới', 'insert', 'create', 'add'].some(a => action.includes(a));
-                    const isDecrease = ['giảm', 'xóa', 'delete', 'remove'].some(a => action.includes(a));
-                    
-                    if (isIncrease) groups[targetKey].increaseQty += 1;
-                    if (isDecrease) groups[targetKey].decreaseQty += 1;
+            const key = `${(log.asset_name || 'N/A').trim()}_${(log.asset_type || '').trim()}`;
+            let targetKey = key;
+            if (!groups[targetKey]) {
+                const foundKey = Object.keys(groups).find(k => k.startsWith((log.asset_name || 'N/A').trim()));
+                if (foundKey) {
+                    targetKey = foundKey;
+                } else {
+                    groups[targetKey] = {
+                        name: log.asset_name || 'N/A',
+                        type: log.asset_type || '',
+                        currentQty: 0,
+                        totalQty: 0,
+                        usingQty: 0,
+                        brokenQty: 0,
+                        unusedQty: 0,
+                        repairQty: 0,
+                        increaseQty: 0,
+                        decreaseQty: 0,
+                        departments: new Set()
+                    };
+                }
+            }
+
+            const logDate = new Date(log.created_at);
+            const logMonth = logDate.getMonth() + 1;
+            const logYear = logDate.getFullYear();
+
+            const action = (log.action || '').toLowerCase();
+            const isIncrease = ['tăng', 'thêm mới', 'thêm', 'tạo mới', 'insert', 'create', 'add'].some(a => action.includes(a));
+            const isDecrease = ['giảm', 'xóa', 'delete', 'remove'].some(a => action.includes(a));
+
+            if (logMonth === month && logYear === year) {
+                if (isIncrease) groups[targetKey].increaseQty += 1;
+                if (isDecrease) groups[targetKey].decreaseQty += 1;
+                if (log.department) groups[targetKey].departments.add(log.department);
+            } else if (logYear > year || (logYear === year && logMonth > month)) {
+                if (isIncrease) {
+                    groups[targetKey].currentQty -= 1;
+                }
+                if (isDecrease) {
+                    groups[targetKey].currentQty += 1;
                 }
             }
         });
 
-        return Object.values(groups).map(g => ({ 
-            ...g, 
-            openingQty: g.totalQty - g.increaseQty + g.decreaseQty,
-            department: Array.from(g.departments).join(', ') || '-' 
-        }));
+        // 3. Finalize totalQty and status breakdown
+        return Object.values(groups)
+            .map(g => {
+                const totalQty = Math.max(0, g.currentQty);
+                let usingQty = g.usingQty;
+                let brokenQty = g.brokenQty;
+                let unusedQty = g.unusedQty;
+                let repairQty = g.repairQty;
+
+                if (totalQty === 0) {
+                    usingQty = 0;
+                    brokenQty = 0;
+                    unusedQty = 0;
+                    repairQty = 0;
+                } else {
+                    const currentSum = usingQty + brokenQty + unusedQty + repairQty;
+                    if (currentSum > 0 && currentSum !== totalQty) {
+                        const ratio = totalQty / currentSum;
+                        usingQty = Math.round(usingQty * ratio);
+                        brokenQty = Math.round(brokenQty * ratio);
+                        unusedQty = Math.round(unusedQty * ratio);
+                        repairQty = totalQty - (usingQty + brokenQty + unusedQty);
+                    }
+                }
+
+                return {
+                    name: g.name,
+                    type: g.type,
+                    totalQty,
+                    usingQty,
+                    brokenQty,
+                    unusedQty,
+                    repairQty,
+                    increaseQty: g.increaseQty,
+                    decreaseQty: g.decreaseQty,
+                    openingQty: totalQty - g.increaseQty + g.decreaseQty,
+                    department: Array.from(g.departments).join(', ') || '-'
+                };
+            })
+            .filter(g => g.openingQty > 0 || g.increaseQty > 0 || g.decreaseQty > 0 || g.totalQty > 0);
     }, [allAssets, allLogs, reportType, month, year]);
 
     const summary = useMemo(() => {
