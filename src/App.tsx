@@ -46,6 +46,8 @@ const ZaloTemplates  = lazy(() => import('./pages/Zalo/ZaloTemplates'));
 const ZaloCampaigns  = lazy(() => import('./pages/Zalo/ZaloCampaigns'));
 const ZaloLogs       = lazy(() => import('./pages/Zalo/ZaloLogs'));
 
+const AIAssistant    = lazy(() => import('./pages/AIAssistant'));
+
 const FullScreenScanner = lazy(() => import('./pages/FullScreenScanner'));
 
 const NotFound = lazy(() => import('./pages/NotFound').catch(() => ({
@@ -141,6 +143,7 @@ function App() {
                                 </Route>
 
                                 <Route path="profile" element={<UserProfile />} />
+                                <Route path="ai-assistant" element={<AIAssistant />} />
 
                                 <Route element={<ProtectedRoute allowedPermissions={['returns.view', 'returns.create']} />}>
                                     <Route path="employee-returns" element={<EmployeeReturns />} />
