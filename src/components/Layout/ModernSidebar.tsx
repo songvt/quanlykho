@@ -133,7 +133,6 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
         ...(profile?.role === 'admin' || (profile?.role === 'staff' && (!profile.permissions || profile.permissions.length === 0)) ? [
             { text: 'Trang chủ', icon: <LayoutDashboard size={20} />, path: '/' }
         ] : []),
-        { text: 'Trợ lý AI', icon: <Bot size={20} color="#2563eb" />, path: '/ai-assistant' },
         ...(profile?.role === 'admin' || profile?.role === 'manager' || hasPermission('employees.view') ? [
             { text: 'Hành chính', icon: <Users size={20} color="#10B981" />, path: '/admin-hr' }
         ] : []),
@@ -155,6 +154,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
         ...(profile?.role === 'admin' ? [
             { text: 'Thông báo Zalo', icon: <MessageSquare size={20} color="#0ea5e9" />, path: '/zalo' }
         ] : []),
+        { text: 'Trợ lý AI', icon: <Bot size={20} color="#2563eb" />, path: '/ai-assistant' },
         ...(hasPermission('*') ? [
             { text: 'Thiết lập', icon: <Settings size={20} />, path: '/settings' }
         ] : []),
