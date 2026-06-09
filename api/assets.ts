@@ -389,7 +389,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 if (targetIds.length === 0) return res.status(400).json({ error: 'ID required' });
                 
                 // 1. Fetch info before deletion for logging
-                const { data: assetsToDelete } = await supabase.from('assets').select('asset_code, asset_name, asset_type, asset_group').in('id', targetIds);
+                const { data: assetsToDelete } = await supabase
+                    .from('assets')
+                    .select('asset_code, asset_name, asset_type, asset_group, user_employee_name, user_employee_code, user_department_name')
+                    .in('id', targetIds);
 
                 // 2. Supabase
                 const { error: sbError } = await supabase.from('assets').delete().in('id', targetIds);
@@ -415,7 +418,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                             asset_type: item.asset_type,
                             asset_group: item.asset_group,
                             action: 'Giảm',
-                            performed_by: remover
+                            employee_name: item.user_employee_name || '',
+                            employee_code: item.user_employee_code || '',
+                            department: item.user_department_name || '',
+                            performed_by: remover,
+                            details: `Xóa tài sản khỏi hệ thống (Người sử dụng cuối: ${item.user_employee_name || 'Không có'})`
                         }));
                         await logAssetFluctuation(doc, logEntries);
                     } catch (logErr) {

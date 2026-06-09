@@ -1022,3 +1022,129 @@ export const generateAssetTemplate = async () => {
     const buffer = await workbook.xlsx.writeBuffer();
     downloadAsDataUri(buffer, 'Mau_Import_Tai_San.xlsx');
 };
+
+export const exportHandoverHistory = async (history: any[], fileName: string) => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Lich_Su_Ban_Giao', {
+        pageSetup: {
+            paperSize: 9, // A4
+            orientation: 'landscape',
+            fitToPage: true,
+            fitToWidth: 1,
+            fitToHeight: 0
+        }
+    });
+
+    const fontHeader = { name: 'Times New Roman', size: 14, bold: true, color: { argb: 'FF1e4b9b' } };
+    const fontTableHead = { name: 'Times New Roman', size: 11, bold: true, color: { argb: 'FF000000' } };
+    const fontTableBody = { name: 'Times New Roman', size: 11 };
+    const borderThin: Partial<ExcelJS.Borders> = {
+        top: { style: 'thin' }, left: { style: 'thin' },
+        bottom: { style: 'thin' }, right: { style: 'thin' }
+    };
+    const headerFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+
+    // Set columns
+    sheet.columns = [
+        { key: 'stt', width: 6 },
+        { key: 'created_at', width: 20 },
+        { key: 'template_type', width: 15 },
+        { key: 'action_type', width: 15 },
+        { key: 'receiver_name', width: 25 },
+        { key: 'receiver_title', width: 20 },
+        { key: 'receiver_dept', width: 25 },
+        { key: 'giver_1', width: 25 },
+        { key: 'giver_2', width: 25 },
+        { key: 'total_quantity', width: 12 },
+        { key: 'items_detail', width: 50 },
+        { key: 'created_by', width: 20 },
+    ];
+
+    // Header Title
+    sheet.mergeCells(1, 1, 1, 12);
+    const titleCell = sheet.getCell(1, 1);
+    titleCell.value = 'DANH SÁCH LỊCH SỬ BÀN GIAO & THU HỒI CCDC - BHLĐ';
+    titleCell.font = fontHeader;
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    sheet.getRow(1).height = 30;
+
+    // Time Exported
+    sheet.mergeCells(2, 1, 2, 12);
+    const timeCell = sheet.getCell(2, 1);
+    const now = new Date();
+    timeCell.value = `Thời gian xuất báo cáo: ${now.toLocaleTimeString('vi-VN')} - ${now.toLocaleDateString('vi-VN')}`;
+    timeCell.font = { name: 'Times New Roman', size: 10, italic: true };
+    timeCell.alignment = { horizontal: 'center' };
+
+    sheet.addRow([]); // Blank row
+
+    // Table Header Row
+    const headers = [
+        'STT', 'Thời gian', 'Loại mẫu', 'Tác vụ', 'Người nhận', 
+        'Chức vụ người nhận', 'Đơn vị người nhận', 
+        'Người giao 1', 'Người giao 2', 'Tổng SL', 'Chi tiết trang bị', 'Người tạo'
+    ];
+    
+    const headRow = sheet.addRow(headers);
+    headRow.height = 25;
+    headRow.eachCell((cell) => {
+        cell.fill = headerFill;
+        cell.font = fontTableHead;
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = borderThin;
+    });
+
+    // Populate Data
+    history.forEach((h, index) => {
+        const dateVal = new Date(h.created_at).toLocaleString('vi-VN');
+        const templateVal = h.template_type === 'bhl' ? 'Mẫu BHLĐ' : 'Mẫu TSCĐ';
+        
+        let actionVal = 'Bàn giao';
+        if (h.action_type === 'revoke') actionVal = 'Thu hồi';
+        else if (h.action_type === 'transfer') actionVal = 'Điều chuyển';
+
+        const giver1 = h.giver_info ? `${h.giver_info.giverName} (${h.giver_info.giverPhone || ''})` : '';
+        const giver2 = h.giver_info && h.giver_info.giverName2 ? `${h.giver_info.giverName2} (${h.giver_info.giverPhone2 || ''})` : '';
+
+        // Format items list details
+        let itemsDetail = '';
+        if (Array.isArray(h.items)) {
+            itemsDetail = h.items.map((item: any) => {
+                const name = item.name || item.asset_name || '';
+                const qty = item.quantity !== undefined ? item.quantity : 1;
+                const serial = item.serial || item.serial_number ? ` [SN: ${item.serial || item.serial_number}]` : '';
+                return `${name} (${qty})${serial}`;
+            }).join(', ');
+        }
+
+        const rowValues = [
+            index + 1,
+            dateVal,
+            templateVal,
+            actionVal,
+            h.receiver_name || '',
+            h.receiver_title || '',
+            h.receiver_dept || '',
+            giver1,
+            giver2,
+            h.total_quantity || 0,
+            itemsDetail,
+            h.created_by || ''
+        ];
+
+        const row = sheet.addRow(rowValues);
+        row.height = 22;
+        for (let i = 1; i <= 12; i++) {
+            const cell = row.getCell(i);
+            cell.font = fontTableBody;
+            cell.border = borderThin;
+            cell.alignment = { vertical: 'middle', wrapText: true };
+            if ([1, 2, 3, 4, 10, 12].includes(i)) {
+                cell.alignment.horizontal = 'center';
+            }
+        }
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    downloadAsDataUri(buffer, `${fileName}.xlsx`);
+};

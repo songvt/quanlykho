@@ -15,6 +15,7 @@ import BadgeIcon from '@mui/icons-material/Badge';
 import HistoryIcon from '@mui/icons-material/History';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 
 import { fetchAssets } from '../../store/slices/assetsSlice';
 import { fetchHRProfiles } from '../../store/slices/hrProfilesSlice';
@@ -22,6 +23,7 @@ import { useNotification } from '../../contexts/NotificationContext';
 import type { RootState, AppDispatch } from '../../store';
 import type { Asset, HRProfile } from '../../types';
 import { formatPhone } from '../../utils/format';
+import { exportHandoverHistory } from '../../utils/excelUtils';
 
 interface BhlItem {
     stt: number;
@@ -115,6 +117,15 @@ const AssetHandoverBhl: React.FC = () => {
             }
         } catch (err: any) {
             error('Lỗi khi xóa: ' + err.message);
+        }
+    };
+
+    const handleExportHistory = async () => {
+        try {
+            await exportHandoverHistory(history, `Lich_Su_Ban_Giao_CCDC_BHLD`);
+            success('Xuất file Excel lịch sử thành công.');
+        } catch (err: any) {
+            error('Lỗi khi xuất Excel: ' + err.message);
         }
     };
 
@@ -565,9 +576,22 @@ const AssetHandoverBhl: React.FC = () => {
                         {/* 4. Lịch sử bàn giao gần đây */}
                         <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
                             <CardContent sx={{ p: 3 }}>
-                                <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1, color: '#1e293b' }}>
-                                    <HistoryIcon sx={{ color: '#2563eb' }} /> Lịch sử bàn giao gần đây
-                                </Typography>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                    <Typography variant="subtitle1" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1, color: '#1e293b' }}>
+                                        <HistoryIcon sx={{ color: '#2563eb' }} /> Lịch sử bàn giao gần đây
+                                    </Typography>
+                                    {history.length > 0 && (
+                                        <Button
+                                            variant="outlined"
+                                            size="small"
+                                            onClick={handleExportHistory}
+                                            startIcon={<FileDownloadIcon />}
+                                            sx={{ textTransform: 'none', borderRadius: 1.5, fontWeight: 600 }}
+                                        >
+                                            Xuất Excel
+                                        </Button>
+                                    )}
+                                </Box>
 
                                 {historyLoading ? (
                                     <Typography variant="body2" sx={{ color: '#64748b', textAlign: 'center', py: 2 }}>
