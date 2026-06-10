@@ -17,7 +17,7 @@ import PrintIcon from '@mui/icons-material/Print';
 import { fetchAssets, deleteAsset, importAssets, updateAsset } from '../../store/slices/assetsSlice';
 import { fetchHRProfiles } from '../../store/slices/hrProfilesSlice';
 import { useNotification } from '../../contexts/NotificationContext';
-import { readAssetExcelFile, generateAssetTemplate } from '../../utils/excelUtils';
+import { readAssetExcelFile, generateAssetTemplate, exportAssetReport } from '../../utils/excelUtils';
 import type { RootState, AppDispatch } from '../../store';
 import type { Asset } from '../../types';
 import TableSkeleton from '../../components/Common/TableSkeleton';
@@ -400,6 +400,14 @@ const AssetList = () => {
                         onClick={() => generateAssetTemplate()}
                     >
                         {isMobile ? '📥' : '📥 Tải mẫu'}
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        color="info"
+                        size="small"
+                        onClick={() => exportAssetReport(filteredAssets, profile?.full_name || 'Admin')}
+                    >
+                        {isMobile ? '📤' : '📤 Xuất Excel'}
                     </Button>
                     {selectedIds.length > 0 && (
                         <>
