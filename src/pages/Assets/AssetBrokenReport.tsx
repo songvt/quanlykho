@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
     Box, Paper, Typography, Button, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Checkbox, TablePagination,
-    Stack, TextField, InputAdornment, useMediaQuery, useTheme, Chip, Divider
+    Stack, TextField, InputAdornment, useMediaQuery, useTheme, Chip, Divider, Tooltip, Badge
 } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
 import SearchIcon from '@mui/icons-material/Search';
@@ -123,11 +123,11 @@ const AssetBrokenReport = () => {
                         fontWeight={900} 
                         color="error"
                         sx={{ 
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.02em',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1
+                             textTransform: 'uppercase',
+                             letterSpacing: '0.02em',
+                             display: 'flex',
+                             alignItems: 'center',
+                             gap: 1
                         }}
                     >
                         <FilterListIcon sx={{ fontSize: isMobile ? 22 : 28 }} />
@@ -140,28 +140,32 @@ const AssetBrokenReport = () => {
                     )}
                 </Box>
                 
-                <Stack direction="row" spacing={1}>
-                    <Button
-                        variant="outlined"
-                        color="success"
-                        startIcon={<FileDownloadIcon />}
-                        onClick={handleExportExcel}
-                        size={isMobile ? 'small' : 'medium'}
-                        sx={{ borderRadius: 2 }}
-                    >
-                        {isMobile ? 'Excel' : 'Xuất Excel'}
-                    </Button>
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        startIcon={<PrintIcon />}
-                        onClick={() => setPrintModalOpen(true)}
-                        disabled={selectedIds.length === 0}
-                        size={isMobile ? 'small' : 'medium'}
-                        sx={{ borderRadius: 2 }}
-                    >
-                        In ({selectedIds.length})
-                    </Button>
+                <Stack direction="row" spacing={1} alignItems="center">
+                    <Tooltip title="Xuất Excel" arrow>
+                        <Button
+                            variant="outlined"
+                            color="success"
+                            onClick={handleExportExcel}
+                            sx={{ minWidth: 40, width: 40, height: 40, borderRadius: '10px', p: 0 }}
+                        >
+                            <FileDownloadIcon sx={{ fontSize: 24 }} />
+                        </Button>
+                    </Tooltip>
+                    <Tooltip title={`In (${selectedIds.length})`} arrow>
+                        <span>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                onClick={() => setPrintModalOpen(true)}
+                                disabled={selectedIds.length === 0}
+                                sx={{ minWidth: 40, width: 40, height: 40, borderRadius: '10px', p: 0 }}
+                            >
+                                <Badge badgeContent={selectedIds.length} color="error" overlap="circular">
+                                    <PrintIcon sx={{ fontSize: 24 }} />
+                                </Badge>
+                            </Button>
+                        </span>
+                    </Tooltip>
                 </Stack>
             </Stack>
 

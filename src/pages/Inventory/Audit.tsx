@@ -8,6 +8,8 @@ import {
 import { Save as SaveIcon, Print as PrintIcon } from '@mui/icons-material';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import InventoryIcon from '@mui/icons-material/Inventory';
+import CloseIcon from '@mui/icons-material/Close';
+import { AppButton } from '../../components/Common/AppButton';
 import PageHeader from '../../components/Common/PageHeader';
 import QRScanner from '../../components/QRScanner';
 import { playBeep } from '../../utils/audio';
@@ -391,20 +393,16 @@ const Audit: React.FC = () => {
                 gradientType="slate"
                 actions={
                     <>
-                        <Button 
+                        <AppButton 
                             variant="contained" 
                             onClick={() => handlePrint()}
-                            startIcon={<PrintIcon />}
                             sx={{ 
                                 bgcolor: 'rgba(255, 255, 255, 0.15)', 
                                 color: '#ffffff',
                                 backdropFilter: 'blur(12px)',
                                 border: '1px solid rgba(255, 255, 255, 0.2)',
-                                borderRadius: '12px',
-                                px: 3,
-                                py: 1,
-                                fontWeight: 700,
-                                textTransform: 'none',
+                                width: 46,
+                                height: 46,
                                 transition: 'all 0.25s ease',
                                 '&:hover': {
                                     bgcolor: 'rgba(255, 255, 255, 0.25)',
@@ -412,22 +410,18 @@ const Audit: React.FC = () => {
                                 },
                                 '&:active': { transform: 'scale(0.95)' }
                             }}
-                        >
-                            In Biên Bản
-                        </Button>
-                        <Button 
+                            icon={<PrintIcon />}
+                            title="In Biên Bản"
+                        />
+                        <AppButton 
                             variant="contained" 
                             onClick={handleSave}
                             disabled={isSaving}
-                            startIcon={<SaveIcon />}
                             sx={{ 
                                 bgcolor: '#ffffff', 
                                 color: '#334155',
-                                borderRadius: '12px',
-                                px: 3,
-                                py: 1,
-                                fontWeight: 700,
-                                textTransform: 'none',
+                                width: 46,
+                                height: 46,
                                 transition: 'all 0.25s ease',
                                 '&:hover': {
                                     bgcolor: '#f8fafc',
@@ -440,9 +434,9 @@ const Audit: React.FC = () => {
                                 },
                                 '&:active': { transform: 'scale(0.95)' }
                             }}
-                        >
-                            {isSaving ? 'Đang lưu...' : 'Lưu & In'}
-                        </Button>
+                            icon={<SaveIcon />}
+                            title={isSaving ? 'Đang lưu...' : 'Lưu & In'}
+                        />
                     </>
                 }
             />
@@ -715,7 +709,7 @@ const Audit: React.FC = () => {
                             }}
                         />
                         <Box p={2} textAlign="center">
-                            <Button variant="outlined" onClick={() => setOpenScannerFor(null)}>Đóng Camera</Button>
+                            <AppButton onClick={() => setOpenScannerFor(null)} icon={<CloseIcon />} title="Đóng Camera" />
                         </Box>
                     </DialogContent>
                 </Dialog>

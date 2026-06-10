@@ -4,7 +4,7 @@ import {
     Box, Paper, Typography, Button, TextField, Grid, Stack, Divider,
     Radio, RadioGroup, FormControlLabel, FormControl, FormLabel,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-    Autocomplete, IconButton, Card, CardContent, InputAdornment, useTheme, useMediaQuery
+    Autocomplete, IconButton, Card, CardContent, InputAdornment, useTheme, useMediaQuery, Tooltip
 } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
 import RotateLeftIcon from '@mui/icons-material/RotateLeft';
@@ -581,15 +581,15 @@ const AssetHandoverBhl: React.FC = () => {
                                         <HistoryIcon sx={{ color: '#2563eb' }} /> Lịch sử bàn giao gần đây
                                     </Typography>
                                     {history.length > 0 && (
-                                        <Button
-                                            variant="outlined"
-                                            size="small"
-                                            onClick={handleExportHistory}
-                                            startIcon={<FileDownloadIcon />}
-                                            sx={{ textTransform: 'none', borderRadius: 1.5, fontWeight: 600 }}
-                                        >
-                                            Xuất Excel
-                                        </Button>
+                                        <Tooltip title="Xuất Excel" arrow>
+                                            <Button
+                                                variant="outlined"
+                                                onClick={handleExportHistory}
+                                                sx={{ minWidth: 40, width: 40, height: 40, borderRadius: '10px', p: 0 }}
+                                            >
+                                                <FileDownloadIcon sx={{ fontSize: 24 }} />
+                                            </Button>
+                                        </Tooltip>
                                     )}
                                 </Box>
 

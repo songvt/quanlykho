@@ -17,6 +17,8 @@
   --bg-default:      #F8FAFC;
   --bg-sidebar:      #FFFFFF;
   --bg-card:         #FFFFFF;
+  --bg-header:       rgba(255, 255, 255, 0.75);
+  --bg-bottom-nav:   rgba(255, 255, 255, 0.98);
   --text-primary:    #0F172A;
   --text-secondary:  #64748B;
   --border-color:    #E2E8F0;
@@ -87,6 +89,8 @@ body {
   --bg-default:      #0F172A;
   --bg-sidebar:      #111827;
   --bg-card:         #1E293B;
+  --bg-header:       rgba(15, 23, 42, 0.75);
+  --bg-bottom-nav:   rgba(17, 24, 39, 0.98);
   --text-primary:    #F8FAFC;
   --text-secondary:  #CBD5E1;
   --border-color:    #334155;

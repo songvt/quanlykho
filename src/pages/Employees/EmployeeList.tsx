@@ -6,11 +6,13 @@ import {
     Box, Paper, Typography, Button, IconButton, Dialog, DialogTitle, DialogContent, DialogActions,
     TextField, FormControl, InputLabel, Select, MenuItem, Stack, Alert, CircularProgress, Chip,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Checkbox, useTheme, useMediaQuery, Card, CardContent, Divider,
-    Grid, Switch, FormControlLabel, Tabs, Tab
+    Grid, Switch, FormControlLabel, Tabs, Tab, Tooltip
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
+import SaveIcon from '@mui/icons-material/Save';
 
 // Redux actions for both tables
 import { fetchEmployees, addEmployee, updateEmployee, deleteEmployee, deleteEmployees, importEmployees } from '../../store/slices/employeesSlice';
@@ -23,12 +25,14 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { InputAdornment } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import PeopleIcon from '@mui/icons-material/People';
 import PageHeader from '../../components/Common/PageHeader';
 import PermissionDialog from '../../components/PermissionDialog';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import VoiceSearchButton from '../../components/VoiceSearchButton';
+import { AppButton } from '../../components/Common/AppButton';
 
 // Dynamic Seniority (Thâm niên) Calculator
 const calculateSeniority = (startDateStr?: string) => {
@@ -617,38 +621,28 @@ const EmployeeList = () => {
                         {isAdmin && (
                             <>
                                 {selectedIds.length > 0 && (
-                                    <Button
+                                    <AppButton
                                         variant="contained"
                                         color="error"
-                                        startIcon={<DeleteIcon />}
+                                        icon={<DeleteIcon />}
                                         onClick={handleBulkDelete}
-                                        sx={{ borderRadius: '10px', height: 40, fontWeight: 700 }}
-                                        size="small"
-                                    >
-                                        Xóa ({selectedIds.length})
-                                    </Button>
+                                        title={`Xóa ${selectedIds.length} mục đã chọn`}
+                                    />
                                 )}
                                 {viewMode === 'personnel' && (
                                     <>
-                                        <Button
+                                        <AppButton
                                             variant="outlined"
-                                            startIcon={<FileDownloadIcon />}
                                             onClick={generateEmployeeTemplate}
-                                            sx={{ borderRadius: '10px', height: 40, whiteSpace: 'nowrap', fontWeight: 700 }}
-                                            size="small"
-                                            fullWidth={isMobile}
-                                        >
-                                            Mẫu Excel
-                                        </Button>
-                                        <Button
+                                            icon={<FileDownloadIcon />}
+                                            title="Tải mẫu Excel"
+                                        />
+                                        <AppButton
                                             variant="outlined"
                                             component="label"
-                                            startIcon={<UploadFileIcon />}
-                                            sx={{ borderRadius: '10px', height: 40, whiteSpace: 'nowrap', fontWeight: 700 }}
-                                            size="small"
-                                            fullWidth={isMobile}
+                                            icon={<CloudUploadIcon />}
+                                            title="Nhập Excel"
                                         >
-                                            Nhập Excel
                                             <input
                                                 type="file"
                                                 hidden
@@ -693,7 +687,7 @@ const EmployeeList = () => {
                                                     }
                                                 }}
                                             />
-                                        </Button>
+                                        </AppButton>
                                     </>
                                 )}
                             </>
@@ -701,29 +695,22 @@ const EmployeeList = () => {
                         
                         {/* Active Personnel Export */}
                         {viewMode === 'personnel' && (
-                            <Button
+                            <AppButton
                                 variant="contained"
                                 color="success"
-                                startIcon={<FileDownloadIcon />}
                                 onClick={handleExportPersonnel}
-                                sx={{ borderRadius: '10px', height: 40, whiteSpace: 'nowrap', bgcolor: '#10b981', fontWeight: 700, '&:hover': { bgcolor: '#059669' } }}
-                                size="small"
-                                fullWidth={isMobile}
-                            >
-                                Xuất Excel
-                            </Button>
+                                sx={{ bgcolor: '#10b981', '&:hover': { bgcolor: '#059669' } }}
+                                icon={<FileDownloadIcon />}
+                                title="Xuất Excel"
+                            />
                         )}
 
-                        <Button
+                        <AppButton
                             variant="contained"
-                            startIcon={<AddIcon />}
+                            icon={<AddIcon />}
                             onClick={() => handleOpen()}
-                            sx={{ px: 3, height: 40, borderRadius: '10px', whiteSpace: 'nowrap', fontWeight: 'bold' }}
-                            size="small"
-                            fullWidth={isMobile}
-                        >
-                            {viewMode === 'personnel' ? 'Thêm Hồ Sơ' : 'Tạo Tài Khoản'}
-                        </Button>
+                            title={viewMode === 'personnel' ? 'Thêm Hồ Sơ' : 'Tạo Tài Khoản'}
+                        />
                     </Stack>
                 </Stack>
             </Paper>
@@ -788,8 +775,8 @@ const EmployeeList = () => {
                                             </Stack>
                                             <Typography variant="body2" color="text.secondary" mb={1}>Email: {employee.email}</Typography>
                                             <Typography variant="body2" color="text.secondary" mb={1}>Tên Đăng Nhập: {employee.username || '-'}</Typography>
-                                            <Stack direction="row" spacing={1} justifyContent="flex-end" mt={2}>
-                                                <Button size="small" variant="outlined" startIcon={<VpnKeyIcon />} onClick={() => handleOpenPermissions(employee)}>Quyền</Button>
+                                            <Stack direction="row" spacing={1} alignItems="center" justifyContent="flex-end" mt={2}>
+                                                <AppButton variant="outlined" icon={<VpnKeyIcon />} onClick={() => handleOpenPermissions(employee)} title="Phân quyền" />
                                                 <IconButton size="small" onClick={() => handleOpen(employee)} color="primary"><EditIcon fontSize="small" /></IconButton>
                                                 <IconButton size="small" onClick={() => handleDelete(employee.id, employee.full_name)} color="error"><DeleteIcon fontSize="small" /></IconButton>
                                             </Stack>
@@ -1175,9 +1162,9 @@ const EmployeeList = () => {
                         </Grid>
                     </Box>
                 </DialogContent>
-                <DialogActions sx={{ px: 3, pb: 2, pt: 1, borderTop: '1px solid #e2e8f0' }}>
-                    <Button onClick={handleClose} color="inherit" sx={{ fontWeight: 'bold' }}>Hủy bỏ</Button>
-                    <Button onClick={handleSubmit} variant="contained" sx={{ fontWeight: 'bold', px: 3 }}>Lưu</Button>
+                <DialogActions sx={{ px: 3, pb: 2, pt: 1, borderTop: '1px solid #e2e8f0', gap: 1 }}>
+                    <AppButton onClick={handleClose} color="inherit" icon={<CloseIcon />} title="Hủy bỏ" />
+                    <AppButton onClick={handleSubmit} variant="contained" icon={<SaveIcon />} title="Lưu" />
                 </DialogActions>
             </Dialog>
 

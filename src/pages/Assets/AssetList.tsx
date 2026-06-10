@@ -4,7 +4,7 @@ import {
     Box, Paper, Typography, Button, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, IconButton, Dialog,
     DialogTitle, DialogContent, DialogActions, TextField, Stack,
-    Checkbox, TablePagination, useMediaQuery, useTheme, Chip, Divider, Autocomplete
+    Checkbox, TablePagination, useMediaQuery, useTheme, Chip, Divider, Autocomplete, Tooltip
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -13,7 +13,13 @@ import UndoIcon from '@mui/icons-material/Undo';
 import TransferWithinAStationIcon from '@mui/icons-material/TransferWithinAStation';
 import EditIcon from '@mui/icons-material/Edit';
 import PrintIcon from '@mui/icons-material/Print';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import CloseIcon from '@mui/icons-material/Close';
+import SaveIcon from '@mui/icons-material/Save';
+import CheckIcon from '@mui/icons-material/Check';
 
+import { AppButton } from '../../components/Common/AppButton';
 import { fetchAssets, deleteAsset, importAssets, updateAsset } from '../../store/slices/assetsSlice';
 import { fetchHRProfiles } from '../../store/slices/hrProfilesSlice';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -382,68 +388,62 @@ const AssetList = () => {
                     QUẢN LÝ TÀI SẢN
                 </Typography>
                 
-                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                    <Button
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
+                    <AppButton
                         variant="outlined"
                         component="label"
-                        startIcon={<UploadFileIcon />}
-                        size="small"
-                        sx={{ minWidth: isMobile ? 'auto' : undefined }}
+                        icon={<CloudUploadIcon />}
+                        title="Nhập Excel"
                     >
-                        {isMobile ? 'Nhập' : 'Nhập Excel'}
                         <input type="file" hidden accept=".xlsx, .xls" onChange={handleImportExcel} />
-                    </Button>
-                    <Button
+                    </AppButton>
+                    <AppButton
                         variant="outlined"
                         color="success"
-                        size="small"
+                        icon={<FileDownloadIcon />}
                         onClick={() => generateAssetTemplate()}
-                    >
-                        {isMobile ? '📥' : '📥 Tải mẫu'}
-                    </Button>
-                    <Button
+                        title="Tải mẫu Excel"
+                    />
+                    <AppButton
                         variant="outlined"
                         color="info"
-                        size="small"
+                        icon={<FileDownloadIcon />}
                         onClick={() => exportAssetReport(filteredAssets, profile?.full_name || 'Admin')}
-                    >
-                        {isMobile ? '📤' : '📤 Xuất Excel'}
-                    </Button>
+                        title="Xuất Excel"
+                    />
                     {selectedIds.length > 0 && (
                         <>
-                            <Button 
+                            <AppButton 
                                 variant="contained" 
                                 color="info" 
-                                size="small" 
-                                startIcon={<AssignmentIndIcon />}
+                                icon={<AssignmentIndIcon />}
                                 onClick={() => setActionModal({ open: true, type: 'allocate', assetIds: selectedIds })}
-                            >{isMobile ? 'Cấp' : 'Cấp phát'}</Button>
-                            <Button 
+                                title="Cấp phát"
+                            />
+                            <AppButton 
                                 variant="contained" 
                                 color="warning" 
-                                size="small" 
-                                startIcon={<UndoIcon />}
+                                icon={<UndoIcon />}
                                 onClick={() => setActionModal({ open: true, type: 'revoke', assetIds: selectedIds })}
-                            >Thu hồi</Button>
-                            <Button 
+                                title="Thu hồi"
+                            />
+                            <AppButton 
                                 variant="contained" 
                                 color="secondary" 
-                                size="small" 
-                                startIcon={<TransferWithinAStationIcon />}
+                                icon={<TransferWithinAStationIcon />}
                                 onClick={() => setActionModal({ open: true, type: 'transfer', assetIds: selectedIds })}
-                            >{isMobile ? 'Chuyển' : 'Điều chuyển'}</Button>
+                                title="Điều chuyển"
+                            />
                         </>
                     )}
-                    <Button
+                    <AppButton
                         variant="contained"
                         color="primary"
-                        size="small"
-                        startIcon={<PrintIcon />}
+                        icon={<PrintIcon />}
                         onClick={handlePrintByEmployee}
                         disabled={!searchEmployee.trim()}
-                    >
-                        {isMobile ? 'In BB' : 'In biên bản (NV)'}
-                    </Button>
+                        title="In biên bản (Nhân viên)"
+                    />
                 </Stack>
             </Stack>
 
@@ -738,9 +738,9 @@ const AssetList = () => {
                         <Typography color="error">Bạn có chắc chắn muốn thu hồi tài sản về kho?</Typography>
                     )}
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setActionModal({ ...actionModal, open: false })}>Hủy</Button>
-                    <Button variant="contained" onClick={handleActionSubmit}>Xác nhận</Button>
+                <DialogActions sx={{ gap: 1 }}>
+                    <AppButton onClick={() => setActionModal({ ...actionModal, open: false })} icon={<CloseIcon />} title="Hủy" />
+                    <AppButton variant="contained" onClick={handleActionSubmit} icon={<CheckIcon />} title="Xác nhận" />
                 </DialogActions>
             </Dialog>
 
@@ -781,9 +781,9 @@ const AssetList = () => {
                             sx={{ mt: 2 }}
                         />
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setEditStatusModal({ ...editStatusModal, open: false })}>Hủy</Button>
-                    <Button variant="contained" onClick={handleEditStatusSubmit}>Lưu</Button>
+                <DialogActions sx={{ gap: 1 }}>
+                    <AppButton onClick={() => setEditStatusModal({ ...editStatusModal, open: false })} icon={<CloseIcon />} title="Hủy" />
+                    <AppButton variant="contained" onClick={handleEditStatusSubmit} icon={<SaveIcon />} title="Lưu" />
                 </DialogActions>
             </Dialog>
 
@@ -793,9 +793,9 @@ const AssetList = () => {
                 <DialogContent>
                     <Typography>Bạn có chắc chắn muốn xóa tài sản này khỏi hệ thống? Thao tác này không thể hoàn tác.</Typography>
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setDeleteConfirm({ open: false, id: '' })}>Hủy</Button>
-                    <Button variant="contained" color="error" onClick={handleDeleteConfirm}>Xác nhận xóa</Button>
+                <DialogActions sx={{ gap: 1 }}>
+                    <AppButton onClick={() => setDeleteConfirm({ open: false, id: '' })} icon={<CloseIcon />} title="Hủy" />
+                    <AppButton variant="contained" color="error" onClick={handleDeleteConfirm} icon={<DeleteIcon />} title="Xác nhận xóa" />
                 </DialogActions>
             </Dialog>
 

@@ -7,12 +7,14 @@ import { fetchEmployees } from '../store/slices/employeesSlice';
 import { fetchOrders, updateOrderStatus } from '../store/slices/ordersSlice';
 import type { RootState, AppDispatch } from '../store';
 import {
-    Button, Box, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions
+    Button, Box, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Tooltip, Badge
 } from '@mui/material';
 import type { Order } from '../types';
 import { useNotification } from '../contexts/NotificationContext';
 import PrintIcon from '@mui/icons-material/Print';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import CloseIcon from '@mui/icons-material/Close';
 import OutboundReportPreview from '../components/Reports/OutboundReportPreview';
 import FulfillOrderDialog from './Outbound/FulfillOrderDialog';
 import StaffOutboundView from './Outbound/StaffOutboundView';
@@ -22,6 +24,7 @@ import ApprovedOrdersList from '../components/Outbound/ApprovedOrdersList';
 import QRScanner from '../components/QRScanner';
 import { sendTelegramNotification } from './Outbound/outboundTelegram';
 import PageHeader from '../components/Common/PageHeader';
+import { AppButton } from '../components/Common/AppButton';
 import OutboxIcon from '@mui/icons-material/Outbox';
 
 export const Outbound = () => {
@@ -187,9 +190,8 @@ export const Outbound = () => {
                 gradientType="blue"
                 actions={
                     <>
-                        <Button
+                        <AppButton
                             variant="contained" 
-                            startIcon={<PrintIcon />}
                             disabled={selectedPrintIds.length === 0}
                             onClick={() => {
                                 setOpenPrintPreview(true);
@@ -197,40 +199,39 @@ export const Outbound = () => {
                             }}
                             sx={{ 
                                 borderRadius: '12px', 
-                                textTransform: 'none', 
-                                fontWeight: 700, 
                                 bgcolor: 'rgba(255, 255, 255, 0.2)',
                                 color: 'white',
                                 border: '1px solid rgba(255,255,255,0.3)',
                                 backdropFilter: 'blur(5px)',
-                                px: 2,
-                                py: 1,
+                                width: 46,
+                                height: 46,
                                 '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.3)' }
                             }}
-                        >
-                            In Biên Bản ({selectedPrintIds.length})
-                        </Button>
-                        <Button 
+                            icon={
+                                <Badge badgeContent={selectedPrintIds.length} color="error" overlap="circular">
+                                    <PrintIcon sx={{ fontSize: 24 }} />
+                                </Badge>
+                            }
+                            title={`In Biên Bản (${selectedPrintIds.length})`}
+                        />
+                        <AppButton 
                             variant="contained" 
                             component="label" 
-                            startIcon={<UploadFileIcon />} 
-                            size="small"
                             sx={{ 
                                 borderRadius: '12px', 
-                                textTransform: 'none', 
-                                fontWeight: 800, 
                                 bgcolor: '#ffffff',
                                 color: '#2563eb',
-                                px: 2.5,
-                                py: 1.2,
+                                width: 46,
+                                height: 46,
                                 '&:hover': { bgcolor: '#f8fafc', transform: 'translateY(-1px)' }
                             }}
+                            icon={<CloudUploadIcon />}
+                            title="Nhập Excel"
                         >
-                            Nhập Excel
-                            <input type="file" hidden accept=".xlsx, .xls" onChange={async () => {
+                            <input type="file" hidden accept=".xlsx, .xls" onChange={async (e) => {
                                 // ... existing excel logic
                             }} />
-                        </Button>
+                        </AppButton>
                     </>
                 }
             />
@@ -269,7 +270,7 @@ export const Outbound = () => {
                 <DialogContent sx={{ p: 0 }}>
                     <QRScanner onScanSuccess={handleScanSuccess} onScanFailure={() => {}} height={400} />
                     <Box p={2} textAlign="center">
-                        <Button onClick={() => setShowScanner(false)} variant="outlined">Đóng Camera</Button>
+                        <AppButton onClick={() => setShowScanner(false)} icon={<CloseIcon />} title="Đóng Camera" />
                     </Box>
                 </DialogContent>
             </Dialog>
@@ -297,9 +298,9 @@ export const Outbound = () => {
                         reportNumber={1}
                     />
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setOpenPrintPreview(false)}>Đóng</Button>
-                    <Button variant="contained" color="primary" onClick={() => window.print()}>In Biên Bản</Button>
+                <DialogActions sx={{ gap: 1 }}>
+                    <AppButton onClick={() => setOpenPrintPreview(false)} icon={<CloseIcon />} title="Đóng" />
+                    <AppButton variant="contained" color="primary" onClick={() => window.print()} icon={<PrintIcon />} title="In Biên Bản" />
                 </DialogActions>
             </Dialog>
         </Box>

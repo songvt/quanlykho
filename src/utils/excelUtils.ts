@@ -89,6 +89,36 @@ export const readMoney = (n: number) => {
     return result.charAt(0).toUpperCase() + result.slice(1) + " đồng./.";
 };
 
+// Helper to calculate auto row height based on text content and column widths
+const calculateRowHeight = (row: ExcelJS.Row, columnsConfig: { width?: number }[], defaultHeight = 22, lineMultiplier = 14) => {
+    let maxHeight = defaultHeight;
+    row.eachCell((cell, colNumber) => {
+        const colWidth = columnsConfig[colNumber - 1]?.width || 10;
+        const value = cell.value;
+        let text = '';
+        if (value !== null && value !== undefined) {
+            if (typeof value === 'object' && 'richText' in value) {
+                text = value.richText.map((t: any) => t.text).join('');
+            } else {
+                text = String(value);
+            }
+        }
+        if (text) {
+            const lines = text.split('\n');
+            let totalLines = 0;
+            lines.forEach(line => {
+                const charsPerLine = Math.max(1, Math.floor(colWidth * 0.85));
+                totalLines += Math.ceil(line.length / charsPerLine);
+            });
+            const cellHeight = totalLines * lineMultiplier + 6; // Add small padding
+            if (cellHeight > maxHeight) {
+                maxHeight = cellHeight;
+            }
+        }
+    });
+    return maxHeight;
+};
+
 // --- NEW STANDARD EXPORT (ExcelJS) ---
 export interface ReportColumn {
     header: string;
@@ -239,6 +269,8 @@ export const exportStandardReport = async (
             cell.border = borderStyle as any;
             cell.alignment = { vertical: 'middle', wrapText: true, horizontal: columns[i - 1].align || 'left' };
         }
+        const colWidths = columns.map(c => ({ width: sheet.getColumn(c.key).width || c.width || 10 }));
+        row.height = calculateRowHeight(row, colWidths, 22, 14);
     });
 
     sheet.addRow([]);
@@ -711,6 +743,8 @@ export const exportHandoverMinutesV2 = async (
                 cell.alignment.horizontal = 'right';
             }
         }
+        const colWidths = [6, 25, 60, 8, 8, 14, 18, 45];
+        rowData.height = calculateRowHeight(rowData, colWidths.map(w => ({ width: w })), 22, 14);
         currentRow++;
     });
 
@@ -1133,7 +1167,6 @@ export const exportHandoverHistory = async (history: any[], fileName: string) =>
         ];
 
         const row = sheet.addRow(rowValues);
-        row.height = 22;
         for (let i = 1; i <= 12; i++) {
             const cell = row.getCell(i);
             cell.font = fontTableBody;
@@ -1143,6 +1176,11 @@ export const exportHandoverHistory = async (history: any[], fileName: string) =>
                 cell.alignment.horizontal = 'center';
             }
         }
+        row.height = calculateRowHeight(row, [
+            { width: 6 }, { width: 20 }, { width: 15 }, { width: 15 },
+            { width: 25 }, { width: 20 }, { width: 25 }, { width: 25 },
+            { width: 25 }, { width: 12 }, { width: 50 }, { width: 20 }
+        ], 22, 14);
     });
 
     const buffer = await workbook.xlsx.writeBuffer();
@@ -1270,7 +1308,6 @@ export const exportAssetReport = async (assets: any[], reporterName: string = 'A
         ];
 
         const row = sheet.addRow(rowValues);
-        row.height = 22;
         columns.forEach((col, i) => {
             const cell = row.getCell(i + 1);
             cell.font = fontTableBody;
@@ -1282,6 +1319,7 @@ export const exportAssetReport = async (assets: any[], reporterName: string = 'A
                 cell.numFmt = '#,##0';
             }
         });
+        row.height = calculateRowHeight(row, columns, 22, 14);
     });
 
     // Summary Row

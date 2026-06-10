@@ -27,10 +27,14 @@ export const getGoogleSheet = async () => {
         }
 
         // Handle private key format from env var
-        if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
-            privateKey = privateKey.slice(1, -1);
+        if (privateKey.startsWith('"')) {
+            privateKey = privateKey.slice(1);
+        }
+        if (privateKey.endsWith('"')) {
+            privateKey = privateKey.slice(0, -1);
         }
         privateKey = privateKey.replace(/\\n/g, '\n');
+        privateKey = privateKey.trim(); // Trim any trailing/leading whitespaces/newlines
 
         const serviceAccountAuth = new JWT({
             email: serviceAccountEmail,

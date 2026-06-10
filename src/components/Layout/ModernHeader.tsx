@@ -53,7 +53,7 @@ const ModernHeader: React.FC<ModernHeaderProps> = ({ DRAWER_WIDTH, handleDrawerT
             sx={{
                 width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` },
                 ml: { sm: `${DRAWER_WIDTH}px` },
-                bgcolor: 'rgba(255, 255, 255, 0.7)',
+                bgcolor: 'var(--bg-header)',
                 backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
                 color: 'var(--text-primary)',

@@ -50,7 +50,7 @@ const renderFormattedText = (text: string) => {
         // Handle list items
         const isListItem = content.trim().startsWith('- ') || content.trim().startsWith('* ');
         if (isListItem) {
-            content = content.replace(/^[\s\-\*]+/, '');
+            content = content.replace(/^[\s-*]+/, '');
             return (
                 <Box key={idx} component="div" sx={{ ml: 2, mb: 0.5, display: 'list-item', listStyleType: 'disc' }}>
                     <Typography variant="body2" component="span" sx={{ fontSize: '0.9rem', lineHeight: 1.6 }}>

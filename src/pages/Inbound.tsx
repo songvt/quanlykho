@@ -7,11 +7,16 @@ import type { RootState, AppDispatch } from '../store';
 import type { Transaction } from '../types';
 import {
     Button, TextField, Typography, Box, CircularProgress, Dialog, DialogContent, DialogTitle,
-    DialogActions, Stack
+    DialogActions, Stack, Tooltip
 } from '@mui/material';
 import SyncIcon from '@mui/icons-material/Sync';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import CloseIcon from '@mui/icons-material/Close';
+import SaveIcon from '@mui/icons-material/Save';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { AppButton } from '../components/Common/AppButton';
 import { generateInboundTemplate, readExcelFile } from '../utils/excelUtils';
 import { useNotification } from '../contexts/NotificationContext';
 import InboundForm from '../components/Inbound/InboundForm';
@@ -102,10 +107,10 @@ export const Inbound = () => {
                 gradientType="blue"
                 actions={
                     isAdmin ? (
-                        <>
-                            <Button
+                         <>
+                            <AppButton
                                 variant="contained"
-                                startIcon={isSyncing ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
+                                icon={isSyncing ? <CircularProgress size={16} color="inherit" /> : <SyncIcon />}
                                 onClick={async () => {
                                     setIsSyncing(true);
                                     try {
@@ -115,59 +120,48 @@ export const Inbound = () => {
                                     finally { setIsSyncing(false); }
                                 }}
                                 disabled={isSyncing}
-                                size="small"
                                 sx={{ 
                                     borderRadius: '12px', 
-                                    textTransform: 'none', 
-                                    fontWeight: 700, 
                                     bgcolor: 'rgba(255, 255, 255, 0.2)',
                                     color: 'white',
                                     border: '1px solid rgba(255,255,255,0.3)',
                                     backdropFilter: 'blur(5px)',
-                                    px: 2,
-                                    py: 1,
+                                    width: 46,
+                                    height: 46,
                                     '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.3)' }
                                 }}
-                            >
-                                {isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ từ kho tổng'}
-                            </Button>
-                            <Button 
+                                title={isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ từ kho tổng'}
+                            />
+                            <AppButton 
                                 variant="contained" 
-                                startIcon={<FileDownloadIcon />} 
                                 onClick={generateInboundTemplate} 
-                                size="small"
+                                icon={<FileDownloadIcon />}
                                 sx={{ 
                                     borderRadius: '12px', 
-                                    textTransform: 'none', 
-                                    fontWeight: 700, 
                                     bgcolor: 'rgba(255, 255, 255, 0.2)',
                                     color: 'white',
                                     border: '1px solid rgba(255,255,255,0.3)',
                                     backdropFilter: 'blur(5px)',
-                                    px: 2,
-                                    py: 1,
+                                    width: 46,
+                                    height: 46,
                                     '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.3)' }
                                 }}
-                            >
-                                Tải mẫu Excel
-                            </Button>
-                            <Button 
+                                title="Tải mẫu Excel"
+                            />
+                            <AppButton 
                                 variant="contained" 
                                 component="label" 
-                                startIcon={<UploadFileIcon />} 
-                                size="small"
+                                icon={<CloudUploadIcon />}
                                 sx={{ 
                                     borderRadius: '12px', 
-                                    textTransform: 'none', 
-                                    fontWeight: 800, 
                                     bgcolor: '#ffffff',
                                     color: '#2563eb',
-                                    px: 2.5,
-                                    py: 1.2,
+                                    width: 46,
+                                    height: 46,
                                     '&:hover': { bgcolor: '#f8fafc', transform: 'translateY(-1px)' }
                                 }}
+                                title="Nhập Excel"
                             >
-                                Nhập Excel
                                 <input type="file" hidden accept=".xlsx, .xls" onChange={async (e) => {
                                     if (e.target.files?.[0]) {
                                         try {
@@ -191,7 +185,7 @@ export const Inbound = () => {
                                         e.target.value = '';
                                     }
                                 }} />
-                            </Button>
+                            </AppButton>
                         </>
                     ) : undefined
                 }
@@ -225,9 +219,9 @@ export const Inbound = () => {
                         <TextField fullWidth label="Serial" value={editData.serial_code || ''} onChange={e => setEditData({ ...editData, serial_code: e.target.value })} />
                     </Box>
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setEditDialog(false)}>Hủy</Button>
-                    <Button onClick={handleEditSave} variant="contained" color="primary">Lưu</Button>
+                <DialogActions sx={{ gap: 1 }}>
+                    <AppButton onClick={() => setEditDialog(false)} icon={<CloseIcon />} title="Hủy" />
+                    <AppButton onClick={handleEditSave} variant="contained" color="primary" icon={<SaveIcon />} title="Lưu" />
                 </DialogActions>
             </Dialog>
 
@@ -235,9 +229,9 @@ export const Inbound = () => {
             <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)}>
                 <DialogTitle>Xác nhận xóa</DialogTitle>
                 <DialogContent>Bạn có chắc chắn muốn xóa giao dịch này?</DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setDeleteDialog(false)}>Hủy</Button>
-                    <Button onClick={handleDeleteConfirm} color="error" variant="contained">Xóa</Button>
+                <DialogActions sx={{ gap: 1 }}>
+                    <AppButton onClick={() => setDeleteDialog(false)} icon={<CloseIcon />} title="Hủy" />
+                    <AppButton onClick={handleDeleteConfirm} color="error" variant="contained" icon={<DeleteIcon />} title="Xóa" />
                 </DialogActions>
             </Dialog>
 
@@ -245,9 +239,9 @@ export const Inbound = () => {
             <Dialog open={bulkDeleteDialog} onClose={() => setBulkDeleteDialog(false)}>
                 <DialogTitle>Xác nhận xóa hàng loạt</DialogTitle>
                 <DialogContent>Bạn có chắc chắn muốn xóa {selectedIds.length} giao dịch đã chọn?</DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setBulkDeleteDialog(false)}>Hủy</Button>
-                    <Button onClick={handleBulkDeleteConfirm} color="error" variant="contained">Xóa tất cả</Button>
+                <DialogActions sx={{ gap: 1 }}>
+                    <AppButton onClick={() => setBulkDeleteDialog(false)} icon={<CloseIcon />} title="Hủy" />
+                    <AppButton onClick={handleBulkDeleteConfirm} color="error" variant="contained" icon={<DeleteIcon />} title="Xóa tất cả" />
                 </DialogActions>
             </Dialog>
         </Box>

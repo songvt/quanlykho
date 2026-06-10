@@ -42,122 +42,118 @@ const Login = () => {
                 alignItems: 'center',
                 px: { xs: 2, sm: 4 },
                 py: 4,
-                // Premium gradient background
-                background: 'linear-gradient(135deg, #f0f4ff 0%, #e8eeff 30%, #f5f0ff 60%, #fdf2f8 100%)',
+                // Logistics background image
+                backgroundImage: 'url(/login_bg_warehouse.png)',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
                 position: 'relative',
                 overflow: 'hidden',
                 // Safe area padding
                 paddingTop: 'max(32px, env(safe-area-inset-top))',
                 paddingBottom: 'max(32px, env(safe-area-inset-bottom))',
+                '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.7) 0%, rgba(30, 41, 59, 0.85) 100%)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    zIndex: 1,
+                }
             }}
         >
-            {/* Decorative background blobs */}
-            <Box sx={{
-                position: 'absolute', top: '-15%', right: '-10%',
-                width: { xs: 250, sm: 400 }, height: { xs: 250, sm: 400 },
-                borderRadius: '50%',
-                background: 'radial-gradient(circle, rgba(37, 99, 235, 0.12) 0%, transparent 70%)',
-                filter: 'blur(40px)',
-                pointerEvents: 'none',
-            }} />
-            <Box sx={{
-                position: 'absolute', bottom: '-10%', left: '-8%',
-                width: { xs: 200, sm: 350 }, height: { xs: 200, sm: 350 },
-                borderRadius: '50%',
-                background: 'radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%)',
-                filter: 'blur(40px)',
-                pointerEvents: 'none',
-            }} />
-
-            {/* Brand Header */}
-            <Box sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                mb: 3,
-                animation: 'fadeInUp 0.5s ease both',
-                '@keyframes fadeInUp': {
-                    from: { opacity: 0, transform: 'translateY(20px)' },
-                    to: { opacity: 1, transform: 'translateY(0)' }
-                }
-            }}>
-                {/* Logo */}
+            {/* Safe overlay boundary */}
+            <Box sx={{ zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', maxWidth: 420 }}>
+                {/* Brand Header */}
                 <Box sx={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: '20px',
-                    background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%)',
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    mb: 2,
-                    boxShadow: '0 12px 32px rgba(37, 99, 235, 0.35)',
-                    animation: 'bounceIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both',
-                    '@keyframes bounceIn': {
-                        from: { transform: 'scale(0.7)', opacity: 0 },
-                        to: { transform: 'scale(1)', opacity: 1 }
-                    }
-                }}>
-                    <LockOutlinedIcon sx={{ color: 'white', fontSize: 32 }} />
-                </Box>
-                <Typography sx={{
-                    fontWeight: 900,
-                    fontSize: { xs: '1.4rem', sm: '1.6rem' },
-                    color: '#0f172a',
-                    letterSpacing: '-0.03em',
-                    textAlign: 'center',
-                    lineHeight: 1.2,
-                }}>
-                    Hệ thống quản lý kho
-                </Typography>
-                <Typography sx={{
-                    fontSize: '0.875rem',
-                    color: '#64748b',
-                    fontWeight: 500,
-                    mt: 0.5,
-                    textAlign: 'center',
-                }}>
-                    Tài sản
-                </Typography>
-            </Box>
-
-            {/* Login Card */}
-            <Paper
-                elevation={0}
-                sx={{
-                    p: { xs: 3, sm: 4 },
-                    width: '100%',
-                    maxWidth: 420,
-                    borderRadius: { xs: '20px', sm: '24px' },
-                    border: '1px solid rgba(255,255,255,0.8)',
-                    background: 'rgba(255,255,255,0.85)',
-                    backdropFilter: 'blur(20px)',
-                    WebkitBackdropFilter: 'blur(20px)',
-                    boxShadow: '0 24px 60px -12px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(255,255,255,0.6)',
-                    animation: 'fadeInUp 0.5s ease 0.1s both',
+                    mb: 4,
+                    animation: 'fadeInUp 0.5s ease both',
                     '@keyframes fadeInUp': {
                         from: { opacity: 0, transform: 'translateY(20px)' },
                         to: { opacity: 1, transform: 'translateY(0)' }
                     }
-                }}
-            >
-                <Typography sx={{
-                    fontWeight: 800,
-                    fontSize: '1.3rem',
-                    color: '#0f172a',
-                    mb: 0.5,
-                    letterSpacing: '-0.02em',
                 }}>
-                    Đăng nhập
-                </Typography>
-                <Typography sx={{
-                    fontSize: '0.875rem',
-                    color: '#64748b',
-                    mb: 3,
-                    fontWeight: 500,
-                }}>
-                    Nhập thông tin tài khoản để tiếp tục
-                </Typography>
+                    {/* Logo */}
+                    <Box sx={{
+                        width: 72,
+                        height: 72,
+                        borderRadius: '24px',
+                        background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mb: 2,
+                        boxShadow: '0 12px 32px rgba(37, 99, 235, 0.45)',
+                        animation: 'bounceIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both',
+                        '@keyframes bounceIn': {
+                            from: { transform: 'scale(0.7)', opacity: 0 },
+                            to: { transform: 'scale(1)', opacity: 1 }
+                        }
+                    }}>
+                        <LockOutlinedIcon sx={{ color: 'white', fontSize: 36 }} />
+                    </Box>
+                    <Typography sx={{
+                        fontWeight: 900,
+                        fontSize: { xs: '1.6rem', sm: '1.8rem' },
+                        color: '#ffffff',
+                        letterSpacing: '-0.03em',
+                        textAlign: 'center',
+                        lineHeight: 1.2,
+                        textShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                    }}>
+                        Hệ thống quản lý kho
+                    </Typography>
+                    <Typography sx={{
+                        fontSize: '0.9rem',
+                        color: '#94a3b8',
+                        fontWeight: 600,
+                        mt: 0.5,
+                        textAlign: 'center',
+                        letterSpacing: '0.1em',
+                        textTransform: 'uppercase',
+                    }}>
+                        Tài sản & Hành chính
+                    </Typography>
+                </Box>
+
+                {/* Login Card */}
+                <Paper
+                    elevation={0}
+                    sx={{
+                        p: { xs: 3, sm: 4 },
+                        width: '100%',
+                        borderRadius: '28px',
+                        border: '1px solid rgba(255,255,255,0.2)',
+                        background: 'rgba(255,255,255,0.9)',
+                        backdropFilter: 'blur(20px)',
+                        WebkitBackdropFilter: 'blur(20px)',
+                        boxShadow: '0 24px 60px -12px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255,255,255,0.15)',
+                        animation: 'fadeInUp 0.5s ease 0.1s both',
+                    }}
+                >
+                    <Typography sx={{
+                        fontWeight: 800,
+                        fontSize: '1.4rem',
+                        color: '#0f172a',
+                        mb: 0.5,
+                        letterSpacing: '-0.02em',
+                    }}>
+                        Đăng nhập
+                    </Typography>
+                    <Typography sx={{
+                        fontSize: '0.875rem',
+                        color: '#475569',
+                        mb: 3,
+                        fontWeight: 500,
+                    }}>
+                        Nhập thông tin tài khoản để tiếp tục
+                    </Typography>
 
                 {error && (
                     <Alert
@@ -316,6 +312,7 @@ const Login = () => {
                 </Typography>
             </Box>
         </Box>
+    </Box>
     );
 };
 

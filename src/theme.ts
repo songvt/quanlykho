@@ -110,7 +110,8 @@ const theme = createTheme({
                 body: {
                     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                     letterSpacing: 0,
-                    backgroundColor: '#f6f8fb',
+                    backgroundColor: 'var(--bg-default)',
+                    color: 'var(--text-primary)',
                 },
             },
         },
@@ -172,7 +173,9 @@ const theme = createTheme({
             styleOverrides: {
                 root: {
                     backgroundImage: 'none',
-                    border: `1px solid ${colors.slate200}`,
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--bg-card)',
+                    color: 'var(--text-primary)',
                     borderRadius: 10,
                 },
                 elevation0: {
@@ -202,19 +205,19 @@ const theme = createTheme({
         MuiTableCell: {
             styleOverrides: {
                 head: {
-                    backgroundColor: colors.slate50,
-                    color: colors.slate600,
+                    backgroundColor: 'var(--bg-default)',
+                    color: 'var(--text-secondary)',
                     fontWeight: 700,
                     textTransform: 'none',
                     fontSize: '0.8125rem',
-                    borderBottom: `1px solid ${colors.slate200}`,
+                    borderBottom: '1px solid var(--border-color)',
                     padding: '10px 14px',
                     whiteSpace: 'nowrap',
                 },
                 body: {
                     padding: '11px 14px',
-                    color: colors.slate900,
-                    borderBottom: `1px solid ${colors.slate100}`,
+                    color: 'var(--text-primary)',
+                    borderBottom: '1px solid var(--border-color)',
                     fontSize: '0.875rem',
                 },
             },
@@ -289,12 +292,12 @@ const theme = createTheme({
         MuiAppBar: {
             styleOverrides: {
                 root: {
-                    backgroundColor: 'rgba(255,255,255,0.96)',
+                    backgroundColor: 'var(--bg-header)',
                     backdropFilter: 'blur(10px)',
                     WebkitBackdropFilter: 'blur(10px)',
-                    borderBottom: `1px solid ${colors.slate200}`,
+                    borderBottom: '1px solid var(--border-color)',
                     boxShadow: 'none',
-                    color: colors.slate900,
+                    color: 'var(--text-primary)',
                 },
             },
         },
@@ -375,9 +378,9 @@ const theme = createTheme({
         MuiBottomNavigation: {
             styleOverrides: {
                 root: {
-                    backgroundColor: 'rgba(255,255,255,0.98)',
+                    backgroundColor: 'var(--bg-bottom-nav)',
                     height: 62,
-                    borderTop: `1px solid ${colors.slate200}`,
+                    borderTop: '1px solid var(--border-color)',
                 },
             },
         },

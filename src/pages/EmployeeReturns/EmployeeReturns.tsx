@@ -12,6 +12,9 @@ import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import DeleteIcon from '@mui/icons-material/Delete';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import CloseIcon from '@mui/icons-material/Close';
+import SaveIcon from '@mui/icons-material/Save';
+import { AppButton } from '../../components/Common/AppButton';
 
 import { fetchReturns, addReturns, deleteReturns } from '../../store/slices/returnsSlice';
 import { fetchProducts } from '../../store/slices/productsSlice';
@@ -418,33 +421,29 @@ const EmployeeReturns = () => {
                 <Typography variant="h5" fontWeight="bold" color="primary" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
                     QUẢN LÝ TRẢ HÀNG (EMPLOYEE RETURNS)
                 </Typography>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} width={{ xs: '100%', sm: 'auto' }}>
+                <Stack direction="row" spacing={1} alignItems="center">
                     {isAdmin && (
                         <>
-                            <Button
+                            <AppButton
                                 variant="contained"
                                 color="success" // Excel color
-                                startIcon={<FileDownloadIcon />}
+                                icon={<FileDownloadIcon />}
                                 onClick={handleExportExcel}
-                                fullWidth={isMobile}
-                            >
-                                Xuất Excel
-                            </Button>
-                            <Button
+                                title="Xuất Excel"
+                            />
+                            <AppButton
                                 variant="contained"
                                 color="error"
-                                startIcon={<DeleteIcon />}
+                                icon={<DeleteIcon />}
                                 disabled={selectedIds.length === 0}
                                 onClick={handleDelete}
-                                fullWidth={isMobile}
-                            >
-                                Xóa ({selectedIds.length})
-                            </Button>
+                                title={`Xóa ${selectedIds.length} phiếu`}
+                            />
                         </>
                     )}
-                    <Button
+                    <AppButton
                         variant="outlined"
-                        startIcon={<PrintIcon />}
+                        icon={<PrintIcon />}
                         disabled={selectedIds.length === 0}
                         onClick={async () => {
                             let rName = 'Võ Thanh Song';
@@ -463,21 +462,17 @@ const EmployeeReturns = () => {
                             setResolvedReceiverName(rName);
                             setOpenPreview(true);
                         }}
-                        fullWidth={isMobile}
-                    >
-                        In Biên Bản ({selectedIds.length})
-                    </Button>
+                        title={`In Biên Bản (${selectedIds.length})`}
+                    />
 
 
                     {hasPermission('returns.create') && (
-                        <Button
+                        <AppButton
                             variant="contained"
-                            startIcon={<AddIcon />}
+                            icon={<AddIcon />}
                             onClick={() => setOpenCreate(true)}
-                            fullWidth={isMobile}
-                        >
-                            Tạo Phiếu Trả
-                        </Button>
+                            title="Tạo Phiếu Trả"
+                        />
                     )}
                 </Stack>
             </Box>
@@ -611,9 +606,7 @@ const EmployeeReturns = () => {
                                 onChange={(_, newValue) => setSelectedProduct(newValue?.id || null)}
                                 renderInput={(params) => <TextField {...params} label="Chọn Vật Tư / Hàng Hóa" />}
                             />
-                            <Button variant="outlined" onClick={() => setOpenProductSearch(true)} sx={{ minWidth: 50 }}>
-                                <SearchIcon />
-                            </Button>
+                            <AppButton variant="outlined" onClick={() => setOpenProductSearch(true)} icon={<SearchIcon />} title="Tìm kiếm vật tư" />
                         </Box>
 
                         {/* Serial Input Area */}
@@ -639,18 +632,10 @@ const EmployeeReturns = () => {
                                         />
                                     </Grid>
                                     <Grid size={2}>
-                                        <Tooltip title="Thêm">
-                                            <Button variant="contained" onClick={handleAddManualSerial} sx={{ height: 40, minWidth: 40, p: 0, borderRadius: 2 }}>
-                                                <AddIcon />
-                                            </Button>
-                                        </Tooltip>
+                                        <AppButton variant="contained" onClick={handleAddManualSerial} icon={<AddIcon />} title="Thêm serial" />
                                     </Grid>
                                     <Grid size={2}>
-                                        <Tooltip title="Mở Camera">
-                                            <Button variant="outlined" color="primary" onClick={() => setOpenScanner(true)} sx={{ height: 40, minWidth: 40, p: 0, borderRadius: 2 }}>
-                                                <QrCodeScannerIcon />
-                                            </Button>
-                                        </Tooltip>
+                                        <AppButton variant="outlined" color="primary" onClick={() => setOpenScanner(true)} icon={<QrCodeScannerIcon />} title="Mở quét Camera" />
                                     </Grid>
                                 </Grid>
 
@@ -698,9 +683,9 @@ const EmployeeReturns = () => {
                         )}
                     </Stack>
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setOpenCreate(false)}>Hủy</Button>
-                    <Button variant="contained" onClick={handleSave}>Lưu Phiếu</Button>
+                <DialogActions sx={{ gap: 1 }}>
+                    <AppButton onClick={() => setOpenCreate(false)} icon={<CloseIcon />} title="Hủy" />
+                    <AppButton variant="contained" onClick={handleSave} icon={<SaveIcon />} title="Lưu Phiếu" />
                 </DialogActions>
             </Dialog>
 
@@ -715,7 +700,7 @@ const EmployeeReturns = () => {
                         onScanFailure={() => { }}
                     />
                     <Box p={2} textAlign="center">
-                        <Button variant="outlined" onClick={() => setOpenScanner(false)}>Đóng Camera</Button>
+                        <AppButton onClick={() => setOpenScanner(false)} icon={<CloseIcon />} title="Đóng Camera" />
                     </Box>
                 </DialogContent>
             </Dialog>
@@ -746,23 +731,17 @@ const EmployeeReturns = () => {
                         />
                     </Box>
                 </DialogContent>
-                <DialogActions className="no-print">
-                    <Button
+                <DialogActions className="no-print" sx={{ gap: 1 }}>
+                    <AppButton
                         variant="contained"
                         color="success"
-                        startIcon={isUploadingDrive ? <CircularProgress size={20} color="inherit" /> : <CloudUploadIcon />}
-                        onClick={handleUploadDrive}
                         disabled={isUploadingDrive}
-                        sx={{ mr: 1 }}
-                    >
-                        {isUploadingDrive ? 'Đang lưu...' : 'Lưu Drive (PDF)'}
-                    </Button>
-                    <Button variant="contained" color="info" startIcon={<PrintIcon />} onClick={() => window.print()}>
-                        In Ngay
-                    </Button>
-                    <Button onClick={() => setOpenPreview(false)}>
-                        Đóng
-                    </Button>
+                        onClick={handleUploadDrive}
+                        icon={isUploadingDrive ? <CircularProgress size={20} color="inherit" /> : <CloudUploadIcon />}
+                        title={isUploadingDrive ? 'Đang lưu...' : 'Lưu Drive (PDF)'}
+                    />
+                    <AppButton variant="contained" color="info" onClick={() => window.print()} icon={<PrintIcon />} title="In Ngay" />
+                    <AppButton onClick={() => setOpenPreview(false)} icon={<CloseIcon />} title="Đóng" />
                 </DialogActions>
             </Dialog>
 
