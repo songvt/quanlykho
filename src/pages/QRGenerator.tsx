@@ -120,15 +120,28 @@ const QR_STYLES = `
         padding: 5mm;
     }
     @page { size: A4 landscape; margin: 5mm; }
+    .pdf-page {
+        width: 297mm;
+        height: 210mm;
+        padding: 4mm 5mm;
+        background-color: white;
+        display: flex;
+        flex-direction: column;
+        gap: 8mm;
+        box-sizing: border-box;
+        page-break-inside: avoid;
+        page-break-after: always;
+    }
     .label-wrapper { 
         width: 100%;
+        height: 94mm;
         border: 3.5px solid #000000;
-        margin-bottom: 15px;
         display: flex;
         background: white;
         page-break-inside: avoid;
         border-radius: 4px;
         position: relative;
+        overflow: hidden;
     }
     .info-col {
         width: 290px;
@@ -223,8 +236,7 @@ const QR_STYLES = `
     
     @media print {
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        .label-wrapper { margin-bottom: 12mm; border: 3.5px solid black !important; }
-        .label-wrapper:last-child { margin-bottom: 0; }
+        .label-wrapper { border: 3.5px solid black !important; }
         .info-col { border-right: 3.5px solid black !important; }
         .blue-header { border-bottom: 3.5px solid black !important; background-color: #2563eb !important; }
         .info-row { border-bottom: 1.5px dashed black !important; }
@@ -347,24 +359,69 @@ const QRGenerator = () => {
         setIsExporting(true);
         try {
             const pdf = new jsPDF("l", "mm", "a4");
-            const pages = document.querySelectorAll('.pdf-page');
+            const printArea = printRef.current;
+            if (!printArea) {
+                notifyError("Không tìm thấy nội dung để xuất");
+                setIsExporting(false);
+                return;
+            }
             
+            const pages = printArea.querySelectorAll('.pdf-page');
             if (pages.length === 0) {
                 notifyError("Không có dữ liệu để xuất");
                 setIsExporting(false);
                 return;
             }
+
+            const A4_WIDTH_PX = 1200;
+            const A4_HEIGHT_PX = Math.round(A4_WIDTH_PX / 1.4142); // 849px
             
             for (let i = 0; i < pages.length; i++) {
-                const pageEl = pages[i] as HTMLElement;
-                const canvas = await html2canvas(pageEl, { scale: 3, useCORS: true, logging: false });
-                const imgData = canvas.toDataURL("image/png");
+                const tempContainer = document.createElement('div');
+                Object.assign(tempContainer.style, {
+                    position: 'fixed', 
+                    left: '-20000px', 
+                    top: '0', 
+                    width: `${A4_WIDTH_PX}px`, 
+                    height: `${A4_HEIGHT_PX}px`,
+                    background: 'white',
+                    overflow: 'hidden'
+                });
                 
-                if (i > 0) pdf.addPage();
+                const styleTag = document.createElement('style');
+                styleTag.textContent = QR_STYLES;
+                tempContainer.appendChild(styleTag);
                 
-                const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-                pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+                const clonedPage = pages[i].cloneNode(true) as HTMLElement;
+                clonedPage.style.margin = '0';
+                clonedPage.style.padding = '4mm 5mm';
+                clonedPage.style.width = '100%';
+                clonedPage.style.height = '100%';
+                clonedPage.style.display = 'flex';
+                clonedPage.style.flexDirection = 'column';
+                clonedPage.style.gap = '8mm';
+                
+                tempContainer.appendChild(clonedPage);
+                document.body.appendChild(tempContainer);
+                
+                await new Promise(resolve => setTimeout(resolve, 600));
+                
+                const canvas = await html2canvas(tempContainer, { 
+                    scale: 3, 
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    width: A4_WIDTH_PX,
+                    height: A4_HEIGHT_PX
+                });
+                
+                document.body.removeChild(tempContainer);
+                
+                if (canvas.width > 0) {
+                    const imgData = canvas.toDataURL("image/png");
+                    if (i > 0) pdf.addPage();
+                    pdf.addImage(imgData, "PNG", 0, 0, 297, 210, undefined, 'FAST');
+                }
+                await new Promise(resolve => setTimeout(resolve, 50));
             }
             
             pdf.save("Ma_QR_Code.pdf");
@@ -1198,11 +1255,6 @@ const QRGenerator = () => {
                                 {pairedBoxes.map((pair, pageIndex) => (
                                     <div key={pageIndex} className="pdf-page"
                                         style={{ 
-                                            display: 'flex', 
-                                            flexDirection: 'column', 
-                                            gap: '12mm', 
-                                            padding: '4mm',
-                                            backgroundColor: 'white',
                                             pageBreakAfter: pageIndex < pairedBoxes.length - 1 ? 'always' : 'auto',
                                             marginBottom: pageIndex < pairedBoxes.length - 1 ? '16mm' : '0'
                                         }}>
