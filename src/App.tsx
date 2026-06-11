@@ -47,6 +47,16 @@ const ZaloCampaigns  = lazy(() => import('./pages/Zalo/ZaloCampaigns'));
 const ZaloLogs       = lazy(() => import('./pages/Zalo/ZaloLogs'));
 
 const AIAssistant    = lazy(() => import('./pages/AIAssistant'));
+const OCRDocuments   = lazy(() => import('./pages/OCRDocuments'));
+
+// Trình ký nội bộ
+const CreateTrinhKy    = lazy(() => import('./pages/TrinhKy/CreateTrinhKy'));
+const ListTrinhKy      = lazy(() => import('./pages/TrinhKy/ListTrinhKy'));
+const PendingTrinhKy   = lazy(() => import('./pages/TrinhKy/PendingTrinhKy'));
+const ProcessedTrinhKy = lazy(() => import('./pages/TrinhKy/ProcessedTrinhKy'));
+const ReportTrinhKy    = lazy(() => import('./pages/TrinhKy/ReportTrinhKy'));
+const DetailTrinhKy    = lazy(() => import('./pages/TrinhKy/DetailTrinhKy'));
+const ApproveTrinhKy   = lazy(() => import('./pages/TrinhKy/ApproveTrinhKy'));
 
 const FullScreenScanner = lazy(() => import('./pages/FullScreenScanner'));
 
@@ -144,6 +154,7 @@ function App() {
 
                                 <Route path="profile" element={<UserProfile />} />
                                 <Route path="ai-assistant" element={<AIAssistant />} />
+                                <Route path="ocr-documents" element={<OCRDocuments />} />
 
                                 <Route element={<ProtectedRoute allowedPermissions={['returns.view', 'returns.create']} />}>
                                     <Route path="employee-returns" element={<EmployeeReturns />} />
@@ -151,6 +162,16 @@ function App() {
 
                                 <Route element={<ProtectedRoute allowedPermissions={['*']} />}>
                                     <Route path="settings" element={<Settings />} />
+                                </Route>
+
+                                <Route element={<ProtectedRoute allowedPermissions={['trinhky.create', 'trinhky.approve', 'trinhky.view', '*']} />}>
+                                    <Route path="trinh-ky/create" element={<CreateTrinhKy />} />
+                                    <Route path="trinh-ky/list" element={<ListTrinhKy />} />
+                                    <Route path="trinh-ky/pending" element={<PendingTrinhKy />} />
+                                    <Route path="trinh-ky/processed" element={<ProcessedTrinhKy />} />
+                                    <Route path="trinh-ky/report" element={<ReportTrinhKy />} />
+                                    <Route path="trinh-ky/detail/:id" element={<DetailTrinhKy />} />
+                                    <Route path="trinh-ky/approve/:id" element={<ApproveTrinhKy />} />
                                 </Route>
 
                                 <Route element={<ProtectedRoute allowedRoles={['admin']} />}>

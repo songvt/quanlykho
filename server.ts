@@ -12,6 +12,8 @@ import settlementsHandler from './api/settlements.js';
 import systemUtilsHandler from './api/system_utils.js';
 import zaloHandler from './api/zalo.js';
 import geminiHandler from './api/gemini.js';
+import ocrHandler from './api/ocr.js';
+import trinhkyHandler from './api/trinhky.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -42,6 +44,8 @@ app.all('/api/assets', createVercelHandler(assetsHandler));
 app.all('/api/audits', createVercelHandler(auditsHandler));
 app.all('/api/zalo', createVercelHandler(zaloHandler));
 app.all('/api/gemini', createVercelHandler(geminiHandler));
+app.all('/api/ocr', createVercelHandler(ocrHandler));
+app.all('/api/trinhky', createVercelHandler(trinhkyHandler));
 
 // Helper to safely override Express prototype query getter
 const setQueryType = (req: express.Request, type: string) => {

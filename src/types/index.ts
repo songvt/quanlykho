@@ -11,6 +11,7 @@ export type PermissionCode =
     | 'returns.view' | 'returns.create'
     | 'storekeepers.manage'
     | 'assets.view' | 'assets.manage' | 'assets.list_only'
+    | 'trinhky.create' | 'trinhky.approve' | 'trinhky.view'
     | '*'; // Admin full access
 
 export interface Employee {
@@ -37,6 +38,7 @@ export interface Employee {
     contract_type?: string;
     labor_status?: string;
     insurance_participation?: boolean;
+    signature_data?: string | null;
 }
 
 export interface HRProfile {
@@ -280,4 +282,62 @@ export interface DetailedOutboundItem {
     impact_type: string;
     cost_allocation: string;
 }
+
+export interface TrinhKyHoSo {
+    id: string;
+    so_hoso: string;
+    tieu_de: string;
+    noi_dung?: string;
+    loai_hoso: string;
+    do_mat: 'Bình thường' | 'Mật' | 'Tối mật' | 'Tuyệt mật';
+    do_khan: 'Bình thường' | 'Khẩn' | 'Thượng khẩn' | 'Hỏa tốc';
+    nguoi_tao: string; // employee_id
+    ngay_tao: string;
+    trang_thai: 'Nháp' | 'Chờ ký' | 'Đang ký' | 'Hoàn thành' | 'Từ chối' | 'Thu hồi';
+    don_vi?: string;
+    hinh_thuc_ky: 'tuan_tu' | 'song_song';
+    is_delete: boolean;
+    created_at?: string;
+    updated_at?: string;
+    creator?: Employee; // Joined
+    approvers?: TrinhKyApprover[]; // Joined
+    attachments?: TrinhKyAttachment[]; // Joined
+    workflows?: TrinhKyWorkflow[]; // Joined
+}
+
+export interface TrinhKyApprover {
+    id: string;
+    hoso_id: string;
+    user_id: string; // employee_id
+    thu_tu_ky: number;
+    trang_thai: 'ChoKy' | 'DangXuly' | 'DaKy' | 'DaKyNhay' | 'TuChoi' | 'DaChuyen';
+    ngay_ky?: string;
+    y_kien?: string;
+    signature_data?: string | null;
+    created_at?: string;
+    employee?: Employee; // Joined
+}
+
+export interface TrinhKyWorkflow {
+    id: string;
+    hoso_id: string;
+    action: 'tao_moi' | 'gui_trinh' | 'ky_duyet' | 'ky_nhay' | 'tu_choi' | 'thu_hoi' | 'yeu_cau_chinh_sua' | 'chuyen_nguoi_ky';
+    user_id: string; // employee_id
+    action_time: string;
+    comment?: string;
+    created_at?: string;
+    employee?: Employee; // Joined
+}
+
+export interface TrinhKyAttachment {
+    id: string;
+    hoso_id: string;
+    file_name: string;
+    file_path: string;
+    file_size: number;
+    upload_by: string; // employee_id
+    upload_time: string;
+    uploader?: Employee; // Joined
+}
+
 
