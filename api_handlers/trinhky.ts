@@ -201,7 +201,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     .eq('hoso_id', doc.id)
                     .eq('trang_thai', 'DangXuly');
                 
-                const currentSigners = (activeApprovers || []).map(a => a.employee?.full_name).join(', ');
+                const currentSigners = (activeApprovers || []).map(a => {
+                    const emp = a.employee as any;
+                    return Array.isArray(emp) ? emp[0]?.full_name : emp?.full_name;
+                }).join(', ');
                 return {
                     ...doc,
                     current_signer: currentSigners || (doc.trang_thai === 'Hoàn thành' ? 'Hoàn thành' : 'N/A')
