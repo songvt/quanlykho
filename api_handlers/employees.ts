@@ -3,10 +3,10 @@ import { getGoogleSheet, getSheetByTitle } from './_utils/googleSheets.js';
 import { supabase } from './_utils/supabase.js';
 import crypto from 'crypto';
 
-import hrProfilesHandler from './_hr_profiles.js';
-import kpiInfractionsHandler from './_kpi_infractions.js';
-import employeeReturnsHandler from './_employee_returns.js';
-import districtStorekeepersHandler from './_district_storekeepers.js';
+import hrProfilesHandler from './hr_profiles.js';
+import kpiInfractionsHandler from './kpi_infractions.js';
+import employeeReturnsHandler from './employee_returns.js';
+import districtStorekeepersHandler from './district_storekeepers.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const allowedMethods = ['GET', 'POST', 'PUT', 'DELETE'];
