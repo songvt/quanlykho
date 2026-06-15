@@ -75,11 +75,11 @@ const ProductSearchDialog: React.FC<ProductSearchDialogProps> = ({ open, onClose
                                     }}
                                     sx={{ borderRadius: 2, cursor: 'pointer', '&:active': { bgcolor: 'action.selected' } }}
                                 >
-                                    <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                                         <Typography variant="subtitle2" fontWeight="bold" color="primary.main">
                                             {product.item_code}
                                         </Typography>
-                                        <Typography variant="body2" sx={{ my: 0.5, fontWeight: 500 }}>
+                                        <Typography variant="body2" sx={{ my: 0.75, fontWeight: 500 }}>
                                             {product.name}
                                         </Typography>
                                         <Stack direction="row" justifyContent="space-between" alignItems="center">
