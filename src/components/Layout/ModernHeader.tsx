@@ -50,12 +50,10 @@ const ModernHeader: React.FC<ModernHeaderProps> = ({ DRAWER_WIDTH, handleDrawerT
     return (
         <AppBar
             position="fixed"
+            className="premium-glass"
             sx={{
                 width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` },
                 ml: { sm: `${DRAWER_WIDTH}px` },
-                bgcolor: 'var(--bg-header)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
                 color: 'var(--text-primary)',
                 borderBottom: '1px solid var(--border-color)',
                 boxShadow: 'none',

@@ -70,6 +70,7 @@ const MobileBottomNav: React.FC = () => {
 
             {/* Bottom Navigation Bar */}
             <Paper
+                className="premium-glass"
                 sx={{
                     position: 'fixed',
                     bottom: 0,
@@ -78,9 +79,8 @@ const MobileBottomNav: React.FC = () => {
                     display: { sm: 'none' },
                     zIndex: 1300,
                     pb: 'env(safe-area-inset-bottom)',
-                    bgcolor: 'var(--bg-card)',
                     borderTop: '1px solid var(--border-color)',
-                    boxShadow: '0 -4px 20px rgba(0,0,0,0.05)',
+                    boxShadow: '0 -8px 30px rgba(0, 0, 0, 0.03)',
                 }}
                 elevation={0}
             >
@@ -89,22 +89,26 @@ const MobileBottomNav: React.FC = () => {
                     value={value >= 0 ? value : false}
                     onChange={handleNavChange}
                     sx={{
-                        height: 72,
+                        height: 64,
                         bgcolor: 'transparent',
                         '& .MuiBottomNavigationAction-root': {
                             color: 'var(--text-secondary)',
                             minWidth: 'auto',
                             padding: '6px 0',
+                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                             '&.Mui-selected': {
                                 color: 'var(--brand-primary)',
+                                transform: 'scale(1.08)',
                             },
                         },
                         '& .MuiBottomNavigationAction-label': {
-                            fontSize: '0.65rem',
+                            fontSize: '0.62rem',
                             fontWeight: 600,
                             mt: 0.5,
+                            transition: 'all 0.2s ease',
                             '&.Mui-selected': {
-                                fontSize: '0.65rem',
+                                fontSize: '0.62rem',
+                                fontWeight: 700,
                             }
                         }
                     }}

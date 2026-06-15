@@ -124,10 +124,14 @@ const InboundList: React.FC<InboundListProps> = ({ onEdit, onDelete, onBulkDelet
                             <Stack spacing={2}>
                                 {paginatedTransactions.map((row, idx) => (
                                     <Card key={row.id || `card-${idx}`} elevation={0} sx={{ 
-                                        borderRadius: '12px', 
-                                        border: '1px solid #e2e8f0',
-                                        bgcolor: selectedIds.includes(row.id) ? '#eff6ff' : 'white',
-                                        transition: 'all 0.2s'
+                                        borderRadius: '16px', 
+                                        border: '1px solid var(--border-color)',
+                                        bgcolor: selectedIds.includes(row.id) ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-card)',
+                                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        '&:hover': {
+                                            transform: 'translateY(-2px)',
+                                            boxShadow: '0 8px 30px rgba(0,0,0,0.04)',
+                                        }
                                     }}>
                                         <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                                             <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>

@@ -485,7 +485,18 @@ const EmployeeReturns = () => {
                         <Typography align="center" py={4} color="text.secondary">Chưa có dữ liệu trả hàng</Typography>
                     ) : (
                         visibleReturns.map((row: any) => (
-                            <Card key={row.id} variant="outlined" sx={{ position: 'relative', bgcolor: selectedIds.includes(row.id) ? 'action.selected' : 'background.paper' }}>
+                            <Card key={row.id} elevation={0} sx={{ 
+                                position: 'relative', 
+                                mb: 2,
+                                borderRadius: '16px',
+                                border: '1px solid var(--border-color)',
+                                bgcolor: selectedIds.includes(row.id) ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-card)',
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '&:hover': {
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: '0 8px 30px rgba(0,0,0,0.04)',
+                                }
+                            }}>
                                 <CardContent sx={{ pb: 1 }}>
                                     <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
                                         <Checkbox

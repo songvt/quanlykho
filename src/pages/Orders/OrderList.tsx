@@ -395,7 +395,18 @@ const OrderList = () => {
                         filteredOrders.map((order) => {
                             const isSelected = selectedOrderIds.includes(order.id);
                             return (
-                            <Card key={order.id} sx={{ mb: 1.5, borderRadius: 2, border: '1px solid #e5e7eb', boxShadow: 'none' }}>
+                            <Card key={order.id} sx={{ 
+                                mb: 2, 
+                                borderRadius: '16px', 
+                                border: '1px solid var(--border-color)', 
+                                bgcolor: isSelected ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-card)',
+                                boxShadow: 'none',
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '&:hover': {
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: '0 8px 30px rgba(0,0,0,0.04)',
+                                }
+                            }}>
                                     <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                                         <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={1}>
                                             <Box display="flex" alignItems="center" gap={1}>

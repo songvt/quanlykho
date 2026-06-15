@@ -121,10 +121,17 @@ const theme = createTheme({
             },
             styleOverrides: {
                 root: {
-                    borderRadius: 8,
+                    borderRadius: 10,
                     minHeight: 40,
-                    padding: '8px 16px',
-                    transition: 'background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease',
+                    padding: '8px 18px',
+                    fontWeight: 600,
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    '&:hover': {
+                        transform: 'translateY(-1px)',
+                    },
+                    '&:active': {
+                        transform: 'translateY(1px)',
+                    },
                 },
                 sizeSmall: {
                     minHeight: 34,
@@ -133,20 +140,23 @@ const theme = createTheme({
                 },
                 sizeLarge: {
                     minHeight: 48,
-                    padding: '12px 20px',
+                    padding: '12px 24px',
                     fontSize: '0.95rem',
                 },
                 containedPrimary: {
-                    background: colors.primary,
+                    background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.primaryHover} 100%)`,
+                    boxShadow: `0 4px 14px 0 ${alpha(colors.primary, 0.35)}`,
                     '&:hover': {
-                        background: colors.primaryHover,
+                        background: `linear-gradient(135deg, ${colors.primaryHover} 0%, ${colors.primary} 100%)`,
+                        boxShadow: `0 6px 20px 0 ${alpha(colors.primary, 0.45)}`,
                     },
                 },
                 outlined: {
-                    borderColor: colors.slate300,
+                    borderColor: 'var(--border-color)',
+                    color: 'var(--text-primary)',
                     '&:hover': {
-                        borderColor: colors.slate400,
-                        backgroundColor: colors.slate50,
+                        borderColor: 'var(--brand-primary)',
+                        backgroundColor: 'rgba(37, 99, 235, 0.04)',
                     },
                 },
             },
@@ -156,11 +166,16 @@ const theme = createTheme({
                 root: {
                     minWidth: 40,
                     minHeight: 40,
-                    borderRadius: 8,
-                    color: colors.slate600,
+                    borderRadius: 10,
+                    color: 'var(--text-secondary)',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                     '&:hover': {
-                        backgroundColor: colors.slate100,
-                        color: colors.slate900,
+                        backgroundColor: 'var(--gray-100)',
+                        color: 'var(--text-primary)',
+                        transform: 'scale(1.05)',
+                    },
+                    '&:active': {
+                        transform: 'scale(0.95)',
                     },
                 },
                 sizeSmall: {
@@ -176,13 +191,13 @@ const theme = createTheme({
                     border: '1px solid var(--border-color)',
                     backgroundColor: 'var(--bg-card)',
                     color: 'var(--text-primary)',
-                    borderRadius: 10,
+                    borderRadius: 16,
                 },
                 elevation0: {
-                    border: `1px solid ${colors.slate200}`,
+                    border: '1px solid var(--border-color)',
                 },
                 elevation1: {
-                    boxShadow: '0 1px 2px rgba(15, 23, 42, 0.06)',
+                    boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.04)',
                 },
             },
         },
@@ -191,13 +206,31 @@ const theme = createTheme({
                 root: {
                     borderRadius: 20,
                     border: '1px solid var(--border-color)',
-                    boxShadow: 'none',
+                    boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.04)',
                     backgroundColor: 'var(--bg-card)',
-                    transition: 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    position: 'relative',
+                    overflow: 'visible',
+                    '&::after': {
+                        content: '""',
+                        position: 'absolute',
+                        inset: 0,
+                        borderRadius: 20,
+                        border: '1px solid transparent',
+                        backgroundImage: `linear-gradient(135deg, ${colors.primary}, ${colors.primaryHover})`,
+                        WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                        WebkitMaskComposite: 'xor',
+                        maskComposite: 'exclude',
+                        opacity: 0,
+                        transition: 'opacity 0.3s ease',
+                        pointerEvents: 'none',
+                    },
                     '&:hover': {
-                        borderColor: 'var(--brand-primary)',
-                        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.08)',
-                        transform: 'translateY(-2px)'
+                        boxShadow: '0 20px 35px -10px rgba(15, 23, 42, 0.12)',
+                        transform: 'translateY(-4px)',
+                        '&::after': {
+                            opacity: 0.2,
+                        }
                     },
                 },
             },
@@ -211,11 +244,11 @@ const theme = createTheme({
                     textTransform: 'none',
                     fontSize: '0.8125rem',
                     borderBottom: '1px solid var(--border-color)',
-                    padding: '10px 14px',
+                    padding: '12px 16px',
                     whiteSpace: 'nowrap',
                 },
                 body: {
-                    padding: '11px 14px',
+                    padding: '12px 16px',
                     color: 'var(--text-primary)',
                     borderBottom: '1px solid var(--border-color)',
                     fontSize: '0.875rem',
@@ -226,7 +259,7 @@ const theme = createTheme({
             styleOverrides: {
                 root: {
                     '&.MuiTableRow-hover:hover': {
-                        backgroundColor: colors.slate50,
+                        backgroundColor: 'var(--gray-50)',
                     },
                     '&:last-child td': {
                         borderBottom: 0,
@@ -237,18 +270,22 @@ const theme = createTheme({
         MuiOutlinedInput: {
             styleOverrides: {
                 root: {
-                    borderRadius: 8,
-                    backgroundColor: colors.surface,
+                    borderRadius: 10,
+                    backgroundColor: 'var(--bg-card)',
                     minHeight: 40,
+                    transition: 'all 0.2s ease',
+                    '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'var(--border-color)',
+                    },
                     '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: colors.slate400,
+                        borderColor: 'var(--gray-400)',
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: colors.primary,
-                        borderWidth: 1,
+                        borderColor: 'var(--brand-primary)',
+                        borderWidth: '1.5px',
                     },
                     '&.Mui-focused': {
-                        boxShadow: `0 0 0 3px ${alpha(colors.primary, 0.1)}`,
+                        boxShadow: `0 0 0 4px ${alpha(colors.primary, 0.15)}`,
                     },
                 },
                 input: {

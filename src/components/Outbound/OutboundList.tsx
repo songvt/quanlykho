@@ -83,11 +83,15 @@ const OutboundList: React.FC<OutboundListProps> = ({ transactions, selectedIds, 
                                 elevation={0}
                                 sx={{ 
                                     mb: 2, 
-                                    borderRadius: '12px',
-                                    border: '1px solid',
-                                    borderColor: selectedIds.includes(t.id) ? '#2563eb' : '#e2e8f0',
-                                    backgroundColor: selectedIds.includes(t.id) ? '#eff6ff' : '#ffffff',
-                                    transition: 'all 0.2s'
+                                    borderRadius: '16px',
+                                    border: '1px solid var(--border-color)',
+                                    borderColor: selectedIds.includes(t.id) ? 'var(--brand-primary)' : 'var(--border-color)',
+                                    backgroundColor: selectedIds.includes(t.id) ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-card)',
+                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    '&:hover': {
+                                        transform: 'translateY(-2px)',
+                                        boxShadow: '0 8px 30px rgba(0,0,0,0.04)',
+                                    }
                                 }}
                             >
                                 <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
