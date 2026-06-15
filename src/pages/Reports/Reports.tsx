@@ -18,6 +18,18 @@ import PrintIcon from '@mui/icons-material/Print';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { 
+    Warehouse, 
+    ArrowUpDown, 
+    History, 
+    FileSignature, 
+    Users, 
+    FileSpreadsheet, 
+    MapPin, 
+    Hourglass, 
+    ShoppingCart,
+    Download
+} from 'lucide-react';
 
 import { fetchProducts } from '../../store/slices/productsSlice';
 import { fetchInventory, selectStockMap, selectDetailedStockMap } from '../../store/slices/inventorySlice';
@@ -687,7 +699,42 @@ const Reports = () => {
                 const dateFormatted = `${dd}${mm}${yyyy}`;
                 const prefix = handoverType === 'inbound' ? 'BBNK' : 'BBXK';
                 const empName = selectedEmployee ? selectedEmployee.trim() : 'NhanVien';
-                pdf.save(`${prefix}_${empName} ${dateFormatted}.pdf`);
+                const fileName = `${prefix}_${empName} ${dateFormatted}.pdf`;
+                pdf.save(fileName);
+
+                // Auto-upload to Google Drive
+                try {
+                    const pdfBlob = pdf.output('blob');
+                    const reader = new FileReader();
+                    reader.readAsDataURL(pdfBlob);
+                    reader.onloadend = async () => {
+                        const base64Data = (reader.result as string).split(',')[1];
+                        const driveFileName = `${prefix}_${empName.replace(/\s+/g, '_')}_${dateFormatted}.pdf`;
+                        try {
+                            const response = await fetch('/api/drive_upload', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    fileName: driveFileName,
+                                    mimeType: 'application/pdf',
+                                    fileData: base64Data
+                                })
+                            });
+                            const result = await response.json();
+                            if (response.ok) {
+                                setNotification({ type: 'success', message: `Đã xuất file PDF và tự động lưu lên Google Drive thành công.` });
+                            } else {
+                                const errMsg = result.details || result.error || 'Server error';
+                                setNotification({ type: 'error', message: `Đã xuất PDF về máy thành công nhưng lỗi lưu Google Drive: ${errMsg}` });
+                            }
+                        } catch (uploadErr: any) {
+                            console.error('Drive upload failed:', uploadErr);
+                            setNotification({ type: 'error', message: `Đã xuất PDF về máy thành công nhưng lỗi kết nối Drive: ${uploadErr.message}` });
+                        }
+                    };
+                } catch (blobErr: any) {
+                    console.error('Failed to generate PDF blob for Drive:', blobErr);
+                }
             } catch (error: any) {
                 console.error("Error exporting PDF:", error);
                 setNotification({ type: 'error', message: 'Lỗi xuất PDF: ' + (error?.message || error) });
@@ -935,162 +982,198 @@ const Reports = () => {
         }
     };
 
-    const ReportCard = ({ title, desc, icon, color, onClick }: any) => {
+    const ReportCard = ({ title, desc, icon, color, category: customCategory, onClick }: any) => {
         const themeColor = color || 'primary';
         
-        const gradients: Record<string, string> = {
-            primary: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
-            secondary: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)',
-            success: 'linear-gradient(135deg, #10B981 0%, #047857 100%)',
-            warning: 'linear-gradient(135deg, #F59E0B 0%, #B45309 100%)',
-            info: 'linear-gradient(135deg, #06B6D4 0%, #0E7490 100%)',
-            error: 'linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)',
+        // Premium curated color schemes (using modern gradient & solid values)
+        const colors: Record<string, { 
+            main: string; 
+            bg: string; 
+            gradient: string; 
+            glow: string;
+            text: string;
+        }> = {
+            primary: {
+                main: '#2563EB',
+                bg: 'rgba(37, 99, 235, 0.06)',
+                gradient: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
+                glow: 'rgba(37, 99, 235, 0.12)',
+                text: '#1E40AF'
+            },
+            secondary: {
+                main: '#7C3AED',
+                bg: 'rgba(124, 58, 237, 0.06)',
+                gradient: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)',
+                glow: 'rgba(124, 58, 237, 0.12)',
+                text: '#5B21B6'
+            },
+            success: {
+                main: '#059669',
+                bg: 'rgba(5, 150, 105, 0.06)',
+                gradient: 'linear-gradient(135deg, #10B981 0%, #047857 100%)',
+                glow: 'rgba(5, 150, 105, 0.12)',
+                text: '#065F46'
+            },
+            warning: {
+                main: '#D97706',
+                bg: 'rgba(217, 119, 6, 0.06)',
+                gradient: 'linear-gradient(135deg, #F59E0B 0%, #B45309 100%)',
+                glow: 'rgba(217, 119, 6, 0.12)',
+                text: '#92400E'
+            },
+            info: {
+                main: '#0891B2',
+                bg: 'rgba(8, 145, 178, 0.06)',
+                gradient: 'linear-gradient(135deg, #06B6D4 0%, #0E7490 100%)',
+                glow: 'rgba(8, 145, 178, 0.12)',
+                text: '#075985'
+            },
+            error: {
+                main: '#DC2626',
+                bg: 'rgba(220, 38, 38, 0.06)',
+                gradient: 'linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)',
+                glow: 'rgba(220, 38, 38, 0.12)',
+                text: '#991B1B'
+            },
         };
 
-        const hoverShadows: Record<string, string> = {
-            primary: '0 12px 24px -10px rgba(59, 130, 246, 0.35)',
-            secondary: '0 12px 24px -10px rgba(139, 92, 246, 0.35)',
-            success: '0 12px 24px -10px rgba(16, 185, 129, 0.35)',
-            warning: '0 12px 24px -10px rgba(245, 158, 11, 0.35)',
-            info: '0 12px 24px -10px rgba(6, 182, 212, 0.35)',
-            error: '0 12px 24px -10px rgba(239, 68, 68, 0.35)',
-        };
+        const activeColor = colors[themeColor] || colors.primary;
 
-        const pillBg: Record<string, string> = {
-            primary: 'rgba(59, 130, 246, 0.08)',
-            secondary: 'rgba(139, 92, 246, 0.08)',
-            success: 'rgba(16, 185, 129, 0.08)',
-            warning: 'rgba(245, 158, 11, 0.08)',
-            info: 'rgba(6, 182, 212, 0.08)',
-            error: 'rgba(239, 68, 68, 0.08)',
-        };
-
-        const textColors: Record<string, string> = {
-            primary: '#2563EB',
-            secondary: '#7C3AED',
-            success: '#10B981',
-            warning: '#D97706',
-            info: '#0891B2',
-            error: '#EF4444',
-        };
-
-        let category = 'Báo cáo';
-        if (title.includes('Tồn Kho') || title.includes('Tồn kho')) {
-            category = 'Tồn kho';
-        } else if (title.includes('Bàn Giao') || title.includes('Bàn giao')) {
-            category = 'Biên bản';
-        } else if (title.includes('Nhập / Xuất') || title.includes('Giao Dịch') || title.includes('Thẻ Kho')) {
-            category = 'Giao dịch';
-        } else if (title.includes('Nhân Viên') || title.includes('Nhân viên')) {
-            category = 'Nhân sự';
-        } else if (title.includes('FIFO') || title.includes('Tuổi Kho')) {
-            category = 'Cảnh báo';
-        } else if (title.includes('Đơn Hàng') || title.includes('Đơn hàng')) {
-            category = 'Đơn hàng';
+        let category = customCategory || 'Báo cáo';
+        if (!customCategory) {
+            if (title.includes('Tồn Kho') || title.includes('Tồn kho')) {
+                category = 'Tồn kho';
+            } else if (title.includes('Nhập Kho') || title.includes('Nhập kho')) {
+                category = 'Biên bản nhập kho';
+            } else if (title.includes('Xuất Kho') || title.includes('Xuất kho')) {
+                category = 'Biên bản xuất kho';
+            } else if (title.includes('Bàn Giao') || title.includes('Bàn giao')) {
+                category = 'Biên bản';
+            } else if (title.includes('Nhập / Xuất') || title.includes('Giao Dịch') || title.includes('Thẻ Kho')) {
+                category = 'Giao dịch';
+            } else if (title.includes('Nhân Viên') || title.includes('Nhân viên')) {
+                category = 'Nhân sự';
+            } else if (title.includes('FIFO') || title.includes('Tuổi Kho')) {
+                category = 'Cảnh báo';
+            } else if (title.includes('Đơn Hàng') || title.includes('Đơn hàng')) {
+                category = 'Đơn hàng';
+            }
         }
 
         return (
-            <Card sx={{
-                height: '100%',
-                borderRadius: '16px',
-                display: 'flex',
-                flexDirection: { xs: 'row', sm: 'column' },
-                alignItems: { xs: 'center', sm: 'stretch' },
-                position: 'relative',
-                overflow: 'hidden',
-                background: '#ffffff',
-                border: '1px solid rgba(226, 232, 240, 0.8)',
-                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.02)',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                p: { xs: 2, sm: 0 },
-                '&:hover': {
-                    transform: 'translateY(-6px)',
-                    boxShadow: hoverShadows[themeColor] || '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-                    borderColor: textColors[themeColor],
-                    '& .card-icon-container': {
-                        transform: 'scale(1.1) rotate(5deg)',
-                        boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
+            <Card 
+                onClick={onClick}
+                sx={{
+                    height: '100%',
+                    borderRadius: '20px',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    background: '#ffffff',
+                    border: '1px solid rgba(226, 232, 240, 0.8)',
+                    boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.03), 0 8px 10px -6px rgba(15, 23, 42, 0.03)',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    cursor: 'pointer',
+                    '&:hover': {
+                        transform: 'translateY(-6px)',
+                        boxShadow: `0 20px 25px -5px ${activeColor.glow}, 0 10px 10px -5px rgba(0, 0, 0, 0.02)`,
+                        borderColor: activeColor.main,
+                        '& .card-icon-container': {
+                            transform: 'scale(1.1) rotate(4deg)',
+                            boxShadow: `0 8px 20px ${activeColor.glow}`,
+                        },
+                        '& .card-action-btn': {
+                            background: activeColor.gradient,
+                            color: '#ffffff',
+                            transform: 'scale(1.05)',
+                        }
+                    },
+                    '&:active': {
+                        transform: 'translateY(-2px)',
                     }
-                }
-            }}>
-                {/* Visual Accent - vertical line on mobile, top bar on desktop */}
+                }}
+            >
+                {/* Visual Accent - Top gradient line */}
                 <Box sx={{
-                    height: { xs: '100%', sm: '4px' },
-                    width: { xs: '4px', sm: '100%' },
-                    position: { xs: 'absolute', sm: 'relative' },
-                    left: 0,
+                    height: '4px',
+                    width: '100%',
+                    background: activeColor.gradient,
+                    position: 'absolute',
                     top: 0,
-                    bottom: 0,
-                    background: gradients[themeColor] || gradients.primary,
+                    left: 0,
                 }} />
 
                 <Box sx={{ 
                     display: 'flex', 
                     flexDirection: { xs: 'row', sm: 'column' }, 
+                    p: { xs: 2.5, sm: 3.5 },
+                    pt: { xs: 3, sm: 4.5 },
+                    height: '100%',
                     width: '100%',
-                    pl: { xs: 1.5, sm: 0 },
-                    alignItems: { xs: 'center', sm: 'stretch' },
-                    gap: { xs: 2, sm: 0 }
+                    boxSizing: 'border-box',
+                    gap: { xs: 2, sm: 3 },
+                    alignItems: { xs: 'center', sm: 'stretch' }
                 }}>
-                    {/* Left side on mobile (Icon), top on desktop */}
+                    {/* Icon Container */}
                     <Box 
                         className="card-icon-container"
                         sx={{
                             display: 'inline-flex',
-                            p: 1.5,
-                            borderRadius: '12px',
-                            background: gradients[themeColor] || gradients.primary,
-                            color: '#ffffff',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: { xs: 46, sm: 54 },
+                            height: { xs: 46, sm: 54 },
+                            minWidth: { xs: 46, sm: 54 },
+                            borderRadius: '14px',
+                            background: activeColor.bg,
+                            color: activeColor.text,
                             transition: 'all 0.3s ease',
-                            boxShadow: '0 4px 10px rgba(0,0,0,0.05)',
-                            alignSelf: { xs: 'center', sm: 'flex-start' },
-                            m: { sm: 3 },
-                            mb: { sm: 0 }
+                            '& svg': {
+                                fontSize: { xs: '1.4rem', sm: '1.75rem' }
+                            }
                         }}
                     >
                         {icon}
                     </Box>
 
-                    {/* Content area */}
-                    <CardContent sx={{ 
+                    {/* Content Area */}
+                    <Box sx={{ 
                         flexGrow: 1, 
-                        p: { xs: 0, sm: 3 }, 
-                        pt: { sm: 2 },
-                        pb: { xs: 0, sm: 2 },
                         display: 'flex', 
                         flexDirection: 'column', 
                         alignItems: 'flex-start',
+                        gap: 0.5,
                         overflow: 'hidden'
                     }}>
                         {/* Category Pill */}
-                        <Box sx={{ display: { xs: 'none', sm: 'flex' }, justifyContent: 'space-between', alignItems: 'center', width: '100%', mb: 1.5 }}>
-                            <Typography 
-                                variant="caption" 
-                                sx={{
-                                    fontWeight: 700,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '1px',
-                                    px: 1.5,
-                                    py: 0.5,
-                                    borderRadius: '20px',
-                                    bgcolor: pillBg[themeColor] || pillBg.primary,
-                                    color: textColors[themeColor] || textColors.primary,
-                                    fontSize: '0.7rem'
-                                }}
-                            >
-                                {category}
-                            </Typography>
-                        </Box>
+                        <Typography 
+                            variant="caption" 
+                            sx={{
+                                fontWeight: 750,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.8px',
+                                px: 1.2,
+                                py: 0.3,
+                                borderRadius: '10px',
+                                bgcolor: activeColor.bg,
+                                color: activeColor.text,
+                                fontSize: '0.65rem',
+                                display: 'inline-flex',
+                                width: 'fit-content'
+                            }}
+                        >
+                            {category}
+                        </Typography>
 
                         {/* Title */}
                         <Typography 
                             variant="h6" 
                             fontWeight="800" 
                             sx={{ 
-                                fontSize: { xs: '0.95rem', sm: '1.1rem' }, 
-                                color: '#1E293B',
-                                mb: { xs: 0.5, sm: 1 },
-                                lineHeight: 1.2
+                                fontSize: { xs: '0.95rem', sm: '1.15rem' }, 
+                                color: '#0F172A',
+                                lineHeight: 1.3,
+                                letterSpacing: '-0.3px',
+                                mt: 0.5
                             }}
                         >
                             {title}
@@ -1100,10 +1183,9 @@ const Reports = () => {
                         <Typography 
                             variant="body2" 
                             sx={{ 
-                                fontSize: { xs: '0.75rem', sm: '0.85rem' }, 
-                                color: '#64748B', 
+                                fontSize: { xs: '0.775rem', sm: '0.85rem' }, 
+                                color: '#475569', 
                                 lineHeight: 1.4,
-                                flexGrow: 1,
                                 display: '-webkit-box',
                                 WebkitLineBreak: 'anywhere',
                                 WebkitLineClamp: { xs: 2, sm: 3 },
@@ -1113,32 +1195,37 @@ const Reports = () => {
                         >
                             {desc}
                         </Typography>
-                    </CardContent>
+                    </Box>
 
-                    {/* Actions Button */}
-                    <CardActions sx={{ 
-                        p: { xs: 0, sm: 3 }, 
-                        pt: { sm: 0 }, 
+                    {/* Action Button Container */}
+                    <Box sx={{ 
+                        display: 'flex', 
+                        alignSelf: { xs: 'center', sm: 'flex-end' },
+                        mt: { sm: 'auto' },
                         justifyContent: 'flex-end',
-                        pr: { xs: 1, sm: 3 }
+                        pl: { xs: 1, sm: 0 }
                     }}>
-                        <AppButton
-                            variant="contained"
-                            onClick={onClick}
-                            icon={<DownloadIcon />}
-                            title="Xuất dữ liệu Excel"
+                        <Box
+                            className="card-action-btn"
                             sx={{
-                                background: gradients[themeColor] || gradients.primary,
-                                width: { xs: 36, sm: 40 },
-                                height: { xs: 36, sm: 40 },
-                                minWidth: { xs: 36, sm: 40 },
-                                '&:hover': {
-                                    background: gradients[themeColor] || gradients.primary,
-                                    opacity: 0.95,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: { xs: 34, sm: 38 },
+                                height: { xs: 34, sm: 38 },
+                                borderRadius: '50%',
+                                border: `1.5px solid ${activeColor.bg}`,
+                                color: activeColor.text,
+                                bgcolor: 'transparent',
+                                transition: 'all 0.3s ease',
+                                '& svg': {
+                                    fontSize: '1.1rem'
                                 }
                             }}
-                        />
-                    </CardActions>
+                        >
+                            <Download size={16} />
+                        </Box>
+                    </Box>
                 </Box>
             </Card>
         );
@@ -1245,7 +1332,7 @@ const Reports = () => {
                                 <ReportCard
                                     title="Báo Cáo Tồn Kho"
                                     desc="Danh sách tồn kho chi tiết, giá trị tổng tài sản và số lượng khả dụng."
-                                    icon={<InventoryIcon />}
+                                    icon={<Warehouse size={20} />}
                                     color="primary"
                                     onClick={handleExportInventory}
                                 />
@@ -1254,7 +1341,7 @@ const Reports = () => {
                                 <ReportCard
                                     title="Nhập / Xuất"
                                     desc="Báo cáo phân tích dòng chảy giao dịch chi tiết theo thời gian."
-                                    icon={<AssessmentIcon />}
+                                    icon={<ArrowUpDown size={20} />}
                                     color="info"
                                     onClick={() => setOpenPeriodReport(true)}
                                 />
@@ -1263,7 +1350,7 @@ const Reports = () => {
                                 <ReportCard
                                     title="Lịch Sử Giao Dịch"
                                     desc="Toàn bộ nhật ký (log) các hoạt động xuất nhập trong toàn hệ thống."
-                                    icon={<ReceiptIcon />}
+                                    icon={<History size={20} />}
                                     color="secondary"
                                     onClick={() => handleExportTransactions()}
                                 />
@@ -1273,18 +1360,20 @@ const Reports = () => {
 
                     <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                         <ReportCard
-                            title="Biên Bản Bàn Giao (Nhập Kho)"
+                            title="Biên Bản Bàn Giao"
+                            category="Biên bản nhập kho"
                             desc="In và xuất biên bản giao nhận thiết bị cho các phiếu nhập kho."
-                            icon={<AssignmentIndIcon />}
+                            icon={<FileSignature size={20} />}
                             color="success"
                             onClick={() => { setHandoverType('inbound'); setOpenHandover(true); }}
                         />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                         <ReportCard
-                            title="Biên Bản Bàn Giao (Xuất Kho)"
+                            title="Biên Bản Bàn Giao"
+                            category="Biên bản xuất kho"
                             desc="In và xuất biên bản giao nhận thiết bị cho các phiếu xuất kho."
-                            icon={<AssignmentIndIcon />}
+                            icon={<FileSignature size={20} />}
                             color="warning"
                             onClick={() => { setHandoverType('outbound'); setOpenHandover(true); }}
                         />
@@ -1296,7 +1385,7 @@ const Reports = () => {
                                 <ReportCard
                                     title="Theo Nhân Viên"
                                     desc="Báo cáo thống kê hiệu suất xuất nhập chi tiết theo từng nhân sự."
-                                    icon={<AssignmentIndIcon />}
+                                    icon={<Users size={20} />}
                                     color="info"
                                     onClick={() => setOpenEmployeeReport(true)}
                                 />
@@ -1305,7 +1394,7 @@ const Reports = () => {
                                 <ReportCard
                                     title="Thẻ Kho"
                                     desc="Theo dõi chi tiết lịch sử biến động số lượng của từng mã sản phẩm."
-                                    icon={<AssignmentIcon />}
+                                    icon={<FileSpreadsheet size={20} />}
                                     color="error"
                                     onClick={() => setOpenStockCard(true)}
                                 />
@@ -1314,16 +1403,17 @@ const Reports = () => {
                                 <ReportCard
                                     title="Tồn Kho Theo Quận"
                                     desc="Báo cáo phân vùng trữ lượng tồn kho thực tế theo từng chi nhánh quận."
-                                    icon={<InventoryIcon />}
+                                    icon={<MapPin size={20} />}
                                     color="success"
                                     onClick={handleExportStockByDistrict}
                                 />
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6, md: 4 }}>
                                 <ReportCard
-                                    title="Tuổi Kho (FIFO)"
+                                    title="Tuổi Kho"
+                                    category="Tuổi kho (FIFO)"
                                     desc="Cảnh báo hạn lưu kho của hàng hóa dựa trên nguyên tắc FIFO."
-                                    icon={<WarningIcon />}
+                                    icon={<Hourglass size={20} />}
                                     color="secondary"
                                     onClick={handleExportFifoAging}
                                 />
@@ -1339,7 +1429,7 @@ const Reports = () => {
                         <ReportCard
                             title="Đơn Hàng"
                             desc="Danh sách tổng hợp và tiến độ duyệt các đơn hàng yêu cầu cấp phát."
-                            icon={<ShoppingCartIcon />}
+                            icon={<ShoppingCart size={20} />}
                             color="success"
                             onClick={handleExportOrders}
                         />

@@ -229,9 +229,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const stockSheet = doc.sheetsByTitle['in_stock'];
                     if (!stockSheet) return res.status(404).json({ error: 'Sheet in_stock not found' });
 
-                    const [sRows, existingRows, products] = await Promise.all([
+                    // 1. Delete all existing inbound transactions from Supabase
+                    const { error: deleteError } = await supabase
+                        .from('inbound_transactions')
+                        .delete()
+                        .neq('id', '00000000-0000-0000-0000-000000000000');
+                    if (deleteError) {
+                        console.error('Lỗi xóa inbound_transactions cũ trên Supabase:', deleteError);
+                        return res.status(500).json({ error: 'Không thể xóa dữ liệu cũ trên database' });
+                    }
+
+                    // 2. Clear Google Sheet 'inbound_transactions' as well to keep them in sync
+                    try {
+                        const inboundSheet = doc.sheetsByTitle['inbound_transactions'];
+                        if (inboundSheet) {
+                            await inboundSheet.clearRows();
+                        }
+                    } catch (gsClearErr) {
+                        console.error('Lỗi xóa inbound_transactions cũ trên Google Sheets:', gsClearErr);
+                    }
+
+                    // 3. Fetch stock sheet rows and products
+                    const [sRows, products] = await Promise.all([
                         stockSheet.getRows(),
-                        fetchAll('inbound_transactions', 'serial_code'),
                         fetchAll('products', '*')
                     ]);
 
@@ -241,7 +261,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         productsMap[p.item_code] = p;
                     });
 
-                    const existingSerials = new Set(existingRows.map(r => String(r.serial_code || '').trim()).filter(Boolean));
+                    // Set to avoid duplicates within the current sync file
+                    const existingSerials = new Set<string>();
                     const toInsert: any[] = [];
 
                     for (const row of sRows) {
@@ -279,7 +300,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     }
 
                     if (toInsert.length > 0) await performWrite('inbound_transactions', toInsert);
-                    return res.status(200).json({ message: `Synced ${toInsert.length} items`, count: toInsert.length });
+                    return res.status(200).json({ message: `Đồng bộ thành công ${toInsert.length} sản phẩm mới sau khi làm sạch dữ liệu cũ!`, count: toInsert.length });
                 }
 
                 if (!['inbound', 'outbound'].includes(type)) return res.status(400).json({ error: 'Invalid type' });

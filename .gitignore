@@ -36,6 +36,8 @@ test_*.ts
 test_*.js
 migrate_*.js
 res.text*
+api/**/*.js
+api_handlers/**/*.js
 
 # Embedded repos and scratch files
 quanlykhobsg/

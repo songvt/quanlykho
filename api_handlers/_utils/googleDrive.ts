@@ -8,6 +8,30 @@ export const uploadToGoogleDrive = async (
     folderId: string
 ) => {
     try {
+        const appsScriptUrl = process.env.GOOGLE_APPS_SCRIPT_URL;
+        if (appsScriptUrl) {
+            console.log('Uploading via Google Apps Script Web App...');
+            const base64Data = fileBuffer.toString('base64');
+            const response = await fetch(appsScriptUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    fileName,
+                    mimeType,
+                    fileData: base64Data,
+                    folderId
+                })
+            });
+            if (!response.ok) {
+                throw new Error(`Apps Script HTTP error! status: ${response.status}`);
+            }
+            const result = await response.json() as any;
+            if (!result.success) {
+                throw new Error(result.error || 'Unknown Apps Script error');
+            }
+            return result;
+        }
+
         const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
         let privateKey = process.env.GOOGLE_PRIVATE_KEY;
 

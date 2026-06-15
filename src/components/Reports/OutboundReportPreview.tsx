@@ -30,14 +30,18 @@ const OutboundReportTemplate = ({ data, delivererName, date, receiverName, sende
             {/* Header section with split layout */}
             <Box display="flex" mb={6} alignItems="flex-start">
                 <Box flex={1.2} textAlign="center">
-                    <Typography sx={{ fontWeight: 800, fontSize: '11pt', color: '#2563eb', textTransform: 'uppercase', lineHeight: 1.2 }}>CÔNG TY CỔ PHẦN VIỄN THÔNG ACT</Typography>
-                    <Typography sx={{ fontSize: '10pt', fontWeight: 700, color: '#0f172a', mt: 0.5 }}>TRUNG TÂM ACT BẮC SÀI GÒN</Typography>
-                    <Box sx={{ mt: 1, height: '2px', width: '60px', bgcolor: '#e2e8f0', mx: 'auto' }} />
+                    <Typography sx={{ fontWeight: 800, fontSize: '11pt', color: '#2563eb', textTransform: 'uppercase', lineHeight: 1.2, whiteSpace: 'nowrap' }}>CÔNG TY CỔ PHẦN VIỄN THÔNG ACT</Typography>
+                    <Typography sx={{ fontSize: '10pt', fontWeight: 700, color: '#0f172a', mt: 0.5, whiteSpace: 'nowrap' }}>TRUNG TÂM ACT BẮC SÀI GÒN</Typography>
+                    <Box sx={{ mt: 1, height: '2px', width: '60px', bgcolor: '#cbd5e1', mx: 'auto' }} />
                 </Box>
                 <Box flex={1} textAlign="center">
-                    <Typography sx={{ fontWeight: 800, fontSize: '11pt', textTransform: 'uppercase', lineHeight: 1.2 }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</Typography>
-                    <Typography sx={{ fontWeight: 700, fontSize: '10pt', textDecoration: 'underline', lineHeight: 1.2 }}>Độc lập - Tự do - Hạnh phúc</Typography>
-                    <Typography sx={{ fontSize: '10pt', fontStyle: 'italic', color: '#ef4444', mt: 2, fontWeight: 600 }}>Số: PX-{String(reportNumber).padStart(6, '0')}</Typography>
+                    <Typography sx={{ fontWeight: 800, fontSize: '11pt', textTransform: 'uppercase', lineHeight: 1.2, whiteSpace: 'nowrap' }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</Typography>
+                    <Typography sx={{ fontWeight: 700, fontSize: '10pt', textDecoration: 'underline', lineHeight: 1.2, whiteSpace: 'nowrap' }}>Độc lập - Tự do - Hạnh phúc</Typography>
+                    <div style={{ marginTop: '8px', display: 'inline-block', padding: '2px 12px', backgroundColor: '#f1f5f9', borderRadius: '4px', border: '1.5px solid #cbd5e1' }}>
+                        <span style={{ fontSize: '10pt', color: '#ef4444', fontWeight: 700 }}>
+                            Số: PX-{String(reportNumber).padStart(6, '0')}
+                        </span>
+                    </div>
                 </Box>
             </Box>
 
@@ -52,7 +56,7 @@ const OutboundReportTemplate = ({ data, delivererName, date, receiverName, sende
 
             {/* Information Grid */}
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, mb: 4 }}>
-                <Box sx={{ p: 2, border: '1px solid #f1f5f9', borderRadius: '12px', bgcolor: '#f8fafc' }}>
+                <Box sx={{ p: 2, border: '1.5px solid #000000', borderRadius: '12px', bgcolor: '#f8fafc' }}>
                     <Typography sx={{ fontWeight: 800, fontSize: '10pt', color: '#2563eb', mb: 1.5, textTransform: 'uppercase' }}>Bên giao (Kho)</Typography>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                         <Typography sx={{ fontSize: '10pt' }}>Họ tên: <b>{delivererName}</b></Typography>
@@ -61,7 +65,7 @@ const OutboundReportTemplate = ({ data, delivererName, date, receiverName, sende
                     </Box>
                 </Box>
 
-                <Box sx={{ p: 2, border: '1px solid #f1f5f9', borderRadius: '12px', bgcolor: '#f8fafc' }}>
+                <Box sx={{ p: 2, border: '1.5px solid #000000', borderRadius: '12px', bgcolor: '#f8fafc' }}>
                     <Typography sx={{ fontWeight: 800, fontSize: '10pt', color: '#ef4444', mb: 1.5, textTransform: 'uppercase' }}>Bên nhận (Kỹ thuật)</Typography>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                         <Typography sx={{ fontSize: '10pt' }}>Họ tên: <b>{receiverName}</b></Typography>
@@ -74,44 +78,44 @@ const OutboundReportTemplate = ({ data, delivererName, date, receiverName, sende
             {/* Table */}
             <Table size="small" sx={{ 
                 borderCollapse: 'collapse', 
-                border: '1.5px solid #000000',
-                '& td, & th': { border: '1.5px solid #000000', fontSize: '10pt', padding: '10px 12px', color: '#000000' } 
+                border: '1px solid #cbd5e1',
+                '& td, & th': { border: '1px solid #cbd5e1 !important', fontSize: '10pt', padding: '10px 12px', color: '#000000' } 
             }}>
                 <TableHead>
                     <TableRow sx={{ bgcolor: '#f8fafc' }}>
-                        <TableCell align="center" sx={{ fontWeight: 700, color: '#000000' }}>STT</TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: '#000000' }}>TÊN HÀNG HÓA, VẬT TƯ</TableCell>
-                        <TableCell align="center" sx={{ fontWeight: 700, color: '#000000' }}>ĐVT</TableCell>
-                        <TableCell align="center" sx={{ fontWeight: 700, color: '#000000' }}>SL</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700, color: '#000000' }}>ĐƠN GIÁ</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 700, color: '#000000' }}>THÀNH TIỀN</TableCell>
-                        <TableCell sx={{ fontWeight: 700, color: '#000000' }}>SERIAL / GHI CHÚ</TableCell>
+                        <TableCell align="center" style={{ fontWeight: 800, border: '1px solid #cbd5e1', color: '#000000' }}>STT</TableCell>
+                        <TableCell style={{ fontWeight: 800, border: '1px solid #cbd5e1', color: '#000000' }}>TÊN HÀNG HÓA, VẬT TƯ</TableCell>
+                        <TableCell align="center" style={{ fontWeight: 800, border: '1px solid #cbd5e1', color: '#000000' }}>ĐVT</TableCell>
+                        <TableCell align="center" style={{ fontWeight: 800, border: '1px solid #cbd5e1', color: '#000000' }}>SL</TableCell>
+                        <TableCell align="right" style={{ fontWeight: 800, border: '1px solid #cbd5e1', color: '#000000' }}>ĐƠN GIÁ</TableCell>
+                        <TableCell align="right" style={{ fontWeight: 800, border: '1px solid #cbd5e1', color: '#000000' }}>THÀNH TIỀN</TableCell>
+                        <TableCell style={{ fontWeight: 800, border: '1px solid #cbd5e1', color: '#000000' }}>SERIAL / GHI CHÚ</TableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>
                     {data.map((item, index) => (
                         <TableRow key={index}>
-                            <TableCell align="center" sx={{ color: '#000000' }}>{index + 1}</TableCell>
-                            <TableCell sx={{ fontWeight: 600, color: '#000000' }}>{item.product_name}</TableCell>
-                            <TableCell align="center" sx={{ color: '#000000' }}>{item.unit || 'Cái'}</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 700, color: '#000000' }}>{item.quantity.toLocaleString('vi-VN')}</TableCell>
-                            <TableCell align="right" sx={{ color: '#000000' }}>
+                            <TableCell align="center" style={{ border: '1px solid #cbd5e1', color: '#000000' }}>{index + 1}</TableCell>
+                            <TableCell sx={{ fontWeight: 700 }} style={{ border: '1px solid #cbd5e1', color: '#000000' }}>{item.product_name}</TableCell>
+                            <TableCell align="center" style={{ border: '1px solid #cbd5e1', color: '#000000' }}>{item.unit || 'Cái'}</TableCell>
+                            <TableCell align="center" style={{ fontWeight: 800, border: '1px solid #cbd5e1', color: '#000000' }}>{item.quantity.toLocaleString('vi-VN')}</TableCell>
+                            <TableCell align="right" style={{ border: '1px solid #cbd5e1', color: '#000000' }}>
                                 {new Intl.NumberFormat('vi-VN').format(item.unit_price)}
                             </TableCell>
-                            <TableCell align="right" sx={{ fontWeight: 600, color: '#000000' }}>
+                            <TableCell align="right" style={{ fontWeight: 800, border: '1px solid #cbd5e1', color: '#000000' }}>
                                 {new Intl.NumberFormat('vi-VN').format(item.unit_price * item.quantity)}
                             </TableCell>
-                            <TableCell sx={{ maxWidth: 180, fontSize: '9pt', color: '#000000', wordBreak: 'break-all' }}>{item.serial_code || '-'}</TableCell>
+                            <TableCell style={{ border: '1px solid #cbd5e1', color: '#000000', maxWidth: 180, fontSize: '9pt', wordBreak: 'break-all' }}>{item.serial_code || '-'}</TableCell>
                         </TableRow>
                     ))}
                     {/* Total Row */}
-                    <TableRow sx={{ bgcolor: '#f1f5f9' }}>
-                        <TableCell colSpan={3} align="right" sx={{ fontWeight: 800, textTransform: 'uppercase', color: '#000000' }}>Tổng cộng</TableCell>
-                        <TableCell align="center" sx={{ fontWeight: 800, color: '#000000' }}>{data.reduce((acc, i) => acc + i.quantity, 0).toLocaleString('vi-VN')}</TableCell>
-                        <TableCell colSpan={2} align="right" sx={{ fontWeight: 800, fontSize: '11pt', color: '#000000' }}>
+                    <TableRow sx={{ bgcolor: '#f8fafc' }}>
+                        <TableCell colSpan={3} align="right" style={{ fontWeight: 800, textTransform: 'uppercase', border: '1px solid #cbd5e1', color: '#000000' }}>Tổng cộng</TableCell>
+                        <TableCell align="center" style={{ fontWeight: 850, border: '1px solid #cbd5e1', color: '#000000' }}>{data.reduce((acc, i) => acc + i.quantity, 0).toLocaleString('vi-VN')}</TableCell>
+                        <TableCell colSpan={2} align="right" style={{ fontWeight: 850, fontSize: '11pt', border: '1px solid #cbd5e1', color: '#000000' }}>
                             {new Intl.NumberFormat('vi-VN').format(totalAmount)}
                         </TableCell>
-                        <TableCell></TableCell>
+                        <TableCell style={{ border: '1px solid #cbd5e1', color: '#000000' }}></TableCell>
                     </TableRow>
                 </TableBody>
             </Table>

@@ -532,11 +532,11 @@ Hãy trả về kết quả ĐÚNG ĐỊNH DẠNG JSON với cấu trúc sau:
                             // Hoặc set màu chữ cực kỳ mờ, hoặc đặt màu trong suốt.
                             // jspdf hỗ trợ set màu fill bằng hex hoặc rgb.
                             // Ta sử dụng chế độ ẩn (invisible text) bằng cách đặt text rendering mode = 3
-                            doc.setTextColor(0, 0, 0); // Reset màu
-                            // @ts-ignore
+                                                        doc.setTextColor(0, 0, 0); // Reset màu
+                            // @ts-expect-error: textWithLink is not typed in jspdf
                             doc.textWithLink('', 0, 0, {}); // Kích hoạt render
                             // Sử dụng lệnh PDF gốc để bật text ẩn: 3 Tr
-                            // @ts-ignore
+                            // @ts-expect-error: write is not typed in jspdf
                             doc.internal.write('3 Tr\n'); // Thiết lập Text Rendering Mode thành 3 (Neither fill nor stroke text - Invisible)
 
                             // Tách dòng văn bản và vẽ dọc theo trang để người dùng có thể bôi đen tìm kiếm được
@@ -551,7 +551,7 @@ Hãy trả về kết quả ĐÚNG ĐỊNH DẠNG JSON với cấu trúc sau:
                             });
                             
                             // Trả text rendering mode về bình thường (0 Tr - Fill text)
-                            // @ts-ignore
+                            // @ts-expect-error: write is not typed in jspdf
                             doc.internal.write('0 Tr\n');
                         }
                     }
