@@ -1313,7 +1313,7 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
                 '@media print': {
                     p: '5mm 15mm 25mm 30mm !important',
                     width: '794px',
-                    height: '1123px',
+                    height: 'auto !important',
                 }
             }}
         >
