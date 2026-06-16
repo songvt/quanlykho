@@ -1304,7 +1304,8 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
         <Box
             sx={{
                 width: '794px',
-                height: '1123px',
+                minHeight: '1123px',
+                height: 'auto',
                 p: '10mm 15mm 25mm 30mm',
                 bgcolor: 'white',
                 color: '#000000',

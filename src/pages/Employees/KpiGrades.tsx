@@ -2415,7 +2415,7 @@ const KpiGrades = () => {
                         }
                         @page {
                             size: A4 portrait;
-                            margin: 20mm 15mm 20mm 30mm;
+                            margin: 0;
                         }
                     }
                     #print-portal-root {
@@ -2689,7 +2689,8 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
         <Box
             sx={{
                 width: '794px',
-                height: '1123px',
+                minHeight: '1123px',
+                height: 'auto',
                 p: '15mm 15mm 15mm 30mm',
                 bgcolor: 'white',
                 color: '#000000',
