@@ -2690,20 +2690,20 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
             sx={{
                 width: '794px',
                 height: '1123px',
-                p: '20mm 15mm 20mm 30mm',
+                p: '15mm 15mm 15mm 30mm',
                 bgcolor: 'white',
                 color: '#000000',
                 fontFamily: "'Times New Roman', Times, serif",
                 boxSizing: 'border-box',
                 '@media print': {
-                    p: '0px !important',
-                    width: '100% !important',
-                    height: 'auto !important',
+                    p: '10mm 15mm 10mm 30mm !important',
+                    width: '794px',
+                    height: '1123px',
                 }
             }}
         >
             {/* Header section with ACT company and Country credentials */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
                 <Box sx={{ width: '45%', textAlign: 'center' }}>
                     <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", lineHeight: 1.2 }}>
                         CÔNG TY CP VIỄN THÔNG ACT
@@ -2719,21 +2719,21 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
                     <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", textDecoration: 'underline', lineHeight: 1.2 }}>
                         Độc lập – Tự do – Hạnh phúc
                     </Typography>
-                    <Typography sx={{ fontStyle: 'italic', fontSize: '10.5pt', mt: 1, fontFamily: "'Times New Roman', Times, serif", textAlign: 'right', pr: 2 }}>
+                    <Typography sx={{ fontStyle: 'italic', fontSize: '10pt', mt: 0.5, fontFamily: "'Times New Roman', Times, serif", textAlign: 'right', pr: 2 }}>
                         Tp Hồ Chí Minh, ngày {String(reqDateObj.getDate()).padStart(2, '0')} tháng {String(reqDateObj.getMonth() + 1).padStart(2, '0')} năm {reqDateObj.getFullYear()}
                     </Typography>
                 </Box>
             </Box>
-
+ 
             {/* Document Title */}
-            <Box sx={{ textAlign: 'center', my: 2 }}>
+            <Box sx={{ textAlign: 'center', my: 1 }}>
                 <Typography sx={{ fontWeight: 'bold', fontSize: '15pt', letterSpacing: '0.5px', fontFamily: "'Times New Roman', Times, serif" }}>
                     ĐƠN XIN NGHỈ
                 </Typography>
             </Box>
-
+ 
             {/* Content Body */}
-            <Stack spacing={1.2} sx={{ mb: 2, fontSize: '11.5pt', lineHeight: 1.5 }}>
+            <Stack spacing={0.8} sx={{ mb: 1, fontSize: '11pt', lineHeight: 1.4 }}>
                 
                 {/* SECTION I */}
                 <Box>
@@ -2809,7 +2809,7 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
                         II. Nội dung:
                     </Typography>
 
-                    <Stack spacing={1.5} sx={{ width: '100%' }}>
+                    <Stack spacing={0.8} sx={{ width: '100%' }}>
                         <Box>
                             <span style={{ fontStyle: 'italic', textDecoration: 'underline' }}>Thời gian xin nghỉ:</span>
                         </Box>
@@ -2890,14 +2890,14 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
                             '& td, & th': { 
                                 border: '1px solid #000000', 
                                 color: '#000000',
-                                p: '6px 8px',
+                                p: '4px 6px',
                                 fontSize: '10pt',
                                 fontFamily: "'Times New Roman', Times, serif",
                             } 
                         }}>
                             <TableHead sx={{ bgcolor: 'transparent' }}>
                                 <TableRow>
-                                    <TableCell align="center" sx={{ fontWeight: 'bold', width: '5%', py: 1 }}>STT</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: 'bold', width: '5%', py: 0.5 }}>STT</TableCell>
                                     <TableCell align="center" sx={{ fontWeight: 'bold', width: '40%' }}>CÔNG VIỆC</TableCell>
                                     <TableCell align="center" sx={{ fontWeight: 'bold', width: '30%' }}>MỤC TIÊU/KẾT QUẢ</TableCell>
                                     <TableCell align="center" sx={{ fontWeight: 'bold', width: '25%' }}>NGƯỜI NHẬN BÀN GIAO</TableCell>
@@ -2905,7 +2905,7 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
                             </TableHead>
                             <TableBody>
                                 {fullHandovers.map((row, index) => (
-                                    <TableRow key={index} sx={{ height: '32px' }}>
+                                    <TableRow key={index} sx={{ height: '26px' }}>
                                         <TableCell align="center">{index + 1}</TableCell>
                                         <TableCell sx={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>{row.task}</TableCell>
                                         <TableCell sx={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>{row.target}</TableCell>
@@ -2919,7 +2919,7 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
             </Stack>
 
             {/* Under Table Promises */}
-            <Stack spacing={0.8} sx={{ mt: 1.5, fontSize: '11.5pt', lineHeight: 1.4, pl: 2 }}>
+            <Stack spacing={0.4} sx={{ mt: 1, fontSize: '11pt', lineHeight: 1.3, pl: 2 }}>
                 <Typography sx={{ textIndent: '20px', textAlign: 'justify', fontFamily: "'Times New Roman', Times, serif" }}>
                     Tôi cam kết sẽ trở lại làm việc tại Công ty sau khi hết thời gian xin nghỉ nêu trên, nếu không tôi xin hoàn toàn chịu trách nhiệm.
                 </Typography>
@@ -2932,9 +2932,9 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
             </Stack>
 
             {/* Bottom Signatures Layout matching image */}
-            <Box sx={{ mt: 2, '@media print': { mt: 2 } }}>
+            <Box sx={{ mt: 1.5, '@media print': { mt: 1.5 } }}>
                 {/* Director Title Centered */}
-                <Box sx={{ textAlign: 'center', width: '100%', mb: 15 }}>
+                <Box sx={{ textAlign: 'center', width: '100%', mb: 8 }}>
                     <Typography sx={{ fontWeight: 'bold', fontSize: '11.5pt', fontFamily: "'Times New Roman', Times, serif" }}>
                         BAN GIÁM ĐỐC TRUNG TÂM
                     </Typography>
@@ -2943,7 +2943,7 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
                 {/* Sub signatures spaced apart */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <Box sx={{ textAlign: 'center', width: '45%' }}>
-                        <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", mb: 15 }}>
+                        <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", mb: 8 }}>
                             NGƯỜI LÀM ĐƠN
                         </Typography>
                         <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', textTransform: 'uppercase', fontFamily: "'Times New Roman', Times, serif" }}>
@@ -2951,7 +2951,7 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
                         </Typography>
                     </Box>
                     <Box sx={{ textAlign: 'center', width: '45%' }}>
-                        <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", mb: 15 }}>
+                        <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", mb: 8 }}>
                             NGƯỜI NHẬN BÀN GIAO
                         </Typography>
                         <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', textTransform: 'uppercase', fontFamily: "'Times New Roman', Times, serif" }}>
