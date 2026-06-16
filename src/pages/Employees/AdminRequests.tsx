@@ -1549,16 +1549,16 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
             {/* Bottom Signatures Layout matching image */}
             <Box sx={{ mt: 2, '@media print': { mt: 2 } }}>
                 {/* Director Title Centered */}
-                <Box sx={{ textAlign: 'center', width: '100%', mb: 5 }}>
+                <Box sx={{ textAlign: 'center', width: '100%', mb: 15 }}>
                     <Typography sx={{ fontWeight: 'bold', fontSize: '11.5pt', fontFamily: "'Times New Roman', Times, serif" }}>
                         BAN GIÁM ĐỐC TRUNG TÂM
                     </Typography>
                 </Box>
-
+ 
                 {/* Sub signatures spaced apart */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <Box sx={{ textAlign: 'center', width: '45%' }}>
-                        <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", mb: 4 }}>
+                        <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", mb: 15 }}>
                             NGƯỜI LÀM ĐƠN
                         </Typography>
                         <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', textTransform: 'uppercase', fontFamily: "'Times New Roman', Times, serif" }}>
@@ -1566,7 +1566,7 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
                         </Typography>
                     </Box>
                     <Box sx={{ textAlign: 'center', width: '45%' }}>
-                        <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", mb: 4 }}>
+                        <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", mb: 15 }}>
                             NGƯỜI NHẬN BÀN GIAO
                         </Typography>
                         <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', textTransform: 'uppercase', fontFamily: "'Times New Roman', Times, serif" }}>
