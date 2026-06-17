@@ -156,6 +156,9 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
         ...(profile?.role === 'admin' ? [
             { text: 'Thông báo Zalo', icon: <MessageSquare size={20} color="#0ea5e9" />, path: '/zalo' }
         ] : []),
+        ...(profile?.role === 'admin' ? [
+            { text: 'Thông báo hệ thống', icon: <Mailbox size={20} color="#f59e0b" />, path: '/announcements' }
+        ] : []),
         { text: 'Trợ lý AI', icon: <Bot size={20} color="#2563eb" />, path: '/ai-assistant' },
         { text: 'OCR Image/PDF', icon: <FileText size={20} color="#8b5cf6" />, path: '/ocr-documents' },
         ...(hasAnyPermission(['trinhky.create', 'trinhky.approve', 'trinhky.view', '*']) ? [

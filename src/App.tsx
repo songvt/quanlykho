@@ -59,6 +59,7 @@ const DetailTrinhKy    = lazy(() => import('./pages/TrinhKy/DetailTrinhKy'));
 const ApproveTrinhKy   = lazy(() => import('./pages/TrinhKy/ApproveTrinhKy'));
 
 const FullScreenScanner = lazy(() => import('./pages/FullScreenScanner'));
+const Announcements     = lazy(() => import('./pages/Announcements'));
 
 const NotFound = lazy(() => import('./pages/NotFound').catch(() => ({
     default: () => <Box p={6} textAlign="center" sx={{ color: 'text.secondary', fontSize: 24 }}>404 — Không tìm thấy trang</Box>
@@ -180,6 +181,7 @@ function App() {
                                     <Route path="zalo/templates" element={<ZaloTemplates />} />
                                     <Route path="zalo/campaigns" element={<ZaloCampaigns />} />
                                     <Route path="zalo/logs" element={<ZaloLogs />} />
+                                    <Route path="announcements" element={<Announcements />} />
                                 </Route>
 
                                 <Route path="*" element={<NotFound />} />

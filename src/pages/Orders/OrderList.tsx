@@ -718,11 +718,39 @@ const OrderList = () => {
                                     value={newOrder.product_id}
                                     label="Vật tư hàng hóa"
                                     onChange={(e) => setNewOrder({ ...newOrder, product_id: e.target.value })}
+                                    renderValue={(selected) => {
+                                        const prod = availableProducts.find(p => p.id === selected);
+                                        if (!prod) return '';
+                                        return `${prod.name} (${prod.item_code})`;
+                                    }}
+                                    MenuProps={{
+                                        PaperProps: {
+                                            sx: {
+                                                maxHeight: 300,
+                                            }
+                                        }
+                                    }}
                                 >
                                     {availableProducts
                                         .map((p) => (
-                                            <MenuItem key={p.id} value={p.id}>
-                                                {p.name} ({p.item_code}) - Tồn: {inventory[p.id] || 0}
+                                            <MenuItem 
+                                                key={p.id} 
+                                                value={p.id} 
+                                                sx={{ 
+                                                    whiteSpace: 'normal', 
+                                                    wordBreak: 'break-word', 
+                                                    py: 1,
+                                                    borderBottom: '1px solid rgba(0,0,0,0.05)'
+                                                }}
+                                            >
+                                                <Box sx={{ width: '100%' }}>
+                                                    <Typography variant="body2" fontWeight="bold" sx={{ color: 'text.primary' }}>
+                                                        {p.name}
+                                                    </Typography>
+                                                    <Typography variant="caption" display="block" sx={{ color: 'text.secondary', mt: 0.25 }}>
+                                                        Mã: {p.item_code} | Tồn: {inventory[p.id] || 0}
+                                                    </Typography>
+                                                </Box>
                                             </MenuItem>
                                         ))}
                                 </Select>
