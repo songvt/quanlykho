@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { createSelector } from 'reselect';
-import type { Transaction, Order } from '../../types';
+import type { Transaction, Order, Employee } from '../../types';
 import type { RootState } from '../index';
 
 interface InventoryState {
@@ -25,10 +25,11 @@ const inventorySlice = createSlice({
 // Dynamic memoized selectors to instantly compute inventory without hitting the DB
 const rawTransactions = (state: RootState) => state.transactions.items;
 const rawOrders = (state: RootState) => state.orders.items;
+const rawEmployees = (state: RootState) => state.employees.items;
 
 export const selectDetailedStockMap = createSelector(
-    [rawTransactions, rawOrders],
-    (transactions: Transaction[], orders: Order[]) => {
+    [rawTransactions, rawOrders, rawEmployees],
+    (transactions: Transaction[], orders: Order[], employees: Employee[]) => {
         const detailedStockMap: Record<string, number> = {};
 
         if (!transactions || !Array.isArray(transactions)) return detailedStockMap;
@@ -75,8 +76,19 @@ export const selectDetailedStockMap = createSelector(
                     const qty = Number(o.quantity) || 0;
                     const pId = o.product_id;
                     if (pId) {
+                        // Tìm nhân viên để xác định quận
+                        const emp = employees?.find(e => e.full_name === o.requester_group || e.username === o.requester_group);
+                        const empDistrict = emp?.district || '';
+
+                        // Khấu trừ khỏi tổng tồn kho
                         const totalKey = `${pId}||`;
                         detailedStockMap[totalKey] = (detailedStockMap[totalKey] || 0) - qty;
+
+                        // Khấu trừ khỏi tồn kho theo quận tương ứng
+                        if (empDistrict) {
+                            const districtAggKey = `${pId}|${empDistrict}|*ALL*`;
+                            detailedStockMap[districtAggKey] = (detailedStockMap[districtAggKey] || 0) - qty;
+                        }
                     }
                 }
             });
