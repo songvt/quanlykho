@@ -34,6 +34,14 @@ export const selectDetailedStockMap = createSelector(
         if (!transactions || !Array.isArray(transactions)) return detailedStockMap;
 
         transactions.forEach((t) => {
+            // Chỉ tính tồn kho từ các kho dịch vụ: KHO_DV_Q12, KHO_DV_HMN, KHO_DV_CCI
+            if (t.type === 'inbound') {
+                const wh = (t.warehouse_type || '').trim().toUpperCase();
+                if (wh !== 'KHO_DV_Q12' && wh !== 'KHO_DV_HMN' && wh !== 'KHO_DV_CCI') {
+                    return;
+                }
+            }
+
             const qty = t.type === 'inbound' ? Number(t.quantity) : -Number(t.quantity);
             const pId = t.product_id;
             const dist = t.district || '';
