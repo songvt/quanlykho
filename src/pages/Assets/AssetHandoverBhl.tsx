@@ -624,7 +624,8 @@ const AssetHandoverBhl: React.FC = () => {
                                                         bgcolor: '#f8fafc',
                                                         display: 'flex',
                                                         justifyContent: 'space-between',
-                                                        alignItems: 'center'
+                                                        alignItems: 'center',
+                                                        flexShrink: 0
                                                     }}
                                                 >
                                                     <Box>

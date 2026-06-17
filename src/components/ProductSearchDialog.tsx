@@ -73,7 +73,7 @@ const ProductSearchDialog: React.FC<ProductSearchDialogProps> = ({ open, onClose
                                         onSelect(product);
                                         onClose();
                                     }}
-                                    sx={{ borderRadius: 2, cursor: 'pointer', '&:active': { bgcolor: 'action.selected' } }}
+                                    sx={{ borderRadius: 2, cursor: 'pointer', '&:active': { bgcolor: 'action.selected' }, flexShrink: 0 }}
                                 >
                                     <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                                         <Typography variant="subtitle2" fontWeight="bold" color="primary.main">

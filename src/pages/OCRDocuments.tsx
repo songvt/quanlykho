@@ -734,6 +734,7 @@ export default function OCRDocuments() {
                                             bgcolor: selectedFileId === file.id ? 'rgba(37, 99, 235, 0.02)' : 'white',
                                             boxShadow: 'none',
                                             position: 'relative',
+                                            flexShrink: 0,
                                             '&:hover': { borderColor: '#2563eb' }
                                         }}
                                     >
