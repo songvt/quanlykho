@@ -135,6 +135,18 @@ const OrderList = () => {
         return map;
     }, [detailedStockMap, activeDistrict, products]);
 
+    // Lấy tồn kho cụ thể của sản phẩm theo quận của nhân viên đặt hàng
+    const getOrderRowStock = useCallback((productId: string, requesterGroup: string) => {
+        const emp = employees.find(e => e.full_name === requesterGroup || e.username === requesterGroup);
+        const empDistrict = emp?.district || '';
+        if (empDistrict) {
+            const key = `${productId}|${empDistrict}|*ALL*`;
+            return detailedStockMap[key] || 0;
+        }
+        const totalKey = `${productId}||`;
+        return detailedStockMap[totalKey] || 0;
+    }, [employees, detailedStockMap]);
+
     // Tính giới hạn số lượng đặt hàng hiệu quả cho sản phẩm đang chọn
     // Admin không bị giới hạn theo chính sách, chỉ bị giới hạn bởi tồn kho
     const selectedProduct = products.find(p => p.id === newOrder.product_id);
@@ -472,18 +484,18 @@ const OrderList = () => {
                                             <Typography variant="body2" color="text.secondary">Nhân viên:</Typography>
                                             <Typography variant="body2" fontWeight="600">{order.requester_group}</Typography>
                                         </Stack>
-                                        
+
                                         <Stack direction="row" justifyContent="space-between" mb={0.5}>
                                             <Typography variant="body2" color="text.secondary">Số lượng đặt:</Typography>
                                             <Typography variant="body2" fontWeight="bold" color="primary">{order.quantity}</Typography>
                                         </Stack>
-
+                                        
                                         <Stack direction="row" justifyContent="space-between" mb={1}>
                                             <Typography variant="body2" color="text.secondary">Tồn kho hiện tại:</Typography>
                                             <Chip
-                                                label={inventory[order.product_id] || 0}
+                                                label={getOrderRowStock(order.product_id, order.requester_group)}
                                                 size="small"
-                                                color={(inventory[order.product_id] || 0) > 0 ? 'default' : 'error'}
+                                                color={getOrderRowStock(order.product_id, order.requester_group) > 0 ? 'default' : 'error'}
                                                 variant="outlined"
                                                 sx={{ height: 20 }}
                                             />
@@ -626,9 +638,9 @@ const OrderList = () => {
                                             </TableCell>
                                             <TableCell align="center" sx={{ py: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>
                                                 <Chip
-                                                    label={inventory[order.product_id] || 0}
+                                                    label={getOrderRowStock(order.product_id, order.requester_group)}
                                                     size="small"
-                                                    color={(inventory[order.product_id] || 0) > 0 ? 'default' : 'error'}
+                                                    color={getOrderRowStock(order.product_id, order.requester_group) > 0 ? 'default' : 'error'}
                                                     variant="outlined"
                                                 />
                                             </TableCell>
