@@ -2,6 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getGoogleSheet, getSheetByTitle } from './_utils/googleSheets.js';
 import { supabase, fetchAll } from './_utils/supabase.js';
 import { randomUUID } from 'crypto';
+import { runSyncQueue } from './_utils/syncQueue.js';
 
 const formatLocalDate = (date: Date | string) => {
     const d = new Date(date);
@@ -83,41 +84,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     .from('orders')
                     .upsert(processed, { onConflict: 'id', ignoreDuplicates: true })
                     .select();
-                const sbSuccess = !sbError;
-                if (sbError) console.error('[Orders POST] SB Write Error:', sbError);
+                
+                if (sbError) {
+                    console.error('[Orders POST] SB Write Error:', sbError);
+                    return res.status(500).json({ error: 'Lưu đơn hàng thất bại trên Supabase' });
+                }
 
-                // 2. Google Sheets
+                // 2. Queue for asynchronous background sync to Google Sheets
                 try {
-                    const doc = await getGoogleSheet();
-                    const sheet = await getSheetByTitle(doc, 'orders');
-                    const nowLocal = formatLocalDate(new Date());
-                    const gsWritePromise = async () => {
-                        await sheet.addRows(processed.map((p: any) => ({
-                            ...p,
-                            order_date: p.order_date ? formatLocalDate(p.order_date) : nowLocal,
-                            created_at: nowLocal,
-                            updated_at: nowLocal
-                        })));
-                    };
-                    if (sbSuccess) {
-                        await Promise.race([
-                            gsWritePromise(),
-                            new Promise((_, reject) => setTimeout(() => reject(new Error('GS Sync Timeout')), 4500))
-                        ]);
-                    } else {
-                        await gsWritePromise();
-                    }
-                } catch (e: any) {
-                    console.error('[Orders POST] GS Mirror Error:', e);
-                    if (!sbSuccess) {
-                        return res.status(500).json({ error: 'Tạo đơn thất bại trên cả 2 hệ thống' });
-                    }
                     await supabase.from('gs_sync_queue').insert({
                         table_name: 'orders',
                         action: 'insert',
-                        payload: processed,
-                        error_message: e.message
+                        payload: processed
                     });
+                    
+                    // Kích hoạt đồng bộ ngầm (không block)
+                    runSyncQueue().catch(err => console.error('[Background Sync Trigger] Error:', err));
+                } catch (queueErr: any) {
+                    console.error('[Orders POST] Queue Sync Error:', queueErr);
                 }
 
                 return res.status(201).json(action === 'bulk_insert' ? (sbData || processed) : (sbData ? sbData[0] : processed[0]));

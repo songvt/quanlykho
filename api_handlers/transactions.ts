@@ -2,6 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getGoogleSheet, getSheetByTitle } from './_utils/googleSheets.js';
 import { supabase, fetchAll } from './_utils/supabase.js';
 import { randomUUID } from 'crypto';
+import { runSyncQueue } from './_utils/syncQueue.js';
 
 // --- Helpers ---
 const formatLocalDate = (date: Date | string) => {
@@ -126,68 +127,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                 // --- Best-Effort Dual-Write Logic ---
                 const performWrite = async (table: string, items: any[]) => {
-                    let sbSuccess = false;
-
-                    // 1. Supabase (Chunked upsert, ignoreDuplicates để an toàn khi retry)
-                    try {
-                        const chunkSize = 1000;
-                        for (let i = 0; i < items.length; i += chunkSize) {
-                            const chunk = items.slice(i, i + chunkSize);
-                            const { error: sbError } = await supabase
-                                .from(table)
-                                .upsert(chunk, { onConflict: 'id', ignoreDuplicates: true });
-                            if (sbError) throw sbError;
+                    // 1. Supabase (Chunked upsert)
+                    const chunkSize = 1000;
+                    for (let i = 0; i < items.length; i += chunkSize) {
+                        const chunk = items.slice(i, i + chunkSize);
+                        const { error: sbError } = await supabase
+                            .from(table)
+                            .upsert(chunk, { onConflict: 'id', ignoreDuplicates: true });
+                        if (sbError) {
+                            console.error('SB Write Error:', sbError);
+                            throw sbError;
                         }
-                        sbSuccess = true;
-                    } catch (e: any) {
-                        console.error('SB Write Error (Fallback to GS):', e);
                     }
 
-                    // 2. Google Sheets (Parallel / Fallback)
+                    // 2. Queue for asynchronous background sync to Google Sheets
                     try {
-                        const doc = await getGoogleSheet();
-                        const sheet = doc.sheetsByTitle[table];
-                        const dateField = table === 'inbound_transactions' ? 'inbound_date' : 'outbound_date';
-                        const nowLocal = formatLocalDate(new Date());
-                        const gsItems = items.map(p => ({
-                            ...p,
-                            [dateField]: p[dateField]
-                                ? (p[dateField].includes('/') ? p[dateField] : formatLocalDate(p[dateField]))
-                                : nowLocal,
-                            created_at: nowLocal,
-                            updated_at: nowLocal
-                        }));
-
-                        const gsWritePromise = async () => {
-                            const gsChunkSize = 250;
-                            for (let i = 0; i < gsItems.length; i += gsChunkSize) {
-                                await sheet.addRows(gsItems.slice(i, i + gsChunkSize));
-                            }
-                        };
-
-                        if (sbSuccess) {
-                            // Sync mode: không block quá 4.5s
-                            await Promise.race([
-                                gsWritePromise(),
-                                new Promise((_, reject) => setTimeout(() => reject(new Error('GS Sync Timeout')), 4500))
-                            ]);
-                        } else {
-                            // Fallback mode: GS là nguồn lưu chính
-                            await gsWritePromise();
-                        }
-                    } catch (e: any) {
-                        console.error('GS Write Error:', e);
-                        if (!sbSuccess) {
-                            throw new Error('Cả Supabase và Google Sheets đều lưu thất bại!');
-                        }
-                        // SB thành công nhưng GS timeout → queue để sync sau
                         await supabase.from('gs_sync_queue').insert({
                             table_name: table,
                             action: 'insert',
-                            payload: items,
-                            error_message: e.message
+                            payload: items
                         });
-                        console.log('[Dual-Write] Queued GS Insert to gs_sync_queue');
+                        
+                        // Kích hoạt tiến trình đồng bộ ngầm xử lý hàng đợi (chạy ngầm, không await để phản hồi client ngay)
+                        runSyncQueue().catch(err => console.error('[Background Sync Trigger] Error:', err));
+                    } catch (queueErr: any) {
+                        console.error('Queue Sync Error:', queueErr);
                     }
 
                     return true;
