@@ -2498,8 +2498,8 @@ const PrintableReportTemplate = ({ report }: { report: InfractionReport }) => {
                 fontFamily: "'Times New Roman', Times, serif",
                 boxSizing: 'border-box',
                 '@media print': {
-                    p: '0px !important',
-                    width: '100% !important',
+                    p: '20mm 15mm 20mm 30mm !important',
+                    width: '794px !important',
                     height: 'auto !important',
                 }
             }}
