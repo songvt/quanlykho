@@ -2597,7 +2597,7 @@ const PrintableReportTemplate = ({ report }: { report: InfractionReport }) => {
                     <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', mb: 0.2, fontFamily: "'Times New Roman', Times, serif" }}>
                         3. Giải trình (hoặc ý kiến) và cam kết của người phạm lỗi
                     </Typography>
-                    <DottedTextLines text={report.explanation} totalLines={5} />
+                    <DottedTextLines text={report.explanation} totalLines={3} />
                 </Box>
 
                 {/* SECTION 4 */}
