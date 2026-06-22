@@ -2431,7 +2431,7 @@ const KpiGrades = () => {
 // ── COMPONENT DỰA TRÊN DÒNG KẺ ĐỨT THỰC TẾ A4 ─────────────────────────────
 const DottedTextLines = ({ text, clausePrefix, totalLines = 5, onlyShowTextLines = false }: { text: string; clausePrefix?: string; totalLines?: number; onlyShowTextLines?: boolean }) => {
     // Tách text theo dòng
-    const rawLines = text ? text.trim().split('\n') : [];
+    const rawLines = text ? text.trim().split('\n').filter(line => line.trim() !== '') : [];
     
     // Nếu có tiền tố mục vi phạm, chèn vào trước dòng đầu tiên
     const lines = [...rawLines];
