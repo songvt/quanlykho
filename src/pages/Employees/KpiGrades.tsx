@@ -2455,7 +2455,7 @@ const DottedTextLines = ({ text, clausePrefix, totalLines = 5, onlyShowTextLines
                 <Box 
                     key={idx}
                     sx={{
-                        borderBottom: '1px dotted #555555',
+                        borderBottom: onlyShowTextLines ? 'none' : '1px dotted #555555',
                         minHeight: '27px',
                         lineHeight: '27px',
                         fontSize: '11pt',
