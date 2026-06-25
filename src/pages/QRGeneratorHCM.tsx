@@ -161,12 +161,12 @@ const QRGeneratorHCM = () => {
         
         .label-wrapper { 
             width: 270mm; 
-            height: 730px !important; 
+            height: 660px !important; 
             border: none !important; 
             background: #ffffff !important;
             display: grid;
-            grid-template-columns: 75mm 125mm 70mm;
-            grid-template-rows: 110px 124px 124px 180px 180px;
+            grid-template-columns: 110mm 110mm 50mm;
+            grid-template-rows: 130px 120px 120px 120px 170px;
             gap: 0px !important;
             box-sizing: border-box;
             page-break-inside: avoid;
@@ -202,7 +202,7 @@ const QRGeneratorHCM = () => {
         
         .cell-header {
             grid-column: span 3;
-            font-size: 110pt;
+            font-size: 70pt;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -1061,9 +1061,24 @@ const QRGeneratorHCM = () => {
                                                 );
                                             };
  
-                                            const ValueCellContent = ({ text }: { text: string }) => {
+                                            const ValueCellContent = ({ text, isSpanned }: { text: string; isSpanned?: boolean }) => {
+                                                const baseFontSize = 52;
+                                                const maxWidth = isSpanned ? 410 : 270;
+
+                                                const getFitFontSize = (str: string) => {
+                                                    const len = str.length;
+                                                    if (len === 0) return baseFontSize;
+                                                    const charRatio = 0.68;
+                                                    const estWidth = len * (baseFontSize * charRatio);
+                                                    if (estWidth > maxWidth) {
+                                                        return Math.floor(baseFontSize * (maxWidth / estWidth));
+                                                    }
+                                                    return baseFontSize;
+                                                };
+
                                                 if (text.includes(' - ')) {
                                                     const parts = text.split(' - ');
+                                                    const minSize = Math.min(...parts.map(p => getFitFontSize(p.trim())));
                                                     return (
                                                         <div style={{ 
                                                             display: 'flex', 
@@ -1071,71 +1086,143 @@ const QRGeneratorHCM = () => {
                                                             alignItems: 'center', 
                                                             justifyContent: 'center', 
                                                             lineHeight: 1.0, 
-                                                            fontSize: '45pt',
+                                                            fontSize: `${minSize}pt`,
                                                             fontWeight: 900,
                                                             textTransform: 'uppercase',
-                                                            fontFamily: '"Times New Roman", Times, serif'
+                                                            fontFamily: '"Times New Roman", Times, serif',
+                                                            color: 'black'
                                                         }}>
                                                             {parts.map((p, i) => (
-                                                                <div key={i}>{p}{i === 0 && parts.length > 1 ? ' -' : ''}</div>
+                                                                <div key={i}>{p.trim()}{i === 0 && parts.length > 1 ? ' -' : ''}</div>
                                                             ))}
                                                         </div>
                                                     );
                                                 }
-                                                return <SvgFitText text={text} fontSizePt={110} maxWidthPt={405} />;
+                                                const fitSize = getFitFontSize(text.trim());
+                                                return (
+                                                    <div style={{ 
+                                                        fontSize: `${fitSize}pt`, 
+                                                        fontWeight: 900, 
+                                                        textTransform: 'uppercase',
+                                                        fontFamily: '"Times New Roman", Times, serif',
+                                                        color: 'black',
+                                                        whiteSpace: 'nowrap',
+                                                        lineHeight: 1
+                                                    }}>
+                                                        {text.trim()}
+                                                    </div>
+                                                );
                                             };
- 
+
+                                            const hasTwoQRs = group.qrChunks.length > 1;
+
                                             return (
                                                 <>
                                                     {/* Row 1: Header */}
-                                                    <div className="grid-cell cell-header" style={{ gridRow: 1, gridColumn: '1 / span 3', borderTop: '3px solid black', borderLeft: '3px solid black' }}>
-                                                        <SvgFitText text={group.tieu_de || 'KHIRM-2026'} fontSizePt={110} maxWidthPt={765} />
-                                                    </div>
- 
-                                                    {/* Row 2: THÙNG */}
-                                                    <div className="grid-cell cell-label" style={{ gridRow: 2, gridColumn: 1, borderLeft: '3px solid black', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '33pt', fontFamily: '"Times New Roman", Times, serif' }}>
-                                                        THÙNG
-                                                    </div>
-                                                    <div className="grid-cell cell-value" style={{ gridRow: 2, gridColumn: 2 }}>
-                                                        <ValueCellContent text={String(group.thung)} />
-                                                    </div>
-                                                    <div className="grid-cell cell-qr" style={{ gridRow: group.qrChunks.length > 1 ? '2 / span 2' : '2 / span 4', gridColumn: 3 }}>
+                                                    {(() => {
+                                                        const titleText = group.tieu_de || 'LDC 44.11.2025/VTT-ĐHBH';
+                                                        const baseFontSize = 70;
+                                                        const maxWidthPt = 580;
+                                                        const len = titleText.length;
+                                                        const charRatio = 0.58; // Increased ratio to ensure enough shrink
+                                                        const estWidth = len * (baseFontSize * charRatio);
+                                                        const titleSize = estWidth > maxWidthPt ? Math.floor(baseFontSize * (maxWidthPt / estWidth)) : baseFontSize;
+
+                                                        return (
+                                                            <div className="grid-cell cell-header" style={{ gridRow: 1, gridColumn: '1 / span 2', borderTop: '3px solid black', borderLeft: '3px solid black', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                <div style={{
+                                                                    fontSize: `${titleSize}pt`,
+                                                                    fontWeight: 900,
+                                                                    textTransform: 'uppercase',
+                                                                    fontFamily: '"Times New Roman", Times, serif',
+                                                                    color: 'black',
+                                                                    whiteSpace: 'nowrap',
+                                                                    lineHeight: 1
+                                                                }}>
+                                                                    {titleText}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                    <div className="grid-cell cell-qr" style={{ gridRow: '1 / span 2', gridColumn: 3, borderTop: '3px solid black', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '15px' }}>
                                                         {group.qrChunks[0] && (
-                                                            <div className="qr-container">
-                                                                <QRCodeSVG value={group.qrChunks[0].qrValue} size={315} level="M" includeMargin={false} />
+                                                            <div className="qr-container" style={{ width: '150px', height: '150px' }}>
+                                                                <QRCodeSVG value={group.qrChunks[0].qrValue} size={150} level="M" includeMargin={false} />
                                                             </div>
                                                         )}
                                                     </div>
  
-                                                    {/* Row 3: SỐ LƯỢNG */}
-                                                    <div className="grid-cell cell-label" style={{ gridRow: 3, gridColumn: 1, borderLeft: '3px solid black', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '33pt', fontFamily: '"Times New Roman", Times, serif' }}>
-                                                        SỐ LƯỢNG
+                                                    {/* Row 2: THÙNG */}
+                                                    <div className="grid-cell cell-label" style={{ gridRow: 2, gridColumn: 1, borderLeft: '3px solid black', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '40px', fontWeight: 900, fontSize: '52pt', fontFamily: '"Times New Roman", Times, serif', whiteSpace: 'nowrap' }}>
+                                                        THÙNG
                                                     </div>
-                                                    <div className="grid-cell cell-value" style={{ gridRow: 3, gridColumn: 2 }}>
-                                                        <ValueCellContent text={String(group.totalQuantity)} />
+                                                    <div className="grid-cell cell-value" style={{ gridRow: 2, gridColumn: 2 }}>
+                                                        <ValueCellContent text={String(group.thung)} isSpanned={false} />
                                                     </div>
  
+                                                    {/* Row 3: SỐ LƯỢNG */}
+                                                    <div className="grid-cell cell-label" style={{ gridRow: 3, gridColumn: 1, borderLeft: '3px solid black', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '40px', fontWeight: 900, fontSize: '52pt', fontFamily: '"Times New Roman", Times, serif', whiteSpace: 'nowrap' }}>
+                                                        SỐ LƯỢNG
+                                                    </div>
+                                                    {hasTwoQRs ? (
+                                                        <div className="grid-cell cell-value" style={{ gridRow: 3, gridColumn: 2 }}>
+                                                            <ValueCellContent text={String(group.totalQuantity)} isSpanned={false} />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="grid-cell cell-value" style={{ gridRow: 3, gridColumn: '2 / span 2' }}>
+                                                            <ValueCellContent text={String(group.totalQuantity)} isSpanned={true} />
+                                                        </div>
+                                                    )}
+                                                    {hasTwoQRs && (
+                                                        <div className="grid-cell cell-qr" style={{ gridRow: '3 / span 2', gridColumn: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '15px' }}>
+                                                            {group.qrChunks[1] && (
+                                                                <div className="qr-container" style={{ width: '150px', height: '150px' }}>
+                                                                    <QRCodeSVG value={group.qrChunks[1].qrValue} size={150} level="M" includeMargin={false} />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+ 
                                                     {/* Row 4: THIẾT BỊ */}
-                                                    <div className="grid-cell cell-label" style={{ gridRow: 4, gridColumn: 1, borderLeft: '3px solid black', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '33pt', fontFamily: '"Times New Roman", Times, serif' }}>
+                                                    <div className="grid-cell cell-label" style={{ gridRow: 4, gridColumn: 1, borderLeft: '3px solid black', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '40px', fontWeight: 900, fontSize: '52pt', fontFamily: '"Times New Roman", Times, serif', whiteSpace: 'nowrap' }}>
                                                         THIẾT BỊ
                                                     </div>
-                                                    <div className="grid-cell cell-value" style={{ gridRow: 4, gridColumn: 2 }}>
-                                                        <ValueCellContent text={String(group.thiet_bi)} />
-                                                    </div>
-                                                    {group.qrChunks.length > 1 ? (
-                                                        <div className="grid-cell cell-qr" style={{ gridRow: '4 / span 2', gridColumn: 3 }}>
-                                                            <div className="qr-container">
-                                                                <QRCodeSVG value={group.qrChunks[1].qrValue} size={315} level="M" includeMargin={false} />
-                                                            </div>
+                                                    {hasTwoQRs ? (
+                                                        <div className="grid-cell cell-value" style={{ gridRow: 4, gridColumn: 2 }}>
+                                                            <ValueCellContent text={String(group.thiet_bi)} isSpanned={false} />
                                                         </div>
-                                                    ) : null}
-
+                                                    ) : (
+                                                        <div className="grid-cell cell-value" style={{ gridRow: 4, gridColumn: '2 / span 2' }}>
+                                                            <ValueCellContent text={String(group.thiet_bi)} isSpanned={true} />
+                                                        </div>
+                                                    )}
+ 
                                                     {/* Row 5: TÌNH TRẠNG */}
-                                                    <div className="grid-cell cell-label" style={{ gridRow: 5, gridColumn: 1, borderLeft: '3px solid black', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '33pt', fontFamily: '"Times New Roman", Times, serif' }}>
-                                                        TÌNH TRẠNG
+                                                    <div className="grid-cell cell-label" style={{ gridRow: 5, gridColumn: 1, borderLeft: '3px solid black', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', paddingLeft: '40px', fontWeight: 900, fontSize: '52pt', fontFamily: '"Times New Roman", Times, serif', lineHeight: 1.1 }}>
+                                                        <div>TÌNH</div>
+                                                        <div>TRẠNG</div>
                                                     </div>
-                                                    <div className="grid-cell cell-value" style={{ gridRow: 5, gridColumn: 2 }}>
-                                                        <ValueCellContent text={String(group.tinh_trang)} />
+                                                    <div className="grid-cell cell-value" style={{ gridRow: 5, gridColumn: '2 / span 2', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0px' }}>
+                                                        <div style={{
+                                                            fontSize: '45pt',
+                                                            fontWeight: 'bold',
+                                                            fontFamily: '"Times New Roman", Times, serif',
+                                                            color: 'black',
+                                                            lineHeight: 1.1
+                                                        }}>
+                                                            {group.tinh_trang.toUpperCase()}
+                                                        </div>
+                                                        <div style={{
+                                                            fontSize: '22pt',
+                                                            fontStyle: 'italic',
+                                                            fontFamily: '"Times New Roman", Times, serif',
+                                                            color: 'black',
+                                                            fontWeight: 'normal',
+                                                            lineHeight: 1,
+                                                            marginTop: '-2px'
+                                                        }}>
+                                                            Ngày in {String(new Date().getDate()).padStart(2, '0')}/{String(new Date().getMonth() + 1).padStart(2, '0')}/{new Date().getFullYear()}
+                                                        </div>
                                                     </div>
                                                 </>
                                             );
