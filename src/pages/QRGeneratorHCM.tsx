@@ -160,12 +160,12 @@ const QRGeneratorHCM = () => {
         }
         
         .label-wrapper { 
-            width: 270mm; 
+            width: 285mm; 
             height: 660px !important; 
             border: none !important; 
             background: #ffffff !important;
             display: grid;
-            grid-template-columns: 110mm 110mm 50mm;
+            grid-template-columns: 115mm 120mm 50mm;
             grid-template-rows: 130px 120px 120px 120px 170px;
             gap: 0px !important;
             box-sizing: border-box;
@@ -1060,10 +1060,21 @@ const QRGeneratorHCM = () => {
                                                     </div>
                                                 );
                                             };
- 
+
+                                            
+                                            const LabelCellContent = ({ text }: { text: string }) => {
+                                                const baseFontSize = 52;
+                                                const maxWidth = 270; // ~90mm minus padding
+                                                const len = text.length;
+                                                const charRatio = 0.62;
+                                                const estWidth = len * (baseFontSize * charRatio);
+                                                const fitSize = estWidth > maxWidth ? Math.floor(baseFontSize * (maxWidth / estWidth)) : baseFontSize;
+                                                return <span style={{ fontSize: `${fitSize}pt` }}>{text}</span>;
+                                            };
+
                                             const ValueCellContent = ({ text, isSpanned }: { text: string; isSpanned?: boolean }) => {
                                                 const baseFontSize = 52;
-                                                const maxWidth = isSpanned ? 410 : 270;
+                                                const maxWidth = isSpanned ? 425 : 300;
 
                                                 const getFitFontSize = (str: string) => {
                                                     const len = str.length;
@@ -1122,9 +1133,9 @@ const QRGeneratorHCM = () => {
                                                     {(() => {
                                                         const titleText = group.tieu_de || 'LDC 44.11.2025/VTT-ĐHBH';
                                                         const baseFontSize = 70;
-                                                        const maxWidthPt = 580;
+                                                        const maxWidthPt = 610;
                                                         const len = titleText.length;
-                                                        const charRatio = 0.58; // Increased ratio to ensure enough shrink
+                                                        const charRatio = 0.58; 
                                                         const estWidth = len * (baseFontSize * charRatio);
                                                         const titleSize = estWidth > maxWidthPt ? Math.floor(baseFontSize * (maxWidthPt / estWidth)) : baseFontSize;
 
@@ -1153,17 +1164,15 @@ const QRGeneratorHCM = () => {
                                                     </div>
  
                                                     {/* Row 2: THÙNG */}
-                                                    <div className="grid-cell cell-label" style={{ gridRow: 2, gridColumn: 1, borderLeft: '3px solid black', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '40px', fontWeight: 900, fontSize: '52pt', fontFamily: '"Times New Roman", Times, serif', whiteSpace: 'nowrap' }}>
-                                                        THÙNG
-                                                    </div>
+                                                    <div className="grid-cell cell-label" style={{ gridRow: 2, gridColumn: 1, borderLeft: '3px solid black', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '20px', fontWeight: 900, fontSize: '52pt', fontFamily: '"Times New Roman", Times, serif', whiteSpace: 'nowrap' }}>
+                                                        <LabelCellContent text="THÙNG" /></div>
                                                     <div className="grid-cell cell-value" style={{ gridRow: 2, gridColumn: 2 }}>
                                                         <ValueCellContent text={String(group.thung)} isSpanned={false} />
                                                     </div>
  
                                                     {/* Row 3: SỐ LƯỢNG */}
-                                                    <div className="grid-cell cell-label" style={{ gridRow: 3, gridColumn: 1, borderLeft: '3px solid black', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '40px', fontWeight: 900, fontSize: '52pt', fontFamily: '"Times New Roman", Times, serif', whiteSpace: 'nowrap' }}>
-                                                        SỐ LƯỢNG
-                                                    </div>
+                                                    <div className="grid-cell cell-label" style={{ gridRow: 3, gridColumn: 1, borderLeft: '3px solid black', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '20px', fontWeight: 900, fontSize: '52pt', fontFamily: '"Times New Roman", Times, serif', whiteSpace: 'nowrap' }}>
+                                                        <LabelCellContent text="SỐ LƯỢNG" /></div>
                                                     {hasTwoQRs ? (
                                                         <div className="grid-cell cell-value" style={{ gridRow: 3, gridColumn: 2 }}>
                                                             <ValueCellContent text={String(group.totalQuantity)} isSpanned={false} />
@@ -1184,9 +1193,8 @@ const QRGeneratorHCM = () => {
                                                     )}
  
                                                     {/* Row 4: THIẾT BỊ */}
-                                                    <div className="grid-cell cell-label" style={{ gridRow: 4, gridColumn: 1, borderLeft: '3px solid black', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '40px', fontWeight: 900, fontSize: '52pt', fontFamily: '"Times New Roman", Times, serif', whiteSpace: 'nowrap' }}>
-                                                        THIẾT BỊ
-                                                    </div>
+                                                    <div className="grid-cell cell-label" style={{ gridRow: 4, gridColumn: 1, borderLeft: '3px solid black', display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '20px', fontWeight: 900, fontSize: '52pt', fontFamily: '"Times New Roman", Times, serif', whiteSpace: 'nowrap' }}>
+                                                        <LabelCellContent text="THIẾT BỊ" /></div>
                                                     {hasTwoQRs ? (
                                                         <div className="grid-cell cell-value" style={{ gridRow: 4, gridColumn: 2 }}>
                                                             <ValueCellContent text={String(group.thiet_bi)} isSpanned={false} />
@@ -1198,7 +1206,7 @@ const QRGeneratorHCM = () => {
                                                     )}
  
                                                     {/* Row 5: TÌNH TRẠNG */}
-                                                    <div className="grid-cell cell-label" style={{ gridRow: 5, gridColumn: 1, borderLeft: '3px solid black', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', paddingLeft: '40px', fontWeight: 900, fontSize: '52pt', fontFamily: '"Times New Roman", Times, serif', lineHeight: 1.1 }}>
+                                                    <div className="grid-cell cell-label" style={{ gridRow: 5, gridColumn: 1, borderLeft: '3px solid black', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', paddingLeft: '20px', fontWeight: 900, fontSize: '52pt', fontFamily: '"Times New Roman", Times, serif', lineHeight: 1.1 }}>
                                                         <div>TÌNH</div>
                                                         <div>TRẠNG</div>
                                                     </div>
@@ -1211,17 +1219,6 @@ const QRGeneratorHCM = () => {
                                                             lineHeight: 1.1
                                                         }}>
                                                             {group.tinh_trang.toUpperCase()}
-                                                        </div>
-                                                        <div style={{
-                                                            fontSize: '22pt',
-                                                            fontStyle: 'italic',
-                                                            fontFamily: '"Times New Roman", Times, serif',
-                                                            color: 'black',
-                                                            fontWeight: 'normal',
-                                                            lineHeight: 1,
-                                                            marginTop: '-2px'
-                                                        }}>
-                                                            Ngày in {String(new Date().getDate()).padStart(2, '0')}/{String(new Date().getMonth() + 1).padStart(2, '0')}/{new Date().getFullYear()}
                                                         </div>
                                                     </div>
                                                 </>
