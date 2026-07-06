@@ -7,7 +7,7 @@ import {
 import PrintIcon from '@mui/icons-material/Print';
 import DownloadIcon from '@mui/icons-material/Download';
 import ExcelJS from 'exceljs';
-import { fetchAssets } from '../../store/slices/assetsSlice';
+import { fetchAssets, fetchAssetLogs } from '../../store/slices/assetsSlice';
 import type { AppDispatch, RootState } from '../../store';
 import type { Asset } from '../../types';
 
@@ -22,13 +22,12 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const dispatch = useDispatch<AppDispatch>();
-    const { items: allAssets, status } = useSelector((s: RootState) => s.assets);
+    const { items: allAssets, logs: allLogs, status } = useSelector((s: RootState) => s.assets);
 
     useEffect(() => {
-        if (allAssets.length === 0 && status === 'idle') {
-            dispatch(fetchAssets());
-        }
-    }, [allAssets.length, status, dispatch]);
+        dispatch(fetchAssets());
+        dispatch(fetchAssetLogs());
+    }, [dispatch]);
 
     const now = new Date();
     const [month, setMonth] = useState(now.getMonth() + 1);
@@ -39,14 +38,58 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
         return allAssets.filter((a: Asset) => {
             const typeCode = (a.asset_type || '').trim().toUpperCase();
             const grpCode  = (a.asset_group || '').trim().toUpperCase();
-            if (reportType === 'CCDC') {
-                return typeCode.startsWith('CCDC') || typeCode.startsWith('TSNT') ||
-                       grpCode.startsWith('CCDC') || grpCode.startsWith('TSNT');
-            } else {
-                return typeCode.startsWith('TBVP') || grpCode.startsWith('TBVP');
+            const isMatch = reportType === 'CCDC'
+                ? (typeCode.includes('CCDC') || typeCode.includes('TSNT') || grpCode.includes('CCDC') || grpCode.includes('TSNT'))
+                : (typeCode.includes('TBVP') || grpCode.includes('TBVP') || typeCode.includes('TTB-PCCC'));
+            
+            if (!isMatch) return false;
+
+            if (a.receipt_date) {
+                const rDate = new Date(a.receipt_date);
+                const rYear = rDate.getFullYear();
+                const rMonth = rDate.getMonth() + 1;
+                if (rYear > year || (rYear === year && rMonth > month)) {
+                    return false;
+                }
+            } else if (a.created_at) {
+                const cDate = new Date(a.created_at);
+                const cYear = cDate.getFullYear();
+                const cMonth = cDate.getMonth() + 1;
+                if (cYear > year || (cYear === year && cMonth > month)) {
+                    return false;
+                }
+            }
+            return true;
+        });
+    }, [allAssets, reportType, month, year]);
+
+    const assetIncreasesDecreases = useMemo(() => {
+        const result: Record<string, { increase: number, decrease: number }> = {};
+        
+        (allLogs || []).forEach(log => {
+            const logDate = new Date(log.created_at);
+            const logMonth = logDate.getMonth() + 1;
+            const logYear = logDate.getFullYear();
+            
+            if (logMonth === month && logYear === year) {
+                const code = log.asset_code;
+                if (!code) return;
+                
+                const action = (log.action || '').toLowerCase();
+                const isIncrease = ['tăng', 'thêm mới', 'thêm', 'tạo mới', 'insert', 'create', 'add'].some(act => action.includes(act));
+                const isDecrease = ['giảm', 'xóa', 'delete', 'remove'].some(act => action.includes(act));
+                
+                if (!result[code]) {
+                    result[code] = { increase: 0, decrease: 0 };
+                }
+                
+                if (isIncrease) result[code].increase += 1;
+                if (isDecrease) result[code].decrease += 1;
             }
         });
-    }, [allAssets, reportType]);
+        
+        return result;
+    }, [allLogs, month, year]);
 
     const dateFooterStr = `TP.Hồ Chí Minh, ngày ${now.getDate().toString().padStart(2, '0')} tháng ${(now.getMonth() + 1).toString().padStart(2, '0')} năm ${now.getFullYear()}`;
 
@@ -92,12 +135,14 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
         });
 
         assets.forEach((a, idx) => {
+            const inc = assetIncreasesDecreases[a.asset_code || '']?.increase || 0;
+            const dec = assetIncreasesDecreases[a.asset_code || '']?.decrease || 0;
             const r = ws.addRow([
                 idx+1, a.asset_code || '-', a.asset_name, a.asset_type, a.status,
                 a.user_employee_code||'-', a.user_employee_name||'-',
                 a.manager_code||'-', a.manager_name||'-',
                 a.receipt_date ? new Date(a.receipt_date).toLocaleDateString('vi-VN') : '-',
-                0, 0, a.location_code||'-', a.location_name||'-', reportType
+                inc, dec, a.location_code||'-', a.location_name||'-', reportType
             ]);
             r.eachCell(c => { c.border = border; c.font = { size:9, name:'Times New Roman' }; c.alignment = { vertical:'middle', wrapText:true }; });
         });
@@ -234,25 +279,29 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                         </tr>
                     </thead>
                     <tbody>
-                        {assets.map((a, i) => (
-                            <tr key={a.id}>
-                                <td style={colStyle}>{i + 1}</td>
-                                <td style={colStyle}>{a.asset_code || '-'}</td>
-                                <td style={{ ...colStyle, textAlign: 'left' }}>{a.asset_name}</td>
-                                <td style={{ ...colStyle, textAlign: 'left', fontSize: '8pt' }}>{a.asset_type}</td>
-                                <td style={colStyle}>{a.status}</td>
-                                <td style={colStyle}>{a.user_employee_code || '-'}</td>
-                                <td style={{ ...colStyle, textAlign: 'left' }}>{a.user_employee_name || '-'}</td>
-                                <td style={colStyle}>{a.manager_code || '-'}</td>
-                                <td style={{ ...colStyle, textAlign: 'left' }}>{a.manager_name || '-'}</td>
-                                <td style={colStyle}>{a.receipt_date ? new Date(a.receipt_date).toLocaleDateString('vi-VN') : '-'}</td>
-                                <td style={colStyle}>0</td>
-                                <td style={colStyle}>0</td>
-                                <td style={colStyle}>{a.location_code || '-'}</td>
-                                <td style={{ ...colStyle, textAlign: 'left', fontSize: '8pt' }}>{a.location_name || '-'}</td>
-                                <td style={colStyle}>{reportType}</td>
-                            </tr>
-                        ))}
+                        {assets.map((a, i) => {
+                            const inc = assetIncreasesDecreases[a.asset_code || '']?.increase || 0;
+                            const dec = assetIncreasesDecreases[a.asset_code || '']?.decrease || 0;
+                            return (
+                                <tr key={a.id}>
+                                    <td style={colStyle}>{i + 1}</td>
+                                    <td style={colStyle}>{a.asset_code || '-'}</td>
+                                    <td style={{ ...colStyle, textAlign: 'left' }}>{a.asset_name}</td>
+                                    <td style={{ ...colStyle, textAlign: 'left', fontSize: '8pt' }}>{a.asset_type}</td>
+                                    <td style={colStyle}>{a.status}</td>
+                                    <td style={colStyle}>{a.user_employee_code || '-'}</td>
+                                    <td style={{ ...colStyle, textAlign: 'left' }}>{a.user_employee_name || '-'}</td>
+                                    <td style={colStyle}>{a.manager_code || '-'}</td>
+                                    <td style={{ ...colStyle, textAlign: 'left' }}>{a.manager_name || '-'}</td>
+                                    <td style={colStyle}>{a.receipt_date ? new Date(a.receipt_date).toLocaleDateString('vi-VN') : '-'}</td>
+                                    <td style={colStyle}>{inc}</td>
+                                    <td style={colStyle}>{dec}</td>
+                                    <td style={colStyle}>{a.location_code || '-'}</td>
+                                    <td style={{ ...colStyle, textAlign: 'left', fontSize: '8pt' }}>{a.location_name || '-'}</td>
+                                    <td style={colStyle}>{reportType}</td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
 

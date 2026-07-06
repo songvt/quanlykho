@@ -48,10 +48,10 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
             const typeCode = (type || '').trim().toUpperCase();
             const grpCode  = (group || '').trim().toUpperCase();
             if (reportType === 'CCDC') {
-                return typeCode.startsWith('CCDC') || typeCode.startsWith('TSNT') ||
-                       grpCode.startsWith('CCDC') || grpCode.startsWith('TSNT');
+                return typeCode.includes('CCDC') || typeCode.includes('TSNT') ||
+                       grpCode.includes('CCDC') || grpCode.includes('TSNT');
             } else {
-                return typeCode.startsWith('TBVP') || grpCode.startsWith('TBVP');
+                return typeCode.includes('TBVP') || grpCode.includes('TBVP') || typeCode.includes('TTB-PCCC');
             }
         };
 
