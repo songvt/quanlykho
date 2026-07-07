@@ -1268,20 +1268,20 @@ const QRGenerator = () => {
                                                         <div className="blue-header">
                                                             {group.district.toUpperCase()} – {docTitle.toUpperCase()}
                                                         </div>
-                                                        <div className="info-row">
-                                                            <div className="label-text">Số Thùng</div>
-                                                            <div className="value-text" style={{ fontSize: '2.3rem' }}>{boxLabel || group.boxNumber}</div>
+                                                        <div className="info-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '6px', fontSize: '1.45rem', fontWeight: 900 }}>
+                                                            <span style={{ color: '#333333' }}>Số Thùng :</span>
+                                                            <span style={{ color: '#000000', fontSize: '1.65rem' }}>{boxLabel || group.boxNumber}</span>
                                                         </div>
-                                                        <div className="info-row">
-                                                            <div className="label-text">Số Lượng</div>
-                                                            <div className="value-text" style={{ color: '#1d4ed8' }}>{group.totalQuantity} <span style={{ fontSize: '1.3rem', fontWeight: 'normal', color: '#333' }}>serial</span></div>
+                                                        <div className="info-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '6px', fontSize: '1.45rem', fontWeight: 900 }}>
+                                                            <span style={{ color: '#333333' }}>Số Lượng :</span>
+                                                            <span style={{ color: '#1d4ed8' }}>{group.totalQuantity} <span style={{ fontWeight: 'normal', color: '#333', fontSize: '1.15rem' }}>serial</span></span>
                                                         </div>
-                                                        <div className="info-row">
-                                                            <div className="label-text">Mã QR</div>
-                                                            <div className="value-text">{group.qrChunks.length} <span style={{ fontSize: '1.3rem', fontWeight: 'normal', color: '#333' }}>mã</span></div>
+                                                        <div className="info-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '6px', fontSize: '1.45rem', fontWeight: 900 }}>
+                                                            <span style={{ color: '#333333' }}>Mã QR :</span>
+                                                            <span style={{ color: '#000000' }}>{group.qrChunks.length} <span style={{ fontWeight: 'normal', color: '#333', fontSize: '1.15rem' }}>mã</span></span>
                                                         </div>
-                                                        <div className="info-row">
-                                                             <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#000000', marginTop: '2px' }}>SỐ PHIẾU: ________</div>
+                                                        <div className="info-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '6px', fontSize: '1.45rem', fontWeight: 900 }}>
+                                                            <div style={{ color: '#000000' }}>SỐ PHIẾU: ________</div>
                                                         </div>
                                                     </div>
 
