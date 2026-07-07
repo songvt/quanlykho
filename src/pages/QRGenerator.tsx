@@ -155,11 +155,11 @@ const QR_STYLES = `
         background-color: #ffffff;
     }
     .blue-header {
-        background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%) !important;
-        color: white !important;
-        padding: 8px 10px;
+        background: #ffffff !important;
+        color: #000000 !important;
+        padding: 6px 10px;
         font-weight: 900;
-        font-size: 1.35rem;
+        font-size: 1.45rem;
         text-align: center;
         border-bottom: 3.5px solid #000000;
         text-transform: uppercase;
@@ -168,7 +168,7 @@ const QR_STYLES = `
         print-color-adjust: exact;
     }
     .info-row {
-        padding: 4px 14px;
+        padding: 3px 14px;
         border-bottom: 1.5px dashed #000000;
         flex: 1;
         display: flex;
@@ -177,18 +177,18 @@ const QR_STYLES = `
     }
     .info-row:last-child { 
         border-bottom: none; 
-        background-color: #fafafa;
+        background-color: #ffffff;
     }
     .label-text { 
-        font-size: 1.05rem; 
+        font-size: 1.0rem; 
         color: #333333; 
         font-weight: bold;
         text-transform: uppercase; 
-        margin-bottom: 3px; 
+        margin-bottom: 2px; 
         letter-spacing: 0.5px;
     }
     .value-text { 
-        font-size: 1.85rem; 
+        font-size: 1.8rem; 
         font-weight: 900; 
         color: #000000;
     }
@@ -250,7 +250,7 @@ const QR_STYLES = `
         }
         .label-wrapper { border: 3.5px solid black !important; }
         .info-col { border-right: 3.5px solid black !important; }
-        .blue-header { border-bottom: 3.5px solid black !important; background-color: #2563eb !important; }
+        .blue-header { border-bottom: 3.5px solid black !important; background-color: #ffffff !important; color: #000000 !important; }
         .info-row { border-bottom: 1.5px dashed black !important; }
         .info-row:last-child { border-bottom: none !important; }
         .qr-col { border-right: 1.5px solid black !important; }
@@ -1281,7 +1281,7 @@ const QRGenerator = () => {
                                                             <div className="value-text">{group.qrChunks.length} <span style={{ fontSize: '1.3rem', fontWeight: 'normal', color: '#333' }}>mã</span></div>
                                                         </div>
                                                         <div className="info-row">
-                                                            <div style={{ fontSize: '1.5rem', fontWeight: 950, color: '#000000', marginTop: '2px' }}>SỐ PHIẾU: ________</div>
+                                                             <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#000000', marginTop: '2px' }}>SỐ PHIẾU: ________</div>
                                                         </div>
                                                     </div>
 
