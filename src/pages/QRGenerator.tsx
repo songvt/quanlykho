@@ -120,13 +120,14 @@ const QR_STYLES = `
     body { 
         font-family: 'Times New Roman', Times, serif; 
         background: white; 
-        padding: 5mm;
+        padding: 0;
+        margin: 0;
     }
-    @page { size: A4 landscape; margin: 5mm; }
+    @page { size: A4 landscape; margin: 0; }
     .pdf-page {
         width: 297mm;
         height: 210mm;
-        padding: 4mm 5mm;
+        padding: 6mm 10mm;
         background-color: white;
         display: flex;
         flex-direction: column;
@@ -239,6 +240,14 @@ const QR_STYLES = `
     
     @media print {
         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .print-container { display: block !important; gap: 0 !important; }
+        .pdf-page { 
+            margin: 0 !important; 
+            page-break-after: always !important; 
+        }
+        .pdf-page:last-child { 
+            page-break-after: avoid !important; 
+        }
         .label-wrapper { border: 3.5px solid black !important; }
         .info-col { border-right: 3.5px solid black !important; }
         .blue-header { border-bottom: 3.5px solid black !important; background-color: #2563eb !important; }
@@ -1242,7 +1251,7 @@ const QRGenerator = () => {
                         >
                             <style type="text/css">{QR_STYLES}</style>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            <div className="print-container" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                 {pairedBoxes.map((pair, pageIndex) => (
                                     <div key={pageIndex} className="pdf-page"
                                         style={{ 
