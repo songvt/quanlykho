@@ -147,7 +147,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
         ] : []),
         ...(hasPermission('qr.view') ? [
             { text: 'Mã QR Code', icon: <QrCode size={20} />, path: '/qr-generator' },
-            { text: 'Barcode 4x4', icon: <Barcode size={20} color="#0d9488" />, path: '/barcode-generator' }
+            { text: 'MÃ VẠCH VHKT', icon: <Barcode size={20} color="#0d9488" />, path: '/barcode-generator' }
         ] : []),
         ...(hasPermission('qr_hcm.view') ? [
             { text: 'Mã QR Code HCM', icon: <QrCode size={20} color="#1e4b9b" />, path: '/qr-generator-hcm' }

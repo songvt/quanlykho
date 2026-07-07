@@ -554,7 +554,7 @@ const BarcodeGenerator = () => {
                                         fontSize: { xs: '1.65rem', md: '2.1rem' }
                                     }}
                                 >
-                                    BARCODE 128 (MẪU 4X4 A4)
+                                    TẠO MÃ VẠCH VHKT
                                 </Typography>
                                 <Typography 
                                     variant="body1" 
