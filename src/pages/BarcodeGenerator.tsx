@@ -85,11 +85,11 @@ const BARCODE_STYLES = `
         grid-template-rows: repeat(4, 1fr);
         width: 100%;
         height: 100%;
-        border: 2px solid #000000;
+        gap: 2mm;
         box-sizing: border-box;
     }
     .barcode-cell {
-        border: 1px solid #000000;
+        border: 1.5px solid #000000;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
