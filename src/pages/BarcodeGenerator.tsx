@@ -102,46 +102,49 @@ const BARCODE_STYLES = `
         height: 100%;
     }
     .cell-header {
-        font-size: 1.4rem;
-        font-weight: bold;
-        color: #000000;
-        padding: 2px 4px;
-        background-color: #f2f2f2;
-        border-bottom: 1.5px solid #000000;
-        text-transform: uppercase;
-        height: 28px;
-        line-height: 24px;
-    }
-    .cell-description {
-        font-size: 1.0rem;
-        font-weight: 500;
-        color: #000000;
-        padding: 2px 6px;
-        flex-grow: 1;
+        height: 15%;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-bottom: 1.5px solid #000000;
-        line-height: 1.2;
-        word-break: break-word;
-        max-height: 52px;
-        overflow: hidden;
-    }
-    .cell-sku {
         font-size: 1.25rem;
         font-weight: bold;
         color: #000000;
-        padding: 2px 4px;
+        background-color: #f2f2f2;
         border-bottom: 1.5px solid #000000;
-        height: 26px;
-        line-height: 22px;
+        text-transform: uppercase;
+    }
+    .cell-description {
+        height: 32%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: #000000;
+        padding: 2px 6px;
+        border-bottom: 1.5px solid #000000;
+        line-height: 1.25;
+        word-break: break-word;
+        overflow: hidden;
+        text-align: center;
+    }
+    .cell-sku {
+        height: 13%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.15rem;
+        font-weight: bold;
+        color: #000000;
+        border-bottom: 1.5px solid #000000;
     }
     .cell-barcode-area {
-        padding: 4px 6px 2px 6px;
+        height: 40%;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
+        padding: 4px 6px 2px 6px;
         background: #ffffff;
     }
     .cell-barcode-text {
