@@ -157,9 +157,9 @@ const QR_STYLES = `
     .blue-header {
         background: #ffffff !important;
         color: #000000 !important;
-        padding: 6px 10px;
+        padding: 20px 10px;
         font-weight: 900;
-        font-size: 1.45rem;
+        font-size: 2.25rem;
         text-align: center;
         border-bottom: 3.5px solid #000000;
         text-transform: uppercase;
