@@ -1274,7 +1274,7 @@ const QRGenerator = () => {
                                                         </div>
                                                         <div className="info-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', fontSize: '1.65rem', fontWeight: 950 }}>
                                                             <span style={{ color: '#333333' }}>SỐ LƯỢNG :</span>
-                                                            <span style={{ color: '#1d4ed8' }}>{group.totalQuantity} <span style={{ fontWeight: 'bold', color: '#333', fontSize: '1.25rem' }}>SERIAL</span></span>
+                                                            <span style={{ color: '#1d4ed8' }}>{group.totalQuantity}</span>
                                                         </div>
                                                         <div className="info-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', fontSize: '1.65rem', fontWeight: 950 }}>
                                                             <span style={{ color: '#333333' }}>MÃ QR :</span>
