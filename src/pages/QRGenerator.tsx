@@ -1262,8 +1262,6 @@ const QRGenerator = () => {
                                             const boxLabel = group.boxNumber.replace(/THUNG/i, '').trim();
                                             return (
                                                 <div key={group.key} className="label-wrapper">
-                                                    {/* Brand Watermark Watermarked */}
-                                                    <span className="watermark">BSG WAREHOUSE LOGISTICS SYSTEM</span>
                                                     
                                                     {/* ─ Info Column ─ */}
                                                     <div className="info-col">
@@ -1281,10 +1279,6 @@ const QRGenerator = () => {
                                                         <div className="info-row">
                                                             <div className="label-text">Mã QR</div>
                                                             <div className="value-text">{group.qrChunks.length} <span style={{ fontSize: '1rem', fontWeight: 'normal', color: '#333' }}>mã</span></div>
-                                                        </div>
-                                                        <div className="info-row">
-                                                            <div className="label-text">Ký Nhận / Ghi Chú</div>
-                                                            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#3f3f46', marginTop: '3px' }}>SỐ PHIẾU: ________</div>
                                                         </div>
                                                     </div>
 
