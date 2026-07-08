@@ -157,9 +157,9 @@ const QR_STYLES = `
     .blue-header {
         background: #ffffff !important;
         color: #000000 !important;
-        padding: 20px 10px;
+        padding: 12px 10px;
         font-weight: 900;
-        font-size: 2.25rem;
+        font-size: 1.8rem;
         text-align: center;
         border-bottom: 3.5px solid #000000;
         text-transform: uppercase;
@@ -1259,7 +1259,7 @@ const QRGenerator = () => {
                                             marginBottom: pageIndex < pairedBoxes.length - 1 ? '16mm' : '0'
                                         }}>
                                         {pair.map((group) => {
-                                            const boxLabel = group.boxNumber.replace(/THUNG/i, '').trim();
+                                            const boxLabel = group.boxNumber.replace(/(thùng|thung|box)/gi, '').replace(/[:\s]+/g, ' ').trim();
                                             return (
                                                 <div key={group.key} className="label-wrapper">
                                                     
@@ -1268,19 +1268,19 @@ const QRGenerator = () => {
                                                         <div className="blue-header">
                                                             {group.district.toUpperCase()} – {docTitle.toUpperCase()}
                                                         </div>
-                                                        <div className="info-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', fontSize: '1.9rem', fontWeight: 950 }}>
+                                                        <div className="info-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', fontSize: '1.45rem', fontWeight: 950 }}>
                                                             <span style={{ color: '#000000' }}>SỐ THÙNG :</span>
-                                                            <span style={{ color: '#000000', fontSize: '2.1rem' }}>{boxLabel || group.boxNumber}</span>
+                                                            <span style={{ color: '#000000', fontSize: '1.65rem' }}>{boxLabel || group.boxNumber}</span>
                                                         </div>
-                                                        <div className="info-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', fontSize: '1.9rem', fontWeight: 950 }}>
+                                                        <div className="info-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', fontSize: '1.45rem', fontWeight: 950 }}>
                                                             <span style={{ color: '#000000' }}>SỐ LƯỢNG :</span>
-                                                            <span style={{ color: '#000000', fontSize: '2.1rem' }}>{group.totalQuantity}</span>
+                                                            <span style={{ color: '#000000', fontSize: '1.65rem' }}>{group.totalQuantity}</span>
                                                         </div>
-                                                        <div className="info-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', fontSize: '1.9rem', fontWeight: 950 }}>
+                                                        <div className="info-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', fontSize: '1.45rem', fontWeight: 950 }}>
                                                             <span style={{ color: '#000000' }}>MÃ QR :</span>
-                                                            <span style={{ color: '#000000', fontSize: '2.1rem' }}>{group.qrChunks.length}</span>
+                                                            <span style={{ color: '#000000', fontSize: '1.65rem' }}>{group.qrChunks.length}</span>
                                                         </div>
-                                                        <div className="info-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', fontSize: '1.9rem', fontWeight: 950 }}>
+                                                        <div className="info-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', fontSize: '1.45rem', fontWeight: 950 }}>
                                                             <div style={{ color: '#000000' }}>SỐ PHIẾU: ________</div>
                                                         </div></div>
 
