@@ -49,6 +49,7 @@ const ZaloLogs       = lazy(() => import('./pages/Zalo/ZaloLogs'));
 
 const AIAssistant    = lazy(() => import('./pages/AIAssistant'));
 const OCRDocuments   = lazy(() => import('./pages/OCRDocuments'));
+const PDFTools       = lazy(() => import('./pages/PDFTools'));
 
 // Trình ký nội bộ
 const CreateTrinhKy    = lazy(() => import('./pages/TrinhKy/CreateTrinhKy'));
@@ -158,6 +159,7 @@ function App() {
                                 <Route path="profile" element={<UserProfile />} />
                                 <Route path="ai-assistant" element={<AIAssistant />} />
                                 <Route path="ocr-documents" element={<OCRDocuments />} />
+                                <Route path="pdf-tools" element={<PDFTools />} />
 
                                 <Route element={<ProtectedRoute allowedPermissions={['returns.view', 'returns.create']} />}>
                                     <Route path="employee-returns" element={<EmployeeReturns />} />

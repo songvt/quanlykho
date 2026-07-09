@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { 
     Box, Paper, Typography, Grid, Stack, Table, TableBody, 
     TableCell, TableContainer, TableHead, TableRow, Button, 
-    IconButton, Card, CardContent, Divider 
+    IconButton, Card, CardContent, Divider, Tabs, Tab, TextField 
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -57,6 +57,38 @@ interface BarcodeDataRow {
     ma_vat_tu: string;    // Tầng 3
     ma_barcode: string;   // Tầng 4
 }
+
+const SINGLE_BARCODE_STYLES = `
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { 
+        font-family: 'Times New Roman', Times, serif; 
+        background: white; 
+        padding: 0;
+        margin: 0;
+    }
+    @page { size: 50mm 30mm; margin: 0; }
+    .single-barcode-page {
+        width: 50mm;
+        height: 30mm;
+        padding: 1mm 2mm;
+        background-color: white;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        page-break-inside: avoid;
+        page-break-after: always;
+        overflow: hidden;
+    }
+    .single-barcode-page:last-child {
+        page-break-after: avoid !important;
+    }
+    .single-barcode-page svg {
+        max-width: 100%;
+        max-height: 100%;
+    }
+`;
 
 const BARCODE_STYLES = `
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -161,16 +193,21 @@ const BarcodeGenerator = () => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { profile: currentUser } = useSelector((state: RootState) => state.auth);
 
+    const [activeTab, setActiveTab] = useState(0); // 0: Tem Ghép VHKT, 1: Tem Đơn Lẻ
     const [dataRows, setDataRows] = useState<BarcodeDataRow[]>([]);
+    const [singleRows, setSingleRows] = useState<string[]>([]);
     const [isDragOver, setIsDragOver] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
     const [docTitle, setDocTitle] = useState('PHIẾU IN BARCODE 4X4');
+    const [docTitleSingle, setDocTitleSingle] = useState('TEM_DON_LE_CODE128');
 
     // ─── Manual Add Inputs ───
     const [manualKhuVuc, setManualKhuVuc] = useState('N260');
     const [manualTenVatTu, setManualTenVatTu] = useState('');
     const [manualMaVatTu, setManualMaVatTu] = useState('');
     const [manualBarcode, setManualBarcode] = useState('');
+    const [manualSingleBarcode, setManualSingleBarcode] = useState('');
+    const [bulkSingleBarcodes, setBulkSingleBarcodes] = useState('');
 
     // ─── Excel Template ───
     const downloadTemplate = async () => {
@@ -206,34 +243,60 @@ const BarcodeGenerator = () => {
     const parseExcelRows = useCallback(async (file: File) => {
         try {
             const json = await readExcelFile(file);
-            const parsed: BarcodeDataRow[] = [];
-            json.forEach((row: any) => {
-                const barcode = String(row['Ma_Barcode'] || row['BARCODE'] || row['ma_barcode'] || '').trim();
-                if (barcode) {
-                    parsed.push({
-                        khu_vuc: String(row['Khu_Vuc'] || row['KHU_VUC'] || row['khu_vuc'] || 'N260').trim(),
-                        ten_vat_tu: String(row['Ten_Vat_Tu'] || row['TEN_VAT_TU'] || row['ten_vat_tu'] || '').trim(),
-                        ma_vat_tu: String(row['Ma_Vat_Tu'] || row['MA_VAT_TU'] || row['ma_vat_tu'] || '').trim(),
-                        ma_barcode: barcode
-                    });
+            if (activeTab === 0) {
+                const parsed: BarcodeDataRow[] = [];
+                json.forEach((row: any) => {
+                    const barcode = String(row['Ma_Barcode'] || row['BARCODE'] || row['ma_barcode'] || '').trim();
+                    if (barcode) {
+                        parsed.push({
+                            khu_vuc: String(row['Khu_Vuc'] || row['KHU_VUC'] || row['khu_vuc'] || 'N260').trim(),
+                            ten_vat_tu: String(row['Ten_Vat_Tu'] || row['TEN_VAT_TU'] || row['ten_vat_tu'] || '').trim(),
+                            ma_vat_tu: String(row['Ma_Vat_Tu'] || row['MA_VAT_TU'] || row['ma_vat_tu'] || '').trim(),
+                            ma_barcode: barcode
+                        });
+                    }
+                });
+
+                if (parsed.length === 0) {
+                    notifyError('Không tìm thấy dữ liệu Barcode hợp lệ trong file');
+                    return;
                 }
-            });
 
-            if (parsed.length === 0) {
-                notifyError('Không tìm thấy dữ liệu Barcode hợp lệ trong file');
-                return;
+                setDataRows(prev => {
+                    const existing = new Set(prev.map(r => r.ma_barcode));
+                    const unique = parsed.filter(r => !existing.has(r.ma_barcode));
+                    success(`Đã thêm ${unique.length} vật tư từ file Excel (bỏ qua ${parsed.length - unique.length} trùng)`);
+                    return [...prev, ...unique];
+                });
+            } else {
+                const parsed: string[] = [];
+                json.forEach((row: any) => {
+                    const barcode = String(
+                        row['Ma_Barcode'] || row['BARCODE'] || row['ma_barcode'] || 
+                        row['Serial'] || row['serial'] || row['serial_code'] || 
+                        row['Mã Barcode'] || ''
+                    ).trim();
+                    if (barcode) {
+                        parsed.push(barcode);
+                    }
+                });
+
+                if (parsed.length === 0) {
+                    notifyError('Không tìm thấy dữ liệu Serial/Barcode hợp lệ trong file');
+                    return;
+                }
+
+                setSingleRows(prev => {
+                    const existing = new Set(prev);
+                    const unique = parsed.filter(r => !existing.has(r));
+                    success(`Đã thêm ${unique.length} serial từ file Excel (bỏ qua ${parsed.length - unique.length} trùng)`);
+                    return [...prev, ...unique];
+                });
             }
-
-            setDataRows(prev => {
-                const existing = new Set(prev.map(r => r.ma_barcode));
-                const unique = parsed.filter(r => !existing.has(r.ma_barcode));
-                success(`Đã thêm ${unique.length} vật tư từ file Excel (bỏ qua ${parsed.length - unique.length} trùng)`);
-                return [...prev, ...unique];
-            });
         } catch (err: any) {
             notifyError('Lỗi đọc file Excel: ' + err.message);
         }
-    }, [success, notifyError]);
+    }, [activeTab, success, notifyError]);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files?.[0]) {
@@ -284,6 +347,369 @@ const BarcodeGenerator = () => {
     const clearAll = () => {
         setDataRows([]);
         success('Đã xóa toàn bộ danh sách!');
+    };
+
+    // ─── Single Barcode Handlers ───
+    const handleManualAddSingle = () => {
+        if (!manualSingleBarcode.trim()) {
+            notifyError('Vui lòng nhập mã Barcode');
+            return;
+        }
+        const newCode = manualSingleBarcode.trim();
+        if (singleRows.includes(newCode)) {
+            notifyError('Mã Barcode này đã tồn tại trong danh sách');
+            return;
+        }
+        setSingleRows(prev => [...prev, newCode]);
+        success('Đã thêm 1 mã thành công!');
+        setManualSingleBarcode('');
+    };
+
+    const handleBulkAddSingle = () => {
+        if (!bulkSingleBarcodes.trim()) {
+            notifyError('Vui lòng nhập danh sách mã');
+            return;
+        }
+        const codes = bulkSingleBarcodes
+            .split(/[\n,]+/)
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+        
+        if (codes.length === 0) {
+            notifyError('Không tìm thấy mã hợp lệ');
+            return;
+        }
+
+        setSingleRows(prev => {
+            const existing = new Set(prev);
+            const unique = codes.filter(c => !existing.has(c));
+            success(`Đã thêm ${unique.length} mã (bỏ qua ${codes.length - unique.length} trùng)`);
+            return [...prev, ...unique];
+        });
+        setBulkSingleBarcodes('');
+    };
+
+    const removeRowSingle = (barcode: string) => {
+        setSingleRows(prev => prev.filter(r => r !== barcode));
+    };
+
+    const clearAllSingle = () => {
+        setSingleRows([]);
+        success('Đã xóa toàn bộ danh sách tem đơn lẻ!');
+    };
+
+    // ─── Single Barcode Web Print ───
+    const handlePrintSingle = () => {
+        if (singleRows.length === 0) {
+            notifyError('Danh sách trống, không thể in!');
+            return;
+        }
+
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            notifyError('Không thể mở cửa sổ in. Vui lòng tắt chặn Pop-up của trình duyệt.');
+            return;
+        }
+
+        let htmlContent = `
+            <html>
+            <head>
+                <title>${docTitleSingle}</title>
+                <style>${SINGLE_BARCODE_STYLES}</style>
+            </head>
+            <body>
+        `;
+
+        singleRows.forEach((item) => {
+            htmlContent += `
+                <div class="single-barcode-page">
+                    <svg class="barcode-svg" data-value="${item}"></svg>
+                </div>
+            `;
+        });
+
+        htmlContent += `
+            <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+            <script>
+                window.onload = function() {
+                    const svgs = document.querySelectorAll('.barcode-svg');
+                    svgs.forEach(svg => {
+                        const val = svg.getAttribute('data-value');
+                        try {
+                            JsBarcode(svg, val, {
+                                format: 'CODE128',
+                                displayValue: true,
+                                fontSize: 18,
+                                fontOptions: 'bold',
+                                font: 'Times New Roman',
+                                height: 30,
+                                width: 0.8,
+                                margin: 0,
+                                textMargin: 4,
+                                background: 'transparent'
+                            });
+                         } catch(e) {
+                            console.error(e);
+                        }
+                    });
+                    setTimeout(() => {
+                        window.print();
+                        window.close();
+                    }, 500);
+                };
+            </script>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+    };
+
+    // ─── Single Barcode Web Print A4 (48 items - 4x12 Grid) ───
+    const handlePrintA4_48 = () => {
+        if (singleRows.length === 0) {
+            notifyError('Danh sách trống, không thể in!');
+            return;
+        }
+
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            notifyError('Không thể mở cửa sổ in. Vui lòng tắt chặn Pop-up của trình duyệt.');
+            return;
+        }
+
+        const itemsPerPage48 = 48;
+        const pages48: string[][] = [];
+        for (let i = 0; i < singleRows.length; i += itemsPerPage48) {
+            const pageItems = singleRows.slice(i, i + itemsPerPage48);
+            while (pageItems.length < itemsPerPage48) {
+                pageItems.push('');
+            }
+            pages48.push(pageItems);
+        }
+
+        const A4_48_STYLES = `
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body { 
+                font-family: 'Times New Roman', Times, serif; 
+                background: white; 
+                padding: 0;
+                margin: 0;
+            }
+            @page { size: A4 portrait; margin: 0; }
+            .grid-4x12-page {
+                width: 210mm;
+                height: 297mm;
+                padding: 8mm 6mm;
+                background-color: white;
+                box-sizing: border-box;
+                page-break-inside: avoid;
+                page-break-after: always;
+            }
+            .grid-4x12-page:last-child {
+                page-break-after: avoid !important;
+            }
+            .grid-4x12 {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                grid-template-rows: repeat(12, 1fr);
+                width: 100%;
+                height: 100%;
+                gap: 1.2mm 1.5mm;
+                box-sizing: border-box;
+            }
+            .grid-4x12-cell {
+                border: 0.5px solid #333333;
+                border-radius: 3px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 2px 3px;
+                box-sizing: border-box;
+                height: 100%;
+                overflow: hidden;
+                background-color: #ffffff;
+            }
+            .grid-4x12-cell.empty {
+                border: 0.5px dashed #ccc;
+                visibility: hidden;
+            }
+            .grid-4x12-cell svg {
+                max-width: 100%;
+                max-height: 70%;
+            }
+        `;
+
+        let htmlContent = `
+            <html>
+            <head>
+                <title>IN_48_BARCODE_A4</title>
+                <style>${A4_48_STYLES}</style>
+            </head>
+            <body>
+        `;
+
+        pages48.forEach((pageItems) => {
+            htmlContent += `<div class="grid-4x12-page">`;
+            htmlContent += `<div class="grid-4x12">`;
+
+            pageItems.forEach((item) => {
+                if (item) {
+                    htmlContent += `
+                        <div class="grid-4x12-cell">
+                            <svg class="barcode-svg" data-value="${item}"></svg>
+                        </div>
+                    `;
+                } else {
+                    htmlContent += `<div class="grid-4x12-cell empty"></div>`;
+                }
+            });
+
+            htmlContent += `</div>`; // grid-4x12
+            htmlContent += `</div>`; // grid-4x12-page
+        });
+
+        htmlContent += `
+            <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+            <script>
+                window.onload = function() {
+                    const svgs = document.querySelectorAll('.barcode-svg');
+                    svgs.forEach(svg => {
+                        const val = svg.getAttribute('data-value');
+                        try {
+                            JsBarcode(svg, val, {
+                                format: 'CODE128',
+                                displayValue: true,
+                                fontSize: 11,
+                                fontOptions: 'bold',
+                                font: 'Times New Roman',
+                                height: 18,
+                                width: 0.72,
+                                margin: 0,
+                                textMargin: 1,
+                                background: 'transparent'
+                            });
+                        } catch(e) {
+                            console.error(e);
+                        }
+                    });
+                    setTimeout(() => {
+                        window.print();
+                        window.close();
+                    }, 500);
+                };
+            </script>
+            </body>
+            </html>
+        `;
+
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+    };
+
+    // ─── Single Barcode Export PDF (jsPDF + html2canvas 50x30mm) ───
+    const handleExportPDFSingle = async () => {
+        if (singleRows.length === 0) {
+            notifyError('Danh sách trống, không thể xuất PDF!');
+            return;
+        }
+        setIsExporting(true);
+        try {
+            const pdf = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: [50, 30]
+            });
+
+            const widthPx = 250;
+            const heightPx = 150;
+
+            for (let i = 0; i < singleRows.length; i++) {
+                const item = singleRows[i];
+                const tempContainer = document.createElement('div');
+                tempContainer.style.position = 'fixed';
+                tempContainer.style.top = '-9999px';
+                tempContainer.style.left = '-9999px';
+                tempContainer.style.width = `${widthPx}px`;
+                tempContainer.style.height = `${heightPx}px`;
+                tempContainer.style.backgroundColor = '#ffffff';
+
+                const styleEl = document.createElement('style');
+                styleEl.innerText = SINGLE_BARCODE_STYLES;
+                tempContainer.appendChild(styleEl);
+
+                const pageEl = document.createElement('div');
+                pageEl.className = 'single-barcode-page';
+                pageEl.style.width = '100%';
+                pageEl.style.height = '100%';
+                pageEl.innerHTML = `
+                    <svg class="barcode-svg" data-value="${item}"></svg>
+                `;
+                tempContainer.appendChild(pageEl);
+                document.body.appendChild(tempContainer);
+
+                const svg = tempContainer.querySelector('.barcode-svg');
+                if (svg) {
+                    try {
+                        JsBarcode(svg, item, {
+                            format: 'CODE128',
+                            displayValue: true,
+                            fontSize: 18,
+                            fontOptions: 'bold',
+                            font: 'Times New Roman',
+                            height: 30,
+                            width: 0.8,
+                            margin: 0,
+                            textMargin: 4,
+                            background: 'transparent'
+                        });
+                    } catch(e) {
+                        console.error(e);
+                    }
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 150));
+
+                const canvas = await html2canvas(tempContainer, {
+                    scale: 3,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    width: widthPx,
+                    height: heightPx
+                });
+
+                document.body.removeChild(tempContainer);
+
+                if (canvas.width > 0) {
+                    const imgData = canvas.toDataURL('image/png');
+                    if (i > 0) pdf.addPage([50, 30], 'landscape');
+                    pdf.addImage(imgData, 'PNG', 0, 0, 50, 30, undefined, 'FAST');
+                }
+            }
+
+            pdf.save(`${docTitleSingle.replace(/\s+/g, '_')}.pdf`);
+            success('Xuất PDF thành công!');
+
+            try {
+                await GoogleSheetService.saveQRLog({
+                    action: 'EXPORT_PDF_BARCODE_SINGLE',
+                    doc_title: docTitleSingle,
+                    total_serials: singleRows.length,
+                    total_qrs: singleRows.length,
+                    created_by: currentUser?.email || currentUser?.id,
+                    details: [{ box: 'SINGLE_BARCODE_128', district: 'ALL', count: singleRows.length }]
+                });
+            } catch (e) {
+                console.error('Lỗi lưu log:', e);
+            }
+        } catch (error) {
+            console.error(error);
+            notifyError('Lỗi khi xuất PDF. Vui lòng thử lại.');
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     // ─── Group Data into Pages (16 items per page) ──────────────────────────
@@ -511,7 +937,7 @@ const BarcodeGenerator = () => {
                 elevation={3} 
                 sx={{ 
                     p: { xs: 2.5, md: 4 }, 
-                    mb: 4, 
+                    mb: 3, 
                     background: 'linear-gradient(135deg, #1e3a8a 0%, #0d9488 50%, #0f766e 100%)',
                     border: 'none',
                     position: 'relative',
@@ -570,283 +996,544 @@ const BarcodeGenerator = () => {
                                         fontSize: '0.95rem'
                                     }}
                                 >
-                                    Tạo tem vạch Code 128 tự động xếp 16 tem/A4 ngang. Hỗ trợ import Excel.
+                                    Tạo tem vạch Code 128 (Tem ghép A4 hoặc Tem nhiệt đơn lẻ gồm mã vạch và serial)
                                 </Typography>
                             </Box>
                         </Stack>
                     </Grid>
                     <Grid size={{ xs: 12, md: 5 }} sx={{ textAlign: { md: 'right' } }}>
-                        <Button 
-                            variant="outlined" 
-                            startIcon={<DownloadIcon />} 
-                            onClick={downloadTemplate}
-                            sx={{ 
-                                color: 'white', 
-                                borderColor: 'rgba(255,255,255,0.6)', 
-                                '&:hover': { borderColor: 'white', background: 'rgba(255,255,255,0.1)' } 
-                            }}
-                        >
-                            Tải Excel mẫu
-                        </Button>
+                        {activeTab === 0 && (
+                            <Button 
+                                variant="outlined" 
+                                startIcon={<DownloadIcon />} 
+                                onClick={downloadTemplate}
+                                sx={{ 
+                                    color: 'white', 
+                                    borderColor: 'rgba(255,255,255,0.6)', 
+                                    '&:hover': { borderColor: 'white', background: 'rgba(255,255,255,0.1)' } 
+                                }}
+                            >
+                                Tải Excel mẫu
+                            </Button>
+                        )}
                     </Grid>
                 </Grid>
             </Paper>
 
-            {/* ── Main Operations ── */}
-            <Grid container spacing={3}>
-                {/* 1. Left Operations Column (Import and Manual Add) */}
-                <Grid size={{ xs: 12, lg: 4 }}>
-                    <Stack spacing={3}>
-                        {/* Drag & Drop Import */}
-                        <Card elevation={2} sx={{ borderRadius: '12px' }}>
-                            <CardContent sx={{ p: 3 }}>
-                                <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>
-                                    Import từ Excel
-                                </Typography>
-                                <Box
-                                    onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
-                                    onDragLeave={() => setIsDragOver(false)}
-                                    onDrop={handleDrop}
-                                    onClick={() => fileInputRef.current?.click()}
-                                    sx={{
-                                        border: '2px dashed',
-                                        borderColor: isDragOver ? 'teal.main' : 'grey.300',
-                                        borderRadius: '8px',
-                                        p: 4,
-                                        textAlign: 'center',
-                                        cursor: 'pointer',
-                                        background: isDragOver ? '#e6f4f1' : '#fafafa',
-                                        transition: 'all 0.2s ease-in-out',
-                                        '&:hover': { borderColor: 'teal.main', background: '#f0f9f8' }
-                                    }}
-                                >
-                                    <CloudUploadIcon sx={{ fontSize: 48, color: '#0d9488', mb: 1, opacity: 0.8 }} />
-                                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-                                        Kéo thả file Excel tại đây hoặc nhấp để tải lên
-                                    </Typography>
-                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                                        Hỗ trợ định dạng: .xlsx, .xls
-                                    </Typography>
-                                </Box>
-                                <input ref={fileInputRef} type="file" hidden accept=".xlsx,.xls" onChange={handleFileChange} />
-                            </CardContent>
-                        </Card>
+            {/* ─── Tabs selector ─── */}
+            <Paper elevation={2} sx={{ mb: 4, borderRadius: '12px', overflow: 'hidden' }}>
+                <Tabs 
+                    value={activeTab} 
+                    onChange={(e, val) => setActiveTab(val)}
+                    variant="fullWidth"
+                    sx={{
+                        '& .MuiTab-root': { py: 2, fontWeight: 'bold', fontSize: '0.95rem', textTransform: 'none' },
+                        '& .Mui-selected': { color: '#0d9488' },
+                        '& .MuiTabs-indicator': { backgroundColor: '#0d9488', height: '3px' }
+                    }}
+                >
+                    <Tab label="Tem Ghép VHKT (A4 4x4)" />
+                    <Tab label="Tem Đơn Lẻ (Code 128 + Serial)" />
+                </Tabs>
+            </Paper>
 
-                        {/* Manual Form */}
-                        <Card elevation={2} sx={{ borderRadius: '12px' }}>
-                            <CardContent sx={{ p: 3 }}>
-                                <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>
-                                    Thêm thủ công
-                                </Typography>
-                                <Stack spacing={2}>
-                                    <input 
-                                        type="text" 
-                                        placeholder="Khu Vực (VD: N260)" 
-                                        value={manualKhuVuc} 
-                                        onChange={(e) => setManualKhuVuc(e.target.value)} 
-                                        style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }}
-                                    />
-                                    <textarea 
-                                        placeholder="Tên/Mô tả vật tư" 
-                                        value={manualTenVatTu} 
-                                        onChange={(e) => setManualTenVatTu(e.target.value)} 
-                                        rows={2}
-                                        style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', fontFamily: 'inherit' }}
-                                    />
-                                    <input 
-                                        type="text" 
-                                        placeholder="Mã Vật Tư / SKU" 
-                                        value={manualMaVatTu} 
-                                        onChange={(e) => setManualMaVatTu(e.target.value)} 
-                                        style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }}
-                                    />
-                                    <input 
-                                        type="text" 
-                                        placeholder="Mã Barcode (Code 128)" 
-                                        value={manualBarcode} 
-                                        onChange={(e) => setManualBarcode(e.target.value)} 
-                                        style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', fontWeight: 'bold' }}
-                                    />
-                                    <Button 
-                                        variant="contained" 
-                                        color="primary" 
-                                        fullWidth 
-                                        startIcon={<KeyboardIcon />} 
-                                        onClick={handleManualAdd}
-                                        sx={{ color: 'white', fontWeight: 'bold', py: 1.2 }}
-                                    >
-                                        Thêm vào danh sách
-                                    </Button>
-                                </Stack>
-                            </CardContent>
-                        </Card>
-                    </Stack>
-                </Grid>
+            {/* ─── TAB 0: TEM GHÉP VHKT (A4 4x4) ─── */}
+            {activeTab === 0 && (
+                <Box>
+                    <Grid container spacing={3}>
+                        {/* Left Operations Column */}
+                        <Grid size={{ xs: 12, lg: 4 }}>
+                            <Stack spacing={3}>
+                                {/* Drag & Drop Import */}
+                                <Card elevation={2} sx={{ borderRadius: '12px' }}>
+                                    <CardContent sx={{ p: 3 }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>
+                                            Import từ Excel
+                                        </Typography>
+                                        <Box
+                                            onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                                            onDragLeave={() => setIsDragOver(false)}
+                                            onDrop={handleDrop}
+                                            onClick={() => fileInputRef.current?.click()}
+                                            sx={{
+                                                border: '2px dashed',
+                                                borderColor: isDragOver ? 'teal.main' : 'grey.300',
+                                                borderRadius: '8px',
+                                                p: 4,
+                                                textAlign: 'center',
+                                                cursor: 'pointer',
+                                                background: isDragOver ? '#e6f4f1' : '#fafafa',
+                                                transition: 'all 0.2s ease-in-out',
+                                                '&:hover': { borderColor: 'teal.main', background: '#f0f9f8' }
+                                            }}
+                                        >
+                                            <CloudUploadIcon sx={{ fontSize: 48, color: '#0d9488', mb: 1, opacity: 0.8 }} />
+                                            <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                                                Kéo thả file Excel tại đây hoặc nhấp để tải lên
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                                                Hỗ trợ định dạng: .xlsx, .xls
+                                            </Typography>
+                                        </Box>
+                                        <input ref={fileInputRef} type="file" hidden accept=".xlsx,.xls" onChange={handleFileChange} />
+                                    </CardContent>
+                                </Card>
 
-                {/* 2. Right Data Preview & Actions */}
-                <Grid size={{ xs: 12, lg: 8 }}>
-                    <Card elevation={2} sx={{ borderRadius: '12px', minHeight: '520px', display: 'flex', flexDirection: 'column' }}>
-                        <CardContent sx={{ p: 3, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-                            {/* Toolbar */}
-                            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
-                                <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary' }}>
-                                    Danh sách nhãn in ({dataRows.length} vật tư)
-                                </Typography>
-                                <Stack direction="row" spacing={1.5}>
-                                    {dataRows.length > 0 && (
-                                        <>
+                                {/* Manual Form */}
+                                <Card elevation={2} sx={{ borderRadius: '12px' }}>
+                                    <CardContent sx={{ p: 3 }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>
+                                            Thêm thủ công
+                                        </Typography>
+                                        <Stack spacing={2}>
+                                            <input 
+                                                type="text" 
+                                                placeholder="Khu Vực (VD: N260)" 
+                                                value={manualKhuVuc} 
+                                                onChange={(e) => setManualKhuVuc(e.target.value)} 
+                                                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }}
+                                            />
+                                            <textarea 
+                                                placeholder="Tên/Mô tả vật tư" 
+                                                value={manualTenVatTu} 
+                                                onChange={(e) => setManualTenVatTu(e.target.value)} 
+                                                rows={2}
+                                                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', fontFamily: 'inherit' }}
+                                            />
+                                            <input 
+                                                type="text" 
+                                                placeholder="Mã Vật Tư / SKU" 
+                                                value={manualMaVatTu} 
+                                                onChange={(e) => setManualMaVatTu(e.target.value)} 
+                                                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }}
+                                            />
+                                            <input 
+                                                type="text" 
+                                                placeholder="Mã Barcode (Code 128)" 
+                                                value={manualBarcode} 
+                                                onChange={(e) => setManualBarcode(e.target.value)} 
+                                                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', fontWeight: 'bold' }}
+                                            />
                                             <Button 
                                                 variant="contained" 
                                                 color="primary" 
-                                                startIcon={<PrintIcon />} 
-                                                onClick={handlePrint}
-                                                sx={{ color: 'white', fontWeight: 'bold' }}
+                                                fullWidth 
+                                                startIcon={<KeyboardIcon />} 
+                                                onClick={handleManualAdd}
+                                                sx={{ color: 'white', fontWeight: 'bold', py: 1.2 }}
                                             >
-                                                In ngay (4x4)
+                                                Thêm vào danh sách
                                             </Button>
-                                            <Button 
-                                                variant="contained" 
-                                                color="secondary" 
-                                                startIcon={<PictureAsPdfIcon />} 
-                                                onClick={handleExportPDF}
-                                                disabled={isExporting}
-                                                sx={{ fontWeight: 'bold' }}
-                                            >
-                                                {isExporting ? 'Đang xuất...' : 'Xuất PDF'}
-                                            </Button>
-                                            <IconButton color="error" onClick={clearAll} title="Xóa toàn bộ">
-                                                <DeleteIcon />
-                                            </IconButton>
-                                        </>
-                                    )}
-                                </Stack>
+                                        </Stack>
+                                    </CardContent>
+                                </Card>
                             </Stack>
+                        </Grid>
 
-                            {/* Table */}
-                            {dataRows.length === 0 ? (
-                                <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 8 }}>
-                                    <BarChartIcon sx={{ fontSize: 72, color: 'grey.300', mb: 2 }} />
-                                    <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-                                        Chưa có dữ liệu vật tư. Vui lòng import file Excel hoặc thêm thủ công.
-                                    </Typography>
-                                </Box>
-                            ) : (
-                                <TableContainer sx={{ maxHeight: 500, flexGrow: 1 }}>
-                                    <Table stickyHeader size="small">
-                                        <TableHead>
-                                            <TableRow>
-                                                <TableCell sx={{ fontWeight: 'bold' }}>STT</TableCell>
-                                                <TableCell sx={{ fontWeight: 'bold' }}>Khu Vực</TableCell>
-                                                <TableCell sx={{ fontWeight: 'bold' }}>Tên Vật Tư</TableCell>
-                                                <TableCell sx={{ fontWeight: 'bold' }}>Mã Vật Tư</TableCell>
-                                                <TableCell sx={{ fontWeight: 'bold' }}>Mã Barcode</TableCell>
-                                                <TableCell sx={{ fontWeight: 'bold' }}>Hình ảnh mã vạch</TableCell>
-                                                <TableCell sx={{ fontWeight: 'bold', align: 'center' }}>Hành động</TableCell>
-                                            </TableRow>
-                                        </TableHead>
-                                        <TableBody>
-                                            {dataRows.map((row, idx) => (
-                                                <TableRow key={row.ma_barcode + idx} hover>
-                                                    <TableCell>{idx + 1}</TableCell>
-                                                    <TableCell>{row.khu_vuc}</TableCell>
-                                                    <TableCell sx={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.ten_vat_tu}>
-                                                        {row.ten_vat_tu}
-                                                    </TableCell>
-                                                    <TableCell>{row.ma_vat_tu}</TableCell>
-                                                    <TableCell sx={{ fontWeight: 'bold' }}>{row.ma_barcode}</TableCell>
-                                                    <TableCell sx={{ minWidth: 120 }}>
-                                                        <BarcodeValue value={row.ma_barcode} />
-                                                    </TableCell>
-                                                    <TableCell align="center">
-                                                        <IconButton size="small" color="error" onClick={() => removeRow(row.ma_barcode)}>
-                                                            <DeleteIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </TableContainer>
-                            )}
-                        </CardContent>
-                    </Card>
-                </Grid>
-            </Grid>
+                        {/* Right Data Preview & Actions */}
+                        <Grid size={{ xs: 12, lg: 8 }}>
+                            <Card elevation={2} sx={{ borderRadius: '12px', minHeight: '520px', display: 'flex', flexDirection: 'column' }}>
+                                <CardContent sx={{ p: 3, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                                    {/* Toolbar */}
+                                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary' }}>
+                                            Danh sách nhãn in ({dataRows.length} vật tư)
+                                        </Typography>
+                                        <Stack direction="row" spacing={1.5}>
+                                            {dataRows.length > 0 && (
+                                                <>
+                                                    <Button 
+                                                        variant="contained" 
+                                                        color="primary" 
+                                                        startIcon={<PrintIcon />} 
+                                                        onClick={handlePrint}
+                                                        sx={{ color: 'white', fontWeight: 'bold' }}
+                                                    >
+                                                        In ngay (4x4)
+                                                    </Button>
+                                                    <Button 
+                                                        variant="contained" 
+                                                        color="secondary" 
+                                                        startIcon={<PictureAsPdfIcon />} 
+                                                        onClick={handleExportPDF}
+                                                        disabled={isExporting}
+                                                        sx={{ fontWeight: 'bold' }}
+                                                    >
+                                                        {isExporting ? 'Đang xuất...' : 'Xuất PDF'}
+                                                    </Button>
+                                                    <IconButton color="error" onClick={clearAll} title="Xóa toàn bộ">
+                                                        <DeleteIcon />
+                                                    </IconButton>
+                                                </>
+                                            )}
+                                        </Stack>
+                                    </Stack>
 
-            {/* ─── Visual Preview Mode ─── */}
-            {dataRows.length > 0 && (
-                <Box sx={{ mt: 5, p: 3, border: '1px solid #ddd', borderRadius: '12px', background: '#fafafa' }}>
-                    <Typography variant="h6" sx={{ fontWeight: 800, mb: 2, color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <PrintIcon /> BẢN XEM TRƯỚC TRANG IN A4 (MẪU 4X4 - Landscape)
-                    </Typography>
-                    <Divider sx={{ mb: 3 }} />
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
-                        {pages.map((pageItems, pageIdx) => (
-                            <Paper 
-                                key={pageIdx} 
-                                elevation={4} 
-                                sx={{ 
-                                    width: '840px', // Scaling down for preview on web UI
-                                    height: '594px', 
-                                    padding: '16px 20px', 
-                                    background: '#ffffff',
-                                    border: '1px solid #999',
-                                    boxSizing: 'border-box',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                }}
-                            >
-                                <Typography variant="caption" sx={{ color: 'grey.500', mb: 1, display: 'block', textAlign: 'right' }}>
-                                    Trang {pageIdx + 1} / {pages.length}
-                                </Typography>
-                                <Box 
-                                    sx={{ 
-                                        display: 'grid', 
-                                        gridTemplateColumns: 'repeat(4, 1fr)', 
-                                        gridTemplateRows: 'repeat(4, 1fr)', 
-                                        width: '100%', 
-                                        height: '92%', 
-                                        border: '1.5px solid #000000',
-                                        padding: '4px',
-                                        gap: '4px',
-                                        boxSizing: 'border-box'
-                                    }}
-                                >
-                                    {pageItems.map((item, itemIdx) => (
+                                    {/* Table */}
+                                    {dataRows.length === 0 ? (
+                                        <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 8 }}>
+                                            <BarChartIcon sx={{ fontSize: 72, color: 'grey.300', mb: 2 }} />
+                                            <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                                                Chưa có dữ liệu vật tư. Vui lòng import file Excel hoặc thêm thủ công.
+                                            </Typography>
+                                        </Box>
+                                    ) : (
+                                        <TableContainer sx={{ maxHeight: 500, flexGrow: 1 }}>
+                                            <Table stickyHeader size="small">
+                                                <TableHead>
+                                                    <TableRow>
+                                                        <TableCell sx={{ fontWeight: 'bold' }}>STT</TableCell>
+                                                        <TableCell sx={{ fontWeight: 'bold' }}>Khu Vực</TableCell>
+                                                        <TableCell sx={{ fontWeight: 'bold' }}>Tên Vật Tư</TableCell>
+                                                        <TableCell sx={{ fontWeight: 'bold' }}>Mã Vật Tư</TableCell>
+                                                        <TableCell sx={{ fontWeight: 'bold' }}>Mã Barcode</TableCell>
+                                                        <TableCell sx={{ fontWeight: 'bold' }}>Hình ảnh mã vạch</TableCell>
+                                                        <TableCell sx={{ fontWeight: 'bold', align: 'center' }}>Hành động</TableCell>
+                                                    </TableRow>
+                                                </TableHead>
+                                                <TableBody>
+                                                    {dataRows.map((row, idx) => (
+                                                        <TableRow key={row.ma_barcode + idx} hover>
+                                                            <TableCell>{idx + 1}</TableCell>
+                                                            <TableCell>{row.khu_vuc}</TableCell>
+                                                            <TableCell sx={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.ten_vat_tu}>
+                                                                {row.ten_vat_tu}
+                                                            </TableCell>
+                                                            <TableCell>{row.ma_vat_tu}</TableCell>
+                                                            <TableCell sx={{ fontWeight: 'bold' }}>{row.ma_barcode}</TableCell>
+                                                            <TableCell sx={{ minWidth: 120 }}>
+                                                                <BarcodeValue value={row.ma_barcode} />
+                                                            </TableCell>
+                                                            <TableCell align="center">
+                                                                <IconButton size="small" color="error" onClick={() => removeRow(row.ma_barcode)}>
+                                                                    <DeleteIcon fontSize="small" />
+                                                                </IconButton>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </TableContainer>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                    </Grid>
+
+                    {/* Visual Preview Mode */}
+                    {dataRows.length > 0 && (
+                        <Box sx={{ mt: 5, p: 3, border: '1px solid #ddd', borderRadius: '12px', background: '#fafafa' }}>
+                            <Typography variant="h6" sx={{ fontWeight: 800, mb: 2, color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <PrintIcon /> BẢN XEM TRƯỚC TRANG IN A4 (MẪU 4X4 - Landscape)
+                            </Typography>
+                            <Divider sx={{ mb: 3 }} />
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+                                {pages.map((pageItems, pageIdx) => (
+                                    <Paper 
+                                        key={pageIdx} 
+                                        elevation={4} 
+                                        sx={{ 
+                                            width: '840px', // Scaling down for preview on web UI
+                                            height: '594px', 
+                                            padding: '16px 20px', 
+                                            background: '#ffffff',
+                                            border: '1px solid #999',
+                                            boxSizing: 'border-box',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                        }}
+                                    >
+                                        <Typography variant="caption" sx={{ color: 'grey.500', mb: 1, display: 'block', textAlign: 'right' }}>
+                                            Trang {pageIdx + 1} / {pages.length}
+                                        </Typography>
                                         <Box 
-                                            key={itemIdx}
                                             sx={{ 
-                                                border: '1.5px solid #000000', 
-                                                display: 'flex', 
-                                                flexDirection: 'column', 
-                                                justifyContent: 'space-between',
-                                                boxSizing: 'border-box',
-                                                textAlign: 'center',
-                                                height: '100%',
-                                                overflow: 'hidden'
+                                                display: 'grid', 
+                                                gridTemplateColumns: 'repeat(4, 1fr)', 
+                                                gridTemplateRows: 'repeat(4, 1fr)', 
+                                                width: '100%', 
+                                                height: '92%', 
+                                                border: '1.5px solid #000000',
+                                                padding: '4px',
+                                                gap: '4px',
+                                                boxSizing: 'border-box'
                                             }}
                                         >
-                                            <Box sx={{ fontSize: '0.9rem', fontWeight: 'bold', borderBottom: '1.5px solid #000000', padding: '1px 2px', background: '#f2f2f2', textTransform: 'uppercase', height: '18px', lineHeight: '16px' }}>
-                                                {item.khu_vuc}
-                                            </Box>
-                                            <Box sx={{ fontSize: '0.65rem', padding: '2px 4px', flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1.5px solid #000000', lineHeight: 1.2, wordBreak: 'break-word', maxHeight: '36px', overflow: 'hidden' }}>
-                                                {item.ten_vat_tu}
-                                            </Box>
-                                            <Box sx={{ fontSize: '0.8rem', fontWeight: 'bold', borderBottom: '1.5px solid #000000', padding: '1px 2px', height: '16px', lineHeight: '14px' }}>
-                                                {item.ma_vat_tu}
-                                            </Box>
-                                            <Box sx={{ padding: '2px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                                                <BarcodeValue value={item.ma_barcode} />
-                                                <Box sx={{ fontSize: '0.75rem', fontWeight: 'bold', marginTop: '1px', letterSpacing: '1px' }}>
-                                                    {item.ma_barcode}
+                                            {pageItems.map((item, itemIdx) => (
+                                                <Box 
+                                                    key={itemIdx}
+                                                    sx={{ 
+                                                        border: '1.5px solid #000000', 
+                                                        display: 'flex', 
+                                                        flexDirection: 'column', 
+                                                        justifyContent: 'space-between',
+                                                        boxSizing: 'border-box',
+                                                        textAlign: 'center',
+                                                        height: '100%',
+                                                        overflow: 'hidden'
+                                                    }}
+                                                >
+                                                    <Box sx={{ fontSize: '0.9rem', fontWeight: 'bold', borderBottom: '1.5px solid #000000', padding: '1px 2px', background: '#f2f2f2', textTransform: 'uppercase', height: '18px', lineHeight: '16px' }}>
+                                                        {item.khu_vuc}
+                                                    </Box>
+                                                    <Box sx={{ fontSize: '0.65rem', padding: '2px 4px', flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1.5px solid #000000', lineHeight: 1.2, wordBreak: 'break-word', maxHeight: '36px', overflow: 'hidden' }}>
+                                                        {item.ten_vat_tu}
+                                                    </Box>
+                                                    <Box sx={{ fontSize: '0.8rem', fontWeight: 'bold', borderBottom: '1.5px solid #000000', padding: '1px 2px', height: '16px', lineHeight: '14px' }}>
+                                                        {item.ma_vat_tu}
+                                                    </Box>
+                                                    <Box sx={{ padding: '2px 4px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                                                        <BarcodeValue value={item.ma_barcode} />
+                                                        <Box sx={{ fontSize: '0.75rem', fontWeight: 'bold', marginTop: '1px', letterSpacing: '1px' }}>
+                                                            {item.ma_barcode}
+                                                        </Box>
+                                                    </Box>
                                                 </Box>
-                                            </Box>
+                                            ))}
                                         </Box>
-                                    ))}
-                                </Box>
-                            </Paper>
-                        ))}
-                    </Box>
+                                    </Paper>
+                                ))}
+                            </Box>
+                        </Box>
+                    )}
+                </Box>
+            )}
+
+            {/* ─── TAB 1: TEM ĐƠN LẺ (Code 128 + Serial) ─── */}
+            {activeTab === 1 && (
+                <Box>
+                    <Grid container spacing={3}>
+                        {/* Left Operations Column */}
+                        <Grid size={{ xs: 12, lg: 4 }}>
+                            <Stack spacing={3}>
+                                {/* Drag & Drop Import */}
+                                <Card elevation={2} sx={{ borderRadius: '12px' }}>
+                                    <CardContent sx={{ p: 3 }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>
+                                            Import từ Excel
+                                        </Typography>
+                                        <Box
+                                            onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                                            onDragLeave={() => setIsDragOver(false)}
+                                            onDrop={handleDrop}
+                                            onClick={() => fileInputRef.current?.click()}
+                                            sx={{
+                                                border: '2px dashed',
+                                                borderColor: isDragOver ? 'teal.main' : 'grey.300',
+                                                borderRadius: '8px',
+                                                p: 4,
+                                                textAlign: 'center',
+                                                cursor: 'pointer',
+                                                background: isDragOver ? '#e6f4f1' : '#fafafa',
+                                                transition: 'all 0.2s ease-in-out',
+                                                '&:hover': { borderColor: 'teal.main', background: '#f0f9f8' }
+                                            }}
+                                        >
+                                            <CloudUploadIcon sx={{ fontSize: 48, color: '#0d9488', mb: 1, opacity: 0.8 }} />
+                                            <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                                                Kéo thả file Excel tại đây hoặc nhấp để tải lên
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                                                Lấy cột: Ma_Barcode, Serial, serial_code...
+                                            </Typography>
+                                        </Box>
+                                        <input ref={fileInputRef} type="file" hidden accept=".xlsx,.xls" onChange={handleFileChange} />
+                                    </CardContent>
+                                </Card>
+
+                                {/* Manual Single Add */}
+                                <Card elevation={2} sx={{ borderRadius: '12px' }}>
+                                    <CardContent sx={{ p: 3 }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>
+                                            Thêm lẻ thủ công
+                                        </Typography>
+                                        <Stack direction="row" spacing={1}>
+                                            <TextField 
+                                                fullWidth 
+                                                size="small"
+                                                placeholder="Mã Barcode / Serial" 
+                                                value={manualSingleBarcode} 
+                                                onChange={(e) => setManualSingleBarcode(e.target.value)} 
+                                                onKeyDown={(e) => { if (e.key === 'Enter') handleManualAddSingle(); }}
+                                                inputProps={{ style: { fontWeight: 'bold' } }}
+                                            />
+                                            <Button 
+                                                variant="contained" 
+                                                onClick={handleManualAddSingle}
+                                                sx={{ color: 'white', fontWeight: 'bold' }}
+                                            >
+                                                Thêm
+                                            </Button>
+                                        </Stack>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Bulk Add Serials (Textarea) */}
+                                <Card elevation={2} sx={{ borderRadius: '12px' }}>
+                                    <CardContent sx={{ p: 3 }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: 'text.primary' }}>
+                                            Nhập hàng loạt (Serials)
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                                            Nhập hoặc quét trực tiếp danh sách mã. Phân tách mỗi mã bằng phím xuống dòng (Enter) hoặc dấu phẩy.
+                                        </Typography>
+                                        <Stack spacing={2}>
+                                            <TextField
+                                                fullWidth
+                                                multiline
+                                                rows={4}
+                                                placeholder="Ví dụ:&#13;EA204150368&#13;EA204150369&#13;EA204150370"
+                                                value={bulkSingleBarcodes}
+                                                onChange={(e) => setBulkSingleBarcodes(e.target.value)}
+                                            />
+                                            <Button 
+                                                variant="contained" 
+                                                color="primary" 
+                                                fullWidth 
+                                                startIcon={<KeyboardIcon />} 
+                                                onClick={handleBulkAddSingle}
+                                                sx={{ color: 'white', fontWeight: 'bold', py: 1.2 }}
+                                            >
+                                                Thêm danh sách vào hàng chờ
+                                            </Button>
+                                        </Stack>
+                                    </CardContent>
+                                </Card>
+                            </Stack>
+                        </Grid>
+
+                        {/* Right Data Preview & Actions */}
+                        <Grid size={{ xs: 12, lg: 8 }}>
+                            <Card elevation={2} sx={{ borderRadius: '12px', minHeight: '520px', display: 'flex', flexDirection: 'column' }}>
+                                <CardContent sx={{ p: 3, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                                    {/* Toolbar */}
+                                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary' }}>
+                                            Danh sách nhãn đơn lẻ ({singleRows.length} tem)
+                                        </Typography>
+                                        <Stack direction="row" spacing={1.5}>
+                                            {singleRows.length > 0 && (
+                                                <>
+                                                    <Button 
+                                                        variant="contained" 
+                                                        color="primary" 
+                                                        startIcon={<PrintIcon />} 
+                                                        onClick={handlePrintSingle}
+                                                        sx={{ color: 'white', fontWeight: 'bold' }}
+                                                    >
+                                                        In lẻ (50x30mm)
+                                                    </Button>
+                                                    <Button 
+                                                        variant="contained" 
+                                                        color="success" 
+                                                        startIcon={<PrintIcon />} 
+                                                        onClick={handlePrintA4_48}
+                                                        sx={{ color: 'white', fontWeight: 'bold' }}
+                                                    >
+                                                        In ghép A4 (48 tem)
+                                                    </Button>
+                                                    <Button 
+                                                        variant="contained" 
+                                                        color="secondary" 
+                                                        startIcon={<PictureAsPdfIcon />} 
+                                                        onClick={handleExportPDFSingle}
+                                                        disabled={isExporting}
+                                                        sx={{ fontWeight: 'bold' }}
+                                                    >
+                                                        {isExporting ? 'Đang xuất...' : 'Xuất PDF cuộn'}
+                                                    </Button>
+                                                    <IconButton color="error" onClick={clearAllSingle} title="Xóa toàn bộ">
+                                                        <DeleteIcon />
+                                                    </IconButton>
+                                                </>
+                                            )}
+                                        </Stack>
+                                    </Stack>
+
+                                    {/* Table */}
+                                    {singleRows.length === 0 ? (
+                                        <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 8 }}>
+                                            <BarChartIcon sx={{ fontSize: 72, color: 'grey.300', mb: 2 }} />
+                                            <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                                                Chưa có dữ liệu tem đơn lẻ. Vui lòng nhập danh sách hoặc import.
+                                            </Typography>
+                                        </Box>
+                                    ) : (
+                                        <TableContainer sx={{ maxHeight: 500, flexGrow: 1 }}>
+                                            <Table stickyHeader size="small">
+                                                <TableHead>
+                                                    <TableRow>
+                                                        <TableCell sx={{ fontWeight: 'bold' }}>STT</TableCell>
+                                                        <TableCell sx={{ fontWeight: 'bold' }}>Mã Barcode / Serial</TableCell>
+                                                        <TableCell sx={{ fontWeight: 'bold' }}>Hình ảnh mã vạch</TableCell>
+                                                        <TableCell sx={{ fontWeight: 'bold', align: 'center' }}>Hành động</TableCell>
+                                                    </TableRow>
+                                                </TableHead>
+                                                <TableBody>
+                                                    {singleRows.map((row, idx) => (
+                                                        <TableRow key={row + idx} hover>
+                                                            <TableCell>{idx + 1}</TableCell>
+                                                            <TableCell sx={{ fontWeight: 'bold', fontSize: '1.05rem' }}>{row}</TableCell>
+                                                            <TableCell sx={{ minWidth: 150 }}>
+                                                                <BarcodeValue value={row} />
+                                                            </TableCell>
+                                                            <TableCell align="center">
+                                                                <IconButton size="small" color="error" onClick={() => removeRowSingle(row)}>
+                                                                    <DeleteIcon fontSize="small" />
+                                                                </IconButton>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </TableContainer>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                    </Grid>
+
+                    {/* Visual Preview Mode */}
+                    {singleRows.length > 0 && (
+                        <Box sx={{ mt: 5, p: 3, border: '1px solid #ddd', borderRadius: '12px', background: '#fafafa' }}>
+                            <Typography variant="h6" sx={{ fontWeight: 800, mb: 2, color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <PrintIcon /> BẢN XEM TRƯỚC TEM NHIỆT ĐƠN LẺ (50mm x 30mm)
+                            </Typography>
+                            <Divider sx={{ mb: 3 }} />
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'center' }}>
+                                {singleRows.map((row, idx) => (
+                                    <Paper 
+                                        key={idx} 
+                                        elevation={2} 
+                                        sx={{ 
+                                            width: '200px', // Scaled for UI review
+                                            height: '120px', 
+                                            padding: '8px 12px', 
+                                            background: '#ffffff',
+                                            border: '1px dashed #777',
+                                            borderRadius: '4px',
+                                            boxSizing: 'border-box',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            position: 'relative'
+                                        }}
+                                    >
+                                        <Typography variant="caption" sx={{ color: 'grey.400', position: 'absolute', top: 2, left: 4 }}>
+                                            #{idx + 1}
+                                        </Typography>
+                                        <Box sx={{ width: '100%', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <BarcodeValue value={row} />
+                                        </Box>
+                                        <Typography sx={{ fontSize: '0.85rem', fontWeight: 'bold', letterSpacing: '1px', mt: 0.2, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                                            {row}
+                                        </Typography>
+                                    </Paper>
+                                ))}
+                            </Box>
+                        </Box>
+                    )}
                 </Box>
             )}
         </Box>
