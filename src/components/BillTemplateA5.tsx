@@ -30,7 +30,7 @@ const BillTemplateA5: React.FC<BillTemplateA5Props> = ({ data }) => {
                 width: '100%',
                 maxWidth: '209mm',
                 height: '145mm', // Sát mức 148.5mm nhưng vẫn an toàn
-                padding: '4mm 10mm', // Ép nhỏ lề để có thêm không gian chiều dọc
+                padding: '4mm 10mm 4mm 15mm', // Tăng lề trái (15mm) để thụt vào trong một chút
                 backgroundColor: '#fff',
                 fontFamily: '"Times New Roman", Times, serif',
                 color: '#000',
