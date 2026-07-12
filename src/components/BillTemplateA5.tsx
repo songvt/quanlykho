@@ -42,15 +42,15 @@ const BillTemplateA5: React.FC<BillTemplateA5Props> = ({ data }) => {
                 }
             }}
         >
-            <Grid container spacing={2} sx={{ mb: 2, alignItems: 'center' }}>
-                <Grid item xs={4} sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', mb: 2, alignItems: 'center', width: '100%' }}>
+                <Box sx={{ width: '35%', display: 'flex', alignItems: 'center' }}>
                     <img 
                         src={window.location.origin + "/viettel-logo.png"} 
                         alt="Viettel Logo" 
                         style={{ width: '180px', height: 'auto', objectFit: 'contain' }} 
                     />
-                </Grid>
-                <Grid item xs={8} sx={{ textAlign: 'center' }}>
+                </Box>
+                <Box sx={{ width: '65%', textAlign: 'center' }}>
                     <Typography 
                         variant="h5" 
                         sx={{ 
@@ -75,8 +75,8 @@ const BillTemplateA5: React.FC<BillTemplateA5Props> = ({ data }) => {
                     >
                         CƯỚC DỊCH VỤ VIETTEL
                     </Typography>
-                </Grid>
-            </Grid>
+                </Box>
+            </Box>
 
             {/* Customer Info */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: '4px', ml: 1 }}>
@@ -109,8 +109,8 @@ const BillTemplateA5: React.FC<BillTemplateA5Props> = ({ data }) => {
             </Box>
 
             {/* Footer Information */}
-            <Grid container spacing={0} sx={{ mt: 2 }}>
-                <Grid item xs={7}>
+            <Box sx={{ display: 'flex', mt: 2, width: '100%', alignItems: 'flex-start' }}>
+                <Box sx={{ width: '58%' }}>
                     <Box 
                         sx={{ 
                             border: '1px solid #000', 
@@ -133,8 +133,8 @@ const BillTemplateA5: React.FC<BillTemplateA5Props> = ({ data }) => {
                             {data.branchServices || 'THU CƯỚC –LẮP ĐẶT INTERNET – SIM SỐ ĐẸP'}
                         </Typography>
                     </Box>
-                </Grid>
-                <Grid item xs={5} sx={{ textAlign: 'center', pl: 6 }}>
+                </Box>
+                <Box sx={{ width: '42%', textAlign: 'center', pl: 2 }}>
                     <Typography sx={{ fontStyle: 'italic', fontSize: '17px', mb: 1, mt: -1 }}>
                         {data.dateString}
                     </Typography>
@@ -147,8 +147,8 @@ const BillTemplateA5: React.FC<BillTemplateA5Props> = ({ data }) => {
                     <Typography sx={{ fontWeight: 'bold', fontSize: '18px', textTransform: 'uppercase' }}>
                         {data.collectorName}
                     </Typography>
-                </Grid>
-            </Grid>
+                </Box>
+            </Box>
         </Box>
     );
 };
