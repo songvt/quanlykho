@@ -43,14 +43,14 @@ const BillTemplateA5: React.FC<BillTemplateA5Props> = ({ data }) => {
             }}
         >
             <Grid container spacing={2} sx={{ mb: 2, alignItems: 'center' }}>
-                <Grid xs={4} sx={{ display: 'flex', alignItems: 'center' }}>
+                <Grid item xs={4} sx={{ display: 'flex', alignItems: 'center' }}>
                     <img 
                         src={window.location.origin + "/viettel-logo.png"} 
                         alt="Viettel Logo" 
                         style={{ width: '180px', height: 'auto', objectFit: 'contain' }} 
                     />
                 </Grid>
-                <Grid xs={8} sx={{ textAlign: 'center' }}>
+                <Grid item xs={8} sx={{ textAlign: 'center' }}>
                     <Typography 
                         variant="h5" 
                         sx={{ 
@@ -110,7 +110,7 @@ const BillTemplateA5: React.FC<BillTemplateA5Props> = ({ data }) => {
 
             {/* Footer Information */}
             <Grid container spacing={0} sx={{ mt: 2 }}>
-                <Grid xs={7}>
+                <Grid item xs={7}>
                     <Box 
                         sx={{ 
                             border: '1px solid #000', 
