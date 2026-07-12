@@ -9,7 +9,7 @@ import ExcelJS from 'exceljs';
 import { useReactToPrint } from 'react-to-print';
 import BillTemplateA5 from '../components/BillTemplateA5';
 import type { BillData } from '../components/BillTemplateA5';
-import { parseExcelNumber, numberToWordsVN } from '../utils/numberUtils';
+import { parseExcelNumber, numberToWordsVN, formatNumber } from '../utils/numberUtils';
 
 const PrintBillNotification: React.FC = () => {
     const [data, setData] = useState<BillData[]>([]);
@@ -100,7 +100,7 @@ const PrintBillNotification: React.FC = () => {
                     address: getVal(2),
                     phone: getVal(3),
                     serviceMonth: getVal(4),
-                    amount: rawAmount,
+                    amount: formatNumber(parsedAmountNum),
                     amountInWords: numberToWordsVN(parsedAmountNum),
                     dateString: getVal(6),
                     collectorName: getVal(7),
