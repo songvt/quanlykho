@@ -80,7 +80,7 @@ const BillTemplateA5: React.FC<BillTemplateA5Props> = ({ data }) => {
             </Box>
 
             {/* Customer Info */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: '4px', ml: 1 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <Box sx={{ display: 'flex', alignItems: 'baseline' }}>
                     <Typography sx={{ fontWeight: 'bold', textTransform: 'uppercase', width: '130px', fontSize: '17px' }}>KHÁCH HÀNG:</Typography>
                     <Typography sx={{ fontSize: '22px' }}>{data.customerName}</Typography>
