@@ -111,7 +111,7 @@ const BillTemplateA5: React.FC<BillTemplateA5Props> = ({ data }) => {
 
             {/* Footer Information */}
             <Box sx={{ display: 'flex', mt: 1, width: '100%', alignItems: 'flex-start' }}>
-                <Box sx={{ width: '66%' }}>
+                <Box sx={{ width: '64%' }}>
                     <Box 
                         sx={{ 
                             border: '1px solid #000', 
@@ -130,12 +130,12 @@ const BillTemplateA5: React.FC<BillTemplateA5Props> = ({ data }) => {
                         <Typography sx={{ fontWeight: 'bold', fontSize: '15px', fontFamily: '"Times New Roman", Times, serif', mt: 0.5, whiteSpace: 'nowrap' }}>
                             {data.branchContact || 'ĐT- ZALO 0979 092 604 – 0987 268 794'}
                         </Typography>
-                        <Typography sx={{ fontWeight: 'bold', fontSize: '14px', fontFamily: '"Times New Roman", Times, serif', mt: 0.5, whiteSpace: 'nowrap' }}>
+                        <Typography sx={{ fontWeight: 'bold', fontSize: '15px', fontFamily: '"Times New Roman", Times, serif', mt: 0.5, whiteSpace: 'nowrap' }}>
                             {data.branchServices || 'THU CƯỚC –LẮP ĐẶT INTERNET – SIM SỐ ĐẸP'}
                         </Typography>
                     </Box>
                 </Box>
-                <Box sx={{ width: '34%', textAlign: 'center', pl: 1 }}>
+                <Box sx={{ width: '36%', textAlign: 'center', pl: 1 }}>
                     <Typography sx={{ fontStyle: 'italic', fontSize: '17px', mb: 0.5, mt: -1 }}>
                         {data.dateString}
                     </Typography>
