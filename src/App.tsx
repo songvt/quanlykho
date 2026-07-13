@@ -161,7 +161,11 @@ function App() {
                                 <Route path="profile" element={<UserProfile />} />
                                 <Route path="ai-assistant" element={<AIAssistant />} />
                                 <Route path="ocr-documents" element={<OCRDocuments />} />
-                                <Route path="pdf-tools" element={<PDFTools />} />
+                                
+                                <Route element={<ProtectedRoute allowedPermissions={['pdf.view']} />}>
+                                    <Route path="pdf-tools" element={<PDFTools />} />
+                                </Route>
+                                
                                 <Route path="image-tools" element={<ImageTools />} />
                                 <Route path="print-bill" element={<PrintBillNotification />} />
 

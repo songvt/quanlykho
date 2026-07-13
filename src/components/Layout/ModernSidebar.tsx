@@ -165,7 +165,9 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
         ] : []),
         { text: 'Trợ lý AI', icon: <Bot size={20} color="#2563eb" />, path: '/ai-assistant' },
         { text: 'OCR Image/PDF', icon: <FileText size={20} color="#8b5cf6" />, path: '/ocr-documents' },
-        { text: 'Tách/Gộp PDF', icon: <Scissors size={20} color="#ec4899" />, path: '/pdf-tools' },
+        ...(hasPermission('pdf.view') ? [
+            { text: 'Tách/Gộp PDF', icon: <Scissors size={20} color="#ec4899" />, path: '/pdf-tools' }
+        ] : []),
         { text: 'Xử lý ảnh', icon: <ImagePlus size={20} color="#f59e0b" />, path: '/image-tools' },
         { text: 'In thông báo cước', icon: <FileText size={20} color="#10B981" />, path: '/print-bill' },
         ...(hasAnyPermission(['trinhky.create', 'trinhky.approve', 'trinhky.view', '*']) ? [

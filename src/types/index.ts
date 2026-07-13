@@ -12,6 +12,7 @@ export type PermissionCode =
     | 'storekeepers.manage'
     | 'assets.view' | 'assets.manage' | 'assets.list_only'
     | 'trinhky.create' | 'trinhky.approve' | 'trinhky.view'
+    | 'pdf.view'
     | '*'; // Admin full access
 
 export interface Employee {
