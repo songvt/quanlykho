@@ -218,12 +218,18 @@ const EmployeeReturns = () => {
 
     // Derived Data
     const product = products.find(p => p.id === selectedProduct);
-    const isAdmin = profile?.role === 'admin';
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';
     const hasSerials = serials.length > 0;
 
     const visibleReturns = useMemo(() => {
         if (isAdmin) return returns;
-        return returns.filter(r => r.employee?.full_name === profile?.full_name || r.employee_id === profile?.id || r.created_by === profile?.auth_user_id);
+        return returns.filter(r => 
+            r.employee?.full_name === profile?.full_name || 
+            r.employee?.username === profile?.username ||
+            r.employee_id === profile?.id || 
+            r.created_by === profile?.auth_user_id ||
+            r.created_by === profile?.full_name
+        );
     }, [returns, isAdmin, profile]);
 
 

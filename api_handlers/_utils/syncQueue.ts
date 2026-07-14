@@ -9,16 +9,7 @@ const formatLocalDate = (date: Date | string) => {
     return `${day}/${month}/${year}`;
 };
 
-// Hàm lock để tránh chạy song song nhiều tiến trình đồng bộ cùng lúc gây xung đột hoặc API rate limit
-let isSyncing = false;
-
 export async function runSyncQueue() {
-    if (isSyncing) {
-        console.log('[Background Sync] Một tiến trình đồng bộ khác đang chạy, bỏ qua lần kích hoạt này.');
-        return { message: 'Already syncing' };
-    }
-
-    isSyncing = true;
     console.log('[Background Sync] Khởi động tiến trình xử lý hàng đợi đồng bộ ngầm...');
 
     try {
@@ -28,13 +19,12 @@ export async function runSyncQueue() {
             .eq('status', 'pending')
             .lt('retry_count', 3)
             .order('created_at', { ascending: true })
-            .limit(5); // Xử lý mỗi đợt tối đa 5 jobs để tránh quá tải API Google Sheets
+            .limit(10); // Tăng limit lên 10 để xử lý nhanh hơn
 
         if (fetchError) throw fetchError;
 
         if (!queue || queue.length === 0) {
             console.log('[Background Sync] Không có lệnh nào chờ đồng bộ.');
-            isSyncing = false;
             return { message: 'No pending items' };
         }
 

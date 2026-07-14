@@ -167,7 +167,17 @@ export const Outbound = () => {
             {!isAdmin && (
                 <StaffOutboundView 
                     approvedOrders={myApproved} 
-                    transactions={transactions.filter(t => t.type === 'outbound' && t.created_by === profile?.auth_user_id)}
+                    transactions={transactions.filter(t => 
+                        t.type === 'outbound' && 
+                        (
+                            t.created_by === profile?.auth_user_id || 
+                            t.created_by === profile?.full_name ||
+                            t.created_by === profile?.username ||
+                            t.user_id === profile?.id ||
+                            t.receiver_name === profile?.full_name ||
+                            t.receiver_group === profile?.full_name
+                        )
+                    )}
                     products={products} 
                     onFulfill={handleOpenFulfill} 
                     selectedPrintIds={selectedPrintIds}
