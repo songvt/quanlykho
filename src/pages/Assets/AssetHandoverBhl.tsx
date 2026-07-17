@@ -329,15 +329,15 @@ const AssetHandoverBhl: React.FC = () => {
     };
 
     return (
-        <Box sx={{ p: { xs: 2, md: 4 }, bgcolor: '#f8fafc', minHeight: 'calc(100vh - 64px)' }}>
+        <Box sx={{ p: { xs: 2, md: 4 }, bgcolor: 'transparent', minHeight: 'calc(100vh - 64px)' }}>
             
             {/* Header Area */}
             <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
                 <Box>
-                    <Typography variant="h5" sx={{ fontWeight: 800, color: '#0f172a', letterSpacing: '-0.5px' }}>
+                    <Typography variant="h5" sx={{ fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
                         In Biên bản Bàn giao & Thu hồi CCDC
                     </Typography>
-                    <Typography variant="body2" sx={{ color: '#64748b', mt: 0.5 }}>
+                    <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mt: 0.5 }}>
                         Cấu hình và in trực quan Biên bản CCDC-BHLĐ cho nhân viên kỹ thuật
                     </Typography>
                 </Box>
@@ -371,9 +371,9 @@ const AssetHandoverBhl: React.FC = () => {
                     <Stack spacing={3}>
                         
                         {/* 1. Employee and Template Selector Card */}
-                        <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                        <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid var(--border-glass)', boxShadow: 'var(--shadow-glass)' }}>
                             <CardContent sx={{ p: 3 }}>
-                                <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1, color: '#1e293b' }}>
+                                <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1, color: 'var(--text-primary)' }}>
                                     <AssignmentIndIcon sx={{ color: '#2563eb' }} /> Đối tượng bàn giao
                                 </Typography>
 
@@ -455,15 +455,15 @@ const AssetHandoverBhl: React.FC = () => {
                         </Card>
 
                         {/* 2. Giver Information */}
-                        <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                        <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid var(--border-glass)', boxShadow: 'var(--shadow-glass)' }}>
                             <CardContent sx={{ p: 3 }}>
-                                <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1, color: '#1e293b' }}>
+                                <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1, color: 'var(--text-primary)' }}>
                                     <BadgeIcon sx={{ color: '#2563eb' }} /> Thông tin bên giao
                                 </Typography>
 
                                 <Stack spacing={2.5}>
                                     <Box>
-                                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#475569', mb: 1 }}>Bên giao 1:</Typography>
+                                        <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-secondary)', mb: 1 }}>Bên giao 1:</Typography>
                                         <Grid container spacing={2}>
                                             <Grid size={{ xs: 12, sm: 4 }}>
                                                 <TextField label="Họ tên" size="small" fullWidth value={giverInfo.giverName} onChange={(e) => setGiverInfo(prev => ({ ...prev, giverName: e.target.value.toUpperCase() }))} />
@@ -478,7 +478,7 @@ const AssetHandoverBhl: React.FC = () => {
                                     </Box>
 
                                     <Box>
-                                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#475569', mb: 1 }}>Bên giao 2 (không bắt buộc):</Typography>
+                                        <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-secondary)', mb: 1 }}>Bên giao 2 (không bắt buộc):</Typography>
                                         <Grid container spacing={2}>
                                             <Grid size={{ xs: 12, sm: 4 }}>
                                                 <TextField label="Họ tên" size="small" fullWidth value={giverInfo.giverName2} onChange={(e) => setGiverInfo(prev => ({ ...prev, giverName2: e.target.value.toUpperCase() }))} />
@@ -497,10 +497,10 @@ const AssetHandoverBhl: React.FC = () => {
 
                         {/* 3. Items Editor */}
                         {templateType === 'bhl' && (
-                            <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                            <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid var(--border-glass)', boxShadow: 'var(--shadow-glass)' }}>
                                 <CardContent sx={{ p: 3 }}>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                        <Typography variant="subtitle1" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1, color: '#1e293b' }}>
+                                        <Typography variant="subtitle1" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1, color: 'var(--text-primary)' }}>
                                             Danh sách trang thiết bị bảo hộ (CCDC)
                                         </Typography>
                                         <IconButton size="small" onClick={resetBhlItems} color="primary" title="Đặt lại mặc định">
@@ -508,9 +508,9 @@ const AssetHandoverBhl: React.FC = () => {
                                         </IconButton>
                                     </Box>
 
-                                    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
+                                    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid var(--border-glass)' }}>
                                         <Table size="small">
-                                            <TableHead sx={{ bgcolor: '#f8fafc' }}>
+                                            <TableHead sx={{ bgcolor: 'rgba(255, 255, 255, 0.02)' }}>
                                                 <TableRow>
                                                     <TableCell sx={{ fontWeight: 700, width: 140 }}>Tên trang bị</TableCell>
                                                     <TableCell sx={{ fontWeight: 700, width: 70, textAlign: 'center' }}>SL</TableCell>

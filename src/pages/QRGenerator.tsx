@@ -734,15 +734,15 @@ const QRGenerator = () => {
                             overflow: 'hidden'
                         }}
                     >
-                        <Box sx={{ borderBottom: 1, borderColor: '#e2e8f0', bgcolor: '#f8fafc', px: 2 }}>
+                        <Box sx={{ borderBottom: 1, borderColor: 'var(--border-glass)', bgcolor: 'rgba(255, 255, 255, 0.02)', px: 2 }}>
                             <Tabs 
                                 value={activeTab} 
                                 onChange={handleTabChange} 
                                 variant="fullWidth"
                                 sx={{
-                                    '& .MuiTab-root': { py: 2, fontWeight: 700, fontSize: '0.95rem', textTransform: 'none', letterSpacing: '0.3px' },
-                                    '& .Mui-selected': { color: '#2563eb' },
-                                    '& .MuiTabs-indicator': { height: '3px', borderRadius: '3px' }
+                                    '& .MuiTab-root': { py: 2, fontWeight: 700, fontSize: '0.95rem', textTransform: 'none', letterSpacing: '0.3px', color: 'var(--text-secondary)' },
+                                    '& .Mui-selected': { color: 'var(--brand-primary)' },
+                                    '& .MuiTabs-indicator': { height: '3px', borderRadius: '3px', bgcolor: 'var(--brand-primary)' }
                                 }}
                             >
                                 <Tab icon={<UploadFileIcon />} iconPosition="start" label="Tạo QR hàng loạt" />
@@ -756,10 +756,10 @@ const QRGenerator = () => {
                             {activeTab === 0 && (
                                 <Box>
                                     <Box sx={{ mb: 3 }}>
-                                        <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 1 }}>
                                             📂 Tải Dữ Liệu Từ Excel
                                         </Typography>
-                                        <Typography variant="body2" sx={{ color: '#64748b', mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                             <InfoIcon sx={{ fontSize: 16 }} /> File tải lên cần chứa các cột bắt buộc: <b>serial_code</b>, <b>Number_Thung</b>, <b>District</b>
                                         </Typography>
                                     </Box>
@@ -771,17 +771,17 @@ const QRGenerator = () => {
                                         onDrop={handleDrop}
                                         onClick={() => fileInputRef.current?.click()}
                                         sx={{
-                                            border: `2.5px dashed ${isDragOver ? '#2563eb' : '#cbd5e1'}`,
+                                            border: `2.5px dashed ${isDragOver ? 'var(--brand-primary)' : 'var(--border-glass)'}`,
                                             borderRadius: '16px', 
                                             p: { xs: 4, md: 6 }, 
                                             textAlign: 'center', 
                                             cursor: 'pointer',
-                                            bgcolor: isDragOver ? alpha('#2563eb', 0.04) : '#f8fafc',
+                                            bgcolor: isDragOver ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255, 255, 255, 0.02)',
                                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                             boxShadow: isDragOver ? '0 10px 20px rgba(37, 99, 235, 0.05)' : 'none',
                                             '&:hover': { 
-                                                borderColor: '#2563eb', 
-                                                bgcolor: alpha('#2563eb', 0.02),
+                                                borderColor: 'var(--brand-primary)', 
+                                                bgcolor: 'rgba(59, 130, 246, 0.05)',
                                                 transform: 'translateY(-2px)'
                                             }
                                         }}
@@ -792,7 +792,7 @@ const QRGenerator = () => {
                                                 width: 68, 
                                                 height: 68, 
                                                 borderRadius: '50%', 
-                                                bgcolor: isDragOver ? 'rgba(37, 99, 235, 0.1)' : '#e2e8f0', 
+                                                bgcolor: isDragOver ? 'rgba(37, 99, 235, 0.1)' : 'rgba(255, 255, 255, 0.05)', 
                                                 display: 'flex', 
                                                 alignItems: 'center', 
                                                 justifyContent: 'center',
@@ -800,15 +800,15 @@ const QRGenerator = () => {
                                                 transition: 'all 0.3s'
                                             }}
                                         >
-                                            <UploadFileIcon sx={{ fontSize: 36, color: isDragOver ? '#2563eb' : '#475569' }} />
+                                            <UploadFileIcon sx={{ fontSize: 36, color: isDragOver ? 'var(--brand-primary)' : 'var(--text-secondary)' }} />
                                         </Box>
-                                        <Typography variant="h6" sx={{ fontWeight: 800, color: '#334155', mb: 1, fontSize: '1.05rem' }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)', mb: 1, fontSize: '1.05rem' }}>
                                             {isDragOver ? 'Thả File Excel Tại Đây!' : 'Kéo thả file Excel vào đây hoặc click để chọn'}
                                         </Typography>
-                                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, mb: 0.5 }}>
+                                        <Typography variant="body2" sx={{ color: 'var(--text-secondary)', fontWeight: 500, mb: 0.5 }}>
                                             Hỗ trợ các định dạng tiêu chuẩn: <b>.xlsx, .xls</b>
                                         </Typography>
-                                        <Typography variant="caption" sx={{ color: '#94a3b8', fontStyle: 'italic' }}>
+                                        <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontStyle: 'italic', opacity: 0.8 }}>
                                             * Hệ thống tự động phát hiện, gộp nhóm và loại bỏ các mã trùng lặp.
                                         </Typography>
                                         <input ref={fileInputRef} type="file" hidden accept=".xlsx,.xls" onChange={handleFileChange} />
@@ -820,10 +820,10 @@ const QRGenerator = () => {
                             {activeTab === 1 && (
                                 <Box>
                                     <Box sx={{ mb: 2.5 }}>
-                                        <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a' }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
                                             ⌨️ Nhập Serials Thủ Công
                                         </Typography>
-                                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                        <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mt: 0.5 }}>
                                             Thích hợp để quét trực tiếp bằng máy quét hoặc nhập tay nhanh danh sách.
                                         </Typography>
                                     </Box>
@@ -899,16 +899,16 @@ const QRGenerator = () => {
                             p: { xs: 3, md: 4 }, 
                             height: '100%', 
                             borderRadius: '20px', 
-                            border: '1px solid #e2e8f0',
-                            bgcolor: '#ffffff',
+                            border: '1px solid var(--border-glass)',
+                            bgcolor: 'var(--bg-glass)',
                             display: 'flex',
                             flexDirection: 'column',
                             justifyContent: 'space-between',
-                            boxShadow: '0 6px 24px rgba(0,0,0,0.02)',
+                            boxShadow: 'var(--shadow-glass)',
                         }}
                     >
                         <Box>
-                            <Typography variant="h6" sx={{ fontWeight: 800, color: '#0f172a', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)', mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <ListAltIcon color="primary" /> Quy trình tạo tem in QR
                             </Typography>
                             
@@ -931,7 +931,7 @@ const QRGenerator = () => {
                                         1
                                     </Box>
                                     <Box>
-                                        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#334155' }}>Cung cấp danh sách</Typography>
+                                        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Cung cấp danh sách</Typography>
                                         <Typography variant="body2" color="text.secondary">Import file Excel theo mẫu hoặc nhập trực tiếp serials bằng máy quét.</Typography>
                                     </Box>
                                 </Box>
@@ -954,7 +954,7 @@ const QRGenerator = () => {
                                         2
                                     </Box>
                                     <Box>
-                                        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#334155' }}>Kiểm tra & Biên tập</Typography>
+                                        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Kiểm tra & Biên tập</Typography>
                                         <Typography variant="body2" color="text.secondary">Xem lại danh sách, xóa dòng thừa hoặc chỉnh sửa nếu cần tại bảng preview.</Typography>
                                     </Box>
                                 </Box>
@@ -977,7 +977,7 @@ const QRGenerator = () => {
                                         3
                                     </Box>
                                     <Box>
-                                        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#334155' }}>Xem trước & Cấu hình tem</Typography>
+                                        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>Xem trước & Cấu hình tem</Typography>
                                         <Typography variant="body2" color="text.secondary">Nhập tiêu đề in (ví dụ: Thu Hồi, Trả Kho) và xem trước hình dáng tem nhãn nhắm tới sự vừa vặn.</Typography>
                                     </Box>
                                 </Box>
@@ -1000,7 +1000,7 @@ const QRGenerator = () => {
                                         4
                                     </Box>
                                     <Box>
-                                        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#334155' }}>In hoặc Xuất PDF</Typography>
+                                        <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>In hoặc Xuất PDF</Typography>
                                         <Typography variant="body2" color="text.secondary">Nhấp nút in trực tiếp hoặc xuất file PDF khổ A4 ngang, sẵn sàng dán lên kiện hàng.</Typography>
                                     </Box>
                                 </Box>
@@ -1008,7 +1008,7 @@ const QRGenerator = () => {
                         </Box>
 
                         {dataRows.length > 0 && (
-                            <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid #f1f5f9' }}>
+                            <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid var(--border-glass)' }}>
                                 <Alert severity="success" icon={<CheckCircleIcon sx={{ fontSize: 20 }} />} sx={{ borderRadius: '12px' }}>
                                     Hệ thống đã sẵn sàng với <b>{dataRows.length} serials</b> và phân bổ thành <b>{totalQRCodes} tem in</b>.
                                 </Alert>
@@ -1024,18 +1024,18 @@ const QRGenerator = () => {
                     elevation={0} 
                     sx={{ 
                         mb: 4, 
-                        border: '1px solid #e2e8f0', 
+                        border: '1px solid var(--border-glass)', 
                         borderRadius: '20px', 
                         overflow: 'hidden',
-                        boxShadow: '0 6px 24px rgba(0,0,0,0.02)'
+                        boxShadow: 'var(--shadow-glass)'
                     }}
                 >
                     <Box 
                         sx={{ 
                             px: 3, 
                             py: 2.5, 
-                            bgcolor: '#f8fafc', 
-                            borderBottom: '1px solid #e2e8f0', 
+                            bgcolor: 'rgba(255, 255, 255, 0.02)', 
+                            borderBottom: '1px solid var(--border-glass)', 
                             display: 'flex', 
                             justifyContent: 'space-between', 
                             alignItems: 'center',
@@ -1044,7 +1044,7 @@ const QRGenerator = () => {
                         }}
                     >
                         <Stack direction="row" spacing={1} alignItems="center">
-                            <Typography sx={{ fontWeight: 800, color: '#0f172a', fontSize: '1.05rem' }}>
+                            <Typography sx={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '1.05rem' }}>
                                 Bảng xem trước danh sách serials chờ in
                             </Typography>
                             <Chip label={`${dataRows.length} serials`} size="small" color="primary" sx={{ fontWeight: 700 }} />

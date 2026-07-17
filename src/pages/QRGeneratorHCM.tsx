@@ -721,15 +721,15 @@ const QRGeneratorHCM = () => {
                             overflow: 'hidden'
                         }}
                     >
-                        <Box sx={{ borderBottom: 1, borderColor: '#e2e8f0', bgcolor: '#f8fafc', px: 2 }}>
+                        <Box sx={{ borderBottom: 1, borderColor: 'var(--border-glass)', bgcolor: 'rgba(255, 255, 255, 0.02)', px: 2 }}>
                             <Tabs 
                                 value={activeTab} 
                                 onChange={handleTabChange} 
                                 variant="fullWidth"
                                 sx={{
-                                    '& .MuiTab-root': { py: 2, fontWeight: 700, fontSize: '0.95rem', textTransform: 'none', color: '#64748b' },
-                                    '& .Mui-selected': { color: '#0f172a' },
-                                    '& .MuiTabs-indicator': { height: '3px', borderRadius: '3px', bgcolor: '#0f172a' }
+                                    '& .MuiTab-root': { py: 2, fontWeight: 700, fontSize: '0.95rem', textTransform: 'none', color: 'var(--text-secondary)' },
+                                    '& .Mui-selected': { color: 'var(--brand-primary)' },
+                                    '& .MuiTabs-indicator': { height: '3px', borderRadius: '3px', bgcolor: 'var(--brand-primary)' }
                                 }}
                             >
                                 <Tab icon={<UploadFileIcon />} iconPosition="start" label="Tạo QR hàng loạt" />
@@ -743,10 +743,10 @@ const QRGeneratorHCM = () => {
                             {activeTab === 0 && (
                                 <Box>
                                     <Box sx={{ mb: 3 }}>
-                                        <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 1 }}>
                                             📂 Tải Excel Mẫu HCM
                                         </Typography>
-                                        <Typography variant="body2" sx={{ color: '#64748b', mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                             <InfoIcon sx={{ fontSize: 16 }} /> File Excel cần chứa các cột hợp lệ: <b>THÙNG, Thiết bị, QR, Tình Trạng, Tiêu đề</b>
                                         </Typography>
                                     </Box>
@@ -758,16 +758,16 @@ const QRGeneratorHCM = () => {
                                         onDrop={async e => { e.preventDefault(); setIsDragOver(false); const f = e.dataTransfer.files?.[0]; if (f) await parseExcelRows(f); }}
                                         onClick={() => fileInputRef.current?.click()}
                                         sx={{
-                                            border: `2.5px dashed ${isDragOver ? '#000000' : '#cbd5e1'}`,
+                                            border: `2.5px dashed ${isDragOver ? 'var(--brand-primary)' : 'var(--border-glass)'}`,
                                             borderRadius: '16px', 
                                             p: { xs: 4, md: 6 }, 
                                             textAlign: 'center', 
                                             cursor: 'pointer',
-                                            bgcolor: isDragOver ? alpha('#000000', 0.04) : '#f8fafc',
+                                            bgcolor: isDragOver ? 'rgba(59, 130, 246, 0.1)' : 'rgba(255, 255, 255, 0.02)',
                                             transition: 'all 0.3s ease',
                                             '&:hover': { 
-                                                borderColor: '#0f172a', 
-                                                bgcolor: alpha('#0f172a', 0.01),
+                                                borderColor: 'var(--brand-primary)', 
+                                                bgcolor: 'rgba(59, 130, 246, 0.05)',
                                                 transform: 'translateY(-2px)'
                                             }
                                         }}
@@ -778,7 +778,7 @@ const QRGeneratorHCM = () => {
                                                 width: 68, 
                                                 height: 68, 
                                                 borderRadius: '50%', 
-                                                bgcolor: isDragOver ? 'rgba(15, 23, 42, 0.1)' : '#e2e8f0', 
+                                                bgcolor: isDragOver ? 'rgba(15, 23, 42, 0.1)' : 'rgba(255, 255, 255, 0.05)', 
                                                 display: 'flex', 
                                                 alignItems: 'center', 
                                                 justifyContent: 'center',
@@ -786,12 +786,12 @@ const QRGeneratorHCM = () => {
                                                 transition: 'all 0.3s'
                                             }}
                                         >
-                                            <UploadFileIcon sx={{ fontSize: 36, color: isDragOver ? '#0f172a' : '#475569' }} />
+                                            <UploadFileIcon sx={{ fontSize: 36, color: isDragOver ? 'var(--brand-primary)' : 'var(--text-secondary)' }} />
                                         </Box>
-                                        <Typography variant="h6" sx={{ fontWeight: 800, color: '#334155', mb: 1, fontSize: '1.05rem' }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 800, color: 'var(--text-primary)', mb: 1, fontSize: '1.05rem' }}>
                                             {isDragOver ? 'Thả File Excel HCM Tại Đây!' : 'Click chọn hoặc kéo thả file Excel HCM vào đây'}
                                         </Typography>
-                                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, mb: 0.5 }}>
+                                        <Typography variant="body2" sx={{ color: 'var(--text-secondary)', fontWeight: 500, mb: 0.5 }}>
                                             Chấp nhận các định dạng tiêu chuẩn: <b>.xlsx, .xls</b>
                                         </Typography>
                                         <input ref={fileInputRef} type="file" hidden accept=".xlsx,.xls" onChange={handleFileChange} />
@@ -803,10 +803,10 @@ const QRGeneratorHCM = () => {
                             {activeTab === 1 && (
                                 <Box>
                                     <Box sx={{ mb: 2.5 }}>
-                                        <Typography variant="h6" sx={{ fontWeight: 700, color: '#0f172a' }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
                                             ⌨️ Nhập Serials Thủ Công HCM
                                         </Typography>
-                                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                        <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mt: 0.5 }}>
                                             Điền các thông tin thùng hàng và danh sách serials để tạo tem.
                                         </Typography>
                                     </Box>

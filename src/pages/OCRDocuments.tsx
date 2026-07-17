@@ -603,7 +603,7 @@ export default function OCRDocuments() {
     const activeOcr = selectedFileId ? ocrResults[selectedFileId] : null;
 
     return (
-        <Box sx={{ p: 3, minHeight: 'calc(100vh - 64px)', bgcolor: '#f8fafc' }}>
+        <Box sx={{ p: 3, minHeight: 'calc(100vh - 64px)', bgcolor: 'transparent' }}>
             {/* Breadcrumbs */}
             <Breadcrumbs aria-label="breadcrumb" sx={{ mb: 3 }}>
                 <Link underline="hover" color="inherit" onClick={() => navigate('/')} sx={{ cursor: 'pointer', fontSize: '0.85rem' }}>

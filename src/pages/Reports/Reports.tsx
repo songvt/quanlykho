@@ -1260,7 +1260,7 @@ const Reports = () => {
     };
 
     return (
-        <Box p={{ xs: 1, sm: 3 }} sx={{ bgcolor: '#F8FAFC', minHeight: '100vh', maxWidth: 1200, mx: 'auto', width: '100%', overflowX: 'hidden', zoom: { xs: 0.85, md: 1 } }}>
+        <Box p={{ xs: 1, sm: 3 }} sx={{ bgcolor: 'transparent', minHeight: '100vh', maxWidth: 1200, mx: 'auto', width: '100%', overflowX: 'hidden', zoom: { xs: 0.85, md: 1 } }}>
             <PageHeader 
                 title="Báo cáo & Thống kê"
                 subtitle="Trung tâm quản trị dữ liệu, biên bản bàn giao và phân tích tồn kho của ACT."
@@ -1282,7 +1282,8 @@ const Reports = () => {
             <Box sx={{ display: 'flex', justifyContent: 'center', mb: { xs: 3, sm: 5 } }}>
                 <Box sx={{
                     display: 'inline-flex',
-                    bgcolor: 'rgba(15, 23, 42, 0.05)',
+                    bgcolor: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid var(--border-glass)',
                     borderRadius: '24px',
                     p: '6px',
                     gap: 1
@@ -1296,11 +1297,12 @@ const Reports = () => {
                             fontWeight: 700,
                             fontSize: '0.875rem',
                             textTransform: 'none',
-                            bgcolor: selectedTab === 0 ? '#ffffff' : 'transparent',
-                            color: selectedTab === 0 ? 'primary.main' : 'text.secondary',
-                            boxShadow: selectedTab === 0 ? '0 4px 12px rgba(0, 0, 0, 0.05)' : 'none',
+                            bgcolor: selectedTab === 0 ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+                            color: selectedTab === 0 ? '#60a5fa' : 'var(--text-secondary)',
+                            border: selectedTab === 0 ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid transparent',
+                            boxShadow: selectedTab === 0 ? 'var(--shadow-glass)' : 'none',
                             '&:hover': {
-                                bgcolor: selectedTab === 0 ? '#ffffff' : 'rgba(15, 23, 42, 0.08)',
+                                bgcolor: selectedTab === 0 ? 'rgba(59, 130, 246, 0.25)' : 'rgba(255, 255, 255, 0.05)',
                             },
                             transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
                         }}
@@ -1316,11 +1318,12 @@ const Reports = () => {
                             fontWeight: 700,
                             fontSize: '0.875rem',
                             textTransform: 'none',
-                            bgcolor: selectedTab === 1 ? '#ffffff' : 'transparent',
-                            color: selectedTab === 1 ? 'primary.main' : 'text.secondary',
-                            boxShadow: selectedTab === 1 ? '0 4px 12px rgba(0, 0, 0, 0.05)' : 'none',
+                            bgcolor: selectedTab === 1 ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+                            color: selectedTab === 1 ? '#60a5fa' : 'var(--text-secondary)',
+                            border: selectedTab === 1 ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid transparent',
+                            boxShadow: selectedTab === 1 ? 'var(--shadow-glass)' : 'none',
                             '&:hover': {
-                                bgcolor: selectedTab === 1 ? '#ffffff' : 'rgba(15, 23, 42, 0.08)',
+                                bgcolor: selectedTab === 1 ? 'rgba(59, 130, 246, 0.25)' : 'rgba(255, 255, 255, 0.05)',
                             },
                             transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
                         }}
@@ -1337,11 +1340,12 @@ const Reports = () => {
                                 fontWeight: 700,
                                 fontSize: '0.875rem',
                                 textTransform: 'none',
-                                bgcolor: selectedTab === 2 ? '#ffffff' : 'transparent',
-                                color: selectedTab === 2 ? 'error.main' : 'text.secondary',
-                                boxShadow: selectedTab === 2 ? '0 4px 12px rgba(0, 0, 0, 0.05)' : 'none',
+                                bgcolor: selectedTab === 2 ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
+                                color: selectedTab === 2 ? '#f87171' : 'var(--text-secondary)',
+                                border: selectedTab === 2 ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid transparent',
+                                boxShadow: selectedTab === 2 ? 'var(--shadow-glass)' : 'none',
                                 '&:hover': {
-                                    bgcolor: selectedTab === 2 ? '#ffffff' : 'rgba(15, 23, 42, 0.08)',
+                                    bgcolor: selectedTab === 2 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255, 255, 255, 0.05)',
                                 },
                                 transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
                             }}

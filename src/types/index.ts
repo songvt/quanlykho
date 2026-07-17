@@ -120,6 +120,7 @@ export interface Transaction {
     inbound_date?: string; // Ngày nhập kho
     created_by?: string;   // Người thực hiện (email hoặc tên)
     created_at?: string;
+    user_id?: string;
 }
 
 export interface DashboardStats {

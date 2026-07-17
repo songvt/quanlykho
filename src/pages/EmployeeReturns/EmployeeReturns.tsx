@@ -3,7 +3,7 @@ import {
     Box, Typography, Button, Paper, Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, Dialog, DialogTitle, DialogContent, DialogActions,
     TextField, Autocomplete, Chip, Alert, Checkbox, Stack, Grid, useTheme, useMediaQuery,
-    Card, CardContent, Tooltip, CircularProgress
+    Card, CardContent, Tooltip, CircularProgress, MenuItem
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import PrintIcon from '@mui/icons-material/Print';
@@ -628,7 +628,7 @@ const EmployeeReturns = () => {
 
                         {/* Serial Input Area */}
                         {product?.category?.toLowerCase() === 'hàng hóa' && (
-                            <Box sx={{ p: 2, border: '1px dashed', borderColor: 'divider', borderRadius: 2, bgcolor: 'grey.50' }}>
+                            <Box sx={{ p: 2, border: '1px dashed', borderColor: 'rgba(255, 255, 255, 0.12)', borderRadius: 2, bgcolor: 'rgba(255, 255, 255, 0.03)' }}>
                                 <Typography variant="subtitle2" gutterBottom fontWeight="bold">Quét/Nhập Serial ({serials.length})</Typography>
 
                                 <Grid container spacing={1} alignItems="center" mb={2}>
@@ -686,10 +686,10 @@ const EmployeeReturns = () => {
                             label="Lý Do Trả"
                             value={reason}
                             onChange={(e) => setReason(e.target.value)}
-                            SelectProps={{ native: true }}
+                            SelectProps={{ native: false }}
                         >
                             {REASONS.map((r) => (
-                                <option key={r} value={r}>{r}</option>
+                                <MenuItem key={r} value={r}>{r}</MenuItem>
                             ))}
                         </TextField>
 

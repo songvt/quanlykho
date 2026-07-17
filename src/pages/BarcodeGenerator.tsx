@@ -1057,21 +1057,21 @@ const BarcodeGenerator = () => {
                                             onClick={() => fileInputRef.current?.click()}
                                             sx={{
                                                 border: '2px dashed',
-                                                borderColor: isDragOver ? 'teal.main' : 'grey.300',
+                                                borderColor: isDragOver ? 'var(--brand-success)' : 'var(--border-glass)',
                                                 borderRadius: '8px',
                                                 p: 4,
                                                 textAlign: 'center',
                                                 cursor: 'pointer',
-                                                background: isDragOver ? '#e6f4f1' : '#fafafa',
+                                                background: isDragOver ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.02)',
                                                 transition: 'all 0.2s ease-in-out',
-                                                '&:hover': { borderColor: 'teal.main', background: '#f0f9f8' }
+                                                '&:hover': { borderColor: 'var(--brand-success)', background: 'rgba(16, 185, 129, 0.05)' }
                                             }}
                                         >
-                                            <CloudUploadIcon sx={{ fontSize: 48, color: '#0d9488', mb: 1, opacity: 0.8 }} />
-                                            <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                                            <CloudUploadIcon sx={{ fontSize: 48, color: 'var(--brand-success)', mb: 1, opacity: 0.9 }} />
+                                            <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
                                                 Kéo thả file Excel tại đây hoặc nhấp để tải lên
                                             </Typography>
-                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                                            <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'var(--text-secondary)', opacity: 0.8 }}>
                                                 Hỗ trợ định dạng: .xlsx, .xls
                                             </Typography>
                                         </Box>

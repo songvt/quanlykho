@@ -48,8 +48,11 @@ const MetricCard = ({ title, value, subtitle, icon: Icon, color, trend, onClick 
             sx={{ 
                 p: 2.5, 
                 borderRadius: '16px', 
-                bgcolor: 'var(--bg-card)',
-                border: '1px solid var(--border-color)',
+                bgcolor: 'var(--bg-glass)',
+                border: '1px solid var(--border-glass)',
+                backdropFilter: 'blur(24px) saturate(200%)',
+                WebkitBackdropFilter: 'blur(24px) saturate(200%)',
+                boxShadow: 'var(--shadow-glass)',
                 display: 'flex',
                 flexDirection: 'column',
                 height: '100%',
@@ -58,8 +61,9 @@ const MetricCard = ({ title, value, subtitle, icon: Icon, color, trend, onClick 
                 transition: 'all 0.2s ease',
                 '&:hover': onClick ? {
                     borderColor: 'var(--brand-primary)',
-                    boxShadow: 'var(--shadow-soft)',
+                    boxShadow: 'var(--shadow-glass-hover)',
                     transform: 'translateY(-2px)',
+                    bgcolor: 'var(--bg-glass-hover)',
                 } : {}
             }}
         >
@@ -321,18 +325,21 @@ const Dashboard = () => {
                                 sx={{
                                     p: 2,
                                     borderRadius: '12px',
-                                    bgcolor: 'var(--bg-default)',
-                                    border: '1px solid var(--border-color)',
+                                    bgcolor: 'var(--bg-glass)',
+                                    border: '1px solid var(--border-glass)',
+                                    backdropFilter: 'blur(20px) saturate(190%)',
+                                    WebkitBackdropFilter: 'blur(20px) saturate(190%)',
+                                    boxShadow: 'var(--shadow-glass)',
                                     cursor: 'pointer',
                                     transition: 'all 0.2s',
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: 2,
                                     '&:hover': {
-                                        bgcolor: 'var(--bg-card)',
+                                        bgcolor: 'var(--bg-glass-hover)',
                                         borderColor: mod.color,
                                         transform: 'translateY(-2px)',
-                                        boxShadow: 'var(--shadow-soft)'
+                                        boxShadow: 'var(--shadow-glass-hover)'
                                     }
                                 }}
                             >
@@ -458,7 +465,15 @@ const Dashboard = () => {
             <Grid container spacing={4} mb={4}>
                 <Grid size={{ xs: 12, lg: 8 }}>
                     {/* Chart */}
-                    <Box sx={{ p: 3, borderRadius: '16px', border: '1px solid var(--border-color)', bgcolor: 'var(--bg-card)' }}>
+                    <Box sx={{ 
+                        p: 3, 
+                        borderRadius: '16px', 
+                        border: '1px solid var(--border-glass)', 
+                        bgcolor: 'var(--bg-glass)',
+                        backdropFilter: 'blur(24px) saturate(200%)',
+                        WebkitBackdropFilter: 'blur(24px) saturate(200%)',
+                        boxShadow: 'var(--shadow-glass)',
+                    }}>
                         <Box display="flex" justifyContent="space-between" mb={3}>
                             <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-primary)' }}>Lưu lượng xuất nhập</Typography>
                             <Box sx={{ display: 'flex', gap: 2, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
@@ -476,7 +491,7 @@ const Dashboard = () => {
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
                                     <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} dy={10} />
                                     <YAxis axisLine={false} tickLine={false} tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} />
-                                    <RechartsTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow-medium)', backgroundColor: 'var(--bg-card)' }} />
+                                    <RechartsTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow-glass)', backgroundColor: 'var(--bg-glass)', backdropFilter: 'blur(10px)' }} />
                                     <Area type="monotone" dataKey="inbound" stroke="#10b981" fill="url(#colorIn)" strokeWidth={2} />
                                     <Area type="monotone" dataKey="outbound" stroke="#4f46e5" fill="url(#colorOut)" strokeWidth={2} />
                                 </AreaChart>
@@ -487,7 +502,16 @@ const Dashboard = () => {
 
                 {/* Activity Feed */}
                 <Grid size={{ xs: 12, lg: 4 }}>
-                    <Box sx={{ p: 3, borderRadius: '16px', border: '1px solid var(--border-color)', bgcolor: 'var(--bg-card)', height: '100%' }}>
+                    <Box sx={{ 
+                        p: 3, 
+                        borderRadius: '16px', 
+                        border: '1px solid var(--border-glass)', 
+                        bgcolor: 'var(--bg-glass)', 
+                        backdropFilter: 'blur(24px) saturate(200%)',
+                        WebkitBackdropFilter: 'blur(24px) saturate(200%)',
+                        boxShadow: 'var(--shadow-glass)',
+                        height: '100%' 
+                    }}>
                         <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', mb: 3, color: 'var(--text-primary)' }}>Hoạt động gần đây</Typography>
                         
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>

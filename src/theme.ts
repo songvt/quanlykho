@@ -1,8 +1,8 @@
 import { createTheme, alpha } from '@mui/material/styles';
 
 const colors = {
-    primary: '#2563EB', // --brand-primary
-    primaryHover: '#4F46E5', // --brand-secondary
+    primary: '#3B82F6', // --brand-primary
+    primaryHover: '#6366F1', // --brand-secondary
     slate900: '#0F172A',
     slate700: '#334155',
     slate600: '#475569',
@@ -54,14 +54,14 @@ const theme = createTheme({
             contrastText: '#ffffff',
         },
         background: {
-            default: '#f6f8fb',
-            paper: colors.surface,
+            default: '#0B0F19',
+            paper: '#0F172A',
         },
         text: {
-            primary: colors.slate900,
-            secondary: colors.slate500,
+            primary: '#F8FAFC',
+            secondary: '#CBD5E1',
         },
-        divider: colors.slate200,
+        divider: 'rgba(255, 255, 255, 0.08)',
         action: {
             hover: alpha(colors.primary, 0.05),
             selected: alpha(colors.primary, 0.08),
@@ -110,7 +110,7 @@ const theme = createTheme({
                 body: {
                     fontFamily: "'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
                     letterSpacing: 0,
-                    backgroundColor: 'var(--bg-default)',
+                    background: 'var(--bg-default)',
                     color: 'var(--text-primary)',
                 },
             },
@@ -170,7 +170,7 @@ const theme = createTheme({
                     color: 'var(--text-secondary)',
                     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                     '&:hover': {
-                        backgroundColor: 'var(--gray-100)',
+                        backgroundColor: 'var(--bg-glass-hover)',
                         color: 'var(--text-primary)',
                         transform: 'scale(1.05)',
                     },
@@ -188,16 +188,20 @@ const theme = createTheme({
             styleOverrides: {
                 root: {
                     backgroundImage: 'none',
-                    border: '1px solid var(--border-color)',
-                    backgroundColor: 'var(--bg-card)',
+                    backgroundColor: 'var(--bg-glass)',
+                    backdropFilter: 'blur(24px) saturate(200%)',
+                    WebkitBackdropFilter: 'blur(24px) saturate(200%)',
+                    border: '1px solid var(--border-glass)',
+                    boxShadow: 'var(--shadow-glass)',
                     color: 'var(--text-primary)',
                     borderRadius: 16,
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 },
                 elevation0: {
-                    border: '1px solid var(--border-color)',
+                    border: '1px solid var(--border-glass)',
                 },
                 elevation1: {
-                    boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.04)',
+                    boxShadow: 'var(--shadow-glass)',
                 },
             },
         },
@@ -205,15 +209,18 @@ const theme = createTheme({
             styleOverrides: {
                 root: {
                     borderRadius: 20,
-                    border: '1px solid var(--border-color)',
-                    boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.04)',
-                    backgroundColor: 'var(--bg-card)',
+                    border: '1px solid var(--border-glass)',
+                    boxShadow: 'var(--shadow-glass)',
+                    backgroundColor: 'var(--bg-glass)',
+                    backdropFilter: 'blur(24px) saturate(200%)',
+                    WebkitBackdropFilter: 'blur(24px) saturate(200%)',
                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                     overflow: 'hidden',
                     '&:hover': {
-                        borderColor: 'var(--brand-primary)',
-                        boxShadow: '0 20px 35px -10px rgba(15, 23, 42, 0.12)',
+                        borderColor: 'var(--border-glass-hover)',
+                        boxShadow: 'var(--shadow-glass-hover)',
                         transform: 'translateY(-4px)',
+                        backgroundColor: 'var(--bg-glass-hover)',
                     },
                     '&:active': {
                         transform: 'scale(0.98)',
@@ -222,22 +229,47 @@ const theme = createTheme({
                 },
             },
         },
+        MuiDrawer: {
+            styleOverrides: {
+                paper: {
+                    backgroundImage: 'linear-gradient(135deg, rgba(15, 23, 42, 0.82) 0%, rgba(30, 41, 59, 0.92) 100%), url(/login_bg_warehouse.png) !important',
+                    backgroundSize: 'cover !important',
+                    backgroundPosition: 'center !important',
+                    backdropFilter: 'blur(24px) saturate(200%)',
+                    WebkitBackdropFilter: 'blur(24px) saturate(200%)',
+                    borderRight: '1px solid rgba(255, 255, 255, 0.1) !important',
+                    boxShadow: 'var(--shadow-glass)',
+                },
+            },
+        },
+        MuiPopover: {
+            styleOverrides: {
+                paper: {
+                    backgroundColor: 'var(--bg-glass)',
+                    backdropFilter: 'blur(24px) saturate(200%)',
+                    WebkitBackdropFilter: 'blur(24px) saturate(200%)',
+                    border: '1px solid var(--border-glass)',
+                    boxShadow: 'var(--shadow-glass)',
+                    borderRadius: 12,
+                },
+            },
+        },
         MuiTableCell: {
             styleOverrides: {
                 head: {
-                    backgroundColor: 'var(--bg-default)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.02)',
                     color: 'var(--text-secondary)',
                     fontWeight: 700,
                     textTransform: 'none',
                     fontSize: '0.8125rem',
-                    borderBottom: '1px solid var(--border-color)',
+                    borderBottom: '1px solid var(--border-glass)',
                     padding: '10px 16px',
                     whiteSpace: 'nowrap',
                 },
                 body: {
                     padding: '8px 16px',
                     color: 'var(--text-primary)',
-                    borderBottom: '1px solid var(--border-color)',
+                    borderBottom: '1px solid var(--border-glass)',
                     fontSize: '0.875rem',
                 },
             },
@@ -246,7 +278,7 @@ const theme = createTheme({
             styleOverrides: {
                 root: {
                     '&.MuiTableRow-hover:hover': {
-                        backgroundColor: 'var(--gray-50)',
+                        backgroundColor: 'rgba(37, 99, 235, 0.05)',
                     },
                     '&:last-child td': {
                         borderBottom: 0,
@@ -258,14 +290,16 @@ const theme = createTheme({
             styleOverrides: {
                 root: {
                     borderRadius: 10,
-                    backgroundColor: 'var(--bg-card)',
+                    backgroundColor: 'var(--bg-glass)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
                     minHeight: 40,
                     transition: 'all 0.2s ease',
                     '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'var(--border-color)',
+                        borderColor: 'var(--border-glass)',
                     },
                     '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: 'var(--gray-400)',
+                        borderColor: 'var(--border-glass-hover)',
                     },
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                         borderColor: 'var(--brand-primary)',
@@ -273,6 +307,7 @@ const theme = createTheme({
                     },
                     '&.Mui-focused': {
                         boxShadow: `0 0 0 4px ${alpha(colors.primary, 0.15)}`,
+                        backgroundColor: 'var(--bg-glass-hover)',
                     },
                 },
                 input: {
@@ -299,8 +334,12 @@ const theme = createTheme({
         MuiDialog: {
             styleOverrides: {
                 paper: {
-                    borderRadius: 12,
-                    boxShadow: '0 24px 48px rgba(15, 23, 42, 0.18)',
+                    borderRadius: 20,
+                    backgroundColor: 'var(--bg-glass)',
+                    backdropFilter: 'blur(24px) saturate(190%)',
+                    WebkitBackdropFilter: 'blur(24px) saturate(190%)',
+                    border: '1px solid var(--border-glass)',
+                    boxShadow: 'var(--shadow-glass-hover)',
                 },
             },
         },
@@ -316,10 +355,10 @@ const theme = createTheme({
         MuiAppBar: {
             styleOverrides: {
                 root: {
-                    backgroundColor: 'var(--bg-header)',
-                    backdropFilter: 'blur(10px)',
-                    WebkitBackdropFilter: 'blur(10px)',
-                    borderBottom: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--bg-glass) !important',
+                    backdropFilter: 'blur(20px) saturate(190%)',
+                    WebkitBackdropFilter: 'blur(20px) saturate(190%)',
+                    borderBottom: '1px solid var(--border-glass) !important',
                     boxShadow: 'none',
                     color: 'var(--text-primary)',
                 },
@@ -402,9 +441,12 @@ const theme = createTheme({
         MuiBottomNavigation: {
             styleOverrides: {
                 root: {
-                    backgroundColor: 'var(--bg-bottom-nav)',
+                    backgroundColor: 'var(--bg-glass) !important',
+                    backdropFilter: 'blur(20px) saturate(190%)',
+                    WebkitBackdropFilter: 'blur(20px) saturate(190%)',
                     height: 62,
-                    borderTop: '1px solid var(--border-color)',
+                    borderTop: '1px solid var(--border-glass) !important',
+                    boxShadow: 'var(--shadow-glass)',
                 },
             },
         },

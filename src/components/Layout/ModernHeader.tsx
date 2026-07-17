@@ -98,7 +98,7 @@ const ModernHeader: React.FC<ModernHeaderProps> = ({ DRAWER_WIDTH, handleDrawerT
                     <Box sx={{
                         display: { xs: 'none', sm: 'flex' },
                         alignItems: 'center',
-                        bgcolor: 'var(--bg-default)',
+                        bgcolor: 'rgba(255, 255, 255, 0.05)',
                         borderRadius: '12px',
                         px: 2,
                         py: 1,

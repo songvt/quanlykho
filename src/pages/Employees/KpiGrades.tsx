@@ -1597,7 +1597,7 @@ const KpiGrades = () => {
                                         </TableRow>
                                     ) : (
                                         filteredReports.map((report) => (
-                                            <TableRow key={report.id} sx={{ '&:hover': { bgcolor: '#f8fafc' } }}>
+                                            <TableRow key={report.id} hover>
                                                 <TableCell sx={{ py: 1.5 }}>{new Date(report.reportDate).toLocaleDateString('vi-VN')}</TableCell>
                                                 <TableCell sx={{ fontWeight: 600 }}>{report.violatorCode}</TableCell>
                                                 <TableCell sx={{ fontWeight: 600 }}>{report.violatorName}</TableCell>
@@ -1814,7 +1814,7 @@ const KpiGrades = () => {
                                             </TableRow>
                                         ) : (
                                             filteredKpiScores.map((score, index) => (
-                                                <TableRow key={score.employeeId} sx={{ '&:hover': { bgcolor: '#f8fafc' } }}>
+                                                <TableRow key={score.employeeId} hover>
                                                     <TableCell align="center" sx={{ py: 1 }}>{index + 1}</TableCell>
                                                     <TableCell sx={{ fontWeight: 600 }}>{score.employeeId}</TableCell>
                                                     <TableCell sx={{ fontWeight: 600 }}>{score.employeeName}</TableCell>

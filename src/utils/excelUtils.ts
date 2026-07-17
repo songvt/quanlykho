@@ -425,6 +425,12 @@ export const readExcelFile = async (file: File, headerRow: number = 1): Promise<
                         val = (val as ExcelJS.CellFormulaValue).result;
                     } else if ('richText' in val) {
                         val = (val as ExcelJS.CellRichTextValue).richText.map(t => t.text).join('');
+                    } else if ('text' in val) {
+                        val = (val as any).text;
+                    } else if (val instanceof Date) {
+                        // Keep Date objects
+                    } else {
+                        val = cell.text;
                     }
                 }
                 obj[header] = val;
@@ -491,6 +497,12 @@ export const readAssetExcelFile = async (file: File): Promise<any[]> => {
                     val = (val as ExcelJS.CellFormulaValue).result;
                 } else if ('richText' in val) {
                     val = (val as ExcelJS.CellRichTextValue).richText.map(t => t.text).join('');
+                } else if ('text' in val) {
+                    val = (val as any).text;
+                } else if (val instanceof Date) {
+                    // Keep Date objects
+                } else {
+                    val = cell.text;
                 }
             }
             obj[header] = val;

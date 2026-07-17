@@ -4,7 +4,7 @@ import {
     Box, Paper, Typography, Button, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, IconButton, Dialog,
     DialogTitle, DialogContent, DialogActions, TextField, Stack,
-    Checkbox, TablePagination, useMediaQuery, useTheme, Chip, Divider, Autocomplete, Tooltip
+    Checkbox, TablePagination, useMediaQuery, useTheme, Chip, Divider, Autocomplete, Tooltip, MenuItem
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -453,7 +453,7 @@ const AssetList = () => {
                     placeholder="Tìm theo tên TS, tình trạng, nhân viên..."
                     size="small"
                     fullWidth={isMobile}
-                    sx={{ width: isMobile ? '100%' : 350, bgcolor: 'white' }}
+                    sx={{ width: isMobile ? '100%' : 350 }}
                     value={searchEmployee}
                     onChange={(e) => setSearchEmployee(e.target.value)}
                 />
@@ -462,12 +462,12 @@ const AssetList = () => {
                     size="small"
                     value={categoryFilter}
                     onChange={(e) => setCategoryFilter(e.target.value)}
-                    SelectProps={{ native: true }}
-                    sx={{ width: isMobile ? '100%' : 220, bgcolor: 'white' }}
+                    SelectProps={{ native: false }}
+                    sx={{ width: isMobile ? '100%' : 220 }}
                 >
-                    <option value="all">Tất cả danh mục (CCDC & TBVP)</option>
-                    <option value="ccdc">Công cụ dụng cụ (CCDC)</option>
-                    <option value="tbvp">Thiết bị văn phòng (TBVP)</option>
+                    <MenuItem value="all">Tất cả danh mục (CCDC & TBVP)</MenuItem>
+                    <MenuItem value="ccdc">Công cụ dụng cụ (CCDC)</MenuItem>
+                    <MenuItem value="tbvp">Thiết bị văn phòng (TBVP)</MenuItem>
                 </TextField>
                 {selectedIds.length > 0 && (
                     <Chip 
@@ -599,9 +599,9 @@ const AssetList = () => {
                 </Box>
             ) : (
                 /* ── DESKTOP: Table ── */
-                <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+                <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 'var(--shadow-glass)', border: '1px solid var(--border-glass)' }}>
                     <Table size="small">
-                        <TableHead sx={{ bgcolor: '#f8fafc' }}>
+                        <TableHead sx={{ bgcolor: 'rgba(255, 255, 255, 0.02)' }}>
                             <TableRow>
                                 <TableCell padding="checkbox">
                                     <Checkbox

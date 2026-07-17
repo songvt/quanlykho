@@ -59,12 +59,12 @@ import { logoutUser } from '../../store/slices/authSlice';
 import { usePermission } from '../../hooks/usePermission';
 
 const UI = {
-    primary: 'var(--brand-primary)',
-    primaryHover: 'var(--brand-secondary)',
-    border: 'var(--border-color)',
-    text: 'var(--text-primary)',
-    muted: 'var(--text-secondary)',
-    hover: 'var(--bg-default)',
+    primary: '#60A5FA', // Bright contrast blue for dark theme
+    primaryHover: '#93C5FD',
+    border: 'rgba(255, 255, 255, 0.1)', // Light border for dark background
+    text: '#F8FAFC', // Light text
+    muted: '#94A3B8', // Light muted text
+    hover: 'rgba(255, 255, 255, 0.08)',
 };
 
 const menuItemSx = (isActive: boolean, activeColor: string = UI.primary) => ({
@@ -74,10 +74,11 @@ const menuItemSx = (isActive: boolean, activeColor: string = UI.primary) => ({
     py: 1,
     mb: 0.5,
     color: isActive ? activeColor : UI.muted,
-    bgcolor: isActive ? 'var(--bg-default)' : 'transparent',
+    bgcolor: isActive ? 'rgba(255, 255, 255, 0.06)' : 'transparent',
+    border: isActive ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid transparent',
     transition: 'all 0.2s ease',
     '&:hover': {
-        bgcolor: 'var(--bg-default)',
+        bgcolor: 'rgba(255, 255, 255, 0.08)',
         color: activeColor,
         transform: 'translateX(4px)',
     },
@@ -95,9 +96,10 @@ const subItemSx = (isActive: boolean, activeColor: string = UI.primary) => ({
     pl: 2,
     pr: 2,
     color: isActive ? activeColor : UI.muted,
-    bgcolor: isActive ? 'var(--bg-default)' : 'transparent',
+    bgcolor: isActive ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+    border: isActive ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid transparent',
     '&:hover': {
-        bgcolor: 'var(--bg-default)',
+        bgcolor: 'rgba(255, 255, 255, 0.08)',
         color: activeColor,
     },
 });
@@ -183,7 +185,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
             display: 'flex',
             flexDirection: 'column',
             height: '100%',
-            bgcolor: 'var(--bg-sidebar)',
+            bgcolor: 'transparent',
             borderRight: `1px solid ${UI.border}`,
         }}>
             {/* Logo Area */}
@@ -244,10 +246,10 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                         p: 1.5,
                         borderRadius: '12px',
                         cursor: 'pointer',
-                        bgcolor: 'var(--bg-default)',
+                        bgcolor: 'rgba(255, 255, 255, 0.05)',
                         border: `1px solid ${UI.border}`,
                         transition: 'all 0.2s ease',
-                        '&:hover': { borderColor: UI.primary, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' },
+                        '&:hover': { borderColor: UI.primary, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', bgcolor: 'rgba(255, 255, 255, 0.1)' },
                     }}
                 >
                     <Avatar sx={{

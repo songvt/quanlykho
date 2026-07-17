@@ -256,7 +256,7 @@ const handleDownloadSendTemplate = async () => {
     };
 
     return (
-        <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 1400, mx: 'auto', bgcolor: '#f8fafc', minHeight: '100vh' }}>
+        <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 1400, mx: 'auto', bgcolor: 'transparent', minHeight: '100vh' }}>
             <Typography variant="h4" sx={{ fontWeight: 800, background: 'linear-gradient(90deg, #2563eb, #7c3aed)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', mb: 1, letterSpacing: '-1px' }}>Chiến dịch Zalo</Typography>
             <Typography variant="body2" color="text.secondary" mb={3}>Quản lý các đợt gửi tin nhắn hàng loạt qua Zalo.</Typography>
 
@@ -266,7 +266,7 @@ const handleDownloadSendTemplate = async () => {
                     <Box sx={{ display: 'flex', gap: 1 }}>
                         <Button variant="outlined" startIcon={<Description />} onClick={handleDownloadSendTemplate}>Mẫu gửi Excel</Button>
                         <Button variant="outlined" color="primary" component="label" disabled={sendingBulk} startIcon={sendingBulk ? <CircularProgress size={16} color="inherit"/> : <UploadFile />}>
-                            Import Gửi Bằng Excel
+                            Import Gửi Giao Diện Excel
                             <input type="file" hidden accept=".xlsx,.xls,.csv" onChange={handleImportSendExcel} />
                         </Button>
                         <Button variant="contained" color="success" onClick={handleSendBulkBot} disabled={sendingBulk || selectedContacts.length === 0} startIcon={sendingBulk ? <CircularProgress size={16} color="inherit"/> : <Send />} sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, boxShadow: '0 4px 14px 0 rgba(16, 185, 129, 0.39)', background: 'linear-gradient(90deg, #10b981, #059669)', '&:hover': { boxShadow: '0 6px 20px rgba(16, 185, 129, 0.23)' } }}>
@@ -288,16 +288,16 @@ const handleDownloadSendTemplate = async () => {
                             {uniqueNotes.map(n => <MenuItem key={n} value={n}>{n}</MenuItem>)}
                         </Select>
                     </FormControl>
-                    <Typography variant="body2" sx={{ color: '#6b7280' }}>
+                    <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>
                         Đang hiển thị {filteredContacts.length} người nhận, đã chọn {selectedContacts.length}.
                     </Typography>
                 </Box>
 
-                <TextField fullWidth multiline rows={4} placeholder="Nhập nội dung tin nhắn cần gửi..." value={messageContent} onChange={e => setMessageContent(e.target.value)} sx={{ mb: 3, bgcolor: '#fff' }} />
+                <TextField fullWidth multiline rows={4} placeholder="Nhập nội dung tin nhắn cần gửi..." value={messageContent} onChange={e => setMessageContent(e.target.value)} sx={{ mb: 3 }} />
 
-                <TableContainer component={Paper} sx={{ maxHeight: 500, borderRadius: 2, border: '1px solid #e2e8f0', boxShadow: 'none' }}>
-                    <Table stickyHeader size="small" sx={{ '& .MuiTableCell-root': { borderColor: '#f1f5f9', py: 1.5 } }}>
-                        <TableHead sx={{ '& th': { bgcolor: '#eff6ff', color: '#1e40af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '2px solid #e2e8f0' } }}>
+                <TableContainer component={Paper} sx={{ maxHeight: 500, borderRadius: 2, border: '1px solid var(--border-glass)', boxShadow: 'none' }}>
+                    <Table stickyHeader size="small" sx={{ '& .MuiTableCell-root': { borderColor: 'var(--border-glass)', py: 1.5 } }}>
+                        <TableHead sx={{ '& th': { bgcolor: 'rgba(255, 255, 255, 0.02)', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--border-glass)' } }}>
                             <TableRow>
                                 <TableCell padding="checkbox">
                                     <Checkbox checked={filteredContacts.length > 0 && selectedContacts.length === filteredContacts.length} indeterminate={selectedContacts.length > 0 && selectedContacts.length < filteredContacts.length} onChange={handleSelectAll} />

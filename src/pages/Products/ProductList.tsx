@@ -507,7 +507,7 @@ const ProductList = () => {
             ) : (
                 <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 2, boxShadow: 'none', overflowX: 'auto', border: '1px solid #e5e7eb' }}>
                     <Table size="small" sx={{ minWidth: 800 }}>
-                        <TableHead sx={{ bgcolor: '#f8fafc' }}>
+                        <TableHead sx={{ bgcolor: 'rgba(255, 255, 255, 0.02)' }}>
                             <TableRow>
                                 {canManage && (
                                     <TableCell padding="checkbox" sx={{ pl: 3 }}>
@@ -519,14 +519,14 @@ const ProductList = () => {
                                         />
                                     </TableCell>
                                 )}
-                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 800, color: '#475569', py: 2.5 }}>MÃ SKU</TableCell>
-                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 800, color: '#475569', py: 2.5 }}>TÊN SẢN PHẨM</TableCell>
-                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 800, color: '#475569', py: 2.5 }}>DANH MỤC</TableCell>
-                                <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 800, color: '#475569', py: 2.5 }}>ĐƠN GIÁ</TableCell>
-                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 800, color: '#475569', py: 2.5 }}>ĐVT</TableCell>
-                                <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 800, color: '#475569', py: 2.5 }}>TỒN KHO</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 800, color: 'var(--text-secondary)', py: 2.5 }}>MÃ SKU</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 800, color: 'var(--text-secondary)', py: 2.5 }}>TÊN SẢN PHẨM</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 800, color: 'var(--text-secondary)', py: 2.5 }}>DANH MỤC</TableCell>
+                                <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 800, color: 'var(--text-secondary)', py: 2.5 }}>ĐƠN GIÁ</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 800, color: 'var(--text-secondary)', py: 2.5 }}>ĐVT</TableCell>
+                                <TableCell align="right" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 800, color: 'var(--text-secondary)', py: 2.5 }}>TỒN KHO</TableCell>
                                 {canManage && (
-                                    <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 800, color: '#475569', py: 2.5 }}>THAO TÁC</TableCell>
+                                    <TableCell align="center" sx={{ whiteSpace: 'nowrap', fontSize: '13px', fontWeight: 800, color: 'var(--text-secondary)', py: 2.5 }}>THAO TÁC</TableCell>
                                 )}
                             </TableRow>
                         </TableHead>
@@ -536,11 +536,9 @@ const ProductList = () => {
                                 return (
                                     <TableRow 
                                         key={product.id} 
-                                        sx={{ 
-                                            transition: 'all 0.2s', 
-                                            bgcolor: isSelected ? '#eff6ff' : 'inherit',
-                                            '&:hover': { bgcolor: '#f1f5f9' }
-                                        }}
+                                        hover
+                                        selected={isSelected}
+                                        sx={{ transition: 'all 0.2s' }}
                                     >
                                         {canManage && (
                                             <TableCell padding="checkbox" sx={{ pl: 3 }}>
@@ -555,7 +553,7 @@ const ProductList = () => {
                                             <Typography variant="body2" sx={{ fontWeight: 700, color: '#2563eb', fontSize: '0.875rem' }}>{product.item_code}</Typography>
                                         </TableCell>
                                         <TableCell sx={{ py: 2 }}>
-                                            <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b', fontSize: '0.875rem' }}>{product.name}</Typography>
+                                            <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.875rem' }}>{product.name}</Typography>
                                         </TableCell>
                                         <TableCell sx={{ py: 2 }}>
                                             <Chip 
@@ -572,11 +570,11 @@ const ProductList = () => {
                                             />
                                         </TableCell>
                                         <TableCell align="right" sx={{ py: 2 }}>
-                                            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.875rem', color: '#0f172a' }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-primary)' }}>
                                                 {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.unit_price)}
                                             </Typography>
                                         </TableCell>
-                                        <TableCell sx={{ py: 2, fontSize: '0.875rem', color: '#64748b', fontWeight: 500 }}>{product.unit}</TableCell>
+                                        <TableCell sx={{ py: 2, fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 500 }}>{product.unit}</TableCell>
                                         <TableCell
                                             align="right"
                                             sx={{ py: 2 }}

@@ -7,22 +7,34 @@
   --font-sans: 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   /* Brand Palette - SaaS Modern */
-  --brand-primary:   #2563EB;
-  --brand-secondary: #4F46E5;
+  --brand-primary:   #3B82F6;
+  --brand-secondary: #6366F1;
   --brand-success:   #10B981;
   --brand-warning:   #F59E0B;
   --brand-danger:    #EF4444;
 
-  /* Neutral - Light Mode */
-  --bg-default:      #F8FAFC;
-  --bg-sidebar:      #FFFFFF;
-  --bg-card:         #FFFFFF;
-  --bg-header:       rgba(255, 255, 255, 0.75);
-  --bg-bottom-nav:   rgba(255, 255, 255, 0.98);
-  --text-primary:    #0F172A;
-  --text-secondary:  #64748B;
-  --border-color:    #E2E8F0;
+  /* Neutral - Dark & Glass Mode for both modes */
+  --bg-default:      linear-gradient(135deg, rgba(15, 23, 42, 0.85) 0%, rgba(11, 15, 25, 0.94) 100%),
+                     url(/login_bg_warehouse.png);
+  --bg-sidebar:      transparent;
+  --bg-card:         rgba(15, 23, 42, 0.3);
+  --bg-header:       rgba(15, 23, 42, 0.3);
+  --bg-bottom-nav:   rgba(15, 23, 42, 0.55);
+  --text-primary:    #F8FAFC;
+  --text-secondary:  #CBD5E1;
+  --border-color:    rgba(255, 255, 255, 0.08);
   
+  /* Glassmorphism Tokens */
+  --bg-glass:          rgba(15, 23, 42, 0.35);
+  --bg-glass-hover:    rgba(30, 41, 59, 0.5);
+  --border-glass:      rgba(255, 255, 255, 0.08);
+  --border-glass-hover:rgba(255, 255, 255, 0.18);
+  --shadow-glass:      0 8px 32px 0 rgba(0, 0, 0, 0.25), 0 4px 12px 0 rgba(0, 0, 0, 0.15);
+  --shadow-glass-hover:0 12px 40px 0 rgba(0, 0, 0, 0.35), 0 6px 16px 0 rgba(0, 0, 0, 0.25);
+
+  --bg-sidebar-active: rgba(37, 99, 235, 0.15);
+  --bg-sidebar-hover:  rgba(255, 255, 255, 0.05);
+
   /* Shared Grays */
   --gray-50:  #f8fafc;
   --gray-100: #f1f5f9;
@@ -68,6 +80,7 @@ html {
   line-height: 1.5;
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
+  background: var(--bg-default);
 }
 
 body {
@@ -76,24 +89,89 @@ body {
   min-width: 320px;
   min-height: 100vh;
   min-height: 100dvh; /* Dynamic viewport on mobile */
-  background: var(--bg-default);
+  background: var(--bg-default) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-attachment: fixed !important;
   color: var(--text-primary);
   overflow-x: hidden;
+  position: relative;
   padding-bottom: var(--safe-bottom);
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+/* Glow Blobs background effects for Glassmorphism */
+body::before, body::after {
+  content: "";
+  position: fixed;
+  width: 65vw;
+  height: 65vw;
+  max-width: 900px;
+  max-height: 900px;
+  border-radius: 50%;
+  filter: blur(120px);
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.85;
+  transition: opacity 0.5s ease, background 0.5s ease;
+  animation: floatBlobs 25s ease-in-out infinite alternate;
+}
+
+body::before {
+  top: -15%;
+  left: -15%;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.4) 0%, rgba(99, 102, 241, 0.2) 50%, transparent 80%);
+}
+
+body::after {
+  bottom: -15%;
+  right: -15%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.35) 0%, rgba(236, 72, 153, 0.15) 50%, transparent 80%);
+  animation-delay: -12.5s;
+}
+
+[data-theme='dark'] body::before {
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.22) 0%, rgba(79, 70, 229, 0.08) 50%, transparent 85%);
+  opacity: 0.7;
+}
+
+[data-theme='dark'] body::after {
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.18) 0%, rgba(16, 185, 129, 0.08) 50%, transparent 85%);
+  opacity: 0.7;
+}
+
+@keyframes floatBlobs {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    transform: translate(80px, 50px) scale(1.15);
+  }
+}
+
 [data-theme='dark'] {
-  --bg-default:      #0F172A;
-  --bg-sidebar:      #111827;
-  --bg-card:         #1E293B;
-  --bg-header:       rgba(15, 23, 42, 0.75);
-  --bg-bottom-nav:   rgba(17, 24, 39, 0.98);
+  --bg-default:      linear-gradient(135deg, rgba(10, 15, 28, 0.93) 0%, rgba(5, 7, 15, 0.97) 100%),
+                     url(/login_bg_warehouse.png);
+  --bg-sidebar:      transparent;
+  --bg-card:         rgba(10, 15, 25, 0.4);
+  --bg-header:       rgba(10, 15, 25, 0.4);
+  --bg-bottom-nav:   rgba(10, 15, 25, 0.6);
   --text-primary:    #F8FAFC;
   --text-secondary:  #CBD5E1;
-  --border-color:    #334155;
+  --border-color:    rgba(255, 255, 255, 0.06);
+  
+  /* Glassmorphism Tokens - Dark Mode */
+  --bg-glass:          rgba(10, 15, 25, 0.4);
+  --bg-glass-hover:    rgba(20, 25, 35, 0.55);
+  --border-glass:      rgba(255, 255, 255, 0.06);
+  --border-glass-hover:rgba(255, 255, 255, 0.12);
+  --shadow-glass:      0 8px 32px 0 rgba(0, 0, 0, 0.35), 0 4px 12px 0 rgba(0, 0, 0, 0.2);
+  --shadow-glass-hover:0 12px 40px 0 rgba(0, 0, 0, 0.45), 0 6px 16px 0 rgba(0, 0, 0, 0.3);
+
+  --bg-sidebar-active: rgba(37, 99, 235, 0.18);
+  --bg-sidebar-hover:  rgba(255, 255, 255, 0.08);
 }
 
 #root {
@@ -226,17 +304,19 @@ a,
 
 /* Glassmorphism card */
 .glass-card {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px) saturate(190%);
+  -webkit-backdrop-filter: blur(20px) saturate(190%);
+  border: 1px solid var(--border-glass);
   border-radius: var(--radius-xl);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-glass);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-[data-theme='dark'] .glass-card {
-  background: rgba(30, 41, 59, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+.glass-card:hover {
+  background: var(--bg-glass-hover);
+  border-color: var(--border-glass-hover);
+  box-shadow: var(--shadow-glass-hover);
+  transform: translateY(-2px);
 }
 
 /* Gradient text */
@@ -299,7 +379,34 @@ a,
   }
   body {
     background: white !important;
+    color: black !important;
     padding-bottom: 0 !important;
+  }
+  /* Force white background and black text on all components during print */
+  .MuiPaper-root,
+  .MuiCard-root,
+  .MuiTableHead-root,
+  .MuiTableCell-root,
+  table,
+  tr,
+  th,
+  td,
+  div,
+  p,
+  span,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    background: white !important;
+    background-color: white !important;
+    color: black !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 }
 
@@ -326,15 +433,15 @@ select {
 
 /* ── Premium Glassmorphism & Card Overrides ── */
 .premium-glass {
-  background: rgba(255, 255, 255, 0.65) !important;
+  background: rgba(15, 23, 42, 0.65) !important;
   backdrop-filter: blur(20px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
 }
 
 [data-theme='dark'] .premium-glass {
-  background: rgba(15, 23, 42, 0.65) !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  background: rgba(10, 15, 25, 0.75) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
 }
 
 /* ── Interactive Card Micro-interactions ── */
@@ -371,4 +478,132 @@ select {
   background-color: var(--gray-300);
   border-radius: 3px;
   margin: 8px auto;
+}
+
+/* ── Global Table overrides for Dark Glass Theme ── */
+.MuiTableHead-root {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+.MuiTableCell-head {
+  color: var(--text-secondary) !important;
+  font-weight: 700 !important;
+  border-bottom: 1px solid var(--border-glass) !important;
+}
+.MuiTableCell-body {
+  border-bottom: 1px solid var(--border-glass) !important;
+}
+
+/* ── Global Theme Overrides for Form Controls & Paper on Screen ── */
+@media screen {
+  /* Text fields, select inputs, date pickers, search fields */
+  .MuiOutlinedInput-root,
+  .MuiInputBase-root,
+  .MuiFilledInput-root {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    color: var(--text-primary) !important;
+  }
+  
+  .MuiOutlinedInput-notchedOutline {
+    border-color: var(--border-glass) !important;
+  }
+
+  /* Override any hardcoded white backgrounds on form wrappers */
+  .MuiFormControl-root,
+  .MuiTextField-root {
+    background-color: transparent !important;
+  }
+  
+  .MuiInputLabel-root {
+    color: var(--text-secondary) !important;
+  }
+  
+  .MuiInputLabel-root.Mui-focused {
+    color: var(--brand-primary) !important;
+  }
+
+  /* Paper, Cards, and Container Panels */
+  .MuiPaper-root:not(.MuiTablePagination-menu):not(.MuiMenu-paper):not(.MuiPopover-paper),
+  .MuiCard-root {
+    background-color: var(--bg-glass) !important;
+    border: 1px solid var(--border-glass) !important;
+    color: var(--text-primary) !important;
+    box-shadow: var(--shadow-glass) !important;
+  }
+
+  /* Keep custom style definitions for Dialogs to look good */
+  .MuiDialog-paper {
+    background-color: rgba(15, 23, 42, 0.85) !important;
+    backdrop-filter: blur(24px) saturate(200%) !important;
+    border: 1px solid var(--border-glass) !important;
+  }
+  .MuiDialogTitle-root,
+  .MuiDialogContent-root,
+  .MuiDialogActions-root {
+    background-color: transparent !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-glass) !important;
+  }
+
+  /* ── Native Table & Print Report Styling on Screen ── */
+  th, 
+  thead th,
+  .MuiTableHead-root,
+  .MuiTableHead-root .MuiTableCell-head {
+    background-color: rgba(15, 23, 42, 0.65) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-glass) !important;
+  }
+  
+  td, 
+  tbody td, 
+  .MuiTableCell-body {
+    color: var(--text-primary) !important;
+    border-color: var(--border-glass) !important;
+  }
+
+  /* Override hardcoded inline style backgrounds for native tables */
+  tr[style*="background-color"] th,
+  tr[style*="background-color"] td,
+  th[style*="background-color"],
+  td[style*="background-color"] {
+    background-color: rgba(15, 23, 42, 0.65) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-glass) !important;
+  }
+
+  /* Handle alternating row style backgrounds */
+  tr[style*="background-color"]:not(:has(th)) {
+    background-color: rgba(255, 255, 255, 0.01) !important;
+  }
+
+  /* Table Row Hover & Selection Overrides */
+  .MuiTableRow-root.Mui-selected {
+    background-color: rgba(59, 130, 246, 0.15) !important;
+  }
+  .MuiTableRow-root.Mui-selected:hover {
+    background-color: rgba(59, 130, 246, 0.25) !important;
+  }
+  .MuiTableRow-root:hover {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+  }
+
+  /* ── Native HTML input and textarea styling for dark glass theme ── */
+  input[type="text"]:not([class*="Mui"]),
+  input[type="number"]:not([class*="Mui"]),
+  input[type="date"]:not([class*="Mui"]),
+  textarea:not([class*="Mui"]) {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid var(--border-glass) !important;
+    color: var(--text-primary) !important;
+    border-radius: 6px !important;
+    transition: all 0.2s ease;
+  }
+  input[type="text"]:not([class*="Mui"]):focus,
+  input[type="number"]:not([class*="Mui"]):focus,
+  input[type="date"]:not([class*="Mui"]):focus,
+  textarea:not([class*="Mui"]):focus {
+    border-color: var(--brand-primary) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25) !important;
+  }
 }
