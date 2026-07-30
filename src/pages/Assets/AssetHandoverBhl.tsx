@@ -824,7 +824,13 @@ const AssetHandoverBhl: React.FC = () => {
                                                         <td style={{ border: '1px solid #888', padding: '4px', verticalAlign: 'middle', fontSize: '9pt', lineHeight: 1.2 }}>
                                                             {item.spec} {item.serial ? `(Serial: ${item.serial})` : ''}
                                                         </td>
-                                                        <td style={{ border: '1px solid #888', padding: '4px', verticalAlign: 'middle' }}>{item.note || ''}</td>
+                                                        <td style={{ border: '1px solid #888', padding: '4px', verticalAlign: 'middle' }}>
+                                                            {item.name.toLowerCase().includes('quần áo') && selectedEmployee?.uniform_size
+                                                                ? `Size: ${selectedEmployee.uniform_size}${item.note ? ' - ' + item.note : ''}`
+                                                                : item.name.toLowerCase().includes('giày') && selectedEmployee?.shoe_size
+                                                                ? `Size: ${selectedEmployee.shoe_size}${item.note ? ' - ' + item.note : ''}`
+                                                                : item.note || ''}
+                                                        </td>
                                                     </tr>
                                                 ))
                                             ) : (

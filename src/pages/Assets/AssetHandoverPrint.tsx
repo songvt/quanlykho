@@ -20,6 +20,8 @@ interface HandoverInfo {
     receiverName: string;
     receiverTitle?: string;
     receiverDept?: string;
+    uniformSize?: string;
+    shoeSize?: string;
 }
 
 interface Props {
@@ -372,7 +374,13 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                                                 <td style={{ border: '1px solid #888', padding: '4px', verticalAlign: 'middle', fontSize: '9pt', lineHeight: 1.2 }}>
                                                     {item.spec} {item.serial ? `(Serial: ${item.serial})` : ''}
                                                 </td>
-                                                <td style={{ border: '1px solid #888', padding: '4px', verticalAlign: 'middle' }}>{item.note || ''}</td>
+                                                <td style={{ border: '1px solid #888', padding: '4px', verticalAlign: 'middle' }}>
+                                                    {item.name.toLowerCase().includes('quần áo') && handoverInfo.uniformSize
+                                                        ? `Size: ${handoverInfo.uniformSize}${item.note ? ' - ' + item.note : ''}`
+                                                        : item.name.toLowerCase().includes('giày') && handoverInfo.shoeSize
+                                                        ? `Size: ${handoverInfo.shoeSize}${item.note ? ' - ' + item.note : ''}`
+                                                        : item.note || ''}
+                                                </td>
                                             </tr>
                                         ))
                                     ) : (

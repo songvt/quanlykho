@@ -368,6 +368,11 @@ const AssetList = () => {
         return 'info';
     };
 
+    const matchedProfile = hrProfiles.find(
+        p => p.id === handoverPrint.receiverCode || 
+        (p.full_name || '').toLowerCase() === (handoverPrint.receiverName || '').toLowerCase()
+    );
+
     return (
 
         <Box p={{ xs: 1, sm: 3 }}>
@@ -816,6 +821,8 @@ const AssetList = () => {
                     receiverName: handoverPrint.receiverName,
                     receiverDept: handoverPrint.receiverDept,
                     receiverTitle: handoverPrint.receiverTitle,
+                    uniformSize: matchedProfile?.uniform_size,
+                    shoeSize: matchedProfile?.shoe_size,
                 }}
             />
         </Box>
