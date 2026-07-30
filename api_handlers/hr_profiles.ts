@@ -82,7 +82,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 try {
                     const doc = await getGoogleSheet();
                     const sheet = await getSheetByTitle(doc, 'hr_profiles');
-                    await sheet.addRows(formatted);
+                    const rows = await sheet.getRows();
+                    
+                    const rowsToAdd: any[] = [];
+                    for (const item of formatted) {
+                        const existingRow = rows.find(r => r.get('id') === item.id);
+                        if (existingRow) {
+                            existingRow.assign(item);
+                            await existingRow.save();
+                        } else {
+                            rowsToAdd.push(item);
+                        }
+                    }
+                    if (rowsToAdd.length > 0) {
+                        await sheet.addRows(rowsToAdd);
+                    }
                 } catch (e: any) {
                     console.error('GS Mirror HR Profiles Error, queuing:', e.message);
                     await supabase.from('gs_sync_queue').insert({
