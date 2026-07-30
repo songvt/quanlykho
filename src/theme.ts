@@ -321,6 +321,10 @@ const theme = createTheme({
                 root: {
                     fontSize: '0.875rem',
                     fontWeight: 500,
+                    '&.MuiInputLabel-shrink': {
+                        backgroundColor: '#0F172A',
+                        padding: '0 6px',
+                    },
                 },
             },
         },

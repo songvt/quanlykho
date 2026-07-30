@@ -52,7 +52,8 @@ import {
     Send,
     Barcode,
     Scissors,
-    ImagePlus
+    ImagePlus,
+    Volume2
 } from 'lucide-react';
 import type { RootState, AppDispatch } from '../../store';
 import { logoutUser } from '../../store/slices/authSlice';
@@ -166,6 +167,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
             { text: 'Thông báo hệ thống', icon: <Mailbox size={20} color="#f59e0b" />, path: '/announcements' }
         ] : []),
         { text: 'Trợ lý AI', icon: <Bot size={20} color="#2563eb" />, path: '/ai-assistant' },
+        { text: 'Giọng nói AI (OmniVoice)', icon: <Volume2 size={20} color="#10b981" />, path: '/omnivoice' },
         { text: 'OCR Image/PDF', icon: <FileText size={20} color="#8b5cf6" />, path: '/ocr-documents' },
         ...(hasPermission('pdf.view') ? [
             { text: 'Tách/Gộp PDF', icon: <Scissors size={20} color="#ec4899" />, path: '/pdf-tools' }

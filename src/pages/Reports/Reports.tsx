@@ -28,7 +28,8 @@ import {
     MapPin, 
     Hourglass, 
     ShoppingCart,
-    Download
+    Download,
+    ChevronRight
 } from 'lucide-react';
 
 import { fetchProducts } from '../../store/slices/productsSlice';
@@ -982,6 +983,108 @@ const Reports = () => {
         }
     };
 
+    const groupedReports = useMemo(() => {
+        const sections = [
+            {
+                title: 'Biên bản & Bàn giao',
+                subtitle: 'In và quản lý các biên bản giao nhận thiết bị vật tư',
+                reports: [
+                    {
+                        title: 'Biên Bản Nhập Kho',
+                        desc: 'In và xuất biên bản giao nhận thiết bị cho các phiếu nhập kho.',
+                        icon: <FileSignature size={22} />,
+                        color: 'success',
+                        category: 'Nhập kho',
+                        onClick: () => { setHandoverType('inbound'); setOpenHandover(true); }
+                    },
+                    {
+                        title: 'Biên Bản Xuất Kho',
+                        desc: 'In và xuất biên bản giao nhận thiết bị cho các phiếu xuất kho.',
+                        icon: <FileSignature size={22} />,
+                        color: 'warning',
+                        category: 'Xuất kho',
+                        onClick: () => { setHandoverType('outbound'); setOpenHandover(true); }
+                    }
+                ]
+            }
+        ];
+
+        if (isAdmin) {
+            sections.push(
+                {
+                    title: 'Báo cáo kho hàng',
+                    subtitle: 'Theo dõi chi tiết dữ liệu tồn kho, phân vùng và thời gian lưu kho',
+                    reports: [
+                        {
+                            title: 'Báo Cáo Tồn Kho',
+                            desc: 'Danh sách tồn kho chi tiết, giá trị tổng tài sản và số lượng khả dụng.',
+                            icon: <Warehouse size={22} />,
+                            color: 'primary',
+                            category: 'Tồn kho',
+                            onClick: handleExportInventory
+                        },
+                        {
+                            title: 'Tồn Kho Theo Quận',
+                            desc: 'Báo cáo phân vùng trữ lượng tồn kho thực tế theo từng chi nhánh quận.',
+                            icon: <MapPin size={22} />,
+                            color: 'success',
+                            category: 'Khu vực',
+                            onClick: handleExportStockByDistrict
+                        },
+                        {
+                            title: 'Tuổi Kho (FIFO)',
+                            desc: 'Cảnh báo hạn lưu kho của hàng hóa trong kho dựa trên nguyên tắc FIFO.',
+                            icon: <Hourglass size={22} />,
+                            color: 'secondary',
+                            category: 'Tuổi kho',
+                            onClick: handleExportFifoAging
+                        }
+                    ]
+                },
+                {
+                    title: 'Thống kê & Phân tích',
+                    subtitle: 'Nhật ký giao dịch, thẻ kho và hiệu suất làm việc của nhân sự',
+                    reports: [
+                        {
+                            title: 'Nhập / Xuất kì',
+                            desc: 'Báo cáo phân tích dòng chảy giao dịch chi tiết theo thời gian tùy chọn.',
+                            icon: <ArrowUpDown size={22} />,
+                            color: 'info',
+                            category: 'Giao dịch',
+                            onClick: () => setOpenPeriodReport(true)
+                        },
+                        {
+                            title: 'Lịch Sử Giao Dịch',
+                            desc: 'Toàn bộ nhật ký (log) các hoạt động xuất nhập trong toàn hệ thống.',
+                            icon: <History size={22} />,
+                            color: 'secondary',
+                            category: 'Nhật ký',
+                            onClick: () => handleExportTransactions()
+                        },
+                        {
+                            title: 'Theo Nhân Viên',
+                            desc: 'Báo cáo thống kê hiệu suất xuất nhập chi tiết theo từng nhân sự.',
+                            icon: <Users size={22} />,
+                            color: 'info',
+                            category: 'Hiệu suất',
+                            onClick: () => setOpenEmployeeReport(true)
+                        },
+                        {
+                            title: 'Thẻ Kho Chi Tiết',
+                            desc: 'Theo dõi chi tiết lịch sử biến động số lượng của từng mã sản phẩm.',
+                            icon: <FileSpreadsheet size={22} />,
+                            color: 'error',
+                            category: 'Thẻ kho',
+                            onClick: () => setOpenStockCard(true)
+                        }
+                    ]
+                }
+            );
+        }
+
+        return sections;
+    }, [isAdmin, products, stockMap, detailedStockMap, transactions, returns, employees]);
+
     const ReportCard = ({ title, desc, icon, color, category: customCategory, onClick }: any) => {
         const themeColor = color || 'primary';
         
@@ -994,46 +1097,46 @@ const Reports = () => {
             text: string;
         }> = {
             primary: {
-                main: '#2563EB',
-                bg: 'rgba(37, 99, 235, 0.06)',
-                gradient: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
-                glow: 'rgba(37, 99, 235, 0.12)',
-                text: '#1E40AF'
+                main: '#3B82F6',
+                bg: 'rgba(59, 130, 246, 0.15)',
+                gradient: 'linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%)',
+                glow: 'rgba(59, 130, 246, 0.25)',
+                text: '#60A5FA'
             },
             secondary: {
-                main: '#7C3AED',
-                bg: 'rgba(124, 58, 237, 0.06)',
-                gradient: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)',
-                glow: 'rgba(124, 58, 237, 0.12)',
-                text: '#5B21B6'
+                main: '#8B5CF6',
+                bg: 'rgba(139, 92, 246, 0.15)',
+                gradient: 'linear-gradient(135deg, #A78BFA 0%, #8B5CF6 100%)',
+                glow: 'rgba(139, 92, 246, 0.25)',
+                text: '#A78BFA'
             },
             success: {
-                main: '#059669',
-                bg: 'rgba(5, 150, 105, 0.06)',
-                gradient: 'linear-gradient(135deg, #10B981 0%, #047857 100%)',
-                glow: 'rgba(5, 150, 105, 0.12)',
-                text: '#065F46'
+                main: '#10B981',
+                bg: 'rgba(16, 185, 129, 0.15)',
+                gradient: 'linear-gradient(135deg, #34D399 0%, #10B981 100%)',
+                glow: 'rgba(16, 185, 129, 0.25)',
+                text: '#34D399'
             },
             warning: {
-                main: '#D97706',
-                bg: 'rgba(217, 119, 6, 0.06)',
-                gradient: 'linear-gradient(135deg, #F59E0B 0%, #B45309 100%)',
-                glow: 'rgba(217, 119, 6, 0.12)',
-                text: '#92400E'
+                main: '#F59E0B',
+                bg: 'rgba(245, 158, 11, 0.15)',
+                gradient: 'linear-gradient(135deg, #FBBF24 0%, #F59E0B 100%)',
+                glow: 'rgba(245, 158, 11, 0.25)',
+                text: '#FBBF24'
             },
             info: {
-                main: '#0891B2',
-                bg: 'rgba(8, 145, 178, 0.06)',
-                gradient: 'linear-gradient(135deg, #06B6D4 0%, #0E7490 100%)',
-                glow: 'rgba(8, 145, 178, 0.12)',
-                text: '#075985'
+                main: '#06B6D4',
+                bg: 'rgba(6, 182, 212, 0.15)',
+                gradient: 'linear-gradient(135deg, #22D3EE 0%, #06B6D4 100%)',
+                glow: 'rgba(6, 182, 212, 0.25)',
+                text: '#22D3EE'
             },
             error: {
-                main: '#DC2626',
-                bg: 'rgba(220, 38, 38, 0.06)',
-                gradient: 'linear-gradient(135deg, #EF4444 0%, #B91C1C 100%)',
-                glow: 'rgba(220, 38, 38, 0.12)',
-                text: '#991B1B'
+                main: '#EF4444',
+                bg: 'rgba(239, 68, 68, 0.15)',
+                gradient: 'linear-gradient(135deg, #F87171 0%, #EF4444 100%)',
+                glow: 'rgba(239, 68, 68, 0.25)',
+                text: '#F87171'
             },
         };
 
@@ -1060,18 +1163,20 @@ const Reports = () => {
             }
         }
 
+        const isDialogAction = title.includes('Biên Bản') || title.includes('Nhập / Xuất') || title.includes('Theo Nhân Viên') || title.includes('Thẻ Kho') || title.includes('Nhân viên');
+
         return (
             <Card 
                 onClick={onClick}
                 sx={{
                     height: '100%',
-                    borderRadius: '24px',
+                    borderRadius: '16px',
                     position: 'relative',
                     overflow: 'hidden',
-                    background: '#ffffff',
-                    border: '1px solid rgba(226, 232, 240, 0.7)',
-                    boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.02), 0 2px 4px -1px rgba(15, 23, 42, 0.01)',
-                    transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+                    background: 'var(--bg-glass) !important',
+                    border: '1px solid var(--border-glass) !important',
+                    boxShadow: 'var(--shadow-glass) !important',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                     cursor: 'pointer',
                     '&::before': {
                         content: '""',
@@ -1080,33 +1185,33 @@ const Reports = () => {
                         left: 0,
                         width: '100%',
                         height: '100%',
-                        background: `radial-gradient(circle 120px at var(--mouse-x, 50%) var(--mouse-y, 50%), ${activeColor.glow}, transparent 100%)`,
+                        background: `radial-gradient(circle 100px at var(--mouse-x, 50%) var(--mouse-y, 50%), ${activeColor.glow}, transparent 100%)`,
                         opacity: 0,
                         transition: 'opacity 0.4s ease',
                         pointerEvents: 'none',
                         zIndex: 0,
                     },
                     '&:hover': {
-                        transform: 'translateY(-6px)',
-                        boxShadow: `0 20px 30px -10px ${activeColor.glow}, 0 8px 16px -8px rgba(0, 0, 0, 0.03)`,
-                        borderColor: activeColor.main,
+                        transform: 'translateY(-4px)',
+                        boxShadow: `0 8px 24px -5px ${activeColor.glow}, var(--shadow-glass-hover) !important`,
+                        borderColor: `${activeColor.main} !important`,
                         '&::before': {
                             opacity: 1,
                         },
                         '& .card-icon-container': {
-                            transform: 'scale(1.08) translateY(-2px)',
-                            boxShadow: `0 8px 24px ${activeColor.glow}`,
+                            transform: 'scale(1.05)',
+                            boxShadow: `0 4px 12px ${activeColor.glow}`,
                         },
                         '& .card-action-btn': {
                             background: activeColor.gradient,
                             color: '#ffffff',
                             borderColor: 'transparent',
-                            transform: 'scale(1.1) rotate(-10deg)',
-                            boxShadow: `0 4px 12px ${activeColor.glow}`,
+                            transform: 'scale(1.05)',
+                            boxShadow: `0 4px 8px ${activeColor.glow}`,
                         }
                     },
                     '&:active': {
-                        transform: 'translateY(-2px)',
+                        transform: 'translateY(-1px)',
                     }
                 }}
                 onMouseMove={(e) => {
@@ -1117,10 +1222,10 @@ const Reports = () => {
                     e.currentTarget.style.setProperty('--mouse-y', `${y}px`);
                 }}
             >
-                {/* Visual Accent - Top gradient line */}
+                {/* Visual Accent - Left gradient line */}
                 <Box sx={{
-                    height: '5px',
-                    width: '100%',
+                    height: '100%',
+                    width: '4px',
                     background: activeColor.gradient,
                     position: 'absolute',
                     top: 0,
@@ -1130,14 +1235,14 @@ const Reports = () => {
 
                 <Box sx={{ 
                     display: 'flex', 
-                    flexDirection: { xs: 'row', sm: 'column' }, 
-                    p: { xs: 2.5, sm: 3.5 },
-                    pt: { xs: 3, sm: 4.5 },
+                    flexDirection: 'row', 
+                    p: 2,
+                    pl: 2.5,
                     height: '100%',
                     width: '100%',
                     boxSizing: 'border-box',
-                    gap: { xs: 2, sm: 3 },
-                    alignItems: { xs: 'center', sm: 'stretch' },
+                    gap: 2,
+                    alignItems: 'center',
                     position: 'relative',
                     zIndex: 1,
                 }}>
@@ -1148,15 +1253,15 @@ const Reports = () => {
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            width: { xs: 46, sm: 54 },
-                            height: { xs: 46, sm: 54 },
-                            minWidth: { xs: 46, sm: 54 },
-                            borderRadius: '16px',
+                            width: { xs: 40, sm: 44 },
+                            height: { xs: 40, sm: 44 },
+                            minWidth: { xs: 40, sm: 44 },
+                            borderRadius: '12px',
                             background: activeColor.bg,
                             color: activeColor.text,
                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                             '& svg': {
-                                fontSize: { xs: '1.4rem', sm: '1.75rem' }
+                                fontSize: '1.25rem'
                             }
                         }}
                     >
@@ -1169,7 +1274,7 @@ const Reports = () => {
                         display: 'flex', 
                         flexDirection: 'column', 
                         alignItems: 'flex-start',
-                        gap: 0.5,
+                        gap: 0.25,
                         overflow: 'hidden'
                     }}>
                         {/* Category Pill */}
@@ -1178,13 +1283,13 @@ const Reports = () => {
                             sx={{
                                 fontWeight: 750,
                                 textTransform: 'uppercase',
-                                letterSpacing: '0.8px',
-                                px: 1.2,
-                                py: 0.3,
-                                borderRadius: '10px',
+                                letterSpacing: '0.6px',
+                                px: 1,
+                                py: 0.2,
+                                borderRadius: '8px',
                                 bgcolor: activeColor.bg,
                                 color: activeColor.text,
-                                fontSize: '0.65rem',
+                                fontSize: '0.6rem',
                                 display: 'inline-flex',
                                 width: 'fit-content'
                             }}
@@ -1197,11 +1302,11 @@ const Reports = () => {
                             variant="h6" 
                             fontWeight="800" 
                             sx={{ 
-                                fontSize: { xs: '0.95rem', sm: '1.15rem' }, 
-                                color: '#0F172A',
-                                lineHeight: 1.3,
-                                letterSpacing: '-0.3px',
-                                mt: 0.5
+                                fontSize: '0.95rem', 
+                                color: 'var(--text-primary) !important',
+                                lineHeight: 1.25,
+                                letterSpacing: '-0.2px',
+                                mt: 0.25
                             }}
                         >
                             {title}
@@ -1211,12 +1316,12 @@ const Reports = () => {
                         <Typography 
                             variant="body2" 
                             sx={{ 
-                                fontSize: { xs: '0.775rem', sm: '0.85rem' }, 
-                                color: '#475569', 
-                                lineHeight: 1.4,
+                                fontSize: '0.8rem', 
+                                color: 'var(--text-secondary) !important', 
+                                lineHeight: 1.35,
                                 display: '-webkit-box',
                                 WebkitLineBreak: 'anywhere',
-                                WebkitLineClamp: { xs: 2, sm: 3 },
+                                WebkitLineClamp: 2,
                                 WebkitBoxOrient: 'vertical',
                                 overflow: 'hidden'
                             }}
@@ -1228,10 +1333,9 @@ const Reports = () => {
                     {/* Action Button Container */}
                     <Box sx={{ 
                         display: 'flex', 
-                        alignSelf: { xs: 'center', sm: 'flex-end' },
-                        mt: { sm: 'auto' },
+                        alignSelf: 'center',
                         justifyContent: 'flex-end',
-                        pl: { xs: 1, sm: 0 }
+                        pl: 0.5
                     }}>
                         <Box
                             className="card-action-btn"
@@ -1239,19 +1343,19 @@ const Reports = () => {
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                width: { xs: 34, sm: 38 },
-                                height: { xs: 34, sm: 38 },
+                                width: 32,
+                                height: 32,
                                 borderRadius: '50%',
                                 border: `1.5px solid ${activeColor.bg}`,
                                 color: activeColor.text,
                                 bgcolor: 'transparent',
                                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                 '& svg': {
-                                    fontSize: '1.1rem'
+                                    fontSize: '1rem'
                                 }
                             }}
                         >
-                            <Download size={16} />
+                            {isDialogAction ? <ChevronRight size={16} /> : <Download size={14} />}
                         </Box>
                     </Box>
                 </Box>
@@ -1357,116 +1461,82 @@ const Reports = () => {
             </Box>
 
             {selectedTab === 0 && (
-                <Grid container spacing={{ xs: 2.5, sm: 3.5 }} justifyContent="center" maxWidth={1200} mx="auto">
-                    {isAdmin && (
-                        <>
-                            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                                <ReportCard
-                                    title="Báo Cáo Tồn Kho"
-                                    desc="Danh sách tồn kho chi tiết, giá trị tổng tài sản và số lượng khả dụng."
-                                    icon={<Warehouse size={20} />}
-                                    color="primary"
-                                    onClick={handleExportInventory}
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                                <ReportCard
-                                    title="Nhập / Xuất"
-                                    desc="Báo cáo phân tích dòng chảy giao dịch chi tiết theo thời gian."
-                                    icon={<ArrowUpDown size={20} />}
-                                    color="info"
-                                    onClick={() => setOpenPeriodReport(true)}
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                                <ReportCard
-                                    title="Lịch Sử Giao Dịch"
-                                    desc="Toàn bộ nhật ký (log) các hoạt động xuất nhập trong toàn hệ thống."
-                                    icon={<History size={20} />}
-                                    color="secondary"
-                                    onClick={() => handleExportTransactions()}
-                                />
-                            </Grid>
-                        </>
-                    )}
+                <Stack spacing={4} maxWidth={1200} mx="auto">
+                    {groupedReports.map((section, idx) => (
+                        <Box key={idx}>
+                            {/* Section Header */}
+                            <Box sx={{ mb: 2.5, borderBottom: '1px solid var(--border-glass)', pb: 1.5 }}>
+                                <Typography 
+                                    variant="h6" 
+                                    sx={{ 
+                                        fontWeight: 800, 
+                                        color: 'var(--text-primary)', 
+                                        display: 'flex', 
+                                        alignItems: 'center',
+                                        gap: 1,
+                                        fontSize: '1.25rem',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}
+                                >
+                                    {section.title}
+                                </Typography>
+                                <Typography 
+                                    variant="body2" 
+                                    sx={{ 
+                                        color: 'var(--text-secondary)',
+                                        fontSize: '0.85rem',
+                                        mt: 0.5,
+                                        display: 'block'
+                                    }}
+                                >
+                                    {section.subtitle}
+                                </Typography>
+                            </Box>
 
-                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                        <ReportCard
-                            title="Biên Bản Nhập Kho"
-                            category="Biên bản nhập kho"
-                            desc="In và xuất biên bản giao nhận thiết bị cho các phiếu nhập kho."
-                            icon={<FileSignature size={20} />}
-                            color="success"
-                            onClick={() => { setHandoverType('inbound'); setOpenHandover(true); }}
-                        />
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                        <ReportCard
-                            title="Biên Bản Xuất Kho"
-                            category="Biên bản xuất kho"
-                            desc="In và xuất biên bản giao nhận thiết bị cho các phiếu xuất kho."
-                            icon={<FileSignature size={20} />}
-                            color="warning"
-                            onClick={() => { setHandoverType('outbound'); setOpenHandover(true); }}
-                        />
-                    </Grid>
-
-                    {isAdmin && (
-                        <>
-                            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                                <ReportCard
-                                    title="Theo Nhân Viên"
-                                    desc="Báo cáo thống kê hiệu suất xuất nhập chi tiết theo từng nhân sự."
-                                    icon={<Users size={20} />}
-                                    color="info"
-                                    onClick={() => setOpenEmployeeReport(true)}
-                                />
+                            {/* Reports Grid */}
+                            <Grid container spacing={{ xs: 2.5, sm: 3.5 }}>
+                                {section.reports.map((report, rIdx) => (
+                                    <Grid key={rIdx} size={{ xs: 12, sm: 6, md: 4 }}>
+                                        <ReportCard
+                                            title={report.title}
+                                            desc={report.desc}
+                                            icon={report.icon}
+                                            color={report.color}
+                                            category={report.category}
+                                            onClick={report.onClick}
+                                        />
+                                    </Grid>
+                                ))}
                             </Grid>
-                            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                                <ReportCard
-                                    title="Thẻ Kho"
-                                    desc="Theo dõi chi tiết lịch sử biến động số lượng của từng mã sản phẩm."
-                                    icon={<FileSpreadsheet size={20} />}
-                                    color="error"
-                                    onClick={() => setOpenStockCard(true)}
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                                <ReportCard
-                                    title="Tồn Kho Theo Quận"
-                                    desc="Báo cáo phân vùng trữ lượng tồn kho thực tế theo từng chi nhánh quận."
-                                    icon={<MapPin size={20} />}
-                                    color="success"
-                                    onClick={handleExportStockByDistrict}
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                                <ReportCard
-                                    title="Tuổi Kho"
-                                    category="Tuổi kho (FIFO)"
-                                    desc="Cảnh báo hạn lưu kho của hàng hóa dựa trên nguyên tắc FIFO."
-                                    icon={<Hourglass size={20} />}
-                                    color="secondary"
-                                    onClick={handleExportFifoAging}
-                                />
-                            </Grid>
-                        </>
-                    )}
-                </Grid>
+                        </Box>
+                    ))}
+                </Stack>
             )}
 
             {selectedTab === 1 && (
-                <Grid container spacing={{ xs: 2.5, sm: 3.5 }} justifyContent="center" maxWidth={1200} mx="auto">
-                    <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                        <ReportCard
-                            title="Đơn Hàng"
-                            desc="Danh sách tổng hợp và tiến độ duyệt các đơn hàng yêu cầu cấp phát."
-                            icon={<ShoppingCart size={20} />}
-                            color="success"
-                            onClick={handleExportOrders}
-                        />
+                <Box maxWidth={1200} mx="auto">
+                    <Box sx={{ mb: 2.5, borderBottom: '1px solid var(--border-glass)', pb: 1.5 }}>
+                        <Typography variant="h6" sx={{ color: 'var(--text-primary)', fontWeight: 800, textTransform: 'uppercase', fontSize: '1.25rem' }}>
+                            Báo cáo Đơn hàng
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: 'var(--text-secondary)', fontSize: '0.85rem', mt: 0.5 }}>
+                            Xuất báo cáo tổng hợp và theo dõi tiến độ duyệt các đơn hàng yêu cầu cấp phát.
+                        </Typography>
+                    </Box>
+                    <Grid container spacing={{ xs: 2.5, sm: 3.5 }}>
+                        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                            <ReportCard
+                                title="Đơn Hàng"
+                                desc="Danh sách tổng hợp và tiến độ duyệt các đơn hàng yêu cầu cấp phát."
+                                icon={<ShoppingCart size={22} />}
+                                color="success"
+                                category="Đơn hàng"
+                                onClick={handleExportOrders}
+                            />
+                        </Grid>
                     </Grid>
-                </Grid>
+                </Box>
             )}
 
             {/* Tab 3: Data Management (Admin Only) */}

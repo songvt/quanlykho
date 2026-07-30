@@ -46,7 +46,7 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
     const printRef = useRef<HTMLDivElement>(null);
     const [templateType, setTemplateType] = useState<'default' | 'bhl'>('default');
 
-    // State for the 6 protective equipment items
+    // State for the 7 protective equipment items
     const [bhlItems, setBhlItems] = useState<BhlItem[]>([
         { stt: 1, name: 'Dây đai bảo hiểm', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 1, spec: 'Dây đai 1 móc', serial: '', note: '' },
         { stt: 2, name: 'Dây đai bảo hiểm (2 móc)', unit: 'Chiếc', contract: '0', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Bổ sung cho lực lượng trạm viễn thông thực hiện công việc trên cao.', serial: '', note: '' },
@@ -54,6 +54,7 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
         { stt: 4, name: 'Quần áo bảo hộ lao động', unit: 'Bộ', contract: '≥ 1', quota: '3 Bộ/1 NV', quantity: 1, spec: 'Đồng phục công ty ACT', serial: '', note: '' },
         { stt: 5, name: 'Áo bảo hộ mùa đông', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo gió', serial: '', note: '' },
         { stt: 6, name: 'Giày Bảo Hộ Lao Động', unit: 'Đôi', contract: '≥ 1', quota: '1 Đôi/1 NV', quantity: 1, spec: 'Giày bảo hộ chống đinh, chống va đập', serial: '', note: '' },
+        { stt: 7, name: 'Bảng tên nhân viên', unit: 'Cái', contract: '≥ 1', quota: '1 Cái/1 NV', quantity: 1, spec: 'Bảng tên nhân viên', serial: '', note: '' },
     ]);
 
     const now = new Date();
@@ -311,12 +312,12 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                                 {templateType === 'default' ? (
                                     <tr>
                                         {[
-                                            { label: 'Mã tài sản', w: 95 },
-                                            { label: 'Tên tài sản', w: undefined },
-                                            { label: 'Số lượng', w: 60 },
-                                            { label: 'Loại tài sản', w: 170 },
-                                            { label: 'Serial (nếu có)', w: 140 },
-                                            { label: 'Ghi Chú', w: 80 },
+                                            { label: 'Mã tài sản', w: '12%' },
+                                            { label: 'Tên tài sản', w: '38%' },
+                                            { label: 'Số lượng', w: '10%' },
+                                            { label: 'Loại tài sản', w: '15%' },
+                                            { label: 'Serial (nếu có)', w: '15%' },
+                                            { label: 'Ghi Chú', w: '10%' },
                                         ].map((h, i) => (
                                             <th key={i} style={{ width: h.w, background: '#f2f2f2', color: '#000', border: '1px solid #000', padding: '5px 4px', textAlign: 'center', fontWeight: 'bold' }}>{h.label}</th>
                                         ))}
@@ -324,14 +325,14 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                                 ) : (
                                     <tr>
                                         {[
-                                            { label: 'STT', w: 35 },
-                                            { label: 'Nội dung yêu cầu', w: 165 },
-                                            { label: 'Đơn vị', w: 50 },
-                                            { label: 'Theo HĐ', w: 60 },
-                                            { label: 'Số lượng định mức', w: 90 },
-                                            { label: qtyLabel, w: 80 },
-                                            { label: 'Quy cách, TCKT', w: 220 },
-                                            { label: 'Ghi chú', w: 80 },
+                                            { label: 'STT', w: '5%' },
+                                            { label: 'Nội dung yêu cầu', w: '25%' },
+                                            { label: 'Đơn vị', w: '8%' },
+                                            { label: 'Theo HĐ', w: '10%' },
+                                            { label: 'Số lượng định mức', w: '12%' },
+                                            { label: qtyLabel, w: '10%' },
+                                            { label: 'Quy cách, TCKT', w: '20%' },
+                                            { label: 'Ghi chú', w: '10%' },
                                         ].map((h, i) => (
                                             <th key={i} style={{ width: h.w, background: '#f2f2f2', color: '#000', border: '1px solid #000', padding: '5px 4px', textAlign: 'center', fontWeight: 'bold' }}>{h.label}</th>
                                         ))}
@@ -401,16 +402,19 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                                 <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>BÊN GIAO</div>
                                 <div style={{ fontStyle: 'italic', fontSize: '9.5pt', marginTop: 2 }}>(Ký, ghi rõ họ tên)</div>
                                 <div style={{ height: 55 }}></div>
+                                <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>{handoverInfo.giverName2 || ''}</div>
                             </div>
                             <div style={{ width: '30%' }}>
                                 <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>BÊN NHẬN</div>
                                 <div style={{ fontStyle: 'italic', fontSize: '9.5pt', marginTop: 2 }}>(Ký, ghi rõ họ tên)</div>
                                 <div style={{ height: 55 }}></div>
+                                <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>{handoverInfo.receiverName || ''}</div>
                             </div>
                             <div style={{ width: '30%' }}>
                                 <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>GIÁM ĐỐC TRUNG TÂM</div>
                                 <div style={{ fontStyle: 'italic', fontSize: '9.5pt', marginTop: 2 }}>(Ký, ghi rõ họ tên)</div>
                                 <div style={{ height: 55 }}></div>
+                                <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>{handoverInfo.giverName || ''}</div>
                             </div>
                         </div>
                     </Box>

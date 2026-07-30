@@ -50,6 +50,7 @@ const ZaloLogs       = lazy(() => import('./pages/Zalo/ZaloLogs'));
 
 const ImageTools     = lazy(() => import('./pages/ImageTools'));
 const AIAssistant    = lazy(() => import('./pages/AIAssistant'));
+const OmniVoice      = lazy(() => import('./pages/OmniVoice'));
 const OCRDocuments   = lazy(() => import('./pages/OCRDocuments'));
 const PDFTools       = lazy(() => import('./pages/PDFTools'));
 
@@ -160,6 +161,7 @@ function App() {
 
                                 <Route path="profile" element={<UserProfile />} />
                                 <Route path="ai-assistant" element={<AIAssistant />} />
+                                <Route path="omnivoice" element={<OmniVoice />} />
                                 <Route path="ocr-documents" element={<OCRDocuments />} />
                                 
                                 <Route element={<ProtectedRoute allowedPermissions={['pdf.view']} />}>

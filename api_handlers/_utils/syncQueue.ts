@@ -9,7 +9,14 @@ const formatLocalDate = (date: Date | string) => {
     return `${day}/${month}/${year}`;
 };
 
+let isSyncing = false;
+
 export async function runSyncQueue() {
+    if (isSyncing) {
+        console.log('[Background Sync] Một tiến trình đồng bộ khác đang chạy...');
+        return { message: 'Sync in progress' };
+    }
+    isSyncing = true;
     console.log('[Background Sync] Khởi động tiến trình xử lý hàng đợi đồng bộ ngầm...');
 
     try {

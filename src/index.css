@@ -517,6 +517,11 @@ select {
     color: var(--text-secondary) !important;
   }
   
+  .MuiInputLabel-root.MuiInputLabel-shrink {
+    background-color: #0F172A !important;
+    padding: 0 6px !important;
+  }
+  
   .MuiInputLabel-root.Mui-focused {
     color: var(--brand-primary) !important;
   }
