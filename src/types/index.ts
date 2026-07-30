@@ -56,6 +56,8 @@ export interface HRProfile {
     contract_type?: string;
     labor_status?: string;
     insurance_participation?: boolean;
+    uniform_size?: string;
+    shoe_size?: string;
     created_at?: string;
 }
 

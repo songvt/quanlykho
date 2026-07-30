@@ -380,11 +380,13 @@ export const generateEmployeeTemplate = () => {
         THAM_GIA_BAO_HIEM: "Có",
         VAI_TRO: "staff",
         TEN_DANG_NHAP: "nguyenvana",
-        QUAN_HUYEN: "Quận 12"
+        QUAN_HUYEN: "Quận 12",
+        SIZE_QUAN_AO_BHLD: "L",
+        SIZE_GIAY_DEP: "41"
     }];
     generateTemplateFromHeaders(
         headers, 
-        [15, 25, 12, 15, 15, 30, 20, 25, 15, 15, 30, 20, 20, 15, 20, 15], 
+        [15, 25, 12, 15, 15, 30, 20, 25, 15, 15, 30, 20, 20, 15, 20, 15, 18, 15], 
         "EmployeeTemplate", 
         "EmployeeImportTemplate.xlsx"
     );

@@ -63,6 +63,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     contract_type: p.contract_type || '',
                     labor_status: p.labor_status || 'Đang làm việc',
                     insurance_participation: p.insurance_participation || false,
+                    uniform_size: p.uniform_size || '',
+                    shoe_size: p.shoe_size || '',
                     created_at: p.created_at || new Date().toISOString()
                 }));
 

@@ -188,6 +188,8 @@ const EmployeeList = () => {
         contract_type: string;
         labor_status: string;
         insurance_participation: boolean;
+        uniform_size: string;
+        shoe_size: string;
         check: string;
     }>({
         id: '',
@@ -207,6 +209,8 @@ const EmployeeList = () => {
         contract_type: '',
         labor_status: 'Đang làm việc',
         insurance_participation: false,
+        uniform_size: '',
+        shoe_size: '',
         check: ''
     });
 
@@ -256,6 +260,8 @@ const EmployeeList = () => {
                     contract_type: profileItem.contract_type || 'HĐ lao động xác định thời hạn',
                     labor_status: profileItem.labor_status || 'Đang làm việc',
                     insurance_participation: profileItem.insurance_participation || false,
+                    uniform_size: profileItem.uniform_size || '',
+                    shoe_size: profileItem.shoe_size || '',
                     check: ''
                 });
             } else {
@@ -278,6 +284,8 @@ const EmployeeList = () => {
                     contract_type: '',
                     labor_status: 'Đang làm việc',
                     insurance_participation: false,
+                    uniform_size: '',
+                    shoe_size: '',
                     check: employeeItem.check || ''
                 });
             }
@@ -301,6 +309,8 @@ const EmployeeList = () => {
                 contract_type: viewMode === 'personnel' ? 'HĐ lao động xác định thời hạn' : '',
                 labor_status: 'Đang làm việc',
                 insurance_participation: viewMode === 'personnel',
+                uniform_size: '',
+                shoe_size: '',
                 check: ''
             });
         }
@@ -337,7 +347,9 @@ const EmployeeList = () => {
                     official_date: formData.official_date || undefined,
                     contract_type: formData.contract_type,
                     labor_status: formData.labor_status,
-                    insurance_participation: formData.insurance_participation
+                    insurance_participation: formData.insurance_participation,
+                    uniform_size: formData.uniform_size,
+                    shoe_size: formData.shoe_size
                 };
 
                 if (editingId) {
@@ -469,7 +481,9 @@ const EmployeeList = () => {
             { header: 'Loại hợp đồng', key: 'contract_type', width: 30 },
             { header: 'Trạng thái lao động', key: 'labor_status', width: 18 },
             { header: 'Thâm niên', key: 'seniority', width: 20 },
-            { header: 'Tham gia bảo hiểm', key: 'insurance', width: 20, align: 'center' as const }
+            { header: 'Tham gia bảo hiểm', key: 'insurance', width: 20, align: 'center' as const },
+            { header: 'Size quần áo BHLĐ', key: 'uniform_size', width: 18, align: 'center' as const },
+            { header: 'Size giày dép', key: 'shoe_size', width: 15, align: 'center' as const }
         ];
 
         const data = filteredHRProfiles.map((emp, index) => ({
@@ -487,7 +501,9 @@ const EmployeeList = () => {
             contract_type: emp.contract_type || '-',
             labor_status: emp.labor_status || '-',
             seniority: calculateSeniority(emp.official_date || emp.probation_date),
-            insurance: emp.insurance_participation ? 'Có' : 'Không'
+            insurance: emp.insurance_participation ? 'Có' : 'Không',
+            uniform_size: emp.uniform_size || '-',
+            shoe_size: emp.shoe_size || '-'
         }));
 
         exportStandardReport(data, 'Danh_sach_nhan_su', 'BẢNG THÔNG TIN NHÂN SỰ CHI TIẾT', columns, profile?.full_name || 'Admin');
@@ -670,7 +686,9 @@ const EmployeeList = () => {
                                                                     official_date: parseImportedDate(row['NGAY_CHINH_THUC'] || row['Ngày chính thức']),
                                                                     contract_type: String(row['LOAI_HOP_DONG'] || row['Loại hợp đồng'] || 'HĐ lao động xác định thời hạn').trim(),
                                                                     labor_status: String(row['TRANG_THAI_LAO_DONG'] || row['Trạng thái lao động'] || 'Đang làm việc').trim(),
-                                                                    insurance_participation: isInsured
+                                                                    insurance_participation: isInsured,
+                                                                    uniform_size: row['SIZE_QUAN_AO_BHLD'] || row['Size quần áo BHLĐ'] || row['SIZE_QUAN_AO'] || row['Size quần áo'] ? String(row['SIZE_QUAN_AO_BHLD'] || row['Size quần áo BHLĐ'] || row['SIZE_QUAN_AO'] || row['Size quần áo']).trim() : '',
+                                                                    shoe_size: row['SIZE_GIAY_DEP'] || row['Size giày dép'] || row['SIZE_GIAY'] || row['Size giày'] ? String(row['SIZE_GIAY_DEP'] || row['Size giày dép'] || row['SIZE_GIAY'] || row['Size giày']).trim() : ''
                                                                 };
                                                             }).filter(emp => emp.id && emp.full_name);
 
@@ -819,6 +837,8 @@ const EmployeeList = () => {
                                         <TableCell sx={{ borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap', fontWeight: 'bold', color: '#1e293b' }}>Trạng thái lao động</TableCell>
                                         <TableCell sx={{ borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap', fontWeight: 'bold', color: '#1e293b' }}>Thâm niên</TableCell>
                                         <TableCell align="center" sx={{ borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap', fontWeight: 'bold', color: '#1e293b' }}>Tham gia bảo hiểm</TableCell>
+                                        <TableCell align="center" sx={{ borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap', fontWeight: 'bold', color: '#1e293b' }}>Size quần áo BHLĐ</TableCell>
+                                        <TableCell align="center" sx={{ borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap', fontWeight: 'bold', color: '#1e293b' }}>Size giày dép</TableCell>
                                     </>
                                 ) : (
                                     <>
@@ -837,7 +857,7 @@ const EmployeeList = () => {
                         <TableBody>
                             {viewMode === 'personnel' ? (
                                 filteredHRProfiles.length === 0 ? (
-                                    <TableRow><TableCell colSpan={15} align="center" sx={{ py: 4, color: 'text.secondary' }}>Chưa có dữ liệu nhân sự</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={17} align="center" sx={{ py: 4, color: 'text.secondary' }}>Chưa có dữ liệu nhân sự</TableCell></TableRow>
                                 ) : (
                                     filteredHRProfiles.map((employee) => {
                                         const isSelected = selectedIds.includes(employee.id);
@@ -878,6 +898,8 @@ const EmployeeList = () => {
                                                         <Chip label="Không" color="default" size="small" />
                                                     )}
                                                 </TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 'bold', fontFamily: 'monospace' }}>{employee.uniform_size || '-'}</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 'bold', fontFamily: 'monospace' }}>{employee.shoe_size || '-'}</TableCell>
                                                 <TableCell align="right">
                                                     <Stack direction="row" spacing={0.5} justifyContent="flex-end">
                                                         <IconButton size="small" onClick={() => handleOpen(employee)} color="primary"><EditIcon fontSize="small" /></IconButton>
@@ -1068,6 +1090,26 @@ const EmployeeList = () => {
                                             control={<Switch checked={formData.insurance_participation} onChange={handleChange} name="insurance_participation" color="primary" />}
                                             label="Tham gia bảo hiểm"
                                             sx={{ ml: 1 }}
+                                        />
+                                    </Grid>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                        <TextField
+                                            name="uniform_size"
+                                            label="Size quần áo BHLĐ"
+                                            fullWidth
+                                            placeholder="Ví dụ: M, L, XL, XXL..."
+                                            value={formData.uniform_size || ''}
+                                            onChange={handleChange}
+                                        />
+                                    </Grid>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                        <TextField
+                                            name="shoe_size"
+                                            label="Size giày dép"
+                                            fullWidth
+                                            placeholder="Ví dụ: 39, 40, 41, 42..."
+                                            value={formData.shoe_size || ''}
+                                            onChange={handleChange}
                                         />
                                     </Grid>
                                 </>
