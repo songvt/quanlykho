@@ -2492,20 +2492,20 @@ const PrintableReportTemplate = ({ report }: { report: InfractionReport }) => {
             sx={{
                 width: '794px',
                 height: '1123px',
-                p: '20mm 15mm 20mm 30mm',
+                p: '12mm 15mm 12mm 30mm',
                 bgcolor: 'white',
                 color: '#000000',
                 fontFamily: "'Times New Roman', Times, serif",
                 boxSizing: 'border-box',
                 '@media print': {
-                    p: '20mm 15mm 20mm 30mm !important',
+                    p: '10mm 15mm 10mm 30mm !important',
                     width: '794px !important',
                     height: 'auto !important',
                 }
             }}
         >
             {/* Header Columns */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3, borderBottom: '2px solid #000000', pb: 1.5 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2, borderBottom: '2px solid #000000', pb: 1 }}>
                 <Box sx={{ width: '45%' }}>
                     <Typography sx={{ fontWeight: 'bold', fontSize: '11pt', fontFamily: "'Times New Roman', Times, serif", lineHeight: 1.2 }}>
                         CÔNG TY CỔ PHẦN VIỄN THÔNG ACT
@@ -2525,7 +2525,7 @@ const PrintableReportTemplate = ({ report }: { report: InfractionReport }) => {
             </Box>
 
             {/* Two Column Personnel Block */}
-            <Grid container spacing={4} sx={{ mb: 3 }}>
+            <Grid container spacing={2} sx={{ mb: 2 }}>
                 <Grid size={{ xs: 6 }} sx={{ pr: 3 }}>
                     <Typography sx={{ fontWeight: 'bold', fontSize: '11.5pt', mb: 1.2, fontFamily: "'Times New Roman', Times, serif" }}>
                         NGƯỜI KIỂM TRA/PHÁT HIỆN
@@ -2574,7 +2574,7 @@ const PrintableReportTemplate = ({ report }: { report: InfractionReport }) => {
             </Grid>
 
             {/* Sections using precise dotted underlines */}
-            <Stack spacing={3} sx={{ mb: 4 }}>
+            <Stack spacing={1.5} sx={{ mb: 2 }}>
                 
                 {/* SECTION 1 */}
                 <Box>
@@ -2611,7 +2611,7 @@ const PrintableReportTemplate = ({ report }: { report: InfractionReport }) => {
             </Stack>
 
             {/* Signatures at the bottom - Separated by rows to prevent misalignment due to text wrapping */}
-            <Box sx={{ mt: 5, '@media print': { mt: 4 } }}>
+            <Box sx={{ mt: 2.5, '@media print': { mt: 1.5 }, pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                 {/* Row 1: Titles */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <Box sx={{ textAlign: 'center', width: '30%' }}>
@@ -2632,7 +2632,7 @@ const PrintableReportTemplate = ({ report }: { report: InfractionReport }) => {
                 </Box>
 
                 {/* Row 2: Space for signature */}
-                <Box sx={{ height: 85 }} />
+                <Box sx={{ height: 50 }} />
 
                 {/* Row 3: Names */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -2687,6 +2687,7 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
 
     return (
         <Box
+            className="printable-document"
             sx={{
                 width: '794px',
                 minHeight: '1123px',
@@ -2700,6 +2701,7 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
                     p: '10mm 15mm 10mm 30mm !important',
                     width: '794px',
                     height: 'auto !important',
+                    minHeight: 'auto !important',
                 }
             }}
         >
@@ -2888,6 +2890,7 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
                     
                     <TableContainer component={Box} sx={{ border: '1px solid #000000', borderRadius: '0px', overflow: 'hidden' }}>
                         <Table size="small" sx={{ 
+                            borderCollapse: 'collapse',
                             '& td, & th': { 
                                 border: '1px solid #000000', 
                                 color: '#000000',
@@ -2935,7 +2938,7 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
             {/* Bottom Signatures Layout matching image */}
             <Box sx={{ mt: 1.5, '@media print': { mt: 1.5 } }}>
                 {/* Director Title Centered */}
-                <Box sx={{ textAlign: 'center', width: '100%', mb: 8 }}>
+                <Box sx={{ textAlign: 'center', width: '100%', mb: 4 }}>
                     <Typography sx={{ fontWeight: 'bold', fontSize: '11.5pt', fontFamily: "'Times New Roman', Times, serif" }}>
                         BAN GIÁM ĐỐC TRUNG TÂM
                     </Typography>

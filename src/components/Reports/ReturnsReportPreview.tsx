@@ -15,7 +15,7 @@ const ReturnsReportTemplate = ({ data, employeeName, date, receiverName }: Retur
     const dateObj = new Date(date);
 
     return (
-        <Box sx={{
+        <Box className="printable-document" sx={{
             bgcolor: 'white',
             color: '#000000',
             minWidth: 800,

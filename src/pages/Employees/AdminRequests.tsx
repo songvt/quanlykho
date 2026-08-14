@@ -1302,6 +1302,7 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
 
     return (
         <Box
+            className="printable-document"
             sx={{
                 width: '794px',
                 minHeight: '1123px',
@@ -1315,6 +1316,7 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
                     p: '5mm 15mm 25mm 30mm !important',
                     width: '794px',
                     height: 'auto !important',
+                    minHeight: 'auto !important',
                 }
             }}
         >
@@ -1503,6 +1505,7 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
                     
                     <TableContainer component={Box} sx={{ border: '1px solid #000000', borderRadius: '0px', overflow: 'hidden' }}>
                         <Table size="small" sx={{ 
+                            borderCollapse: 'collapse',
                             '& td, & th': { 
                                 border: '1px solid #000000', 
                                 color: '#000000',
@@ -1550,7 +1553,7 @@ const PrintableLeaveRequestTemplate = ({ leaveRequest }: { leaveRequest: any }) 
             {/* Bottom Signatures Layout matching image */}
             <Box sx={{ mt: 1.5, '@media print': { mt: 1.5 } }}>
                 {/* Director Title Centered */}
-                <Box sx={{ textAlign: 'center', width: '100%', mb: 8 }}>
+                <Box sx={{ textAlign: 'center', width: '100%', mb: 4 }}>
                     <Typography sx={{ fontWeight: 'bold', fontSize: '11.5pt', fontFamily: "'Times New Roman', Times, serif" }}>
                         BAN GIÁM ĐỐC TRUNG TÂM
                     </Typography>

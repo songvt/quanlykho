@@ -518,7 +518,7 @@ const AssetList = () => {
                                 <Box
                                     sx={{
                                         px: 2, py: 1,
-                                        bgcolor: selectedIds.includes(asset.id) ? '#eff6ff' : '#f8fafc',
+                                        bgcolor: selectedIds.includes(asset.id) ? 'action.selected' : 'rgba(255, 255, 255, 0.02)',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'space-between',

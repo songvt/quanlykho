@@ -40,6 +40,8 @@ const AssetMonthlyReport = lazy(() => import('./pages/Assets/AssetMonthlyReport'
 const AssetDetailReport  = lazy(() => import('./pages/Assets/AssetDetailReport'));
 const AssetBrokenReport  = lazy(() => import('./pages/Assets/AssetBrokenReport'));
 const AssetHandoverBhl   = lazy(() => import('./pages/Assets/AssetHandoverBhl'));
+const KCSWarrantyList    = lazy(() => import('./pages/Assets/KCSWarranty/KCSWarrantyList'));
+const KCSWarrantyForm    = lazy(() => import('./pages/Assets/KCSWarranty/KCSWarrantyForm'));
 
 // Zalo Module
 const ZaloConfig     = lazy(() => import('./pages/Zalo/ZaloConfig'));
@@ -127,6 +129,8 @@ function App() {
                                 <Route element={<ProtectedRoute allowedPermissions={['assets.view', 'assets.manage', 'assets.list_only', '*']} />}>
                                     <Route path="assets" element={<AssetList />} />
                                     <Route path="assets/handover-bhl" element={<AssetHandoverBhl />} />
+                                    <Route path="assets/kcs-warranty" element={<KCSWarrantyList />} />
+                                    <Route path="assets/kcs-warranty/new" element={<KCSWarrantyForm />} />
                                 </Route>
 
                                 <Route element={<ProtectedRoute allowedPermissions={['assets.view', 'assets.manage', '*']} />}>

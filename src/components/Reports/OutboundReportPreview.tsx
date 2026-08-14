@@ -19,7 +19,7 @@ const OutboundReportTemplate = ({ data, delivererName, date, receiverName, sende
     const dateObj = new Date(date);
 
     return (
-        <Box sx={{ 
+        <Box className="printable-document" sx={{ 
             p: 6, 
             bgcolor: 'white', 
             color: '#000000', 

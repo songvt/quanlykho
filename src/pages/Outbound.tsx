@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchProducts } from '../store/slices/productsSlice';
-import { addOutboundTransaction, fetchTransactions } from '../store/slices/transactionsSlice';
+import { addOutboundTransaction, fetchTransactions, deleteTransaction, bulkDeleteTransactions } from '../store/slices/transactionsSlice';
 import { fetchInventory, selectProductStock } from '../store/slices/inventorySlice';
 import { fetchEmployees } from '../store/slices/employeesSlice';
 import { fetchOrders, updateOrderStatus } from '../store/slices/ordersSlice';
@@ -15,6 +15,7 @@ import PrintIcon from '@mui/icons-material/Print';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CloseIcon from '@mui/icons-material/Close';
+import DeleteIcon from '@mui/icons-material/Delete';
 import OutboundReportPreview from '../components/Reports/OutboundReportPreview';
 import FulfillOrderDialog from './Outbound/FulfillOrderDialog';
 import StaffOutboundView from './Outbound/StaffOutboundView';
@@ -47,6 +48,10 @@ export const Outbound = () => {
     const [isProductVerified, setIsProductVerified] = useState(false);
     const [showScanner, setShowScanner] = useState(false);
     const fulfillmentStock = useSelector((state: RootState) => selectProductStock(state, selectedOrder?.product_id || ''));
+
+    const [itemToDelete, setItemToDelete] = useState<any>(null);
+    const [deleteDialog, setDeleteDialog] = useState(false);
+    const [bulkDeleteDialog, setBulkDeleteDialog] = useState(false);
 
     useEffect(() => {
         if (status === 'idle') dispatch(fetchProducts());
@@ -144,6 +149,31 @@ export const Outbound = () => {
                 setOpenPrintPreview(true);
             }
         } catch (err: any) { notifyError(err.message); }
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!itemToDelete) return;
+        try {
+            await dispatch(deleteTransaction({ id: itemToDelete.id, type: 'outbound' })).unwrap();
+            success('Xóa thành công!');
+            setDeleteDialog(false);
+            setItemToDelete(null);
+            dispatch(fetchInventory());
+        } catch (error: any) {
+            notifyError(error.message || 'Lỗi khi xóa');
+        }
+    };
+
+    const handleBulkDeleteConfirm = async () => {
+        try {
+            await dispatch(bulkDeleteTransactions({ ids: selectedPrintIds, type: 'outbound' })).unwrap();
+            success(`Đã xóa ${selectedPrintIds.length} mục thành công!`);
+            setBulkDeleteDialog(false);
+            setSelectedPrintIds([]);
+            dispatch(fetchInventory());
+        } catch (error: any) {
+            notifyError(error.message || 'Lỗi khi xóa hàng loạt');
+        }
     };
 
     if (status === 'loading') return <Box display="flex" justifyContent="center" p={8}><CircularProgress /></Box>;
@@ -252,6 +282,14 @@ export const Outbound = () => {
                 transactions={transactions.filter(t => t.type === 'outbound')}
                 selectedIds={selectedPrintIds}
                 onSelectChange={setSelectedPrintIds}
+                onDelete={(item) => {
+                    setItemToDelete(item);
+                    setDeleteDialog(true);
+                }}
+                onBulkDelete={(ids) => {
+                    setSelectedPrintIds(ids);
+                    setBulkDeleteDialog(true);
+                }}
             />
                 </>
             )}
@@ -311,6 +349,26 @@ export const Outbound = () => {
                 <DialogActions sx={{ gap: 1 }}>
                     <AppButton onClick={() => setOpenPrintPreview(false)} icon={<CloseIcon />} title="Đóng" />
                     <AppButton variant="contained" color="primary" onClick={() => window.print()} icon={<PrintIcon />} title="In Biên Bản" />
+                </DialogActions>
+            </Dialog>
+
+            {/* Delete Confirmation */}
+            <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)} PaperProps={{ sx: { borderRadius: 3 } }}>
+                <DialogTitle sx={{ fontWeight: 900 }}>Xác nhận xóa</DialogTitle>
+                <DialogContent>Bạn có chắc chắn muốn xóa giao dịch xuất kho này?</DialogContent>
+                <DialogActions sx={{ gap: 1, p: 2 }}>
+                    <AppButton onClick={() => setDeleteDialog(false)} icon={<CloseIcon />} title="Hủy" />
+                    <AppButton onClick={handleDeleteConfirm} color="error" variant="contained" icon={<DeleteIcon />} title="Xóa" />
+                </DialogActions>
+            </Dialog>
+
+            {/* Bulk Delete Confirmation */}
+            <Dialog open={bulkDeleteDialog} onClose={() => setBulkDeleteDialog(false)} PaperProps={{ sx: { borderRadius: 3 } }}>
+                <DialogTitle sx={{ fontWeight: 900 }}>Xác nhận xóa hàng loạt</DialogTitle>
+                <DialogContent>Bạn có chắc chắn muốn xóa {selectedPrintIds.length} giao dịch xuất kho đã chọn?</DialogContent>
+                <DialogActions sx={{ gap: 1, p: 2 }}>
+                    <AppButton onClick={() => setBulkDeleteDialog(false)} icon={<CloseIcon />} title="Hủy" />
+                    <AppButton onClick={handleBulkDeleteConfirm} color="error" variant="contained" icon={<DeleteIcon />} title="Xóa tất cả" />
                 </DialogActions>
             </Dialog>
         </Box>

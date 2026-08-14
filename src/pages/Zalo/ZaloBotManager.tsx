@@ -761,7 +761,7 @@ const ZaloBotManager: React.FC = () => {
                         </TableHead>
                         <TableBody>
                             {inboxMessages.map(msg => (
-                                <TableRow key={msg.id} hover sx={{ '&:hover': { bgcolor: '#eff6ff' }, transition: 'background-color 0.2s ease' }}>
+                                <TableRow key={msg.id} hover sx={{ transition: 'background-color 0.2s ease' }}>
                                     <TableCell sx={{ whiteSpace: 'nowrap' }}>
                                         <IconButton size="small" color="primary" title="Sửa tin nhắn" onClick={() => handleEditInboxMessage(msg)}><EditIcon fontSize="small"/></IconButton>
                                         <IconButton size="small" color="success" title="Tạo liên hệ" onClick={() => handleAddContactFromInbox(msg)}><AddIcon fontSize="small"/></IconButton>

@@ -298,6 +298,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                             const assetSubItems = [
                                 { text: 'Danh sách tài sản', path: '/assets', icon: <ListIcon size={18} /> },
                                 { text: 'Bàn giao CCDC-BHLĐ', path: '/assets/handover-bhl', icon: <ArrowRightLeft size={18} /> },
+                                { text: 'KCS thiết bị bảo hành', path: '/assets/kcs-warranty', icon: <FileSignature size={18} /> },
                                 ...(canViewReports ? [
                                     { text: 'BC tổng hợp CCDC-TSNT', path: '/assets/report-ccdc', icon: <PieChart size={18} /> },
                                     { text: 'Chi tiết CCDC-TSNT', path: '/assets/detail-ccdc', icon: <FileSearch size={18} /> },

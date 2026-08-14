@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
+import { useSelector } from 'react-redux';
+import type { RootState } from '../../store';
 import {
     Box, Typography, TextField, InputAdornment, Paper, Checkbox, 
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
     TablePagination, Card, CardContent, 
-    useMediaQuery, useTheme
+    useMediaQuery, useTheme, IconButton, Stack, Button
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import VoiceSearchButton from '../VoiceSearchButton';
 import { useDebounce } from '../../hooks/useDebounce';
 import { formatDate } from '../../utils/dateUtils';
@@ -14,11 +18,23 @@ interface OutboundListProps {
     transactions: any[];
     selectedIds: string[];
     onSelectChange: (ids: string[]) => void;
+    onEdit?: (item: any) => void;
+    onDelete?: (item: any) => void;
+    onBulkDelete?: (ids: string[]) => void;
 }
 
-const OutboundList: React.FC<OutboundListProps> = ({ transactions, selectedIds, onSelectChange }) => {
+const OutboundList: React.FC<OutboundListProps> = ({ 
+    transactions, 
+    selectedIds, 
+    onSelectChange,
+    onEdit,
+    onDelete,
+    onBulkDelete
+}) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const { profile } = useSelector((state: RootState) => state.auth);
+    const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';
     const [searchTerm, setSearchTerm] = useState('');
     const debouncedSearch = useDebounce(searchTerm, 300);
     const [page, setPage] = useState(0);
@@ -43,10 +59,23 @@ const OutboundList: React.FC<OutboundListProps> = ({ transactions, selectedIds, 
 
     return (
         <Box mt={4}>
-            <Box mb={3} display="flex" justifyContent="space-between" alignItems="center">
-                <Typography variant="h5" sx={{ fontWeight: 700, color: '#0f172a', letterSpacing: '-0.025em' }}>
-                    Lịch sử xuất kho
-                </Typography>
+            <Box mb={3} display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
+                <Box display="flex" alignItems="center" gap={2}>
+                    <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', letterSpacing: '-0.025em' }}>
+                        Lịch sử xuất kho
+                    </Typography>
+                    {isAdmin && onBulkDelete && selectedIds.length > 0 && (
+                        <Button
+                            variant="contained" 
+                            color="error" 
+                            startIcon={<DeleteIcon />}
+                            onClick={() => { onBulkDelete(selectedIds); }}
+                            sx={{ fontWeight: 700, borderRadius: 2 }}
+                        >
+                            Xóa {selectedIds.length} mục đã chọn
+                        </Button>
+                    )}
+                </Box>
                 <TextField
                     size="small" 
                     placeholder="Tìm mã sản phẩm, serial..." 
@@ -115,6 +144,28 @@ const OutboundList: React.FC<OutboundListProps> = ({ transactions, selectedIds, 
                                             <span>SL: <b>{t.quantity.toLocaleString('vi-VN')}</b></span>
                                         </Typography>
                                     </Box>
+                                    {isAdmin && (onEdit || onDelete) && (
+                                        <Box display="flex" justifyContent="flex-end" gap={1} mt={1} pl={4}>
+                                            {onEdit && (
+                                                <IconButton 
+                                                    onClick={() => onEdit(t)} 
+                                                    size="small" 
+                                                    sx={{ bgcolor: 'rgba(255, 255, 255, 0.05)', '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.1)' } }}
+                                                >
+                                                    <EditIcon fontSize="small" color="primary" />
+                                                </IconButton>
+                                            )}
+                                            {onDelete && (
+                                                <IconButton 
+                                                    onClick={() => onDelete(t)} 
+                                                    size="small" 
+                                                    sx={{ bgcolor: 'rgba(255, 255, 255, 0.05)', '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.1)' } }}
+                                                >
+                                                    <DeleteIcon fontSize="small" color="error" />
+                                                </IconButton>
+                                            )}
+                                        </Box>
+                                    )}
                                 </CardContent>
                             </Card>
                         ))}
@@ -146,6 +197,17 @@ const OutboundList: React.FC<OutboundListProps> = ({ transactions, selectedIds, 
                                             {head}
                                         </TableCell>
                                     ))}
+                                    {isAdmin && (onEdit || onDelete) && (
+                                        <TableCell align="center" sx={{ 
+                                            color: '#64748b', 
+                                            fontWeight: 600, 
+                                            fontSize: '0.875rem',
+                                            borderBottom: '1px solid #e2e8f0',
+                                            py: 2
+                                        }}>
+                                            Thao tác
+                                        </TableCell>
+                                    )}
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -154,8 +216,6 @@ const OutboundList: React.FC<OutboundListProps> = ({ transactions, selectedIds, 
                                         key={t.id} 
                                         selected={selectedIds.includes(t.id)}
                                         sx={{ 
-                                            '&:hover': { bgcolor: '#f1f5f9 !important' },
-                                            '&.Mui-selected': { bgcolor: '#eff6ff !important' },
                                             transition: 'background-color 0.2s'
                                         }}
                                     >
@@ -185,6 +245,30 @@ const OutboundList: React.FC<OutboundListProps> = ({ transactions, selectedIds, 
                                         <TableCell sx={{ borderBottom: '1px solid #f1f5f9', color: '#64748b' }}>
                                             {t.district || '-'}
                                         </TableCell>
+                                        {isAdmin && (onEdit || onDelete) && (
+                                            <TableCell align="center" sx={{ borderBottom: '1px solid #f1f5f9' }}>
+                                                <Stack direction="row" spacing={1} justifyContent="center">
+                                                    {onEdit && (
+                                                        <IconButton 
+                                                            onClick={() => onEdit(t)} 
+                                                            size="small" 
+                                                            sx={{ bgcolor: 'rgba(255, 255, 255, 0.05)', '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.1)' } }}
+                                                        >
+                                                            <EditIcon fontSize="small" color="primary" />
+                                                        </IconButton>
+                                                    )}
+                                                    {onDelete && (
+                                                        <IconButton 
+                                                            onClick={() => onDelete(t)} 
+                                                            size="small" 
+                                                            sx={{ bgcolor: 'rgba(255, 255, 255, 0.05)', '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.1)' } }}
+                                                        >
+                                                            <DeleteIcon fontSize="small" color="error" />
+                                                        </IconButton>
+                                                    )}
+                                                </Stack>
+                                            </TableCell>
+                                        )}
                                     </TableRow>
                                 ))}
                             </TableBody>

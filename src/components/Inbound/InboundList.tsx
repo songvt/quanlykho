@@ -199,9 +199,8 @@ const InboundList: React.FC<InboundListProps> = ({ onEdit, onDelete, onBulkDelet
                                     paginatedTransactions.map((row) => (
                                         <TableRow 
                                             key={row.id}
+                                            selected={selectedIds.includes(row.id)}
                                             sx={{ 
-                                                '&:hover': { bgcolor: '#f1f5f9' },
-                                                bgcolor: selectedIds.includes(row.id) ? '#eff6ff' : 'inherit',
                                                 transition: 'background-color 0.2s'
                                             }}
                                         >
