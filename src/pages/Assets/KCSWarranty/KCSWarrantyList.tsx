@@ -4,10 +4,11 @@ import {
     TableContainer, TableHead, TableRow, Button, IconButton,
     Chip, Toolbar
 } from '@mui/material';
-import { Add as AddIcon, Print as PrintIcon, Visibility as ViewIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Add as AddIcon, Print as PrintIcon, Visibility as ViewIcon, Delete as DeleteIcon, Download as DownloadIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../config/supabase';
 import dayjs from 'dayjs';
+import { exportStandardReport } from '../../../utils/excelUtils';
 
 interface WarrantyRecord {
     id: string;
@@ -83,20 +84,68 @@ const KCSWarrantyList: React.FC = () => {
         }
     };
 
+    const handleExportExcel = async () => {
+        if (records.length === 0) {
+            alert('Không có dữ liệu để xuất!');
+            return;
+        }
+        
+        const cols = [
+            { header: 'STT', key: 'stt', width: 8 },
+            { header: 'Mã phiếu', key: 'form_code', width: 25 },
+            { header: 'Ngày yêu cầu', key: 'created_at', width: 20 },
+            { header: 'Bộ phận', key: 'department', width: 30 },
+            { header: 'Người yêu cầu', key: 'requester_name', width: 25 },
+            { header: 'Loại phiếu', key: 'form_type_label', width: 25 }
+        ];
+
+        const dataToExport = records.map((r, idx) => ({
+            stt: idx + 1,
+            form_code: r.form_code,
+            created_at: dayjs(r.created_at).format('DD/MM/YYYY HH:mm'),
+            department: r.department,
+            requester_name: r.requester_id ? employeesMap[r.requester_id] || '' : '',
+            form_type_label: getTypeLabel(r.form_type)
+        }));
+
+        try {
+            await exportStandardReport(
+                dataToExport,
+                `Lich_su_KCS_Bao_hanh_${dayjs().format('YYYYMMDDHHmm')}`,
+                'LỊCH SỬ KCS & BẢO HÀNH THIẾT BỊ',
+                cols
+            );
+        } catch (err: any) {
+            console.error(err);
+            alert('Lỗi xuất Excel: ' + err.message);
+        }
+    };
+
     return (
         <Box>
             <Toolbar sx={{ pl: { sm: 2 }, pr: { xs: 1, sm: 1 }, justifyContent: 'space-between', mb: 2 }}>
                 <Typography variant="h5" id="tableTitle" component="div" fontWeight="bold">
                     Lịch sử KCS & Bảo hành thiết bị
                 </Typography>
-                <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={() => navigate('/assets/kcs-warranty/new')}
-                    sx={{ borderRadius: '8px' }}
-                >
-                    Tạo phiếu mới
-                </Button>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                        variant="outlined"
+                        color="success"
+                        startIcon={<DownloadIcon />}
+                        onClick={handleExportExcel}
+                        sx={{ borderRadius: '8px' }}
+                    >
+                        Xuất Excel
+                    </Button>
+                    <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={() => navigate('/assets/kcs-warranty/new')}
+                        sx={{ borderRadius: '8px' }}
+                    >
+                        Tạo phiếu mới
+                    </Button>
+                </Box>
             </Toolbar>
 
             <TableContainer component={Paper} elevation={0} sx={{ borderRadius: '12px', border: '1px solid rgba(0,0,0,0.1)' }}>
