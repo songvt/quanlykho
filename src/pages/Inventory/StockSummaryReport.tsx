@@ -237,223 +237,6 @@ const StockSummaryReport: React.FC = () => {
                 ws.getRow(2).height = 16;
             };
 
-            // ── Sheet 1: Chi tiết (nhóm theo tab đang chọn) ──────────────────
-            const ws1 = wb.addWorksheet('Chi Tiết Tồn Kho');
-            ws1.columns = [
-                { key: 'stt', width: 6 }, { key: 'itemCode', width: 35 }, { key: 'productName', width: 70 },
-                { key: 'unit', width: 8 }, { key: 'district', width: 20 }, { key: 'warehouseType', width: 22 },
-                { key: 'itemStatus', width: 22 }, { key: 'quantity', width: 12 }, { key: 'unitPrice', width: 16 }, { key: 'totalValue', width: 18 },
-            ];
-            const groupLabel = tab === 'product' ? 'Tên Hàng Hóa' : tab === 'status' ? 'Trạng Thái' : 'Quận/Huyện';
-            addTitle(ws1, 'BÁO CÁO TỒN KHO CHI TIẾT',
-                `Ngày xuất: ${now.toLocaleDateString('vi-VN')}  |  Nhóm theo: ${groupLabel}  |  Lọc: ${filterStatus || 'Tất cả TT'} / ${filterDistrict || 'Tất cả QH'}`, 10);
-
-            const hr = ws1.addRow(['STT', 'Mã Hàng', 'Tên Hàng Hóa', 'ĐVT', 'Quận/Huyện', 'Loại Kho', 'Trạng Thái', 'Số Lượng', 'Đơn Giá', 'Thành Tiền']);
-            hr.height = 30; hr.eachCell(c => Object.assign(c, H));
-
-            let stt = 1;
-            groupedData.forEach(([gk, rows]) => {
-                const gRow = ws1.addRow([`▶ ${groupLabel}: ${gk}`]);
-                ws1.mergeCells(`A${gRow.number}:J${gRow.number}`);
-                gRow.height = 20; gRow.eachCell({ includeEmpty: true }, c => Object.assign(c, GH));
-
-                let gQty = 0, gVal = 0;
-                rows.forEach((r, ri) => {
-                    gQty += r.quantity; gVal += r.totalValue;
-                    const dr = ws1.addRow([stt++, r.itemCode, r.productName, r.unit, r.district, r.warehouseType, r.itemStatus, r.quantity, r.unitPrice, r.totalValue]);
-                    dr.height = 18;
-                    dr.eachCell((c, cn) => {
-                        Object.assign(c, D);
-                        if (cn === 1 || cn === 8) c.alignment = { ...D.alignment, horizontal: 'center' };
-                        if (cn === 9 || cn === 10) { c.alignment = { ...D.alignment, horizontal: 'right' }; c.numFmt = '#,##0'; }
-                        if (ri % 2 === 1) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } };
-                    });
-                });
-                const sr = ws1.addRow([`Cộng: ${gk}`, '', '', '', '', '', '', gQty, '', gVal]);
-                ws1.mergeCells(`A${sr.number}:G${sr.number}`);
-                sr.height = 22;
-                sr.eachCell({ includeEmpty: true }, (c, cn) => {
-                    Object.assign(c, SUB);
-                    if (cn === 1) c.alignment = { ...SUB.alignment, horizontal: 'left' };
-                    if (cn === 8 || cn === 10) c.numFmt = '#,##0';
-                });
-            });
-            const gr = ws1.addRow(['TỔNG CỘNG', '', '', '', '', '', '', totalQty, '', totalValue]);
-            ws1.mergeCells(`A${gr.number}:G${gr.number}`);
-            gr.height = 26;
-            gr.eachCell({ includeEmpty: true }, (c, cn) => {
-                Object.assign(c, TOT);
-                if (cn === 1) c.alignment = { ...TOT.alignment, horizontal: 'left' };
-                if (cn === 8 || cn === 10) c.numFmt = '#,##0';
-            });
-
-            // ── Sheet 2: Theo Hàng Hóa ─────────────────────────────────────────
-            const ws2 = wb.addWorksheet('Theo Hàng Hóa');
-            ws2.columns = [{ key: 's', width: 6 }, { key: 'c', width: 35 }, { key: 'n', width: 70 }, { key: 'u', width: 8 }, { key: 'wh', width: 22 }, { key: 'st', width: 22 }, { key: 'q', width: 14 }, { key: 'v', width: 20 }];
-            addTitle(ws2, 'TỔNG HỢP TỒN KHO THEO HÀNG HÓA', `Ngày xuất: ${now.toLocaleDateString('vi-VN')}`, 8);
-            const h2 = ws2.addRow(['STT', 'Mã Hàng', 'Tên Hàng Hóa', 'ĐVT', 'Loại Kho', 'Trạng Thái', 'Tổng SL', 'Thành Tiền']);
-            h2.height = 28; h2.eachCell(c => Object.assign(c, H));
-            const pMap: Record<string, { code: string; name: string; unit: string; wh: string; st: string; qty: number; val: number }> = {};
-            filteredRows.forEach(r => {
-                const key = `${r.productId}|${r.warehouseType}|${r.itemStatus}`;
-                if (!pMap[key]) pMap[key] = { code: r.itemCode, name: r.productName, unit: r.unit, wh: r.warehouseType, st: r.itemStatus, qty: 0, val: 0 };
-                pMap[key].qty += r.quantity;
-                pMap[key].val += r.totalValue;
-            });
-            const pArr = Object.values(pMap).sort((a, b) => a.name.localeCompare(b.name) || a.wh.localeCompare(b.wh) || a.st.localeCompare(b.st));
-            pArr.forEach((p, i) => {
-                const r = ws2.addRow([i + 1, p.code, p.name, p.unit, p.wh, p.st, p.qty, p.val]);
-                r.height = 18;
-                r.eachCell((c, cn) => {
-                    Object.assign(c, D);
-                    if (cn === 1 || cn === 7) c.alignment = { ...D.alignment, horizontal: 'center' };
-                    if (cn === 8) { c.alignment = { ...D.alignment, horizontal: 'right' }; c.numFmt = '#,##0'; }
-                    if (i % 2 === 1) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } };
-                });
-            });
-            const t2 = ws2.addRow(['TỔNG CỘNG', '', '', '', '', '', pArr.reduce((s, p) => s + p.qty, 0), pArr.reduce((s, p) => s + p.val, 0)]);
-            ws2.mergeCells(`A${t2.number}:F${t2.number}`);
-            t2.height = 24; 
-            t2.eachCell({ includeEmpty: true }, (c, cn) => { 
-                Object.assign(c, TOT); 
-                if (cn === 1) c.alignment = { ...TOT.alignment, horizontal: 'left' }; 
-                if (cn === 7 || cn === 8) c.numFmt = '#,##0'; 
-            });
-
-            // ── Sheet 3: Theo Trạng Thái ──────────────────────────────────────
-            const ws3 = wb.addWorksheet('Theo Trạng Thái');
-            ws3.columns = [{ key: 's', width: 6 }, { key: 'st', width: 25 }, { key: 'wh', width: 22 }, { key: 'q', width: 14 }, { key: 'v', width: 20 }, { key: 'p', width: 12 }];
-            addTitle(ws3, 'TỔNG HỢP TỒN KHO THEO TRẠNG THÁI', `Ngày xuất: ${now.toLocaleDateString('vi-VN')}`, 6);
-            const h3 = ws3.addRow(['STT', 'Trạng Thái', 'Loại Kho', 'Số Lượng', 'Thành Tiền', 'Tỷ Lệ (%)']);
-            h3.height = 28; h3.eachCell(c => Object.assign(c, H));
-            const stMap: Record<string, { st: string, wh: string, qty: number; val: number }> = {};
-            filteredRows.forEach(r => {
-                const key = `${r.itemStatus}|${r.warehouseType}`;
-                if (!stMap[key]) stMap[key] = { st: r.itemStatus, wh: r.warehouseType, qty: 0, val: 0 };
-                stMap[key].qty += r.quantity;
-                stMap[key].val += r.totalValue;
-            });
-            const stArr = Object.values(stMap).sort((a, b) => a.st.localeCompare(b.st) || a.wh.localeCompare(b.wh));
-            const stTot = stArr.reduce((s, v) => s + v.qty, 0);
-            stArr.forEach((v, i) => {
-                const pct = stTot > 0 ? ((v.qty / stTot) * 100).toFixed(1) + '%' : '0%';
-                const r = ws3.addRow([i + 1, v.st, v.wh, v.qty, v.val, pct]);
-                r.height = 18;
-                r.eachCell((c, cn) => {
-                    Object.assign(c, D);
-                    if (cn === 1 || cn === 4 || cn === 6) c.alignment = { ...D.alignment, horizontal: 'center' };
-                    if (cn === 5) { c.alignment = { ...D.alignment, horizontal: 'right' }; c.numFmt = '#,##0'; }
-                    if (i % 2 === 1) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } };
-                });
-            });
-            const t3 = ws3.addRow(['TỔNG CỘNG', '', '', stTot, filteredRows.reduce((s, r) => s + r.totalValue, 0), '100%']);
-            ws3.mergeCells(`A${t3.number}:C${t3.number}`);
-            t3.height = 24; 
-            t3.eachCell({ includeEmpty: true }, (c, cn) => { 
-                Object.assign(c, TOT); 
-                if (cn === 1) c.alignment = { ...TOT.alignment, horizontal: 'left' }; 
-                if (cn === 4 || cn === 5) c.numFmt = '#,##0'; 
-            });
-
-            // ── Sheet 4: Theo Quận/Huyện ──────────────────────────────────────
-            const ws4 = wb.addWorksheet('Theo Quận Huyện');
-            ws4.columns = [{ key: 's', width: 6 }, { key: 'd', width: 22 }, { key: 'wh', width: 22 }, { key: 'st', width: 22 }, { key: 'np', width: 14 }, { key: 'q', width: 14 }, { key: 'v', width: 20 }, { key: 'p', width: 12 }];
-            addTitle(ws4, 'TỔNG HỢP TỒN KHO THEO QUẬN/HUYỆN', `Ngày xuất: ${now.toLocaleDateString('vi-VN')}`, 8);
-            const h4 = ws4.addRow(['STT', 'Quận/Huyện', 'Loại Kho', 'Trạng Thái', 'Số Mặt Hàng', 'Số Lượng', 'Thành Tiền', 'Tỷ Lệ (%)']);
-            h4.height = 28; h4.eachCell(c => Object.assign(c, H));
-            const dMap: Record<string, { d: string, wh: string, st: string, prods: Set<string>; qty: number; val: number }> = {};
-            filteredRows.forEach(r => {
-                const key = `${r.district}|${r.warehouseType}|${r.itemStatus}`;
-                if (!dMap[key]) dMap[key] = { d: r.district, wh: r.warehouseType, st: r.itemStatus, prods: new Set(), qty: 0, val: 0 };
-                dMap[key].prods.add(r.productId);
-                dMap[key].qty += r.quantity;
-                dMap[key].val += r.totalValue;
-            });
-            const dArr = Object.values(dMap).sort((a, b) => a.d.localeCompare(b.d) || a.wh.localeCompare(b.wh) || a.st.localeCompare(b.st));
-            const dTot = dArr.reduce((s, v) => s + v.qty, 0);
-            dArr.forEach((v, i) => {
-                const pct = dTot > 0 ? ((v.qty / dTot) * 100).toFixed(1) + '%' : '0%';
-                const r = ws4.addRow([i + 1, v.d, v.wh, v.st, v.prods.size, v.qty, v.val, pct]);
-                r.height = 18;
-                r.eachCell((c, cn) => {
-                    Object.assign(c, D);
-                    if (cn === 1 || cn === 5 || cn === 6 || cn === 8) c.alignment = { ...D.alignment, horizontal: 'center' };
-                    if (cn === 7) { c.alignment = { ...D.alignment, horizontal: 'right' }; c.numFmt = '#,##0'; }
-                    if (i % 2 === 1) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } };
-                });
-            });
-            const t4 = ws4.addRow(['TỔNG CỘNG', '', '', '', new Set(filteredRows.map(r => r.productId)).size, dTot, filteredRows.reduce((s, r) => s + r.totalValue, 0), '100%']);
-            ws4.mergeCells(`A${t4.number}:D${t4.number}`);
-            t4.height = 24; 
-            t4.eachCell({ includeEmpty: true }, (c, cn) => { 
-                Object.assign(c, TOT); 
-                if (cn === 1) c.alignment = { ...TOT.alignment, horizontal: 'left' }; 
-                if (cn === 6 || cn === 7) c.numFmt = '#,##0'; 
-            });
-
-            // ── Sheet 5: Chi Tiết Serial ──────────────────────────────────────
-            const ws5 = wb.addWorksheet('Chi Tiết Serial');
-            ws5.columns = [
-                { key: 'stt', width: 6 }, { key: 'itemCode', width: 35 }, { key: 'productName', width: 70 },
-                { key: 'serial', width: 30 }, { key: 'district', width: 20 }, { key: 'wh', width: 22 }, { key: 'status', width: 22 } 
-            ];
-            addTitle(ws5, 'BÁO CÁO CHI TIẾT SERIAL TỒN KHO', `Ngày xuất: ${now.toLocaleDateString('vi-VN')}  |  Lọc: ${filterStatus || 'Tất cả TT'} / ${filterDistrict || 'Tất cả QH'}`, 7);
-            const h5 = ws5.addRow(['STT', 'Mã Hàng', 'Tên Hàng Hóa', 'Số Serial', 'Quận/Huyện', 'Loại Kho', 'Trạng Thái']);
-            h5.height = 28; h5.eachCell(c => Object.assign(c, H));
-            
-            // Lấy danh sách serial tồn kho
-            const stockBySerial: Record<string, any> = {};
-            transactions.forEach((t: any) => {
-                if (t.type === 'inbound') {
-                    const wh = (t.warehouse_type || '').trim().toUpperCase();
-                    if (wh !== 'KHO_DV_Q12' && wh !== 'KHO_DV_HMN' && wh !== 'KHO_DV_CCI' && wh !== 'KHO_NV_Q12' && wh !== 'KHO_NV_HMN') return;
-                    
-                    const key = t.serial_code ? `serial_${t.serial_code}` : `noserial_${t.id}`;
-                    if (!stockBySerial[key]) {
-                        stockBySerial[key] = {
-                            productId: t.product_id,
-                            serial: t.serial_code || '',
-                            status: t.item_status || 'Mới',
-                            district: t.district || 'Kho Tổng',
-                            wh: wh || 'Kho Tổng',
-                            qty: 0
-                        };
-                    }
-                    stockBySerial[key].qty += Number(t.quantity);
-                } else if (t.type === 'outbound') {
-                    const key = t.serial_code ? `serial_${t.serial_code}` : null;
-                    if (key && stockBySerial[key]) stockBySerial[key].qty -= Number(t.quantity);
-                }
-            });
-            let activeSerials = Object.values(stockBySerial).filter(s => s.qty > 0);
-            
-            // Lọc theo điều kiện tìm kiếm và bộ lọc hiện tại
-            activeSerials = activeSerials.filter(s => {
-                const p = products.find(prod => prod.id === s.productId);
-                const sText = search.toLowerCase();
-                const ms = !sText || (p?.name?.toLowerCase().includes(sText)) || (p?.item_code?.toLowerCase().includes(sText)) || s.district.toLowerCase().includes(sText) || s.serial.toLowerCase().includes(sText);
-                const mst = !filterStatus || s.status === filterStatus;
-                const md = !filterDistrict || s.district === filterDistrict;
-                return ms && mst && md;
-            });
-            
-            activeSerials.sort((a, b) => {
-                const pA = products.find(prod => prod.id === a.productId)?.name || '';
-                const pB = products.find(prod => prod.id === b.productId)?.name || '';
-                return pA.localeCompare(pB) || a.serial.localeCompare(b.serial);
-            });
-            
-            activeSerials.forEach((s, i) => {
-                const p = products.find(prod => prod.id === s.productId);
-                const r = ws5.addRow([i + 1, p?.item_code || '', p?.name || '', s.serial || '(Không có serial)', s.district, s.wh, s.status]);
-                r.height = 18;
-                r.eachCell((c, cn) => {
-                    Object.assign(c, D);
-                    if (cn === 1 || cn === 7) c.alignment = { ...D.alignment, horizontal: 'center' };
-                    if (i % 2 === 1) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } };
-                });
-            });
-
             // ── Sheet 6: Báo cáo BCCS ─────────────────────────────────────────
             const ws6 = wb.addWorksheet('Báo cáo BCCS');
             ws6.columns = [
@@ -515,6 +298,228 @@ const StockSummaryReport: React.FC = () => {
                     Object.assign(c, D);
                     if (cn === 2 || cn === 3 || cn === 4) c.alignment = { ...D.alignment, horizontal: 'center' };
                     if (cn === 3) c.numFmt = '#,##0';
+                    if (i % 2 === 1) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } };
+                });
+            });
+
+            // ── Sheet 4: Theo Quận/Huyện ──────────────────────────────────────
+            const ws4 = wb.addWorksheet('Theo Quận Huyện');
+            ws4.columns = [{ key: 's', width: 6 }, { key: 'd', width: 22 }, { key: 'wh', width: 22 }, { key: 'st', width: 22 }, { key: 'np', width: 14 }, { key: 'q', width: 14 }, { key: 'v', width: 20 }, { key: 'p', width: 12 }];
+            addTitle(ws4, 'TỔNG HỢP TỒN KHO THEO QUẬN/HUYỆN', `Ngày xuất: ${now.toLocaleDateString('vi-VN')}`, 8);
+            const h4 = ws4.addRow(['STT', 'Quận/Huyện', 'Loại Kho', 'Trạng Thái', 'Số Mặt Hàng', 'Số Lượng', 'Thành Tiền', 'Tỷ Lệ (%)']);
+            h4.height = 28; h4.eachCell(c => Object.assign(c, H));
+            const dMap: Record<string, { d: string, wh: string, st: string, prods: Set<string>; qty: number; val: number }> = {};
+            filteredRows.forEach(r => {
+                const key = `${r.district}|${r.warehouseType}|${r.itemStatus}`;
+                if (!dMap[key]) dMap[key] = { d: r.district, wh: r.warehouseType, st: r.itemStatus, prods: new Set(), qty: 0, val: 0 };
+                dMap[key].prods.add(r.productId);
+                dMap[key].qty += r.quantity;
+                dMap[key].val += r.totalValue;
+            });
+            const dArr = Object.values(dMap).sort((a, b) => a.d.localeCompare(b.d) || a.wh.localeCompare(b.wh) || a.st.localeCompare(b.st));
+            const dTot = dArr.reduce((s, v) => s + v.qty, 0);
+            dArr.forEach((v, i) => {
+                const pct = dTot > 0 ? ((v.qty / dTot) * 100).toFixed(1) + '%' : '0%';
+                const r = ws4.addRow([i + 1, v.d, v.wh, v.st, v.prods.size, v.qty, v.val, pct]);
+                r.height = 18;
+                r.eachCell((c, cn) => {
+                    Object.assign(c, D);
+                    if (cn === 1 || cn === 5 || cn === 6 || cn === 8) c.alignment = { ...D.alignment, horizontal: 'center' };
+                    if (cn === 7) { c.alignment = { ...D.alignment, horizontal: 'right' }; c.numFmt = '#,##0'; }
+                    if (i % 2 === 1) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } };
+                });
+            });
+            const t4 = ws4.addRow(['TỔNG CỘNG', '', '', '', new Set(filteredRows.map(r => r.productId)).size, dTot, filteredRows.reduce((s, r) => s + r.totalValue, 0), '100%']);
+            ws4.mergeCells(`A${t4.number}:D${t4.number}`);
+            t4.height = 24; 
+            t4.eachCell({ includeEmpty: true }, (c, cn) => { 
+                Object.assign(c, TOT); 
+                if (cn <= 4) c.alignment = { ...TOT.alignment, horizontal: 'left' }; 
+                if (cn === 5 || cn === 6 || cn === 8) c.alignment = { ...TOT.alignment, horizontal: 'center' };
+                if (cn === 6 || cn === 7) c.numFmt = '#,##0'; 
+            });
+
+            // ── Sheet 2: Theo Hàng Hóa ─────────────────────────────────────────
+            const ws2 = wb.addWorksheet('Theo Hàng Hóa');
+            ws2.columns = [{ key: 's', width: 6 }, { key: 'c', width: 35 }, { key: 'n', width: 70 }, { key: 'u', width: 8 }, { key: 'wh', width: 22 }, { key: 'st', width: 22 }, { key: 'q', width: 14 }, { key: 'v', width: 20 }];
+            addTitle(ws2, 'TỔNG HỢP TỒN KHO THEO HÀNG HÓA', `Ngày xuất: ${now.toLocaleDateString('vi-VN')}`, 8);
+            const h2 = ws2.addRow(['STT', 'Mã Hàng', 'Tên Hàng Hóa', 'ĐVT', 'Loại Kho', 'Trạng Thái', 'Tổng SL', 'Thành Tiền']);
+            h2.height = 28; h2.eachCell(c => Object.assign(c, H));
+            const pMap: Record<string, { code: string; name: string; unit: string; wh: string; st: string; qty: number; val: number }> = {};
+            filteredRows.forEach(r => {
+                const key = `${r.productId}|${r.warehouseType}|${r.itemStatus}`;
+                if (!pMap[key]) pMap[key] = { code: r.itemCode, name: r.productName, unit: r.unit, wh: r.warehouseType, st: r.itemStatus, qty: 0, val: 0 };
+                pMap[key].qty += r.quantity;
+                pMap[key].val += r.totalValue;
+            });
+            const pArr = Object.values(pMap).sort((a, b) => a.name.localeCompare(b.name) || a.wh.localeCompare(b.wh) || a.st.localeCompare(b.st));
+            pArr.forEach((p, i) => {
+                const r = ws2.addRow([i + 1, p.code, p.name, p.unit, p.wh, p.st, p.qty, p.val]);
+                r.height = 18;
+                r.eachCell((c, cn) => {
+                    Object.assign(c, D);
+                    if (cn === 1 || cn === 7) c.alignment = { ...D.alignment, horizontal: 'center' };
+                    if (cn === 8) { c.alignment = { ...D.alignment, horizontal: 'right' }; c.numFmt = '#,##0'; }
+                    if (i % 2 === 1) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } };
+                });
+            });
+            const t2 = ws2.addRow(['TỔNG CỘNG', '', '', '', '', '', pArr.reduce((s, p) => s + p.qty, 0), pArr.reduce((s, p) => s + p.val, 0)]);
+            ws2.mergeCells(`A${t2.number}:F${t2.number}`);
+            t2.height = 24; 
+            t2.eachCell({ includeEmpty: true }, (c, cn) => { 
+                Object.assign(c, TOT); 
+                if (cn <= 6) c.alignment = { ...TOT.alignment, horizontal: 'left' }; 
+                if (cn === 7) c.alignment = { ...TOT.alignment, horizontal: 'center' };
+                if (cn === 7 || cn === 8) c.numFmt = '#,##0'; 
+            });
+
+            // ── Sheet 3: Theo Trạng Thái ──────────────────────────────────────
+            const ws3 = wb.addWorksheet('Theo Trạng Thái');
+            ws3.columns = [{ key: 's', width: 6 }, { key: 'st', width: 25 }, { key: 'wh', width: 22 }, { key: 'q', width: 14 }, { key: 'v', width: 20 }, { key: 'p', width: 12 }];
+            addTitle(ws3, 'TỔNG HỢP TỒN KHO THEO TRẠNG THÁI', `Ngày xuất: ${now.toLocaleDateString('vi-VN')}`, 6);
+            const h3 = ws3.addRow(['STT', 'Trạng Thái', 'Loại Kho', 'Số Lượng', 'Thành Tiền', 'Tỷ Lệ (%)']);
+            h3.height = 28; h3.eachCell(c => Object.assign(c, H));
+            const stMap: Record<string, { st: string, wh: string, qty: number; val: number }> = {};
+            filteredRows.forEach(r => {
+                const key = `${r.itemStatus}|${r.warehouseType}`;
+                if (!stMap[key]) stMap[key] = { st: r.itemStatus, wh: r.warehouseType, qty: 0, val: 0 };
+                stMap[key].qty += r.quantity;
+                stMap[key].val += r.totalValue;
+            });
+            const stArr = Object.values(stMap).sort((a, b) => a.st.localeCompare(b.st) || a.wh.localeCompare(b.wh));
+            const stTot = stArr.reduce((s, v) => s + v.qty, 0);
+            stArr.forEach((v, i) => {
+                const pct = stTot > 0 ? ((v.qty / stTot) * 100).toFixed(1) + '%' : '0%';
+                const r = ws3.addRow([i + 1, v.st, v.wh, v.qty, v.val, pct]);
+                r.height = 18;
+                r.eachCell((c, cn) => {
+                    Object.assign(c, D);
+                    if (cn === 1 || cn === 4 || cn === 6) c.alignment = { ...D.alignment, horizontal: 'center' };
+                    if (cn === 5) { c.alignment = { ...D.alignment, horizontal: 'right' }; c.numFmt = '#,##0'; }
+                    if (i % 2 === 1) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } };
+                });
+            });
+            const t3 = ws3.addRow(['TỔNG CỘNG', '', '', stTot, filteredRows.reduce((s, r) => s + r.totalValue, 0), '100%']);
+            ws3.mergeCells(`A${t3.number}:C${t3.number}`);
+            t3.height = 24; 
+            t3.eachCell({ includeEmpty: true }, (c, cn) => { 
+                Object.assign(c, TOT); 
+                if (cn <= 3) c.alignment = { ...TOT.alignment, horizontal: 'left' }; 
+                if (cn === 4 || cn === 6) c.alignment = { ...TOT.alignment, horizontal: 'center' };
+                if (cn === 4 || cn === 5) c.numFmt = '#,##0'; 
+            });
+
+            // ── Sheet 1: Chi tiết (nhóm theo tab đang chọn) ──────────────────
+            const ws1 = wb.addWorksheet('Chi Tiết Tồn Kho');
+            ws1.columns = [
+                { key: 'stt', width: 6 }, { key: 'itemCode', width: 35 }, { key: 'productName', width: 70 },
+                { key: 'unit', width: 8 }, { key: 'district', width: 20 }, { key: 'warehouseType', width: 22 },
+                { key: 'itemStatus', width: 22 }, { key: 'quantity', width: 12 }, { key: 'unitPrice', width: 16 }, { key: 'totalValue', width: 18 },
+            ];
+            const groupLabel = tab === 'product' ? 'Tên Hàng Hóa' : tab === 'status' ? 'Trạng Thái' : 'Quận/Huyện';
+            addTitle(ws1, 'BÁO CÁO TỒN KHO CHI TIẾT',
+                `Ngày xuất: ${now.toLocaleDateString('vi-VN')}  |  Nhóm theo: ${groupLabel}  |  Lọc: ${filterStatus || 'Tất cả TT'} / ${filterDistrict || 'Tất cả QH'}`, 10);
+
+            const hr = ws1.addRow(['STT', 'Mã Hàng', 'Tên Hàng Hóa', 'ĐVT', 'Quận/Huyện', 'Loại Kho', 'Trạng Thái', 'Số Lượng', 'Đơn Giá', 'Thành Tiền']);
+            hr.height = 30; hr.eachCell(c => Object.assign(c, H));
+
+            let stt = 1;
+            groupedData.forEach(([gk, rows]) => {
+                const gRow = ws1.addRow([`▶ ${groupLabel}: ${gk}`]);
+                ws1.mergeCells(`A${gRow.number}:J${gRow.number}`);
+                gRow.height = 20; gRow.eachCell({ includeEmpty: true }, c => Object.assign(c, GH));
+
+                let gQty = 0, gVal = 0;
+                rows.forEach((r, ri) => {
+                    gQty += r.quantity; gVal += r.totalValue;
+                    const dr = ws1.addRow([stt++, r.itemCode, r.productName, r.unit, r.district, r.warehouseType, r.itemStatus, r.quantity, r.unitPrice, r.totalValue]);
+                    dr.height = 18;
+                    dr.eachCell((c, cn) => {
+                        Object.assign(c, D);
+                        if (cn === 1 || cn === 8) c.alignment = { ...D.alignment, horizontal: 'center' };
+                        if (cn === 9 || cn === 10) { c.alignment = { ...D.alignment, horizontal: 'right' }; c.numFmt = '#,##0'; }
+                        if (ri % 2 === 1) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } };
+                    });
+                });
+                const sr = ws1.addRow([`Cộng: ${gk}`, '', '', '', '', '', '', gQty, '', gVal]);
+                ws1.mergeCells(`A${sr.number}:G${sr.number}`);
+                sr.height = 22;
+                sr.eachCell({ includeEmpty: true }, (c, cn) => {
+                    Object.assign(c, SUB);
+                    if (cn <= 7) c.alignment = { ...SUB.alignment, horizontal: 'left' };
+                    if (cn === 8) c.alignment = { ...SUB.alignment, horizontal: 'center' };
+                    if (cn === 8 || cn === 10) c.numFmt = '#,##0';
+                });
+            });
+            const gr = ws1.addRow(['TỔNG CỘNG', '', '', '', '', '', '', totalQty, '', totalValue]);
+            ws1.mergeCells(`A${gr.number}:G${gr.number}`);
+            gr.height = 26;
+            gr.eachCell({ includeEmpty: true }, (c, cn) => {
+                Object.assign(c, TOT);
+                if (cn <= 7) c.alignment = { ...TOT.alignment, horizontal: 'left' };
+                if (cn === 8) c.alignment = { ...TOT.alignment, horizontal: 'center' };
+                if (cn === 8 || cn === 10) c.numFmt = '#,##0';
+            });
+
+            // ── Sheet 5: Chi Tiết Serial ──────────────────────────────────────
+            const ws5 = wb.addWorksheet('Chi Tiết Serial');
+            ws5.columns = [
+                { key: 'stt', width: 6 }, { key: 'itemCode', width: 35 }, { key: 'productName', width: 70 },
+                { key: 'serial', width: 30 }, { key: 'district', width: 20 }, { key: 'wh', width: 22 }, { key: 'status', width: 22 } 
+            ];
+            addTitle(ws5, 'BÁO CÁO CHI TIẾT SERIAL TỒN KHO', `Ngày xuất: ${now.toLocaleDateString('vi-VN')}  |  Lọc: ${filterStatus || 'Tất cả TT'} / ${filterDistrict || 'Tất cả QH'}`, 7);
+            const h5 = ws5.addRow(['STT', 'Mã Hàng', 'Tên Hàng Hóa', 'Số Serial', 'Quận/Huyện', 'Loại Kho', 'Trạng Thái']);
+            h5.height = 28; h5.eachCell(c => Object.assign(c, H));
+            
+            // Lấy danh sách serial tồn kho
+            const stockBySerial: Record<string, any> = {};
+            transactions.forEach((t: any) => {
+                if (t.type === 'inbound') {
+                    const wh = (t.warehouse_type || '').trim().toUpperCase();
+                    if (wh !== 'KHO_DV_Q12' && wh !== 'KHO_DV_HMN' && wh !== 'KHO_DV_CCI' && wh !== 'KHO_NV_Q12' && wh !== 'KHO_NV_HMN') return;
+                    
+                    const key = t.serial_code ? `serial_${t.serial_code}` : `noserial_${t.id}`;
+                    if (!stockBySerial[key]) {
+                        stockBySerial[key] = {
+                            productId: t.product_id,
+                            serial: t.serial_code || '',
+                            status: t.item_status || 'Mới',
+                            district: t.district || 'Kho Tổng',
+                            wh: wh || 'Kho Tổng',
+                            qty: 0
+                        };
+                    }
+                    stockBySerial[key].qty += Number(t.quantity);
+                } else if (t.type === 'outbound') {
+                    const key = t.serial_code ? `serial_${t.serial_code}` : null;
+                    if (key && stockBySerial[key]) stockBySerial[key].qty -= Number(t.quantity);
+                }
+            });
+            let activeSerials = Object.values(stockBySerial).filter(s => s.qty > 0);
+            
+            // Lọc theo điều kiện tìm kiếm và bộ lọc hiện tại
+            activeSerials = activeSerials.filter(s => {
+                const p = products.find(prod => prod.id === s.productId);
+                const sText = search.toLowerCase();
+                const ms = !sText || (p?.name?.toLowerCase().includes(sText)) || (p?.item_code?.toLowerCase().includes(sText)) || s.district.toLowerCase().includes(sText) || s.serial.toLowerCase().includes(sText);
+                const mst = !filterStatus || s.status === filterStatus;
+                const md = !filterDistrict || s.district === filterDistrict;
+                return ms && mst && md;
+            });
+            
+            activeSerials.sort((a, b) => {
+                const pA = products.find(prod => prod.id === a.productId)?.name || '';
+                const pB = products.find(prod => prod.id === b.productId)?.name || '';
+                return pA.localeCompare(pB) || a.serial.localeCompare(b.serial);
+            });
+            
+            activeSerials.forEach((s, i) => {
+                const p = products.find(prod => prod.id === s.productId);
+                const r = ws5.addRow([i + 1, p?.item_code || '', p?.name || '', s.serial || '(Không có serial)', s.district, s.wh, s.status]);
+                r.height = 18;
+                r.eachCell((c, cn) => {
+                    Object.assign(c, D);
+                    if (cn === 1 || cn === 7) c.alignment = { ...D.alignment, horizontal: 'center' };
                     if (i % 2 === 1) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFAFAFA' } };
                 });
             });
