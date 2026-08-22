@@ -53,8 +53,10 @@ import {
     Barcode,
     Scissors,
     ImagePlus,
-    Volume2
+    Volume2,
+    BarChart2
 } from 'lucide-react';
+
 import type { RootState, AppDispatch } from '../../store';
 import { logoutUser } from '../../store/slices/authSlice';
 import { usePermission } from '../../hooks/usePermission';
@@ -126,7 +128,8 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
 
     useEffect(() => {
         if (location.pathname.startsWith('/assets')) setExpandAssets(true);
-        if (['/inventory-report', '/detailed-outbound-report', '/monthly-settlement', '/goods-settlement'].includes(location.pathname)) setExpandSettlement(true);
+        if (['/inventory-report', '/detailed-outbound-report', '/monthly-settlement', '/goods-settlement', '/stock-summary-report'].includes(location.pathname)) setExpandSettlement(true);
+
         if (['/employees', '/attendance', '/attendance-summary', '/admin-requests', '/kpi-grades', '/payroll', '/bonus-penalty', '/payroll-settings', '/feedback-box'].includes(location.pathname)) setExpandAdminHr(true);
         if (location.pathname.startsWith('/zalo')) setExpandZalo(true);
         if (location.pathname.startsWith('/trinh-ky')) setExpandTrinhKy(true);
@@ -361,6 +364,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                 ...(hasAnyPermission(['reports.view_all', 'reports.handover']) ? [{ text: 'Báo cáo - In biên bản', path: '/reports', icon: <PieChart size={18} /> }] : []),
                                 ...(hasPermission('inventory.view') ? [{ text: 'Hàng hóa', path: '/products', icon: <Package size={18} /> }] : []),
                                 ...(hasAnyPermission(['audit.view', 'audit.create']) ? [{ text: 'Kiểm kê kho', path: '/audit', icon: <CheckSquare size={18} /> }] : []),
+                                { text: 'Tồn kho chi tiết (in_stock)', path: '/stock-summary-report', icon: <BarChart2 size={18} /> },
                                 ...(hasAnyPermission(['audit.view', 'audit.create']) ? [{ text: 'Quyết toán', path: '/settlement', icon: <PieChart size={18} /> }] : []),
                                 ...(hasPermission('inbound.view') ? [{ text: 'Nhập kho', path: '/inbound', icon: <ArrowDownToLine size={18} /> }] : []),
                             ];
@@ -372,6 +376,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                 { text: 'Quyết toán hàng hóa', path: '/goods-settlement', icon: <Calculator size={18} /> },
                             ];
                             const isSettlementGroupActive = ['/inventory-report', '/detailed-outbound-report', '/monthly-settlement', '/goods-settlement'].includes(location.pathname);
+
                             const isGroupActive = xnkSubItems.some(sub => location.pathname === sub.path) || isSettlementGroupActive;
                             
                             return (

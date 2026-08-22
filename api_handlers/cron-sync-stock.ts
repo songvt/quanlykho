@@ -56,45 +56,70 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const productsMap: Record<string, any> = {};
         products.forEach(p => {
             productsMap[p.id] = p;
-            productsMap[p.item_code] = p;
+            if (p.item_code) productsMap[p.item_code.trim()] = p;
         });
 
-        const existingSerials = new Set<string>();
+        // Tự động tạo sản phẩm chưa có trong DB
+        const missingProductsMap: Record<string, any> = {};
+        const newProductsToInsert: any[] = [];
+        
+        for (const row of sRows) {
+            const pIdRaw = String(row.get('product_id') || row.get('MA_HANG') || row.get('Ma_Hang') || row.get('MA_VT') || '').trim();
+            if (!pIdRaw) continue;
+            
+            if (!productsMap[pIdRaw] && !missingProductsMap[pIdRaw]) {
+                const newId = randomUUID();
+                const newProd = {
+                    id: newId,
+                    item_code: pIdRaw,
+                    name: row.get('TEN_HANG') || row.get('Tên Hàng Hóa') || row.get('name') || pIdRaw,
+                    unit: row.get('DVT') || row.get('ĐVT') || row.get('unit') || 'Cái',
+                    unit_price: 0
+                };
+                missingProductsMap[pIdRaw] = newProd;
+                newProductsToInsert.push(newProd);
+            }
+        }
+        
+        if (newProductsToInsert.length > 0) {
+            console.log(`Đang tự động tạo ${newProductsToInsert.length} sản phẩm mới...`);
+            const { error: pErr } = await supabase.from('products').insert(newProductsToInsert);
+            if (pErr) console.error("Lỗi khi tạo sản phẩm mới:", pErr);
+            Object.assign(productsMap, missingProductsMap);
+        }
+
         const toInsert: any[] = [];
         const creator = 'system_cron_20h';
 
         for (const row of sRows) {
-            const pIdRaw = row.get('product_id') || row.get('MA_HANG') || row.get('Ma_Hang') || row.get('MA_VT');
+            const pIdRaw = String(row.get('product_id') || row.get('MA_HANG') || row.get('Ma_Hang') || row.get('MA_VT') || '').trim();
             if (!pIdRaw) continue;
-            const product = productsMap[String(pIdRaw).trim()];
+            const product = productsMap[pIdRaw];
             if (!product) continue;
 
             const serialRaw = String(row.get('serial_code') || row.get('SERIAL') || row.get('Serial') || '').trim();
             const isVT = String(row.get('check_loại_hang')).trim() === 'VT-TKM';
             const serial = serialRaw || (isVT ? `VT-${row.get('ID')}` : '');
 
-            if (serial && !existingSerials.has(serial)) {
-                existingSerials.add(serial);
-                const qtyStr = String(row.get('quantity') || '').trim();
-                const qty = qtyStr ? parseFloat(qtyStr.replace(/\./g, '').replace(/,/g, '')) : 1;
+            const qtyStr = String(row.get('quantity') || '').trim();
+            const qty = qtyStr ? parseFloat(qtyStr.replace(/\./g, '').replace(/,/g, '')) : 1;
 
-                toInsert.push({
-                    id: randomUUID(),
-                    product_id: product.id,
-                    serial_code: serial,
-                    quantity: isNaN(qty) ? 1 : Math.round(qty),
-                    item_status: row.get('item_status') || row.get('status') || 'Mới',
-                    district: row.get('district') || row.get('District') || 'Kho Tổng',
-                    inbound_date: new Date().toISOString(),
-                    created_by: creator,
-                    unit_price: product.unit_price || 0,
-                    sap_id: row.get('ID_SAP') || '',
-                    tc_id: row.get('ID_TC') || '',
-                    item_type: row.get('check_loại_hang') || '',
-                    warehouse_type: row.get('loai_kho') || '',
-                    full_name: row.get('full_name') || ''
-                });
-            }
+            toInsert.push({
+                id: randomUUID(),
+                product_id: product.id,
+                serial_code: serial,
+                quantity: isNaN(qty) ? 1 : Math.round(qty),
+                item_status: row.get('item_status') || row.get('status') || 'Mới',
+                district: row.get('district') || row.get('District') || 'Kho Tổng',
+                inbound_date: new Date().toISOString(),
+                created_by: creator,
+                unit_price: product.unit_price || 0,
+                sap_id: row.get('ID_SAP') || '',
+                tc_id: row.get('ID_TC') || '',
+                item_type: row.get('check_loại_hang') || '',
+                warehouse_type: row.get('loai_kho') || '',
+                full_name: row.get('full_name') || ''
+            });
         }
 
         // 4. Ghi lại dữ liệu mới (Ghi vào Supabase + Google Sheet)

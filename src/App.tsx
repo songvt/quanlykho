@@ -35,6 +35,8 @@ const InventoryReport = lazy(() => import('./pages/Inventory/InventoryReport'));
 const DetailedOutboundReport = lazy(() => import('./pages/Inventory/DetailedOutboundReport'));
 const MonthlySettlementReport = lazy(() => import('./pages/Inventory/MonthlySettlementReport'));
 const GoodsSettlementReport = lazy(() => import('./pages/Inventory/GoodsSettlementReport'));
+const StockSummaryReport    = lazy(() => import('./pages/Inventory/StockSummaryReport'));
+
 const AssetList          = lazy(() => import('./pages/Assets/AssetList'));
 const AssetMonthlyReport = lazy(() => import('./pages/Assets/AssetMonthlyReport'));
 const AssetDetailReport  = lazy(() => import('./pages/Assets/AssetDetailReport'));
@@ -124,6 +126,8 @@ function App() {
                                     <Route path="detailed-outbound-report" element={<DetailedOutboundReport />} />
                                     <Route path="monthly-settlement" element={<MonthlySettlementReport />} />
                                     <Route path="goods-settlement" element={<GoodsSettlementReport />} />
+                                    <Route path="stock-summary-report" element={<StockSummaryReport />} />
+
                                 </Route>
 
                                 <Route element={<ProtectedRoute allowedPermissions={['assets.view', 'assets.manage', 'assets.list_only', '*']} />}>
