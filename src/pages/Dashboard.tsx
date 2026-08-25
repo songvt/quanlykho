@@ -108,8 +108,7 @@ const modulesData = [
     { id: 'audit', title: 'Kiểm kê kho', desc: 'Đối soát tồn kho thực tế.', color: '#4f46e5', icon: <CheckSquare />, path: '/audit' },
     { id: 'qr-generator', title: 'Mã QR Code', desc: 'In mã QR sản phẩm.', color: '#2563eb', icon: <QrCode />, path: '/qr-generator' },
     { id: 'action-history', title: 'Lịch sử', desc: 'Nhật ký hệ thống.', color: '#4b5563', icon: <History />, path: '/action-history' },
-    { id: 'admin-hr', title: 'Hành chính', desc: 'Quản lý nhân viên, chấm công.', color: '#059669', icon: <Users />, path: '/admin-hr' },
-    { id: 'trinhky', title: 'Trình ký nội bộ', desc: 'Tạo và luân chuyển hồ sơ trình ký điện tử.', color: '#EF4444', icon: <FileSignature />, path: '/trinh-ky/list' }
+    { id: 'admin-hr', title: 'Hành chính', desc: 'Quản lý nhân viên, chấm công.', color: '#059669', icon: <Users />, path: '/admin-hr' }
 ];
 
 const Dashboard = () => {
@@ -156,9 +155,6 @@ const Dashboard = () => {
             if (mod.id === 'action-history') {
                 return hasAnyPermission(['reports.view_all', 'reports.handover']);
             }
-            if (mod.id === 'trinhky') {
-                return hasAnyPermission(['trinhky.create', 'trinhky.approve', 'trinhky.view', '*']);
-            }
             if (mod.id === 'admin-hr') {
                 return profile?.role === 'admin' || profile?.role === 'manager' || hasPermission('employees.view');
             }
@@ -168,21 +164,8 @@ const Dashboard = () => {
     
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
     const [placeholderModule, setPlaceholderModule] = useState<string | null>(null);
-    const [trinhKyStats, setTrinhKyStats] = useState<any>(null);
 
     const isLoading = productStatus === 'loading' || transactionStatus === 'loading' || inventoryStatus === 'loading';
-
-    const fetchTrinhKyStats = useCallback(() => {
-        if (!profile?.id) return;
-        fetch('/api/trinhky', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'stats', payload: { userId: profile.id } })
-        })
-        .then(res => res.json())
-        .then(data => setTrinhKyStats(data))
-        .catch(err => console.error('Lỗi tải thống kê trình ký:', err));
-    }, [profile]);
 
     const refreshAll = useCallback(() => {
         dispatch(fetchProductsForce());
@@ -190,13 +173,8 @@ const Dashboard = () => {
         dispatch(fetchOrdersForce());
         dispatch(fetchInventory());
         dispatch(fetchEmployeesForce());
-        fetchTrinhKyStats();
         setLastUpdated(new Date());
-    }, [dispatch, fetchTrinhKyStats]);
-
-    useEffect(() => {
-        fetchTrinhKyStats();
-    }, [fetchTrinhKyStats]);
+    }, [dispatch]);
 
     useEffect(() => {
         if (productStatus === 'idle') dispatch(fetchProducts());
@@ -401,66 +379,7 @@ const Dashboard = () => {
                 </Grid>
             </Grid>
 
-            {/* Trình ký nội bộ statistics widget */}
-            {trinhKyStats && (
-                <Box sx={{ mb: 5 }}>
-                    <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', mb: 2, color: 'var(--text-primary)' }}>
-                        Trình ký nội bộ
-                    </Typography>
-                    <Grid container spacing={2.5}>
-                        <Grid size={{ xs: 12, sm: 6, lg: 2.4 }}>
-                            <MetricCard 
-                                title="Tổng hồ sơ trình ký" 
-                                value={trinhKyStats.total_hoso} 
-                                icon={FileText} 
-                                color={COLORS.primary}
-                                subtitle="Hồ sơ luân chuyển"
-                                onClick={() => navigate('/trinh-ky/list')}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6, lg: 2.4 }}>
-                            <MetricCard 
-                                title="Hồ sơ chờ ký duyệt" 
-                                value={trinhKyStats.total_waiting} 
-                                icon={FileSignature} 
-                                color={COLORS.secondary}
-                                subtitle="Cần xử lý gấp"
-                                onClick={() => navigate('/trinh-ky/pending')}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6, lg: 2.4 }}>
-                            <MetricCard 
-                                title="Hồ sơ đang xử lý" 
-                                value={trinhKyStats.total_signing} 
-                                icon={RefreshCw} 
-                                color={COLORS.warning}
-                                subtitle="Đang luân chuyển ký"
-                                onClick={() => navigate('/trinh-ky/list?status=Đang ký')}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6, lg: 2.4 }}>
-                            <MetricCard 
-                                title="Đã hoàn thành" 
-                                value={trinhKyStats.total_completed} 
-                                icon={CheckCircle2} 
-                                color={COLORS.success}
-                                subtitle="Hồ sơ hoàn tất ký"
-                                onClick={() => navigate('/trinh-ky/list?status=Hoàn thành')}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, sm: 6, lg: 2.4 }}>
-                            <MetricCard 
-                                title="Hồ sơ bị từ chối" 
-                                value={trinhKyStats.total_rejected} 
-                                icon={AlertCircle} 
-                                color={COLORS.danger}
-                                subtitle="Cần chỉnh sửa lại"
-                                onClick={() => navigate('/trinh-ky/list?status=Từ chối')}
-                            />
-                        </Grid>
-                    </Grid>
-                </Box>
-            )}
+
 
             <Grid container spacing={4} mb={4}>
                 <Grid size={{ xs: 12, lg: 8 }}>

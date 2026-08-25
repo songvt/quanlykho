@@ -124,7 +124,6 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
     const [expandSettlement, setExpandSettlement] = useState(false);
     const [expandAdminHr, setExpandAdminHr] = useState(false);
     const [expandZalo, setExpandZalo] = useState(false);
-    const [expandTrinhKy, setExpandTrinhKy] = useState(false);
 
     useEffect(() => {
         if (location.pathname.startsWith('/assets')) setExpandAssets(true);
@@ -132,7 +131,6 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
 
         if (['/employees', '/attendance', '/attendance-summary', '/admin-requests', '/kpi-grades', '/payroll', '/bonus-penalty', '/payroll-settings', '/feedback-box'].includes(location.pathname)) setExpandAdminHr(true);
         if (location.pathname.startsWith('/zalo')) setExpandZalo(true);
-        if (location.pathname.startsWith('/trinh-ky')) setExpandTrinhKy(true);
     }, [location.pathname]);
 
     const handleLogout = () => {
@@ -170,16 +168,10 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
             { text: 'Thông báo hệ thống', icon: <Mailbox size={20} color="#f59e0b" />, path: '/announcements' }
         ] : []),
         { text: 'Trợ lý AI', icon: <Bot size={20} color="#2563eb" />, path: '/ai-assistant' },
-        { text: 'Giọng nói AI (OmniVoice)', icon: <Volume2 size={20} color="#10b981" />, path: '/omnivoice' },
-        { text: 'OCR Image/PDF', icon: <FileText size={20} color="#8b5cf6" />, path: '/ocr-documents' },
         ...(hasPermission('pdf.view') ? [
             { text: 'Tách/Gộp PDF', icon: <Scissors size={20} color="#ec4899" />, path: '/pdf-tools' }
         ] : []),
-        { text: 'Xử lý ảnh', icon: <ImagePlus size={20} color="#f59e0b" />, path: '/image-tools' },
         { text: 'In thông báo cước', icon: <FileText size={20} color="#10B981" />, path: '/print-bill' },
-        ...(hasAnyPermission(['trinhky.create', 'trinhky.approve', 'trinhky.view', '*']) ? [
-            { text: 'Trình ký nội bộ', icon: <FileSignature size={20} color="#EF4444" />, path: '/trinh-ky' }
-        ] : []),
         ...(hasPermission('*') ? [
             { text: 'Thiết lập', icon: <Settings size={20} />, path: '/settings' }
         ] : []),
@@ -579,59 +571,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                             );
                         }
 
-                        // ── Expandable Trình ký nội bộ group
-                        if (item.path === '/trinh-ky') {
-                            const trinhKySubItems = [
-                                ...(hasAnyPermission(['trinhky.create', '*']) ? [{ text: 'Tạo trình ký mới', path: '/trinh-ky/create', icon: <FileSignature size={18} /> }] : []),
-                                { text: 'Quản lý hồ sơ trình ký', path: '/trinh-ky/list', icon: <ListIcon size={18} /> },
-                                { text: 'Hồ sơ chờ ký', path: '/trinh-ky/pending', icon: <CheckSquare size={18} /> },
-                                { text: 'Hồ sơ đã xử lý', path: '/trinh-ky/processed', icon: <History size={18} /> },
-                                { text: 'Báo cáo thống kê', path: '/trinh-ky/report', icon: <PieChart size={18} /> }
-                            ];
-                            const isGroupActive = location.pathname.startsWith('/trinh-ky');
-                            return (
-                                <React.Fragment key="trinhky-group">
-                                    <ListItem disablePadding>
-                                        <ListItemButton
-                                            onClick={() => setExpandTrinhKy(p => !p)}
-                                            sx={menuItemSx(isGroupActive, '#EF4444')}
-                                        >
-                                            <ListItemIcon sx={menuIconSx(isGroupActive, '#EF4444')}>
-                                                {item.icon}
-                                            </ListItemIcon>
-                                            <ListItemText
-                                                primary={item.text}
-                                                primaryTypographyProps={{ fontWeight: isGroupActive ? 700 : 500, fontSize: '0.875rem' }}
-                                            />
-                                            {expandTrinhKy ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                                        </ListItemButton>
-                                    </ListItem>
-                                    <Collapse in={expandTrinhKy} timeout="auto" unmountOnExit>
-                                        <List disablePadding sx={{ pl: 1.5, mb: 0.5, mt: 0.5 }}>
-                                            {trinhKySubItems.map(sub => {
-                                                const subActive = location.pathname === sub.path;
-                                                return (
-                                                    <ListItem key={sub.path} disablePadding sx={{ mb: 0.5 }}>
-                                                        <ListItemButton
-                                                            onClick={() => { navigate(sub.path); if(isMobile) handleDrawerToggle(); }}
-                                                            sx={subItemSx(subActive, '#EF4444')}
-                                                        >
-                                                            <ListItemIcon sx={{ minWidth: 32, color: subActive ? '#EF4444' : UI.muted }}>
-                                                                 {sub.icon}
-                                                            </ListItemIcon>
-                                                            <ListItemText
-                                                                primary={sub.text}
-                                                                primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: subActive ? 600 : 400 }}
-                                                            />
-                                                        </ListItemButton>
-                                                    </ListItem>
-                                                );
-                                            })}
-                                        </List>
-                                    </Collapse>
-                                </React.Fragment>
-                            );
-                        }
+
 
                         // ── Default menu item
                         return (

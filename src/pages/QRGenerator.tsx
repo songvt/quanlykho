@@ -1300,6 +1300,9 @@ const QRGenerator = () => {
                                                             </div>
                                                         </div>
                                                     ))}
+                                                    <div style={{ position: 'absolute', bottom: '4px', right: '12px', fontSize: '0.75rem', color: '#333333', fontStyle: 'italic', fontWeight: 600 }}>
+                                                        Ngày in: {new Date().toLocaleDateString('en-GB')}
+                                                    </div>
                                                 </div>
                                             );
                                         })}
