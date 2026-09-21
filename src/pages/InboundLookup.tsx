@@ -118,7 +118,7 @@ export default function InboundLookup() {
             {results.length > 0 && (
                 <Grid container spacing={3}>
                     {results.map((item) => (
-                        <Grid item xs={12} md={6} key={item.id}>
+                        <Grid size={{ xs: 12, md: 6 }} key={item.id}>
                             <Card sx={{ 
                                 bgcolor: 'rgba(255, 255, 255, 0.03)', 
                                 border: '1px solid rgba(255, 255, 255, 0.1)', 
@@ -153,19 +153,19 @@ export default function InboundLookup() {
                                     <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', my: 2 }} />
                                     
                                     <Grid container spacing={2}>
-                                        <Grid item xs={6}>
+                                        <Grid size={{ xs: 6 }}>
                                             <Typography sx={{ color: '#64748B', fontSize: '0.8rem', mb: 0.5 }}>Serial Number</Typography>
                                             <Typography sx={{ color: '#E2E8F0', fontWeight: 500, wordBreak: 'break-all' }}>
                                                 {item.serial_code || 'Không có'}
                                             </Typography>
                                         </Grid>
-                                        <Grid item xs={6}>
+                                        <Grid size={{ xs: 6 }}>
                                             <Typography sx={{ color: '#64748B', fontSize: '0.8rem', mb: 0.5 }}>Khu vực / Quận</Typography>
                                             <Typography sx={{ color: '#E2E8F0', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                                 <MapPin size={14} color="#60A5FA" /> {item.district || 'Kho Tổng'}
                                             </Typography>
                                         </Grid>
-                                        <Grid item xs={6}>
+                                        <Grid size={{ xs: 6 }}>
                                             <Typography sx={{ color: '#64748B', fontSize: '0.8rem', mb: 0.5 }}>Trạng thái</Typography>
                                             <Box component="span" sx={{ 
                                                 px: 1.5, py: 0.5, 
@@ -180,14 +180,14 @@ export default function InboundLookup() {
                                                 {item.item_status || 'Mới'}
                                             </Box>
                                         </Grid>
-                                        <Grid item xs={6}>
+                                        <Grid size={{ xs: 6 }}>
                                             <Typography sx={{ color: '#64748B', fontSize: '0.8rem', mb: 0.5 }}>Ngày nhập</Typography>
                                             <Typography sx={{ color: '#E2E8F0', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                                 <Calendar size={14} color="#60A5FA" /> 
                                                 {item.inbound_date ? new Date(item.inbound_date).toLocaleDateString('vi-VN') : 'N/A'}
                                             </Typography>
                                         </Grid>
-                                        <Grid item xs={12}>
+                                        <Grid size={{ xs: 12 }}>
                                             <Typography sx={{ color: '#64748B', fontSize: '0.8rem', mb: 0.5 }}>Người nhập</Typography>
                                             <Typography sx={{ color: '#E2E8F0', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                                 <User size={14} color="#60A5FA" /> {item.created_by || 'Hệ thống'}
