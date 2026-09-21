@@ -15,6 +15,7 @@ const Login           = lazy(() => import('./pages/Login'));
 const Dashboard       = lazy(() => import('./pages/Dashboard'));
 const ProductList     = lazy(() => import('./pages/Products/ProductList'));
 const Inbound         = lazy(() => import('./pages/Inbound').then(m => ({ default: m.Inbound })));
+const InboundLookup   = lazy(() => import('./pages/InboundLookup'));
 const Outbound        = lazy(() => import('./pages/Outbound').then(m => ({ default: m.Outbound })));
 const OrderList       = lazy(() => import('./pages/Orders/OrderList'));
 const Reports         = lazy(() => import('./pages/Reports/Reports'));
@@ -157,6 +158,7 @@ function App() {
 
                                 <Route path="profile" element={<UserProfile />} />
                                 <Route path="ai-assistant" element={<AIAssistant />} />
+                                <Route path="inbound-lookup" element={<InboundLookup />} />
                                 
                                 <Route element={<ProtectedRoute allowedPermissions={['pdf.view']} />}>
                                     <Route path="pdf-tools" element={<PDFTools />} />

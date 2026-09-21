@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import compression from 'compression';
+import cron from 'node-cron';
 
 import productsHandler from './api_handlers/products.js';
 import employeesHandler from './api_handlers/employees.js';
@@ -130,6 +131,17 @@ app.get('/api/diagnose', (req, res) => {
         ANON_KEY_PREVIEW: key ? `${key.substring(0, 10)}...${key.substring(key.length - 10)}` : 'empty',
         ENV_KEYS: Object.keys(process.env).filter(k => k.includes('SUPABASE') || k.includes('SHEET'))
     });
+});
+
+// Chạy tự động đồng bộ hàng hóa mỗi ngày vào lúc 20:00
+cron.schedule('0 20 * * *', async () => {
+    console.log('[Cron] Đang tự động chạy đồng bộ hàng hóa...');
+    try {
+        await fetch(`http://localhost:${PORT}/api/cron-sync-stock`, { method: 'POST' });
+        console.log('[Cron] Đã gửi request đồng bộ hàng hóa');
+    } catch (e) {
+        console.error('[Cron] Lỗi tự động đồng bộ hàng hóa:', e);
+    }
 });
 
 app.listen(PORT, () => {

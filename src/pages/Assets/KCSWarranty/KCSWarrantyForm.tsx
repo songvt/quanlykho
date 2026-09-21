@@ -44,22 +44,15 @@ const KCSWarrantyForm: React.FC = () => {
 
     const [printData, setPrintData] = useState<any>(null);
 
-    useEffect(() => {
-        fetchOptions();
-        if (printId) {
-            fetchPrintData(printId);
-        }
-    }, [printId]);
-
-    const fetchOptions = async () => {
+    async function fetchOptions() {
         const { data: empData } = await supabase.from('employees').select('id, full_name, role');
         if (empData) setEmployees(empData);
 
         const { data: assetData } = await supabase.from('assets').select('id, asset_name, asset_code, serial_number, user_employee_name, user_employee_code, manager_name, manager_code');
         if (assetData) setAssetsOptions(assetData);
-    };
+    }
 
-    const fetchPrintData = async (id: string) => {
+    async function fetchPrintData(id: string) {
         setLoading(true);
         const { data, error } = await supabase
             .from('warranty_history')
@@ -90,6 +83,12 @@ const KCSWarrantyForm: React.FC = () => {
         setLoading(false);
     };
 
+    useEffect(() => {
+        fetchOptions();
+        if (printId) {
+            fetchPrintData(printId);
+        }
+    }, [printId]);
     const handleSave = async () => {
         setLoading(true);
         const record = {

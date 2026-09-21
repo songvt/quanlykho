@@ -148,9 +148,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
         ...(hasAnyPermission(['assets.view', 'assets.manage', 'assets.list_only', '*']) ? [
             { text: 'Tài sản', icon: <MonitorSmartphone size={20} />, path: '/assets' }
         ] : []),
-        ...(hasAnyPermission(['inventory.view', 'audit.view', 'audit.create', 'inbound.view', 'orders.create', 'orders.view_own', 'outbound.view', 'returns.view', 'returns.create', 'reports.view_all', 'reports.handover']) ? [
-            { text: 'Xuất nhập kho', icon: <Warehouse size={20} />, path: '/xnk-cdbr' }
-        ] : []),
+        { text: 'Xuất nhập kho', icon: <Warehouse size={20} />, path: '/xnk-cdbr' },
         ...(hasPermission('qr.view') ? [
             { text: 'Mã QR Code', icon: <QrCode size={20} />, path: '/qr-generator' },
             { text: 'MÃ VẠCH VHKT', icon: <Barcode size={20} color="#0d9488" />, path: '/barcode-generator' }
@@ -359,6 +357,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                 { text: 'Tồn kho chi tiết (in_stock)', path: '/stock-summary-report', icon: <BarChart2 size={18} /> },
                                 ...(hasAnyPermission(['audit.view', 'audit.create']) ? [{ text: 'Quyết toán', path: '/settlement', icon: <PieChart size={18} /> }] : []),
                                 ...(hasPermission('inbound.view') ? [{ text: 'Nhập kho', path: '/inbound', icon: <ArrowDownToLine size={18} /> }] : []),
+                                { text: 'Tra cứu hàng hóa', path: '/inbound-lookup', icon: <FileSearch size={18} /> },
                             ];
 
                             const settlementSubItems = [
