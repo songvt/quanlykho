@@ -17,6 +17,8 @@ import ocrHandler from '../api_handlers/ocr.js';
 import trinhkyHandler from '../api_handlers/trinhky.js';
 import cronSyncHandler from '../api_handlers/cron-sync.js';
 import cronSyncStockHandler from '../api_handlers/cron-sync-stock.js';
+import uploadInventoryNVHandler from '../api_handlers/upload_inventory_nv.js';
+import uploadInventoryDonViHandler from '../api_handlers/upload_inventory_donvi.js';
 
 const app = express();
 
@@ -51,6 +53,8 @@ app.all('/api/trinhky', createVercelHandler(trinhkyHandler));
 app.all('/api/system_config', createVercelHandler(systemConfigHandler));
 app.all('/api/cron-sync', createVercelHandler(cronSyncHandler));
 app.all('/api/cron-sync-stock', createVercelHandler(cronSyncStockHandler));
+app.all('/api/upload_inventory_nv', createVercelHandler(uploadInventoryNVHandler));
+app.all('/api/upload_inventory_donvi', createVercelHandler(uploadInventoryDonViHandler));
 
 // Helper to safely override Express prototype query getter
 const setQueryType = (req: express.Request, type: string) => {

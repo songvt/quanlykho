@@ -37,6 +37,8 @@ const DetailedOutboundReport = lazy(() => import('./pages/Inventory/DetailedOutb
 const MonthlySettlementReport = lazy(() => import('./pages/Inventory/MonthlySettlementReport'));
 const GoodsSettlementReport = lazy(() => import('./pages/Inventory/GoodsSettlementReport'));
 const StockSummaryReport    = lazy(() => import('./pages/Inventory/StockSummaryReport'));
+const UploadInventoryNV     = lazy(() => import('./pages/Inventory/UploadInventoryNV'));
+const UploadInventoryDonVi  = lazy(() => import('./pages/Inventory/UploadInventoryDonVi'));
 
 const AssetList          = lazy(() => import('./pages/Assets/AssetList'));
 const AssetMonthlyReport = lazy(() => import('./pages/Assets/AssetMonthlyReport'));
@@ -116,6 +118,8 @@ function App() {
                                     <Route path="monthly-settlement" element={<MonthlySettlementReport />} />
                                     <Route path="goods-settlement" element={<GoodsSettlementReport />} />
                                     <Route path="stock-summary-report" element={<StockSummaryReport />} />
+                                    <Route path="upload-inventory-nv" element={<UploadInventoryNV />} />
+                                    <Route path="upload-inventory-donvi" element={<UploadInventoryDonVi />} />
 
                                 </Route>
 
