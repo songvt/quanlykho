@@ -43,6 +43,7 @@ const UploadInventoryDonVi  = lazy(() => import('./pages/Inventory/UploadInvento
 const AssetList          = lazy(() => import('./pages/Assets/AssetList'));
 const AssetMonthlyReport = lazy(() => import('./pages/Assets/AssetMonthlyReport'));
 const AssetDetailReport  = lazy(() => import('./pages/Assets/AssetDetailReport'));
+const AssetQuarterlyReport = lazy(() => import('./pages/Assets/AssetQuarterlyReport'));
 const AssetBrokenReport  = lazy(() => import('./pages/Assets/AssetBrokenReport'));
 const AssetHandoverBhl   = lazy(() => import('./pages/Assets/AssetHandoverBhl'));
 const KCSWarrantyList    = lazy(() => import('./pages/Assets/KCSWarranty/KCSWarrantyList'));
@@ -135,6 +136,8 @@ function App() {
                                     <Route path="assets/report-tbvp" element={<AssetMonthlyReport reportType="TBVP" />} />
                                     <Route path="assets/detail-ccdc" element={<AssetDetailReport reportType="CCDC" />} />
                                     <Route path="assets/detail-tbvp" element={<AssetDetailReport reportType="TBVP" />} />
+                                    <Route path="assets/quarterly-ccdc" element={<AssetQuarterlyReport reportType="CCDC" />} />
+                                    <Route path="assets/quarterly-tbvp" element={<AssetQuarterlyReport reportType="TBVP" />} />
                                     <Route path="assets/broken-report" element={<AssetBrokenReport />} />
                                 </Route>
 

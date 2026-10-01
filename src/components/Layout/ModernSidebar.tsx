@@ -295,8 +295,10 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                 ...(canViewReports ? [
                                     { text: 'BC tổng hợp CCDC-TSNT', path: '/assets/report-ccdc', icon: <PieChart size={18} /> },
                                     { text: 'Chi tiết CCDC-TSNT', path: '/assets/detail-ccdc', icon: <FileSearch size={18} /> },
+                                    { text: 'BC Quý chi tiết CCDC-TSNT', path: '/assets/quarterly-ccdc', icon: <CalendarCheck size={18} /> },
                                     { text: 'BC tổng hợp TBVP', path: '/assets/report-tbvp', icon: <FileText size={18} /> },
                                     { text: 'Chi tiết TBVP', path: '/assets/detail-tbvp', icon: <FileSearch size={18} /> },
+                                    { text: 'BC Quý chi tiết TBVP', path: '/assets/quarterly-tbvp', icon: <CalendarCheck size={18} /> },
                                     { text: 'BC CCDC-TBVP hỏng', path: '/assets/broken-report', icon: <AlertTriangle size={18} /> },
                                 ] : []),
                             ];
