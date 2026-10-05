@@ -371,6 +371,43 @@ a,
   100% { transform: scale(1); opacity: 1; }
 }
 
+/* ── Reduce Motion (Accessibility) ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  body::before,
+  body::after {
+    animation: none !important;
+  }
+  .glass-card:hover,
+  .card-hover-effect:hover,
+  .MuiButton-root:hover,
+  .MuiButton-root:active,
+  .MuiIconButton-root:hover,
+  .MuiIconButton-root:active,
+  .MuiCard-root:hover,
+  .MuiCard-root:active {
+    transform: none !important;
+  }
+}
+
+/* ── Mobile: giảm hiệu ứng blob để tiết kiệm GPU ── */
+@media (max-width: 640px) {
+  body::before,
+  body::after {
+    filter: blur(60px);
+    opacity: 0.6;
+    width: 80vw;
+    height: 80vw;
+  }
+}
+
 /* ── Print: hide mobile nav ── */
 @media print {
   .mobile-bottom-nav,

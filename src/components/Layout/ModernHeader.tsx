@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     AppBar,
     Toolbar,
@@ -31,6 +31,10 @@ const ModernHeader: React.FC<ModernHeaderProps> = ({ DRAWER_WIDTH, handleDrawerT
 
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const [themeMode, setThemeMode] = useState<'light' | 'dark'>('light');
+
+    const formattedDate = useMemo(() => {
+        return new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    }, []);
 
     const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => setAnchorEl(event.currentTarget);
     const handleMenuClose = () => setAnchorEl(null);
@@ -122,7 +126,7 @@ const ModernHeader: React.FC<ModernHeaderProps> = ({ DRAWER_WIDTH, handleDrawerT
                 {/* Right Side: Actions */}
                 <Box display="flex" alignItems="center" gap={{ xs: 1, sm: 2 }}>
                     <Typography sx={{ display: { xs: 'none', md: 'block' }, color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 500 }}>
-                        {new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        {formattedDate}
                     </Typography>
 
                     <IconButton onClick={toggleTheme} sx={{ color: 'var(--text-secondary)' }}>

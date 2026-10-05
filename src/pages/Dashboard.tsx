@@ -220,9 +220,12 @@ const Dashboard = () => {
             weekly_stats.push({ date: formatDate(d).substring(0, 5), inbound: 0, outbound: 0 });
         }
 
+        const weeklyStatsMap = new Map<string, { date: string, inbound: number, outbound: number }>();
+        weekly_stats.forEach(w => weeklyStatsMap.set(w.date, w));
+
         transactions.forEach(t => {
             const tDate = formatDate(t.date).substring(0, 5);
-            const dayStat = weekly_stats.find(w => w.date === tDate);
+            const dayStat = weeklyStatsMap.get(tDate);
             if (dayStat) {
                 if (t.type === 'inbound') dayStat.inbound += t.quantity;
                 else dayStat.outbound += t.quantity;
