@@ -45,14 +45,31 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
             if (!isMounted || !document.getElementById(regionId)) return;
 
             try {
+                const ALL_SUPPORTED_FORMATS: Html5QrcodeSupportedFormats[] = [
+                    Html5QrcodeSupportedFormats.QR_CODE,
+                    Html5QrcodeSupportedFormats.DATA_MATRIX,
+                    Html5QrcodeSupportedFormats.AZTEC,
+                    Html5QrcodeSupportedFormats.PDF_417,
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.CODE_93,
+                    Html5QrcodeSupportedFormats.CODABAR,
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.EAN_8,
+                    Html5QrcodeSupportedFormats.ITF,
+                    Html5QrcodeSupportedFormats.UPC_A,
+                    Html5QrcodeSupportedFormats.UPC_E,
+                    Html5QrcodeSupportedFormats.UPC_EAN_EXTENSION,
+                    Html5QrcodeSupportedFormats.MAXICODE,
+                    Html5QrcodeSupportedFormats.RSS_14,
+                    Html5QrcodeSupportedFormats.RSS_EXPANDED,
+                ];
+
                 scannerInstance = new Html5Qrcode(regionId, {
-                    formatsToSupport: [
-                        Html5QrcodeSupportedFormats.QR_CODE,
-                        Html5QrcodeSupportedFormats.DATA_MATRIX,
-                        Html5QrcodeSupportedFormats.CODE_128,
-                        Html5QrcodeSupportedFormats.CODE_39,
-                        Html5QrcodeSupportedFormats.EAN_13
-                    ],
+                    formatsToSupport: ALL_SUPPORTED_FORMATS,
+                    experimentalFeatures: {
+                        useBarCodeDetectorIfSupported: true
+                    },
                     verbose: false
                 });
                 scannerRef.current = scannerInstance;
@@ -61,12 +78,14 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                 if (isMounted) {
                     if (devices && devices.length > 0) {
                         setCameras(devices);
-                        const backCamera = devices.find(d =>
-                            d.label.toLowerCase().includes('back') ||
-                            d.label.toLowerCase().includes('sau') ||
-                            d.label.toLowerCase().includes('environment') ||
-                            d.label.toLowerCase().includes('0')
-                        );
+                        const backCamera = devices.find(d => {
+                            const lbl = d.label.toLowerCase();
+                            return lbl.includes('back') ||
+                                   lbl.includes('sau') ||
+                                   lbl.includes('environment') ||
+                                   lbl.includes('rear') ||
+                                   lbl.includes('0');
+                        });
                         setSelectedCameraId(backCamera ? backCamera.id : devices[0].id);
                         setError(null);
                     } else {
@@ -112,17 +131,21 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                 await scanner.start(
                     selectedCameraId,
                     {
-                        fps: 10,
+                        fps: 20, // Tăng độ nhạy nhận diện khung hình trên mobile
                         qrbox: (viewWidth, viewHeight) => {
-                            const minEdge = Math.min(viewWidth, viewHeight);
-                            const size = Math.floor(minEdge * 0.7);
-                            return { width: size, height: size };
+                            // Khung quét linh hoạt: hỗ trợ cả mã vạch 1D ngang và QR 2D vuông
+                            const width = Math.floor(Math.min(viewWidth * 0.88, 500));
+                            const height = Math.floor(Math.min(viewHeight * 0.72, Math.max(220, width * 0.75)));
+                            return { width, height };
                         },
-                        aspectRatio: 1.0
+                        videoConstraints: {
+                            facingMode: "environment",
+                            advanced: [{ focusMode: "continuous" }]
+                        } as any
                     },
                     (decodedText) => {
                         const now = Date.now();
-                        if (decodedText === lastScanRef.current && (now - lastScanTimeRef.current < 2000)) return;
+                        if (decodedText === lastScanRef.current && (now - lastScanTimeRef.current < 1500)) return;
 
                         lastScanRef.current = decodedText;
                         lastScanTimeRef.current = now;
@@ -309,8 +332,10 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                                 top: '50%',
                                 left: '50%',
                                 transform: 'translate(-50%, -50%)',
-                                width: '70%',
-                                height: '50%',
+                                width: '85%',
+                                height: '65%',
+                                maxWidth: 480,
+                                maxHeight: 360,
                                 border: '2px solid rgba(255, 255, 255, 0.3)',
                                 borderRadius: 4,
                             }}>

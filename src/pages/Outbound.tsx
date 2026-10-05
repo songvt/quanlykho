@@ -27,6 +27,7 @@ import { sendTelegramNotification } from './Outbound/outboundTelegram';
 import PageHeader from '../components/Common/PageHeader';
 import { AppButton } from '../components/Common/AppButton';
 import OutboxIcon from '@mui/icons-material/Outbox';
+import { parseSerialInput } from '../utils/serialParser';
 
 export const Outbound = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -179,13 +180,13 @@ export const Outbound = () => {
     if (status === 'loading') return <Box display="flex" justifyContent="center" p={8}><CircularProgress /></Box>;
 
     const handleScanSuccess = (decodedText: string) => {
-        const newSerials = decodedText.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+        const newSerials = parseSerialInput(decodedText);
         setScannedSerials(prev => {
             const unique = newSerials.filter(s => !prev.includes(s));
             return [...prev, ...unique];
         });
         setShowScanner(false);
-        success(`Đã quét thành công: ${decodedText}`);
+        success(newSerials.length > 1 ? `Đã quét và tách thành công ${newSerials.length} serial` : `Đã quét thành công: ${newSerials[0] || decodedText}`);
     };
 
     const staffName = profile?.full_name || '';

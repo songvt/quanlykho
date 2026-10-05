@@ -4,6 +4,7 @@ import PageHeader from '../components/Common/PageHeader';
 import { Search, Package, Calendar, MapPin, Hash, User, QrCode } from 'lucide-react';
 import { supabase } from '../config/supabase';
 import QRScanner from '../components/QRScanner';
+import { parseSerialInput } from '../utils/serialParser';
 
 export default function InboundLookup() {
     const [searchQuery, setSearchQuery] = useState('');
@@ -219,7 +220,8 @@ export default function InboundLookup() {
                     {showScanner && (
                         <QRScanner
                             onScanSuccess={async (decodedText) => {
-                                setSearchQuery(decodedText);
+                                const parsed = parseSerialInput(decodedText);
+                                setSearchQuery(parsed[0] || decodedText);
                                 setShowScanner(false);
                             }}
                             onScanFailure={() => {}}
