@@ -757,7 +757,7 @@ const MonthlySettlementReport: React.FC = () => {
             fitToPage: true,
             fitToHeight: 0,
             fitToWidth: 1,
-            margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 }
+            margins: { left: 0.79, right: 0.59, top: 0.79, bottom: 0.79, header: 0.3, footer: 0.3 }
         };
 
         const buffer = await workbook.xlsx.writeBuffer();
@@ -861,21 +861,23 @@ const MonthlySettlementReport: React.FC = () => {
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = pdf.internal.pageSize.getHeight();
             
-            // Tính toán tỷ lệ để vừa khít trang A4
-            const imgWidth = pdfWidth - 20; // Margin 10mm mỗi bên
-            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            // Tính toán tỷ lệ để vừa khít trang A4 theo chuẩn NĐ 30/2020 (Landscape: Top 20mm, Bottom 20mm, Left 20mm, Right 15mm)
+            const marginL = 20;
+            const marginT = 20;
+            const availWidth = pdfWidth - 35; // 20mm left + 15mm right
+            const availHeight = pdfHeight - 40; // 20mm top + 20mm bottom
             
-            // Nếu cao quá trang thì scale lại theo chiều cao
-            let finalWidth = imgWidth;
-            let finalHeight = imgHeight;
-            if (imgHeight > pdfHeight - 20) {
-                finalHeight = pdfHeight - 20;
+            let finalWidth = availWidth;
+            let finalHeight = (canvas.height * finalWidth) / canvas.width;
+            
+            // Nếu cao quá trang thì scale lại theo chiều cao khả dụng
+            if (finalHeight > availHeight) {
+                finalHeight = availHeight;
                 finalWidth = (canvas.width * finalHeight) / canvas.height;
             }
 
-            // Căn giữa
-            const x = (pdfWidth - finalWidth) / 2;
-            const y = 10;
+            const x = marginL + (availWidth - finalWidth) / 2;
+            const y = marginT;
 
             pdf.addImage(imgData, 'PNG', x, y, finalWidth, finalHeight);
             pdf.save(`Quyet_Toan_Vat_Tu_${selectedMonth}.pdf`);
@@ -1228,7 +1230,7 @@ const MonthlySettlementReport: React.FC = () => {
                 @media print {
                     @page {
                         size: A4 landscape;
-                        margin: 10mm;
+                        margin: 20mm 15mm 20mm 20mm;
                     }
                     body {
                         background: white !important;

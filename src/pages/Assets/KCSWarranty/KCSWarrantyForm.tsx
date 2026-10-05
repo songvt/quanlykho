@@ -131,7 +131,7 @@ const KCSWarrantyForm: React.FC = () => {
                 {/* CSS to hide non-print elements */}
                 <style>{`
                     @media print {
-                        @page { size: A4 portrait; margin: 15mm; }
+                        @page { size: A4 portrait; margin: 20mm 15mm 20mm 30mm; }
                         body * { visibility: hidden !important; }
                         .print-page, .print-page * { visibility: visible !important; }
                         .print-page { 

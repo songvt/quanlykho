@@ -179,12 +179,12 @@ const AssetQuarterlyReport: React.FC<Props> = ({ reportType }) => {
                 fitToWidth: 1,
                 fitToHeight: 0, // Tự động co giãn theo chiều dọc qua các trang
                 margins: {
-                    left: 0.25,
-                    right: 0.25,
-                    top: 0.35,
-                    bottom: 0.35,
-                    header: 0.2,
-                    footer: 0.2
+                    left: 0.79,
+                    right: 0.59,
+                    top: 0.79,
+                    bottom: 0.79,
+                    header: 0.3,
+                    footer: 0.3
                 },
                 printTitlesRow: '18:18' // Lặp lại tiêu đề bảng ở mỗi trang in
             }
@@ -393,7 +393,7 @@ const AssetQuarterlyReport: React.FC<Props> = ({ reportType }) => {
                 <style>
                     @page { 
                         size: A4 landscape; 
-                        margin: 8mm 6mm; 
+                        margin: 20mm 15mm 20mm 20mm; 
                     }
                     * {
                         box-sizing: border-box;

@@ -30,7 +30,7 @@ const AssetBrokenPrint: React.FC<Props> = ({ open, onClose, assets }) => {
                 <meta charset="utf-8"/>
                 <title>Biên bản bàn giao vật tư thiết bị thu hồi</title>
                 <style>
-                    @page { size: A4; margin: 10mm 15mm; }
+                    @page { size: A4 portrait; margin: 20mm 15mm 20mm 30mm; }
                     * { box-sizing: border-box; }
                     body { font-family: 'Times New Roman', Times, serif; font-size: 11.5pt; color: #000; margin: 0; padding: 0; line-height: 1.4; }
                     

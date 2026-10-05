@@ -95,7 +95,17 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
 
     const handleExportExcel = async () => {
         const wb = new ExcelJS.Workbook();
-        const ws = wb.addWorksheet('ChiTiet');
+        const ws = wb.addWorksheet('ChiTiet', {
+            views: [{ showGridLines: true }],
+            pageSetup: {
+                paperSize: 9, // A4
+                orientation: 'landscape',
+                fitToPage: true,
+                fitToWidth: 1,
+                fitToHeight: 0,
+                margins: { left: 0.79, right: 0.59, top: 0.79, bottom: 0.79, header: 0.3, footer: 0.3 }
+            }
+        });
         const border: Partial<ExcelJS.Borders> = { top:{style:'thin'}, bottom:{style:'thin'}, left:{style:'thin'}, right:{style:'thin'} };
         const hFill = (argb: string): ExcelJS.Fill => ({ type:'pattern', pattern:'solid', fgColor:{argb} });
 
@@ -177,7 +187,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
         w.document.write(`
             <html><head><meta charset="utf-8"/><title>In Báo Cáo Chi Tiết</title>
             <style>
-                @page { size: A4 landscape; margin: 8mm 6mm; }
+                @page { size: A4 landscape; margin: 20mm 15mm 20mm 20mm; }
                 body { font-family: 'Times New Roman', serif; font-size: 10pt; margin: 0; padding: 0; }
                 table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
                 th, td { border: 1px solid #000; padding: 3px 2px; text-align: center; vertical-align: middle; word-wrap: break-word; font-size: 7.2pt; }

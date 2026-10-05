@@ -143,7 +143,7 @@ export const exportStandardReport = async (
             fitToWidth: 1,
             fitToHeight: 0,
             horizontalCentered: true,
-            margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 }
+            margins: { left: 1.18, right: 0.59, top: 0.79, bottom: 0.79, header: 0.3, footer: 0.3 }
         }
     });
 
@@ -311,7 +311,16 @@ export const exportStandardReport = async (
 // --- LEGACY EXPORTS (converted to ExcelJS) ---
 export const exportToExcel = async (data: any[], fileName: string, sheetName: string = 'Sheet1', options?: { title?: string; reporter?: string; }) => {
     const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet(sheetName);
+    const sheet = workbook.addWorksheet(sheetName, {
+        pageSetup: {
+            paperSize: 9, // A4
+            orientation: 'portrait',
+            fitToPage: true,
+            fitToWidth: 1,
+            fitToHeight: 0,
+            margins: { left: 1.18, right: 0.59, top: 0.79, bottom: 0.79, header: 0.3, footer: 0.3 }
+        }
+    });
     
     let currentRow = 1;
     if (options?.title) {
@@ -537,7 +546,7 @@ export const exportHandoverMinutesV2 = async (
             fitToWidth: 1,
             fitToHeight: 0, // Let height grow
             margins: {
-                left: 0.25, right: 0.25, top: 0.5, bottom: 0.5,
+                left: 1.18, right: 0.59, top: 0.79, bottom: 0.79,
                 header: 0.3, footer: 0.3
             }
         }
@@ -859,7 +868,7 @@ export const generateAssetTemplate = async () => {
             fitToPage: true,
             fitToWidth: 1,
             fitToHeight: 0,
-            margins: { left: 0.3, right: 0.3, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 }
+            margins: { left: 0.79, right: 0.59, top: 0.79, bottom: 0.79, header: 0.3, footer: 0.3 }
         }
     });
 
@@ -1079,7 +1088,8 @@ export const exportHandoverHistory = async (history: any[], fileName: string) =>
             orientation: 'landscape',
             fitToPage: true,
             fitToWidth: 1,
-            fitToHeight: 0
+            fitToHeight: 0,
+            margins: { left: 0.79, right: 0.59, top: 0.79, bottom: 0.79, header: 0.3, footer: 0.3 }
         }
     });
 
@@ -1210,7 +1220,7 @@ export const exportAssetReport = async (assets: any[], reporterName: string = 'A
             fitToPage: true,
             fitToWidth: 1,
             fitToHeight: 0,
-            margins: { left: 0.3, right: 0.3, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 }
+            margins: { left: 0.79, right: 0.59, top: 0.79, bottom: 0.79, header: 0.3, footer: 0.3 }
         }
     });
 

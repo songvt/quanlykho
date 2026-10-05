@@ -459,6 +459,9 @@ a,
     border: 1px solid #000000 !important;
     border-bottom: 1px solid #000000 !important;
   }
+  tr {
+    page-break-inside: avoid !important;
+  }
 }
 
 /* ── Focus Visible (Accessibility) ── */

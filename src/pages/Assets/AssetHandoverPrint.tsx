@@ -92,7 +92,7 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                 <meta charset="utf-8"/>
                 <title>Biên bản bàn giao</title>
                 <style>
-                    @page { size: A4; margin: 10mm 12mm; }
+                    @page { size: A4 portrait; margin: 20mm 15mm 20mm 30mm; }
                     * { box-sizing: border-box; }
                     body { font-family: 'Times New Roman', Times, serif; font-size: 11.5pt; color: #000; margin: 0; padding: 0; }
                     .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }

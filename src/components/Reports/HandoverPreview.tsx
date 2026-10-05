@@ -184,7 +184,7 @@ const HandoverPreview = (props: HandoverPreviewProps) => {
                         }
                         @page {
                             size: A4 portrait;
-                            margin: 10mm;
+                            margin: 20mm 15mm 20mm 30mm;
                         }
                         /* Hard overrides for print sharpness and contrast */
                         * {
