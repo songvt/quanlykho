@@ -277,14 +277,18 @@ export default function PDFTools() {
                 </Grid>
             </Paper>
 
-            {/* Mode Tabs */}
             <Paper elevation={2} sx={{ mb: 4, borderRadius: '12px', overflow: 'hidden' }}>
                 <Tabs 
                     value={activeTab} 
                     onChange={(e, val) => setActiveTab(val)}
                     variant="fullWidth"
                     sx={{
-                        '& .MuiTab-root': { py: 2, fontWeight: 'bold', fontSize: '0.95rem', textTransform: 'none' },
+                        '& .MuiTab-root': {
+                            py: 2, fontWeight: 'bold', fontSize: '0.95rem', textTransform: 'none',
+                            color: 'rgba(203, 213, 225, 0.85)',
+                            transition: 'color 0.2s ease',
+                            '&:hover': { color: '#f9a8d4' }
+                        },
                         '& .Mui-selected': { color: '#831843' },
                         '& .MuiTabs-indicator': { backgroundColor: '#831843', height: '3px' }
                     }}
@@ -310,7 +314,7 @@ export default function PDFTools() {
                                 onClick={() => activeTab === 0 ? mergeInputRef.current?.click() : splitInputRef.current?.click()}
                                 sx={{
                                     border: '2.5px dashed',
-                                    borderColor: isDragOver ? '#831843' : 'grey.300',
+                                    borderColor: isDragOver ? '#831843' : 'var(--border-glass)',
                                     borderRadius: '12px',
                                     p: 5,
                                     flexGrow: 1,
@@ -320,16 +324,16 @@ export default function PDFTools() {
                                     justifyContent: 'center',
                                     textAlign: 'center',
                                     cursor: 'pointer',
-                                    background: isDragOver ? '#fdf2f8' : '#fafafa',
+                                    background: isDragOver ? 'rgba(131, 24, 67, 0.12)' : 'rgba(255, 255, 255, 0.03)',
                                     transition: 'all 0.2s ease-in-out',
-                                    '&:hover': { borderColor: '#831843', background: '#fdf2f8' }
+                                    '&:hover': { borderColor: '#831843', background: 'rgba(131, 24, 67, 0.07)' }
                                 }}
                             >
-                                <CloudUploadIcon sx={{ fontSize: 56, color: '#831843', mb: 2, opacity: 0.8 }} />
-                                <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.secondary', mb: 0.5 }}>
+                                <CloudUploadIcon sx={{ fontSize: 56, color: '#831843', mb: 2, opacity: 0.85 }} />
+                                <Typography variant="body1" sx={{ fontWeight: 600, color: 'var(--text-primary)', opacity: 0.9, mb: 0.5 }}>
                                     Kéo thả file PDF tại đây hoặc nhấp để chọn file
                                 </Typography>
-                                <Typography variant="caption" color="text.secondary">
+                                <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
                                     {activeTab === 0 ? 'Chọn nhiều file PDF để ghép' : 'Chọn 1 file PDF để tách trang'}
                                 </Typography>
                             </Box>
@@ -374,14 +378,14 @@ export default function PDFTools() {
                                             </Typography>
                                             {mergeFiles.length === 0 ? (
                                                 <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 6 }}>
-                                                    <PictureAsPdfIcon sx={{ fontSize: 64, color: 'grey.300', mb: 1.5 }} />
-                                                    <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center' }}>
+                                                    <PictureAsPdfIcon sx={{ fontSize: 64, color: 'rgba(183, 28, 28, 0.5)', mb: 1.5 }} />
+                                                    <Typography variant="body2" sx={{ color: 'var(--text-secondary)', textAlign: 'center' }}>
                                                         Chưa có file nào được tải lên.
                                                     </Typography>
                                                 </Box>
                                             ) : (
                                                 <Box sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
-                                                    <List sx={{ maxHeight: 280, overflowY: 'auto', bgcolor: '#fcfcfc', border: '1px solid #eee', borderRadius: '8px', mb: 3 }}>
+                                                    <List sx={{ maxHeight: 280, overflowY: 'auto', bgcolor: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-glass)', borderRadius: '8px', mb: 3 }}>
                                                         {mergeFiles.map((file, idx) => (
                                                             <ListItem 
                                                                 key={idx}
@@ -437,8 +441,8 @@ export default function PDFTools() {
                                             </Typography>
                                             {!splitFile ? (
                                                 <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 6 }}>
-                                                    <PictureAsPdfIcon sx={{ fontSize: 64, color: 'grey.300', mb: 1.5 }} />
-                                                    <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center' }}>
+                                                    <PictureAsPdfIcon sx={{ fontSize: 64, color: 'rgba(183, 28, 28, 0.5)', mb: 1.5 }} />
+                                                    <Typography variant="body2" sx={{ color: 'var(--text-secondary)', textAlign: 'center' }}>
                                                         Chưa chọn file PDF cần tách trang.
                                                     </Typography>
                                                 </Box>

@@ -1027,7 +1027,12 @@ const BarcodeGenerator = () => {
                     onChange={(e, val) => setActiveTab(val)}
                     variant="fullWidth"
                     sx={{
-                        '& .MuiTab-root': { py: 2, fontWeight: 'bold', fontSize: '0.95rem', textTransform: 'none' },
+                        '& .MuiTab-root': {
+                            py: 2, fontWeight: 'bold', fontSize: '0.95rem', textTransform: 'none',
+                            color: 'rgba(203, 213, 225, 0.85)',  // inactive: clearly visible on dark background
+                            transition: 'color 0.2s ease',
+                            '&:hover': { color: '#5eead4' }
+                        },
                         '& .Mui-selected': { color: '#0d9488' },
                         '& .MuiTabs-indicator': { backgroundColor: '#0d9488', height: '3px' }
                     }}
@@ -1068,10 +1073,10 @@ const BarcodeGenerator = () => {
                                             }}
                                         >
                                             <CloudUploadIcon sx={{ fontSize: 48, color: 'var(--brand-success)', mb: 1, opacity: 0.9 }} />
-                                            <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-primary)', opacity: 0.9 }}>
                                                 Kéo thả file Excel tại đây hoặc nhấp để tải lên
                                             </Typography>
-                                            <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'var(--text-secondary)', opacity: 0.8 }}>
+                                            <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'var(--text-secondary)', opacity: 1 }}>
                                                 Hỗ trợ định dạng: .xlsx, .xls
                                             </Typography>
                                         </Box>
@@ -1091,28 +1096,28 @@ const BarcodeGenerator = () => {
                                                 placeholder="Khu Vực (VD: N260)" 
                                                 value={manualKhuVuc} 
                                                 onChange={(e) => setManualKhuVuc(e.target.value)} 
-                                                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }}
+                                                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.15)', fontSize: '14px', background: 'rgba(255,255,255,0.06)', color: 'var(--text-primary)' } as React.CSSProperties}
                                             />
                                             <textarea 
                                                 placeholder="Tên/Mô tả vật tư" 
                                                 value={manualTenVatTu} 
                                                 onChange={(e) => setManualTenVatTu(e.target.value)} 
                                                 rows={2}
-                                                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', fontFamily: 'inherit' }}
+                                                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.15)', fontSize: '14px', fontFamily: 'inherit', background: 'rgba(255,255,255,0.06)', color: 'var(--text-primary)' } as React.CSSProperties}
                                             />
                                             <input 
                                                 type="text" 
                                                 placeholder="Mã Vật Tư / SKU" 
                                                 value={manualMaVatTu} 
                                                 onChange={(e) => setManualMaVatTu(e.target.value)} 
-                                                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }}
+                                                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.15)', fontSize: '14px', background: 'rgba(255,255,255,0.06)', color: 'var(--text-primary)' } as React.CSSProperties}
                                             />
                                             <input 
                                                 type="text" 
                                                 placeholder="Mã Barcode (Code 128)" 
                                                 value={manualBarcode} 
                                                 onChange={(e) => setManualBarcode(e.target.value)} 
-                                                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px', fontWeight: 'bold' }}
+                                                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.15)', fontSize: '14px', fontWeight: 'bold', background: 'rgba(255,255,255,0.06)', color: 'var(--text-primary)' } as React.CSSProperties}
                                             />
                                             <Button 
                                                 variant="contained" 
@@ -1172,8 +1177,8 @@ const BarcodeGenerator = () => {
                                     {/* Table */}
                                     {dataRows.length === 0 ? (
                                         <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 8 }}>
-                                            <BarChartIcon sx={{ fontSize: 72, color: 'grey.300', mb: 2 }} />
-                                            <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                                            <BarChartIcon sx={{ fontSize: 72, color: 'rgba(13, 148, 136, 0.55)', mb: 2 }} />
+                                            <Typography variant="body1" sx={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
                                                 Chưa có dữ liệu vật tư. Vui lòng import file Excel hoặc thêm thủ công.
                                             </Typography>
                                         </Box>
@@ -1319,21 +1324,21 @@ const BarcodeGenerator = () => {
                                             onClick={() => fileInputRef.current?.click()}
                                             sx={{
                                                 border: '2px dashed',
-                                                borderColor: isDragOver ? 'teal.main' : 'grey.300',
+                                                borderColor: isDragOver ? '#0d9488' : 'var(--border-glass)',
                                                 borderRadius: '8px',
                                                 p: 4,
                                                 textAlign: 'center',
                                                 cursor: 'pointer',
-                                                background: isDragOver ? '#e6f4f1' : '#fafafa',
+                                                background: isDragOver ? 'rgba(13, 148, 136, 0.15)' : 'rgba(255, 255, 255, 0.03)',
                                                 transition: 'all 0.2s ease-in-out',
-                                                '&:hover': { borderColor: 'teal.main', background: '#f0f9f8' }
+                                                '&:hover': { borderColor: '#0d9488', background: 'rgba(13, 148, 136, 0.07)' }
                                             }}
                                         >
-                                            <CloudUploadIcon sx={{ fontSize: 48, color: '#0d9488', mb: 1, opacity: 0.8 }} />
-                                            <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                                            <CloudUploadIcon sx={{ fontSize: 48, color: '#0d9488', mb: 1, opacity: 0.9 }} />
+                                            <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-primary)', opacity: 0.9 }}>
                                                 Kéo thả file Excel tại đây hoặc nhấp để tải lên
                                             </Typography>
-                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                                            <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'var(--text-secondary)', opacity: 1 }}>
                                                 Lấy cột: Ma_Barcode, Serial, serial_code...
                                             </Typography>
                                         </Box>
@@ -1453,8 +1458,8 @@ const BarcodeGenerator = () => {
                                     {/* Table */}
                                     {singleRows.length === 0 ? (
                                         <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 8 }}>
-                                            <BarChartIcon sx={{ fontSize: 72, color: 'grey.300', mb: 2 }} />
-                                            <Typography variant="body1" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                                            <BarChartIcon sx={{ fontSize: 72, color: 'rgba(13, 148, 136, 0.55)', mb: 2 }} />
+                                            <Typography variant="body1" sx={{ color: 'var(--text-secondary)', fontWeight: 600 }}>
                                                 Chưa có dữ liệu tem đơn lẻ. Vui lòng nhập danh sách hoặc import.
                                             </Typography>
                                         </Box>
@@ -1495,8 +1500,8 @@ const BarcodeGenerator = () => {
 
                     {/* Visual Preview Mode */}
                     {singleRows.length > 0 && (
-                        <Box sx={{ mt: 5, p: 3, border: '1px solid #ddd', borderRadius: '12px', background: '#fafafa' }}>
-                            <Typography variant="h6" sx={{ fontWeight: 800, mb: 2, color: 'text.secondary', display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box sx={{ mt: 5, p: 3, border: '1px solid var(--border-glass)', borderRadius: '12px', background: 'rgba(255,255,255,0.03)' }}>
+                            <Typography variant="h6" sx={{ fontWeight: 800, mb: 2, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <PrintIcon /> BẢN XEM TRƯỚC TEM NHIỆT ĐƠN LẺ (50mm x 30mm)
                             </Typography>
                             <Divider sx={{ mb: 3 }} />
