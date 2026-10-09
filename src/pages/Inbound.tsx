@@ -115,7 +115,8 @@ export const Inbound = () => {
                                     setIsSyncing(true);
                                     try {
                                         const res = await dispatch(syncInStock()).unwrap();
-                                        success(res.message || 'Đồng bộ thành công!');
+                                        if (res.sync_warning) notifyError(res.message || 'Dữ liệu đã cập nhật nhưng Google Sheets chưa đồng bộ.');
+                                        else success(res.message || 'Đồng bộ thành công!');
                                     } catch (e: any) { notifyError(e.message); }
                                     finally { setIsSyncing(false); }
                                 }}

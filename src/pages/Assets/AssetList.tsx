@@ -51,6 +51,7 @@ const AssetList = () => {
     const [employeeName, setEmployeeName] = useState('');
     const [employeeCode, setEmployeeCode] = useState('');
     const [department, setDepartment] = useState('');
+    const [confirmStep, setConfirmStep] = useState<0 | 1>(0); // 0 = form nhập, 1 = xác nhận
 
     const [handoverPrint, setHandoverPrint] = useState<{
         open: boolean;
@@ -283,6 +284,14 @@ const AssetList = () => {
     };
 
 
+    const handleActionNext = () => {
+        if (actionModal.type !== 'revoke' && !employeeName.trim()) {
+            notifyError('Vui lòng chọn hoặc nhập tên nhân viên nhận!');
+            return;
+        }
+        setConfirmStep(1);
+    };
+
     const handleActionSubmit = async () => {
         try {
             const updates = selectedIds.map(id => {
@@ -319,6 +328,7 @@ const AssetList = () => {
             });
 
             setActionModal({ open: false, type: null, assetIds: [] });
+            setConfirmStep(0);
             setSelectedIds([]);
             setEmployeeName(''); setEmployeeCode(''); setDepartment('');
         } catch (err: any) {
@@ -681,71 +691,159 @@ const AssetList = () => {
             )}
 
             {/* Action Modal */}
-            <Dialog open={actionModal.open} onClose={() => setActionModal({ ...actionModal, open: false })} maxWidth="sm" fullWidth>
+            <Dialog
+                open={actionModal.open}
+                onClose={() => { setActionModal({ ...actionModal, open: false }); setConfirmStep(0); }}
+                maxWidth="sm"
+                fullWidth
+            >
                 <DialogTitle>
                     {actionModal.type === 'allocate' && 'Cấp phát tài sản'}
                     {actionModal.type === 'revoke' && 'Thu hồi tài sản'}
                     {actionModal.type === 'transfer' && 'Điều chuyển tài sản'}
+                    {confirmStep === 1 && ' – Xác nhận'}
                 </DialogTitle>
                 <DialogContent>
-                    <Typography mb={2}>Đang thao tác trên {actionModal.assetIds.length} tài sản.</Typography>
-                    {actionModal.type !== 'revoke' && (
-                        <Stack spacing={2} mt={1}>
-                            <Autocomplete
-                                options={hrProfiles}
-                                getOptionLabel={(option) => `${option.full_name} (${option.id})`}
-                                value={hrProfiles.find(p => p.id === employeeCode) || null}
-                                onChange={(_, newVal) => {
-                                    if (newVal) {
-                                        setEmployeeCode(newVal.id);
-                                        setEmployeeName(newVal.full_name);
-                                        setDepartment(newVal.department || '');
-                                    } else {
-                                        setEmployeeCode('');
-                                        setEmployeeName('');
-                                        setDepartment('');
-                                    }
-                                }}
-                                loading={hrProfilesStatus === 'loading'}
-                                renderInput={(params) => (
-                                    <TextField 
-                                        {...params} 
-                                        label="Chọn nhân viên nhận" 
-                                        size="small" 
-                                        placeholder="Gõ tên hoặc mã nhân viên..."
+                    {confirmStep === 0 ? (
+                        /* ── Bước 0: Form nhập thông tin ── */
+                        <>
+                            <Typography mb={2}>Đang thao tác trên {actionModal.assetIds.length} tài sản.</Typography>
+                            {actionModal.type !== 'revoke' && (
+                                <Stack spacing={2} mt={1}>
+                                    <Autocomplete
+                                        options={hrProfiles}
+                                        getOptionLabel={(option) => `${option.full_name} (${option.id})`}
+                                        value={hrProfiles.find(p => p.id === employeeCode) || null}
+                                        onChange={(_, newVal) => {
+                                            if (newVal) {
+                                                setEmployeeCode(newVal.id);
+                                                setEmployeeName(newVal.full_name);
+                                                setDepartment(newVal.department || '');
+                                            } else {
+                                                setEmployeeCode('');
+                                                setEmployeeName('');
+                                                setDepartment('');
+                                            }
+                                        }}
+                                        loading={hrProfilesStatus === 'loading'}
+                                        renderInput={(params) => (
+                                            <TextField
+                                                {...params}
+                                                label="Chọn nhân viên nhận"
+                                                size="small"
+                                                placeholder="Gõ tên hoặc mã nhân viên..."
+                                            />
+                                        )}
                                     />
+                                    <TextField
+                                        label="Mã nhân viên nhận"
+                                        fullWidth
+                                        size="small"
+                                        value={employeeCode}
+                                        onChange={(e) => setEmployeeCode(e.target.value)}
+                                    />
+                                    <TextField
+                                        label="Tên nhân viên nhận"
+                                        fullWidth
+                                        size="small"
+                                        value={employeeName}
+                                        onChange={(e) => setEmployeeName(e.target.value)}
+                                    />
+                                    <TextField
+                                        label="Phòng ban"
+                                        fullWidth
+                                        size="small"
+                                        value={department}
+                                        onChange={(e) => setDepartment(e.target.value)}
+                                    />
+                                </Stack>
+                            )}
+                            {actionModal.type === 'revoke' && (
+                                <Typography color="error">Bạn có chắc chắn muốn thu hồi tài sản về kho?</Typography>
+                            )}
+                        </>
+                    ) : (
+                        /* ── Bước 1: Preview xác nhận ── */
+                        <Stack spacing={2} mt={1}>
+                            <Typography variant="subtitle1" fontWeight={700}>
+                                Vui lòng kiểm tra lại trước khi thực hiện:
+                            </Typography>
+                            <Box sx={{ bgcolor: 'action.hover', borderRadius: 2, p: 2 }}>
+                                <Typography><b>Loại thao tác:</b>{' '}
+                                    {actionModal.type === 'allocate' && 'Cấp phát tài sản'}
+                                    {actionModal.type === 'revoke' && 'Thu hồi tài sản'}
+                                    {actionModal.type === 'transfer' && 'Điều chuyển tài sản'}
+                                </Typography>
+                                {actionModal.type !== 'revoke' ? (
+                                    <Typography mt={0.5}>
+                                        <b>Người nhận:</b> {employeeName}{employeeCode ? ` (${employeeCode})` : ''}{department ? ` – ${department}` : ''}
+                                    </Typography>
+                                ) : (
+                                    <Typography mt={0.5}><b>Người nhận:</b> Thu hồi về kho</Typography>
                                 )}
-                            />
-                            <TextField 
-                                label="Mã nhân viên nhận" 
-                                fullWidth 
-                                size="small"
-                                value={employeeCode}
-                                onChange={(e) => setEmployeeCode(e.target.value)}
-                            />
-                            <TextField 
-                                label="Tên nhân viên nhận" 
-                                fullWidth 
-                                size="small"
-                                value={employeeName}
-                                onChange={(e) => setEmployeeName(e.target.value)}
-                            />
-                            <TextField 
-                                label="Phòng ban" 
-                                fullWidth 
-                                size="small"
-                                value={department}
-                                onChange={(e) => setDepartment(e.target.value)}
-                            />
+                            </Box>
+                            <Typography variant="subtitle2" fontWeight={700}>
+                                Danh sách tài sản sẽ bị thay đổi ({actionModal.assetIds.length} tài sản):
+                            </Typography>
+                            <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+                                {(() => {
+                                    const previewAssets = assets.filter(a => actionModal.assetIds.includes(a.id));
+                                    const shown = previewAssets.slice(0, 10);
+                                    const remaining = previewAssets.length - shown.length;
+                                    return (
+                                        <>
+                                            {shown.map(a => (
+                                                <li key={a.id}>
+                                                    <Typography variant="body2">
+                                                        {a.asset_code} – {a.asset_name}
+                                                    </Typography>
+                                                </li>
+                                            ))}
+                                            {remaining > 0 && (
+                                                <li>
+                                                    <Typography variant="body2" color="text.secondary">
+                                                        ...và {remaining} tài sản khác
+                                                    </Typography>
+                                                </li>
+                                            )}
+                                        </>
+                                    );
+                                })()}
+                            </Box>
                         </Stack>
-                    )}
-                    {actionModal.type === 'revoke' && (
-                        <Typography color="error">Bạn có chắc chắn muốn thu hồi tài sản về kho?</Typography>
                     )}
                 </DialogContent>
                 <DialogActions sx={{ gap: 1 }}>
-                    <AppButton onClick={() => setActionModal({ ...actionModal, open: false })} icon={<CloseIcon />} title="Hủy" />
-                    <AppButton variant="contained" onClick={handleActionSubmit} icon={<CheckIcon />} title="Xác nhận" />
+                    {confirmStep === 0 ? (
+                        <>
+                            <AppButton
+                                onClick={() => { setActionModal({ ...actionModal, open: false }); setConfirmStep(0); }}
+                                icon={<CloseIcon />}
+                                title="Hủy"
+                            />
+                            <AppButton
+                                variant="contained"
+                                onClick={handleActionNext}
+                                icon={<CheckIcon />}
+                                title="Tiếp theo"
+                            />
+                        </>
+                    ) : (
+                        <>
+                            <AppButton
+                                onClick={() => setConfirmStep(0)}
+                                icon={<CloseIcon />}
+                                title="Quay lại"
+                            />
+                            <AppButton
+                                variant="contained"
+                                color="error"
+                                onClick={handleActionSubmit}
+                                icon={<CheckIcon />}
+                                title="Xác nhận thực hiện"
+                            />
+                        </>
+                    )}
                 </DialogActions>
             </Dialog>
 

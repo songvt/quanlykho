@@ -3,6 +3,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getGoogleSheet } from './_utils/googleSheets.js';
 import { supabase, fetchAll } from './_utils/supabase.js';
 import { randomUUID } from 'crypto';
+import { runSyncQueue } from './_utils/syncQueue.js';
 
 const formatLocalDate = (date: Date | string) => {
     const d = new Date(date);
@@ -27,27 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(404).json({ error: 'Sheet in_stock not found' });
         }
 
-        // 1. Xóa toàn bộ dữ liệu inbound_transactions cũ trên Supabase
-        const { error: deleteError } = await supabase
-            .from('inbound_transactions')
-            .delete()
-            .neq('id', '00000000-0000-0000-0000-000000000000');
-        if (deleteError) {
-            console.error('[Cron Sync Stock] Lỗi xóa inbound_transactions cũ trên Supabase:', deleteError);
-            return res.status(500).json({ error: 'Không thể xóa dữ liệu cũ trên database' });
-        }
-
-        // 2. Xóa các dòng trong Google Sheet inbound_transactions để đồng bộ
-        try {
-            const inboundSheet = doc.sheetsByTitle['inbound_transactions'];
-            if (inboundSheet) {
-                await inboundSheet.clearRows();
-            }
-        } catch (gsClearErr) {
-            console.error('[Cron Sync Stock] Lỗi xóa inbound_transactions cũ trên Google Sheets:', gsClearErr);
-        }
-
-        // 3. Đọc dữ liệu từ stock sheet và danh sách sản phẩm từ Supabase
+        // Always load and validate the full source before replacing persisted inventory.
         const [sRows, products] = await Promise.all([
             stockSheet.getRows(),
             fetchAll('products', '*')
@@ -68,9 +49,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             if (!pIdRaw) continue;
             
             if (!productsMap[pIdRaw] && !missingProductsMap[pIdRaw]) {
-                const newId = randomUUID();
                 const newProd = {
-                    id: newId,
+                    // Keep the in_stock code stable so future rows resolve without a separate
+                    // code-to-UUID translation and never create orphan transactions.
+                    id: pIdRaw,
                     item_code: pIdRaw,
                     name: row.get('TEN_HANG') || row.get('Tên Hàng Hóa') || row.get('name') || pIdRaw,
                     unit: row.get('DVT') || row.get('ĐVT') || row.get('unit') || 'Cái',
@@ -83,8 +65,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         
         if (newProductsToInsert.length > 0) {
             console.log(`Đang tự động tạo ${newProductsToInsert.length} sản phẩm mới...`);
-            const { error: pErr } = await supabase.from('products').insert(newProductsToInsert);
-            if (pErr) console.error("Lỗi khi tạo sản phẩm mới:", pErr);
+            const { error: pErr } = await supabase
+                .from('products')
+                .upsert(newProductsToInsert, { onConflict: 'id', ignoreDuplicates: true });
+            if (pErr) throw pErr;
+            const { error: productQueueError } = await supabase.from('gs_sync_queue').insert({
+                table_name: 'products', action: 'insert', payload: newProductsToInsert
+            });
+            if (productQueueError) {
+                await supabase.from('products').delete().in('id', newProductsToInsert.map(product => product.id));
+                throw new Error('Không tạo được hàng đợi đồng bộ danh mục sản phẩm.');
+            }
             Object.assign(productsMap, missingProductsMap);
         }
 
@@ -111,7 +102,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 quantity: isNaN(qty) ? 1 : Math.round(qty),
                 item_status: row.get('item_status') || row.get('status') || 'Mới',
                 district: row.get('district') || row.get('District') || 'Kho Tổng',
-                inbound_date: new Date().toISOString(),
+                inbound_date: (() => {
+                    const sourceDate = row.get('inbound_date') || row.get('NGAY_NHAP') || row.get('Ngay_Nhap') || row.get('receipt_date');
+                    const parsed = sourceDate ? new Date(sourceDate) : null;
+                    return parsed && !isNaN(parsed.getTime()) ? parsed.toISOString() : new Date().toISOString();
+                })(),
                 created_by: creator,
                 unit_price: product.unit_price || 0,
                 sap_id: row.get('ID_SAP') || '',
@@ -122,9 +117,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             });
         }
 
-        // 4. Ghi lại dữ liệu mới (Ghi vào Supabase + Google Sheet)
-        if (toInsert.length > 0) {
-            // 4.1 Ghi vào Supabase
+        if (toInsert.length === 0) {
+            return res.status(422).json({ error: 'Không tìm thấy dữ liệu kho hợp lệ; không thay đổi dữ liệu hiện có.' });
+        }
+
+        const previousRows = await fetchAll('inbound_transactions', '*');
+        const { error: deleteError } = await supabase
+            .from('inbound_transactions')
+            .delete()
+            .neq('id', '00000000-0000-0000-0000-000000000000');
+        if (deleteError) throw deleteError;
+
+        try {
             const chunkSize = 1000;
             for (let i = 0; i < toInsert.length; i += chunkSize) {
                 const chunk = toInsert.slice(i, i + chunkSize);
@@ -133,32 +137,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     .upsert(chunk, { onConflict: 'id', ignoreDuplicates: true });
                 if (sbError) throw sbError;
             }
-
-            // 4.2 Ghi vào Google Sheet
-            try {
-                const inboundSheet = doc.sheetsByTitle['inbound_transactions'];
-                if (inboundSheet) {
-                    const nowLocal = formatLocalDate(new Date());
-                    const gsItems = toInsert.map(p => ({
-                        ...p,
-                        inbound_date: nowLocal,
-                        created_at: nowLocal,
-                        updated_at: nowLocal
-                    }));
-
-                    const gsChunkSize = 250;
-                    for (let i = 0; i < gsItems.length; i += gsChunkSize) {
-                        await inboundSheet.addRows(gsItems.slice(i, i + gsChunkSize));
-                    }
-                }
-            } catch (gsWriteErr) {
-                console.error('[Cron Sync Stock] Lỗi ghi Google Sheets inbound_transactions:', gsWriteErr);
+        } catch (writeError) {
+            // Restore the previous committed snapshot if replacement cannot be written.
+            for (let i = 0; i < previousRows.length; i += 1000) {
+                const { error: restoreError } = await supabase
+                    .from('inbound_transactions')
+                    .upsert(previousRows.slice(i, i + 1000), { onConflict: 'id' });
+                if (restoreError) console.error('[Cron Sync Stock] Khôi phục snapshot lỗi:', restoreError);
             }
+            throw writeError;
         }
+
+        // The durable outbox performs an idempotent whole-sheet replacement. Do not clear
+        // Google Sheets in this request: a failed retry must leave a recoverable mirror.
+        // Queue the committed Supabase snapshot, rather than the import draft. Database
+        // defaults/triggers (for example total_price) must also be present in the mirror.
+        const committedRows = await fetchAll('inbound_transactions', '*');
+        const { error: queueError } = await supabase.from('gs_sync_queue').insert({
+            table_name: 'inbound_transactions', action: 'replace', payload: committedRows
+        });
+        if (queueError) {
+            await supabase
+                .from('inbound_transactions')
+                .delete()
+                .neq('id', '00000000-0000-0000-0000-000000000000');
+            for (let i = 0; i < previousRows.length; i += 1000) {
+                await supabase
+                    .from('inbound_transactions')
+                    .upsert(previousRows.slice(i, i + 1000), { onConflict: 'id' });
+            }
+            throw new Error('Không tạo được hàng đợi đồng bộ Google Sheets; dữ liệu Supabase đã được khôi phục.');
+        }
+        runSyncQueue().catch(err => console.error('[Cron Sync Stock] Không thể khởi động đồng bộ Google Sheets:', err));
 
         console.log(`[Cron Sync Stock] Tự động đồng bộ thành công ${toInsert.length} sản phẩm từ kho tổng!`);
         return res.status(200).json({
-            message: `Tự động đồng bộ thành công ${toInsert.length} sản phẩm từ kho tổng!`,
+            message: `Đã cập nhật ${toInsert.length} sản phẩm; Google Sheets đang đồng bộ an toàn từ hàng đợi.`,
             count: toInsert.length
         });
 

@@ -1,5 +1,6 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabase, fetchAll } from './_utils/supabase.js';
+import { collectSystemBackup, getLatestWeeklyBackup } from './_utils/weeklyBackup.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const allowedMethods = ['GET', 'POST', 'PUT', 'DELETE'];
@@ -188,56 +189,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // --- 4. BACKUP & RESTORE ---
         if (tab === 'backup') {
             if (req.method === 'GET') {
+                if (req.query.action === 'scheduled_latest') {
+                    const backup = await getLatestWeeklyBackup();
+                    if (!backup) return res.status(404).json({ error: 'Chưa có bản sao lưu tự động nào.' });
+                    return res.status(200).json(backup);
+                }
                 // Fetch tables to back up (including all business data tables)
-                const [
-                    companyRes,
-                    branchesRes,
-                    storekeepersRes,
-                    productsRes,
-                    employeesRes,
-                    ordersRes,
-                    inboundRes,
-                    outboundRes,
-                    returnsRes,
-                    assetsRes,
-                    assetLogsRes,
-                    assetHandoversRes,
-                    hrProfilesRes
-                ] = await Promise.all([
-                    supabase.from('company_info').select('*'),
-                    supabase.from('branches').select('*'),
-                    fetchAll('district_storekeepers'),
-                    fetchAll('products'),
-                    fetchAll('employees'),
-                    fetchAll('orders'),
-                    fetchAll('inbound_transactions'),
-                    fetchAll('outbound_transactions'),
-                    fetchAll('employee_returns'),
-                    fetchAll('assets'),
-                    fetchAll('asset_logs'),
-                    fetchAll('asset_handovers'),
-                    fetchAll('hr_profiles')
-                ]);
-
-                const backupData = {
-                    backup_date: new Date().toISOString(),
-                    version: '1.0.0',
-                    company_info: companyRes.data || [],
-                    branches: branchesRes.data || [],
-                    district_storekeepers: storekeepersRes || [],
-                    products: productsRes || [],
-                    employees: employeesRes || [],
-                    orders: ordersRes || [],
-                    inbound_transactions: inboundRes || [],
-                    outbound_transactions: outboundRes || [],
-                    employee_returns: returnsRes || [],
-                    assets: assetsRes || [],
-                    asset_logs: assetLogsRes || [],
-                    asset_handovers: assetHandoversRes || [],
-                    hr_profiles: hrProfilesRes || []
-                };
-
-                return res.status(200).json(backupData);
+                return res.status(200).json(await collectSystemBackup());
             }
         }
 

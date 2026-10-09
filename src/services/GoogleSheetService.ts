@@ -682,6 +682,10 @@ export const GoogleSheetService = {
         return apiRequest('system_config?tab=backup');
     },
 
+    async getLatestAutomaticBackup() {
+        return apiRequest('system_config?tab=backup&action=scheduled_latest');
+    },
+
     async restoreBackupData(payload: any) {
         return apiRequest('system_config?tab=restore', {
             method: 'POST',

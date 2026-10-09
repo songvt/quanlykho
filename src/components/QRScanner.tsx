@@ -28,6 +28,7 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
     // De-bouncing
     const lastScanRef = useRef<string>('');
     const lastScanTimeRef = useRef<number>(0);
+    const scanLockedRef = useRef(false);
 
     // Initialization Effect
     useEffect(() => {
@@ -45,28 +46,19 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
             if (!isMounted || !document.getElementById(regionId)) return;
 
             try {
-                const ALL_SUPPORTED_FORMATS: Html5QrcodeSupportedFormats[] = [
+                // Restrict decoding to the formats used by this app. On mobile, trying every
+                // available symbology on every frame makes autofocus/detection noticeably slower.
+                const SUPPORTED_FORMATS: Html5QrcodeSupportedFormats[] = [
                     Html5QrcodeSupportedFormats.QR_CODE,
                     Html5QrcodeSupportedFormats.DATA_MATRIX,
-                    Html5QrcodeSupportedFormats.AZTEC,
                     Html5QrcodeSupportedFormats.PDF_417,
                     Html5QrcodeSupportedFormats.CODE_128,
-                    Html5QrcodeSupportedFormats.CODE_39,
-                    Html5QrcodeSupportedFormats.CODE_93,
-                    Html5QrcodeSupportedFormats.CODABAR,
                     Html5QrcodeSupportedFormats.EAN_13,
                     Html5QrcodeSupportedFormats.EAN_8,
-                    Html5QrcodeSupportedFormats.ITF,
-                    Html5QrcodeSupportedFormats.UPC_A,
-                    Html5QrcodeSupportedFormats.UPC_E,
-                    Html5QrcodeSupportedFormats.UPC_EAN_EXTENSION,
-                    Html5QrcodeSupportedFormats.MAXICODE,
-                    Html5QrcodeSupportedFormats.RSS_14,
-                    Html5QrcodeSupportedFormats.RSS_EXPANDED,
                 ];
 
                 scannerInstance = new Html5Qrcode(regionId, {
-                    formatsToSupport: ALL_SUPPORTED_FORMATS,
+                    formatsToSupport: SUPPORTED_FORMATS,
                     experimentalFeatures: {
                         useBarCodeDetectorIfSupported: true
                     },
@@ -83,10 +75,10 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                             return lbl.includes('back') ||
                                    lbl.includes('sau') ||
                                    lbl.includes('environment') ||
-                                   lbl.includes('rear') ||
-                                   lbl.includes('0');
+                                   lbl.includes('rear');
                         });
-                        setSelectedCameraId(backCamera ? backCamera.id : devices[0].id);
+                        // Mobile browsers commonly list the rear lens last when labels are hidden.
+                        setSelectedCameraId(backCamera ? backCamera.id : devices[devices.length - 1].id);
                         setError(null);
                     } else {
                         setError("Không tìm thấy camera nào trên thiết bị.");
@@ -131,27 +123,31 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                 await scanner.start(
                     selectedCameraId,
                     {
-                        fps: 20, // Tăng độ nhạy nhận diện khung hình trên mobile
+                        fps: 12,
                         qrbox: (viewWidth, viewHeight) => {
-                            // Khung quét linh hoạt: hỗ trợ cả mã vạch 1D ngang và QR 2D vuông
-                            const width = Math.floor(Math.min(viewWidth * 0.88, 500));
-                            const height = Math.floor(Math.min(viewHeight * 0.72, Math.max(220, width * 0.75)));
+                            // A smaller centred region lets the camera keep exposure/focus on the
+                            // code instead of analysing the whole mobile preview.
+                            const width = Math.floor(Math.min(viewWidth * 0.82, 420));
+                            const height = Math.floor(Math.min(viewHeight * 0.62, Math.max(180, width * 0.72)));
                             return { width, height };
                         },
                         videoConstraints: {
-                            facingMode: "environment",
-                            advanced: [{ focusMode: "continuous" }]
+                            facingMode: { ideal: "environment" },
+                            width: { ideal: 1920 },
+                            height: { ideal: 1080 },
                         } as any
                     },
                     (decodedText) => {
                         const now = Date.now();
-                        if (decodedText === lastScanRef.current && (now - lastScanTimeRef.current < 1500)) return;
+                        if (scanLockedRef.current || (decodedText === lastScanRef.current && (now - lastScanTimeRef.current < 2200))) return;
 
+                        scanLockedRef.current = true;
                         lastScanRef.current = decodedText;
                         lastScanTimeRef.current = now;
                         playBeep();
                         if (window.navigator?.vibrate) window.navigator.vibrate(100);
                         onScanSuccess(decodedText);
+                        window.setTimeout(() => { scanLockedRef.current = false; }, 800);
                     },
                     () => { }
                 );

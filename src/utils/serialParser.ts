@@ -91,7 +91,14 @@ export interface ParsedGS1 {
 export const normalizeSerial = (s: string): string => {
     return s
         .trim()
-        .replace(/[\x00-\x03\x05-\x08\x0B\x0C\x0E-\x1B\x7F]/g, '')
+        .split('')
+        .filter(char => {
+            const code = char.charCodeAt(0);
+            // Keep the GS1 separators (EOT, FS, GS, RS, US), discard the
+            // remaining non-printable control characters and DEL.
+            return code === 4 || (code >= 28 && code <= 31) || (code >= 32 && code !== 127);
+        })
+        .join('')
         .replace(/\0/g, '');
 };
 

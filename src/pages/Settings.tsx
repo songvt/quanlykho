@@ -295,6 +295,26 @@ const Settings = () => {
         }
     };
 
+    const handleLatestAutomaticBackupDownload = async () => {
+        try {
+            const result = await SupabaseService.getLatestAutomaticBackup();
+            const data = result.payload;
+            const date = new Date(result.created_at).toISOString().split('T')[0];
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `backup_tu_dong_${date}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showNotify('success', `Đã tải bản sao lưu tự động ngày ${new Date(result.created_at).toLocaleString('vi-VN')}.`);
+        } catch (err: any) {
+            showNotify('error', err.message || 'Chưa có bản sao lưu tự động.');
+        }
+    };
+
     const handleBackupImport = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -901,11 +921,25 @@ const Settings = () => {
                 <DialogTitle sx={{ fontWeight: 'bold' }}>Sao lưu & Khôi phục dữ liệu</DialogTitle>
                 <DialogContent dividers sx={{ py: 3 }}>
                     <Stack spacing={3.5}>
-                        <Box sx={{ border: '1px solid rgba(226, 232, 240, 0.8)', p: 2.5, borderRadius: '12px', bgcolor: '#f8fafc' }}>
-                            <Typography sx={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Download size={18} color="var(--brand-primary)" /> Sao lưu cấu hình hệ thống
+                        <Alert severity="info" sx={{ borderRadius: 2 }}>
+                            Sao lưu tự động chạy lúc 02:00 mỗi Chủ nhật (giờ Việt Nam), lưu 12 bản gần nhất. Bản sao được lưu riêng trên máy chủ.
+                        </Alert>
+                        <Box sx={{ border: '1px solid rgba(96, 165, 250, 0.3)', p: 2.5, borderRadius: '12px', bgcolor: 'rgba(30, 58, 138, 0.24)' }}>
+                            <Typography sx={{ fontWeight: 800, fontSize: '0.92rem', color: '#eff6ff', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Download size={18} color="#60a5fa" /> Bản sao lưu tự động gần nhất
                             </Typography>
-                            <Typography sx={{ fontSize: '0.78rem', color: 'var(--text-secondary)', mb: 2, lineHeight: 1.4 }}>
+                            <Typography sx={{ fontSize: '0.78rem', color: '#bfdbfe', mb: 2, lineHeight: 1.4 }}>
+                                Tải bản sao gần nhất rồi dùng chức năng khôi phục bên dưới khi cần xử lý sự cố hoặc thao tác nhầm.
+                            </Typography>
+                            <Button variant="outlined" fullWidth onClick={handleLatestAutomaticBackupDownload} startIcon={<Download size={16} />} sx={{ color: '#bfdbfe', borderColor: 'rgba(147, 197, 253, 0.5)', '&:hover': { borderColor: '#93c5fd', bgcolor: 'rgba(59, 130, 246, 0.16)' } }}>
+                                Tải bản sao tự động gần nhất
+                            </Button>
+                        </Box>
+                        <Box sx={{ border: '1px solid rgba(148, 163, 184, 0.22)', p: 2.5, borderRadius: '12px', bgcolor: 'rgba(15, 23, 42, 0.64)' }}>
+                            <Typography sx={{ fontWeight: 800, fontSize: '0.92rem', color: '#f8fafc', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Download size={18} color="#60a5fa" /> Sao lưu cấu hình hệ thống
+                            </Typography>
+                            <Typography sx={{ fontSize: '0.78rem', color: '#cbd5e1', mb: 2, lineHeight: 1.4 }}>
                                 Tải về toàn bộ thông tin công ty, danh sách các chi nhánh kho bãi, và danh mục thủ kho để dự phòng.
                             </Typography>
                             <Button variant="contained" fullWidth onClick={handleBackupExport} startIcon={<Download size={16} />}>
@@ -913,11 +947,11 @@ const Settings = () => {
                             </Button>
                         </Box>
 
-                        <Box sx={{ border: '1px solid rgba(226, 232, 240, 0.8)', p: 2.5, borderRadius: '12px', bgcolor: '#f8fafc' }}>
-                            <Typography sx={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Upload size={18} color="orange" /> Khôi phục cấu hình hệ thống
+                        <Box sx={{ border: '1px solid rgba(251, 191, 36, 0.24)', p: 2.5, borderRadius: '12px', bgcolor: 'rgba(120, 53, 15, 0.18)' }}>
+                            <Typography sx={{ fontWeight: 800, fontSize: '0.92rem', color: '#fef3c7', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Upload size={18} color="#fbbf24" /> Khôi phục cấu hình hệ thống
                             </Typography>
-                            <Typography sx={{ fontSize: '0.78rem', color: 'var(--text-secondary)', mb: 2, lineHeight: 1.4 }}>
+                            <Typography sx={{ fontSize: '0.78rem', color: '#fde68a', mb: 2, lineHeight: 1.4 }}>
                                 Đọc file backup cấu hình đã tải trước đó để khôi phục nhanh thông tin hệ thống.
                             </Typography>
                             <Button variant="outlined" component="label" fullWidth color="warning" startIcon={<Upload size={16} />}>

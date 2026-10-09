@@ -175,6 +175,188 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
     }
 
+    if (type === 'rollback') {
+        if (req.method !== 'POST') {
+            return res.status(405).json({ error: 'Method Not Allowed' });
+        }
+
+        try {
+            const { asset_ids, performed_by, rollback_to_snapshot_time } = req.body as {
+                asset_ids: string[];
+                performed_by: string;
+                rollback_to_snapshot_time: string; // ISO timestamp
+            };
+
+            if (!asset_ids || !Array.isArray(asset_ids) || asset_ids.length === 0) {
+                return res.status(400).json({ error: 'asset_ids là bắt buộc và phải là mảng không rỗng' });
+            }
+            if (!rollback_to_snapshot_time) {
+                return res.status(400).json({ error: 'rollback_to_snapshot_time là bắt buộc (ISO string)' });
+            }
+
+            const snapshotTime = new Date(rollback_to_snapshot_time);
+            if (isNaN(snapshotTime.getTime())) {
+                return res.status(400).json({ error: 'rollback_to_snapshot_time không hợp lệ' });
+            }
+
+            // Chỉ cho phép rollback trong vòng 24h gần nhất
+            const now = new Date();
+            const cutoff24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            if (snapshotTime < cutoff24h) {
+                return res.status(400).json({ error: 'Chỉ được rollback trong vòng 24h gần nhất' });
+            }
+
+            // Lấy assets hiện tại
+            const { data: currentAssets, error: assetsErr } = await supabase
+                .from('assets')
+                .select('id, asset_code, asset_name, asset_type, asset_group, user_employee_name, user_employee_code, user_department_name, status')
+                .in('id', asset_ids);
+            if (assetsErr) throw assetsErr;
+
+            if (!currentAssets || currentAssets.length === 0) {
+                return res.status(404).json({ error: 'Không tìm thấy tài sản nào khớp với asset_ids' });
+            }
+
+            // Lấy asset_codes để query log (log dùng asset_code, không dùng id)
+            const assetCodes = currentAssets.map(a => a.asset_code);
+
+            // Lấy asset_logs trong 24h cho các tài sản này
+            const { data: logs, error: logsErr } = await supabase
+                .from('asset_logs')
+                .select('asset_code, action, employee_name, employee_code, department, details, created_at')
+                .in('asset_code', assetCodes)
+                .gte('created_at', cutoff24h.toISOString())
+                .in('action', ['Cấp phát', 'Thu hồi', 'Điều chuyển'])
+                .order('created_at', { ascending: true });
+            if (logsErr) throw logsErr;
+
+            const rollbackResults: { asset_code: string; success: boolean; message: string }[] = [];
+            let rolledBackCount = 0;
+
+            let doc: any = null;
+            try { doc = await getGoogleSheet(); } catch { /* GS fallback to queue */ }
+
+            for (const asset of currentAssets) {
+                // Lọc log của riêng tài sản này
+                const assetLogs = (logs || []).filter(l => l.asset_code === asset.asset_code);
+
+                // Tìm log ngay trước snapshotTime (log cuối cùng trước mốc)
+                const logsBeforeSnapshot = assetLogs.filter(l => new Date(l.created_at) <= snapshotTime);
+                if (logsBeforeSnapshot.length === 0) {
+                    rollbackResults.push({ asset_code: asset.asset_code, success: false, message: 'Không tìm thấy log thao tác trước thời điểm snapshot' });
+                    continue;
+                }
+                const targetLog = logsBeforeSnapshot[logsBeforeSnapshot.length - 1];
+
+                // Kiểm tra có thao tác nào SAU snapshotTime không
+                const logsAfterSnapshot = assetLogs.filter(l => new Date(l.created_at) > snapshotTime);
+                if (logsAfterSnapshot.length > 0) {
+                    rollbackResults.push({
+                        asset_code: asset.asset_code,
+                        success: false,
+                        message: `Không thể rollback: tài sản đã có thêm ${logsAfterSnapshot.length} thao tác sau thời điểm snapshot (${logsAfterSnapshot.map(l => l.action).join(', ')})`
+                    });
+                    continue;
+                }
+
+                // Reconstruct state TRƯỚC thao tác targetLog
+                let prevEmployeeName = '';
+                let prevEmployeeCode = '';
+                let prevDepartment = '';
+                let prevStatus = 'Chưa sử dụng';
+
+                if (targetLog.action === 'Cấp phát') {
+                    // Trước cấp phát: chưa có người dùng
+                    prevEmployeeName = '';
+                    prevEmployeeCode = '';
+                    prevDepartment = '';
+                    prevStatus = 'Chưa sử dụng';
+                } else if (targetLog.action === 'Thu hồi') {
+                    // Parse "Thu hồi từ [TÊN] về kho" → lấy TÊN
+                    const matchRevoke = (targetLog.details || '').match(/Thu hồi từ \[(.+?)\] về kho/);
+                    prevEmployeeName = matchRevoke ? matchRevoke[1] : (targetLog.employee_name || '');
+                    prevEmployeeCode = targetLog.employee_code || '';
+                    prevDepartment = targetLog.department || '';
+                    prevStatus = 'Đã cấp phát';
+                } else if (targetLog.action === 'Điều chuyển') {
+                    // Parse "Thay đổi người sử dụng: A -> B" hoặc "Điều chuyển từ [A] sang [B]" → lấy A
+                    const matchTransfer = (targetLog.details || '').match(/(?:Thay đổi người sử dụng:|Điều chuyển từ) \[?(.+?)\]? (?:->|sang)/);
+                    prevEmployeeName = matchTransfer ? matchTransfer[1] : (targetLog.employee_name || '');
+                    prevEmployeeCode = targetLog.employee_code || '';
+                    prevDepartment = targetLog.department || '';
+                    prevStatus = 'Đã cấp phát';
+                }
+
+                // Cập nhật asset về state cũ
+                const { error: updateErr } = await supabase
+                    .from('assets')
+                    .update({
+                        user_employee_name: prevEmployeeName,
+                        user_employee_code: prevEmployeeCode,
+                        user_department_name: prevDepartment,
+                        status: prevStatus
+                    })
+                    .eq('id', asset.id);
+
+                if (updateErr) {
+                    rollbackResults.push({ asset_code: asset.asset_code, success: false, message: updateErr.message });
+                    continue;
+                }
+
+                // Ghi log Hoàn tác
+                const rollbackDetails = `Hoàn tác thao tác "${targetLog.action}" lúc ${targetLog.created_at}: khôi phục người dùng từ [${asset.user_employee_name || 'Kho'}] về [${prevEmployeeName || 'Kho'}]`;
+                try {
+                    await supabase.from('asset_logs').insert([{
+                        id: randomUUID(),
+                        asset_code: asset.asset_code,
+                        asset_name: asset.asset_name,
+                        asset_type: asset.asset_type,
+                        asset_group: asset.asset_group,
+                        action: 'Hoàn tác',
+                        employee_name: prevEmployeeName,
+                        employee_code: prevEmployeeCode,
+                        department: prevDepartment,
+                        performed_by: performed_by || 'Hệ thống',
+                        details: rollbackDetails,
+                        created_at: new Date().toISOString()
+                    }]);
+                } catch (logErr) {
+                    console.error(`[Rollback] Ghi log Hoàn tác thất bại cho ${asset.asset_code}:`, logErr);
+                }
+
+                // Queue GS sync cho cả assets lẫn asset_logs
+                await supabase.from('gs_sync_queue').insert([
+                    {
+                        table_name: 'assets',
+                        action: 'update',
+                        payload: {
+                            id: asset.id,
+                            updates: {
+                                user_employee_name: prevEmployeeName,
+                                user_employee_code: prevEmployeeCode,
+                                user_department_name: prevDepartment,
+                                status: prevStatus
+                            }
+                        }
+                    }
+                ]);
+
+                rollbackResults.push({ asset_code: asset.asset_code, success: true, message: rollbackDetails });
+                rolledBackCount++;
+            }
+
+            return res.status(200).json({
+                rolled_back: rolledBackCount,
+                total: asset_ids.length,
+                results: rollbackResults
+            });
+
+        } catch (err: any) {
+            console.error('Lỗi server rollback:', err);
+            return res.status(500).json({ error: err.message });
+        }
+    }
+
     const allowedMethods = ['GET', 'POST', 'PUT', 'DELETE'];
     if (!allowedMethods.includes(req.method || '')) {
         return res.status(405).json({ error: 'Method Not Allowed' });

@@ -22,7 +22,7 @@ const parseCutoffDate = (str: string): Date | null => {
     if (!str) return null;
     const trimmed = str.trim();
     // Định dạng DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY
-    const dmy = trimmed.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+    const dmy = trimmed.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
     if (dmy) {
         const day = parseInt(dmy[1], 10);
         const month = parseInt(dmy[2], 10) - 1;
@@ -30,7 +30,7 @@ const parseCutoffDate = (str: string): Date | null => {
         return new Date(year, month, day, 23, 59, 59, 999);
     }
     // Định dạng YYYY-MM-DD
-    const ymd = trimmed.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+    const ymd = trimmed.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
     if (ymd) {
         const year = parseInt(ymd[1], 10);
         const month = parseInt(ymd[2], 10) - 1;
@@ -354,7 +354,7 @@ const AssetQuarterlyReport: React.FC<Props> = ({ reportType }) => {
         const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        const safeKy = kyXacNhan.replace(/[\/\\?%*:|"<>]/g, '_');
+        const safeKy = kyXacNhan.replace(/[/\\?%*:|"<>]/g, '_');
         link.download = `BienBan_XacNhan_${shortReportName}_${safeKy}.xlsx`;
         link.click();
     };

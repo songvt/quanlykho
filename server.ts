@@ -20,6 +20,7 @@ import trinhkyHandler from './api_handlers/trinhky.js';
 import omnivoiceHandler from './api_handlers/omnivoice.js';
 import cronSyncHandler from './api_handlers/cron-sync.js';
 import cronSyncStockHandler from './api_handlers/cron-sync-stock.js';
+import weeklyBackupHandler from './api_handlers/weekly-backup.js';
 import uploadInventoryNVHandler from './api_handlers/upload_inventory_nv.js';
 import uploadInventoryDonViHandler from './api_handlers/upload_inventory_donvi.js';
 
@@ -59,6 +60,7 @@ app.all('/api/omnivoice', createVercelHandler(omnivoiceHandler));
 app.all('/api/system_config', createVercelHandler(systemConfigHandler));
 app.all('/api/cron-sync', createVercelHandler(cronSyncHandler));
 app.all('/api/cron-sync-stock', createVercelHandler(cronSyncStockHandler));
+app.all('/api/weekly-backup', createVercelHandler(weeklyBackupHandler));
 app.all('/api/upload_inventory_nv', createVercelHandler(uploadInventoryNVHandler));
 app.all('/api/upload_inventory_donvi', createVercelHandler(uploadInventoryDonViHandler));
 
@@ -133,6 +135,9 @@ app.get('/api/diagnose', (req, res) => {
         VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL,
         ANON_KEY_LENGTH: key.length,
         ANON_KEY_PREVIEW: key ? `${key.substring(0, 10)}...${key.substring(key.length - 10)}` : 'empty',
+        GOOGLE_SERVICE_ACCOUNT_CONFIGURED: Boolean(process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL),
+        GOOGLE_PRIVATE_KEY_CONFIGURED: Boolean(process.env.GOOGLE_PRIVATE_KEY),
+        GOOGLE_SHEET_ID_CONFIGURED: Boolean(process.env.GOOGLE_SHEET_ID),
         ENV_KEYS: Object.keys(process.env).filter(k => k.includes('SUPABASE') || k.includes('SHEET'))
     });
 });

@@ -1,6 +1,5 @@
-// @ts-nocheck
 import React from 'react';
-import { Box, Typography, Grid } from '@mui/material';
+import { Box, Typography } from '@mui/material';
 
 export interface BillData {
     id: string; // Unique identifier for mapping

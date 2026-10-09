@@ -7,6 +7,10 @@
         {
             "path": "/api/cron-sync-stock",
             "schedule": "0 13 * * *"
+        },
+        {
+            "path": "/api/weekly-backup",
+            "schedule": "0 19 * * 6"
         }
     ],
     "headers": [

@@ -9,6 +9,65 @@ const formatLocalDate = (date: Date | string) => {
     return `${day}/${month}/${year}`;
 };
 
+/** Helper: dừng n milliseconds */
+const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+/** Convert a database record to the shape accepted by the Google Sheet. */
+const toSheetRow = (payload: any, tableName: string) => {
+    const item = { ...payload };
+    delete item.product;
+
+    // Serial numbers are identifiers, never quantities or dates. Force text so
+    // Google Sheets cannot coerce a 14-digit serial into a date/scientific value.
+    if (item.serial_code !== null && item.serial_code !== undefined) {
+        item.serial_code = String(item.serial_code);
+    }
+
+    const dateField = tableName === 'inbound_transactions' ? 'inbound_date'
+        : tableName === 'outbound_transactions' ? 'outbound_date'
+        : tableName === 'orders' ? 'order_date' : null;
+    const nowLocal = formatLocalDate(new Date());
+
+    if (dateField) {
+        item[dateField] = item[dateField]
+            ? (String(item[dateField]).includes('/') ? item[dateField] : formatLocalDate(item[dateField]))
+            : nowLocal;
+    }
+    item.created_at = item.created_at
+        ? (String(item.created_at).includes('/') ? item.created_at : formatLocalDate(item.created_at))
+        : nowLocal;
+    item.updated_at = item.updated_at
+        ? (String(item.updated_at).includes('/') ? item.updated_at : formatLocalDate(item.updated_at))
+        : nowLocal;
+    return item;
+};
+
+const addRowsInChunks = async (sheet: any, rows: any[]) => {
+    const chunkSize = 100;
+    for (let i = 0; i < rows.length; i += chunkSize) {
+        if (i > 0) await sleep(1000);
+        await sheet.addRows(rows.slice(i, i + chunkSize));
+    }
+};
+
+/**
+ * Supabase is the source of truth. A replace job is successful only after the
+ * Google Sheets mirror contains exactly the same number of rows and keys.
+ */
+const verifyReplacementMirror = async (sheet: any, items: any[], tableName: string) => {
+    const primaryKey = tableName === 'district_storekeepers' ? 'district' : 'id';
+    const expectedRows = items.map(item => toSheetRow(item, tableName));
+    const mirroredRows = await sheet.getRows();
+    if (mirroredRows.length !== expectedRows.length) {
+        throw new Error(`Đối soát Google Sheets thất bại: Supabase có ${expectedRows.length} dòng, Google Sheets có ${mirroredRows.length} dòng.`);
+    }
+    const mirroredKeys = new Set(mirroredRows.map(row => String(row.get(primaryKey) || '')));
+    const missingKeys = expectedRows.filter(row => !mirroredKeys.has(String(row[primaryKey] || '')));
+    if (missingKeys.length) {
+        throw new Error(`Đối soát Google Sheets thất bại: thiếu ${missingKeys.length} khóa ${primaryKey} từ Supabase.`);
+    }
+};
+
 let isSyncing = false;
 
 export async function runSyncQueue() {
@@ -24,9 +83,8 @@ export async function runSyncQueue() {
             .from('gs_sync_queue')
             .select('*')
             .eq('status', 'pending')
-            .lt('retry_count', 3)
             .order('created_at', { ascending: true })
-            .limit(10); // Tăng limit lên 10 để xử lý nhanh hơn
+            .limit(10); // Batch size = 10: đủ để xử lý nhanh mà không bão hoà GG Sheets quota
 
         if (fetchError) throw fetchError;
 
@@ -38,8 +96,25 @@ export async function runSyncQueue() {
         const doc = await getGoogleSheet();
         const results = { successful: 0, failed: 0 };
 
+        // Adaptive delay: khởi đầu 1200ms, giảm sau success (min 800ms), tăng sau lỗi
+        let currentDelay = 1200;
+        const MIN_DELAY = 800;
+        const BASE_DELAY = 1200;
+        const ERROR_DELAY = 2000;
+
         for (const job of queue) {
             const { id, table_name, action, payload } = job;
+
+            // in_stock is the one-way external source and must never be written
+            // from Supabase or the durable outbox.
+            if (table_name === 'in_stock') {
+                await supabase.from('gs_sync_queue').update({
+                    status: 'failed',
+                    error_message: 'in_stock là nguồn nhập một chiều từ Google Sheets; ghi ngược bị chặn.'
+                }).eq('id', id);
+                results.failed++;
+                continue;
+            }
             
             // Đánh dấu đang xử lý
             await supabase.from('gs_sync_queue').update({ status: 'processing' }).eq('id', id);
@@ -57,33 +132,29 @@ export async function runSyncQueue() {
 
                 if (action === 'insert') {
                     const items = Array.isArray(payload) ? payload : [payload];
-                    const chunkSize = 100;
-                    for (let i = 0; i < items.length; i += chunkSize) {
-                        if (i > 0) await new Promise(resolve => setTimeout(resolve, 1000));
-                        const chunk = items.slice(i, i + chunkSize);
-                        
-                        const nowLocal = formatLocalDate(new Date());
-                        const dateField = table_name === 'inbound_transactions' ? 'inbound_date' : 
-                                          (table_name === 'outbound_transactions' ? 'outbound_date' : 
-                                          (table_name === 'orders' ? 'order_date' : null));
-                        
-                        const gsItems = chunk.map((p: any) => {
-                            const item = { ...p };
-                            // Remove product objects or metadata that are not columns in Google Sheets
-                            delete item.product;
-                            
-                            if (dateField && item[dateField]) {
-                                item[dateField] = item[dateField].includes('/') ? item[dateField] : formatLocalDate(item[dateField]);
-                            } else if (dateField) {
-                                item[dateField] = nowLocal;
-                            }
-                            item.created_at = item.created_at ? (item.created_at.includes('/') ? item.created_at : formatLocalDate(item.created_at)) : nowLocal;
-                            item.updated_at = nowLocal;
-                            return item;
-                        });
-                        
-                        await sheet.addRows(gsItems);
+                    const rows = await sheet.getRows();
+                    const existingById = new Map(rows.map(row => [String(row.get(pk) || ''), row]));
+                    const newRows: any[] = [];
+
+                    // Queue jobs may be retried after a transient Google API failure. Upsert by
+                    // primary key so retries repair the mirror instead of creating duplicate rows.
+                    for (const item of items.map((entry: any) => toSheetRow(entry, table_name))) {
+                        const existing = existingById.get(String(item[pk] || ''));
+                        if (existing) {
+                            existing.assign(item);
+                            await existing.save();
+                        } else {
+                            newRows.push(item);
+                        }
                     }
+                    await addRowsInChunks(sheet, newRows);
+                } else if (action === 'replace') {
+                    const items = Array.isArray(payload) ? payload : [payload];
+                    // A replacement job is deliberately idempotent: if a run is interrupted,
+                    // retrying starts from a clean sheet and writes the complete Supabase snapshot.
+                    await sheet.clearRows();
+                    await addRowsInChunks(sheet, items.map((entry: any) => toSheetRow(entry, table_name)));
+                    await verifyReplacementMirror(sheet, items, table_name);
                 } else if (action === 'update') {
                     const rows = await sheet.getRows();
                     const targetId = payload[pk] || payload.id;
@@ -95,7 +166,10 @@ export async function runSyncQueue() {
                         });
                         if (!updates.updated_at && row.get('updated_at') !== undefined) row.set('updated_at', formatLocalDate(new Date()));
                         await row.save();
-                        await new Promise(resolve => setTimeout(resolve, 300));
+                        await sleep(300);
+                    } else {
+                        // Missing rows must never be silently accepted as synced.
+                        throw new Error(`Không tìm thấy bản ghi ${targetId} trên Google Sheets để cập nhật`);
                     }
                 } else if (action === 'delete') {
                     const rows = await sheet.getRows();
@@ -105,8 +179,8 @@ export async function runSyncQueue() {
                         if (targetIds.includes(rows[i].get(pk))) {
                             await rows[i].delete();
                             deletedCount++;
-                            if (deletedCount % 5 === 0) await new Promise(resolve => setTimeout(resolve, 1000));
-                            else await new Promise(resolve => setTimeout(resolve, 300));
+                            if (deletedCount % 5 === 0) await sleep(1000);
+                            else await sleep(300);
                         }
                     }
                 } else if (action === 'delete_by_month') {
@@ -118,8 +192,8 @@ export async function runSyncQueue() {
                         if (formats.includes(rowMonth)) {
                             await rows[i].delete();
                             deletedCount++;
-                            if (deletedCount % 5 === 0) await new Promise(resolve => setTimeout(resolve, 1000));
-                            else await new Promise(resolve => setTimeout(resolve, 300));
+                            if (deletedCount % 5 === 0) await sleep(1000);
+                            else await sleep(300);
                         }
                     }
                 }
@@ -129,14 +203,43 @@ export async function runSyncQueue() {
                 results.successful++;
                 console.log(`[Background Sync] Đồng bộ thành công job ${id} cho bảng ${table_name}`);
 
+                // Adaptive delay: sau mỗi success liên tiếp, giảm dần về MIN_DELAY
+                currentDelay = Math.max(MIN_DELAY, currentDelay - 100);
+                await sleep(currentDelay);
+
             } catch (jobError: any) {
-                console.error(`[Background Sync] Lỗi xử lý job ${id} (${table_name}):`, jobError.message);
+                const errMsg: string = jobError?.message || String(jobError);
+                console.error(`[Background Sync] Lỗi xử lý job ${id} (${table_name}):`, errMsg);
+
+                // ── Xử lý đặc biệt khi gặp Rate Limit 429 ──
+                if (errMsg.includes('429')) {
+                    console.warn(`[Background Sync] Rate limit 429 gặp phải! Reset job ${id} về pending (không tăng retry_count). Ngủ 60s...`);
+                    // Reset về pending nhưng KHÔNG tăng retry_count để không "tiêu" lượt thử
+                    await supabase.from('gs_sync_queue').update({
+                        status: 'pending',
+                        error_message: `Rate limit 429 tại ${new Date().toISOString()}: ${errMsg}`
+                    }).eq('id', id);
+
+                    isSyncing = false;
+                    // Chờ 60s để Google Sheets quota recover trước khi batch tiếp theo
+                    await sleep(60_000);
+                    return { message: 'rate_limited' };
+                }
+
+                // Keep the durable outbox pending. A temporary Google API/network problem must
+                // not silently leave a Supabase write permanently absent from the mirror.
                 await supabase.from('gs_sync_queue').update({ 
-                    status: 'pending', // Trả về trạng thái pending để thử lại
-                    error_message: jobError.message,
+                    status: 'pending',
+                    error_message: errMsg,
                     retry_count: (job.retry_count || 0) + 1 
                 }).eq('id', id);
                 results.failed++;
+
+                // Adaptive delay: sau lỗi non-429, tăng lên ERROR_DELAY
+                currentDelay = ERROR_DELAY;
+                await sleep(currentDelay);
+                // Dần hồi phục về BASE_DELAY cho job tiếp theo
+                currentDelay = BASE_DELAY;
             }
         }
         

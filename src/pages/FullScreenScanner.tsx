@@ -8,21 +8,10 @@ import { parseSerialInput } from '../utils/serialParser';
 const ALL_SUPPORTED_FORMATS: Html5QrcodeSupportedFormats[] = [
     Html5QrcodeSupportedFormats.QR_CODE,
     Html5QrcodeSupportedFormats.DATA_MATRIX,
-    Html5QrcodeSupportedFormats.AZTEC,
     Html5QrcodeSupportedFormats.PDF_417,
     Html5QrcodeSupportedFormats.CODE_128,
-    Html5QrcodeSupportedFormats.CODE_39,
-    Html5QrcodeSupportedFormats.CODE_93,
-    Html5QrcodeSupportedFormats.CODABAR,
     Html5QrcodeSupportedFormats.EAN_13,
     Html5QrcodeSupportedFormats.EAN_8,
-    Html5QrcodeSupportedFormats.ITF,
-    Html5QrcodeSupportedFormats.UPC_A,
-    Html5QrcodeSupportedFormats.UPC_E,
-    Html5QrcodeSupportedFormats.UPC_EAN_EXTENSION,
-    Html5QrcodeSupportedFormats.MAXICODE,
-    Html5QrcodeSupportedFormats.RSS_14,
-    Html5QrcodeSupportedFormats.RSS_EXPANDED,
 ];
 
 const FullScreenScanner: React.FC = () => {
@@ -33,6 +22,7 @@ const FullScreenScanner: React.FC = () => {
     const [isTorchOn, setIsTorchOn] = useState(false);
     const [hasTorch, setHasTorch] = useState(false);
     const scannerRef = useRef<Html5Qrcode | null>(null);
+    const scanLockedRef = useRef(false);
 
     useEffect(() => {
         // Prevent scrolling on body
@@ -52,18 +42,21 @@ const FullScreenScanner: React.FC = () => {
                 await html5QrCode.start(
                     { facingMode: "environment" },
                     {
-                        fps: 20,
+                        fps: 12,
                         qrbox: (viewWidth, viewHeight) => {
-                            const width = Math.floor(Math.min(viewWidth * 0.88, 500));
-                            const height = Math.floor(Math.min(viewHeight * 0.72, Math.max(220, width * 0.75)));
+                            const width = Math.floor(Math.min(viewWidth * 0.82, 420));
+                            const height = Math.floor(Math.min(viewHeight * 0.62, Math.max(180, width * 0.72)));
                             return { width, height };
                         },
                         videoConstraints: {
-                            facingMode: "environment",
-                            advanced: [{ focusMode: "continuous" }]
+                            facingMode: { ideal: "environment" },
+                            width: { ideal: 1920 },
+                            height: { ideal: 1080 },
                         } as any
                     },
                     (decodedText) => {
+                        if (scanLockedRef.current) return;
+                        scanLockedRef.current = true;
                         html5QrCode.pause();
                         const serials = parseSerialInput(decodedText);
                         setScanResult(decodedText);
@@ -124,6 +117,7 @@ const FullScreenScanner: React.FC = () => {
     const handleScanAgain = () => {
         setScanResult(null);
         setParsedSerials([]);
+        scanLockedRef.current = false;
         if (scannerRef.current) {
             try {
                 scannerRef.current.resume();

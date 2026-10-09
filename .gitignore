@@ -42,3 +42,9 @@ api_handlers/**/*.js
 # Embedded repos and scratch files
 quanlykhobsg/
 scratch/
+
+# Local diagnostics and data snapshots (never publish operational data)
+debug_sync.cjs
+run_sync_now.cjs
+gs_assets_backup.json
+restore_assets.sql
