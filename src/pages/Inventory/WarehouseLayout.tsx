@@ -1,13 +1,15 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box, Button, Chip, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Stack, TextField, Tooltip, Typography } from '@mui/material';
-import { Download, LayoutGrid, MapPinned, PackageSearch, Save, Search, Sparkles, Tag, Trash2 } from 'lucide-react';
+import { Box, Button, Chip, CircularProgress, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Stack, TextField, Tooltip, Typography } from '@mui/material';
+import { CloudCheck, Download, LayoutGrid, MapPinned, PackageSearch, RefreshCw, Save, Search, Sparkles, Tag, Trash2 } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import PageHeader from '../../components/Common/PageHeader';
 import { fetchProducts } from '../../store/slices/productsSlice';
 import { fetchTransactions, fetchTransactionsForce } from '../../store/slices/transactionsSlice';
 import { fetchInventory } from '../../store/slices/inventorySlice';
+import { supabase } from '../../config/supabase';
+import { useNotification } from '../../contexts/NotificationContext';
 import type { AppDispatch, RootState } from '../../store';
 
 type Shelf = { id: string; zone: string; label: string };
@@ -29,10 +31,17 @@ const shelves: Shelf[] = zones.flatMap(zone => Array.from({ length: 6 }, (_, ind
 const storageKey = 'qlkho_warehouse_shelf_assignments';
 const shelfNameStorageKey = 'qlkho_warehouse_shelf_names';
 const zoneNameStorageKey = 'qlkho_warehouse_zone_names';
+const CLOUD_CONFIG_KEY = 'WAREHOUSE_LAYOUT_CONFIG';
 
 const getShelfLabel = (shelf: Shelf, shelfNames: Record<string, string>) => shelfNames[shelf.id]?.trim() || shelf.label;
 const getZoneTitle = (zone: typeof zones[number], zoneNames: Record<string, string>) => zoneNames[zone.id]?.trim() || zone.title;
-const isUnitWarehouse = (warehouse?: string) => (warehouse || '').trim().toUpperCase().startsWith('KHO_DV_');
+const resolveWarehouseType = (transaction: { warehouse_type?: string; district?: string }) => {
+    const rawWh = (transaction.warehouse_type || '').trim().toUpperCase();
+    if (rawWh.startsWith('KHO_DV_')) return rawWh;
+    const rawDistrict = (transaction.district || '').trim().toUpperCase();
+    if (rawDistrict) return `KHO_DV_${rawDistrict}`;
+    return 'KHO_DV_Q12'; // Fallback về kho đơn vị mặc định
+};
 
 const suggestedShelf = (productId: string) => {
     let value = 0;
@@ -42,6 +51,7 @@ const suggestedShelf = (productId: string) => {
 
 const WarehouseLayout: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
+    const { success, error: notifyError } = useNotification();
     const products = useSelector((state: RootState) => state.products.items);
     const productStatus = useSelector((state: RootState) => state.products.status);
     const transactions = useSelector((state: RootState) => state.transactions.items);
@@ -54,14 +64,106 @@ const WarehouseLayout: React.FC = () => {
     const [zoneNameDraft, setZoneNameDraft] = useState('');
     const [selectedShelfId, setSelectedShelfId] = useState(shelves[0].id);
     const [shelfNameDraft, setShelfNameDraft] = useState('');
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [cloudSynced, setCloudSynced] = useState(false);
 
+    // Dùng ref để lưu trữ state mới nhất tránh stale closure khi auto-save
+    const stateRef = useRef({ assignments, shelfNames, zoneNames });
+    useEffect(() => {
+        stateRef.current = { assignments, shelfNames, zoneNames };
+    }, [assignments, shelfNames, zoneNames]);
+
+    // Hàm đồng bộ lên Supabase Cloud
+    const syncToCloud = async (
+        newAssignments?: Record<string, string>,
+        newShelfNames?: Record<string, string>,
+        newZoneNames?: Record<string, string>
+    ) => {
+        const payloadToSave = {
+            assignments: newAssignments ?? stateRef.current.assignments,
+            shelfNames: newShelfNames ?? stateRef.current.shelfNames,
+            zoneNames: newZoneNames ?? stateRef.current.zoneNames,
+            updated_at: new Date().toISOString()
+        };
+        try {
+            setIsSyncing(true);
+            const { error } = await supabase.from('district_storekeepers').upsert({
+                district: CLOUD_CONFIG_KEY,
+                storekeeper_name: JSON.stringify(payloadToSave),
+                updated_at: new Date().toISOString()
+            });
+            if (error) {
+                console.error('Lỗi lưu cấu hình sơ đồ kho lên Supabase:', error);
+            } else {
+                setCloudSynced(true);
+            }
+        } catch (err) {
+            console.error('Lỗi khi gửi cấu hình sơ đồ kho:', err);
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+    // Tải dữ liệu ban đầu từ LocalStorage và Supabase
     useEffect(() => {
         if (productStatus === 'idle') dispatch(fetchProducts());
         dispatch(fetchTransactions());
         dispatch(fetchInventory());
-        try { setAssignments(JSON.parse(localStorage.getItem(storageKey) || '{}')); } catch { setAssignments({}); }
-        try { setShelfNames(JSON.parse(localStorage.getItem(shelfNameStorageKey) || '{}')); } catch { setShelfNames({}); }
-        try { setZoneNames(JSON.parse(localStorage.getItem(zoneNameStorageKey) || '{}')); } catch { setZoneNames({}); }
+
+        // 1. Khôi phục nhanh từ LocalStorage trước
+        let localAssignments: Record<string, string> = {};
+        let localShelfNames: Record<string, string> = {};
+        let localZoneNames: Record<string, string> = {};
+        try { localAssignments = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch { /* ignore */ }
+        try { localShelfNames = JSON.parse(localStorage.getItem(shelfNameStorageKey) || '{}'); } catch { /* ignore */ }
+        try { localZoneNames = JSON.parse(localStorage.getItem(zoneNameStorageKey) || '{}'); } catch { /* ignore */ }
+
+        if (Object.keys(localAssignments).length) setAssignments(localAssignments);
+        if (Object.keys(localShelfNames).length) setShelfNames(localShelfNames);
+        if (Object.keys(localZoneNames).length) setZoneNames(localZoneNames);
+
+        // 2. Tải bản mới nhất từ Supabase Cloud
+        const loadFromCloud = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('district_storekeepers')
+                    .select('storekeeper_name')
+                    .eq('district', CLOUD_CONFIG_KEY)
+                    .maybeSingle();
+
+                if (!error && data?.storekeeper_name) {
+                    try {
+                        const cloudConfig = JSON.parse(data.storekeeper_name);
+                        if (cloudConfig) {
+                            const cloudAssignments = cloudConfig.assignments || {};
+                            const cloudShelf = cloudConfig.shelfNames || {};
+                            const cloudZone = cloudConfig.zoneNames || {};
+
+                            setAssignments(cloudAssignments);
+                            setShelfNames(cloudShelf);
+                            setZoneNames(cloudZone);
+
+                            localStorage.setItem(storageKey, JSON.stringify(cloudAssignments));
+                            localStorage.setItem(shelfNameStorageKey, JSON.stringify(cloudShelf));
+                            localStorage.setItem(zoneNameStorageKey, JSON.stringify(cloudZone));
+                            setCloudSynced(true);
+                            return;
+                        }
+                    } catch (parseErr) {
+                        console.warn('Lỗi phân tích JSON cấu hình sơ đồ kho từ Supabase:', parseErr);
+                    }
+                }
+
+                // Nếu Cloud chưa có nhưng LocalStorage có dữ liệu, tự động đẩy dữ liệu LocalStorage lên Cloud
+                if (Object.keys(localAssignments).length > 0 || Object.keys(localShelfNames).length > 0 || Object.keys(localZoneNames).length > 0) {
+                    syncToCloud(localAssignments, localShelfNames, localZoneNames);
+                }
+            } catch (loadErr) {
+                console.warn('Không thể tải cấu hình sơ đồ kho từ Cloud:', loadErr);
+            }
+        };
+
+        loadFromCloud();
     }, [dispatch, productStatus]);
 
     useEffect(() => {
@@ -89,8 +191,8 @@ const WarehouseLayout: React.FC = () => {
     const unitStockRows = useMemo(() => {
         const next: Record<string, { productId: string; warehouseType: string; quantity: number }> = {};
         transactions.forEach(transaction => {
-            if (!transaction.product_id || !isUnitWarehouse(transaction.warehouse_type)) return;
-            const warehouseType = transaction.warehouse_type!.trim().toUpperCase();
+            if (!transaction.product_id) return;
+            const warehouseType = resolveWarehouseType(transaction);
             const key = `${transaction.product_id}|${warehouseType}`;
             const quantity = Number(transaction.quantity) || 0;
             if (!next[key]) next[key] = { productId: transaction.product_id, warehouseType, quantity: 0 };
@@ -102,7 +204,7 @@ const WarehouseLayout: React.FC = () => {
     const productsWithStock = useMemo(() => products.flatMap(product => unitStockRows
         .filter(row => row.productId === product.id)
         // Chỉ những mặt hàng đã được người dùng gán (hoặc gán bằng nút gợi ý) mới hiện trên sơ đồ.
-        // Số lượng vẫn được đọc trực tiếp từ tồn kho hiện hành ở Redux.
+        // Số lượng luôn được liên kết và tính toán trực tiếp từ chênh lệch Nhập - Xuất mới nhất.
         .map(row => ({ ...product, quantity: row.quantity, shelfId: assignments[`${product.id}|${row.warehouseType}`] || '', warehouseType: row.warehouseType, assignmentKey: `${product.id}|${row.warehouseType}` }))), [products, unitStockRows, assignments]);
 
     const assignedProducts = useMemo(() => productsWithStock.filter(product => product.shelfId), [productsWithStock]);
@@ -121,8 +223,8 @@ const WarehouseLayout: React.FC = () => {
         const serialRows = new Map<string, { productId: string; itemCode: string; productName: string; warehouseType: string; serialCode: string; shelfId: string }>();
         transactions.forEach(transaction => {
             const serialCode = transaction.serial_code?.trim();
-            if (transaction.type !== 'inbound' || !transaction.product_id || !serialCode || !isUnitWarehouse(transaction.warehouse_type) || outboundSerials.has(serialCode.toUpperCase())) return;
-            const warehouseType = transaction.warehouse_type!.trim().toUpperCase();
+            if (transaction.type !== 'inbound' || !transaction.product_id || !serialCode || outboundSerials.has(serialCode.toUpperCase())) return;
+            const warehouseType = resolveWarehouseType(transaction);
             const assignmentKey = `${transaction.product_id}|${warehouseType}`;
             const shelfId = assignments[assignmentKey];
             if (!shelfId) return;
@@ -145,6 +247,7 @@ const WarehouseLayout: React.FC = () => {
         else delete next[productId];
         setAssignments(next);
         localStorage.setItem(storageKey, JSON.stringify(next));
+        syncToCloud(next, shelfNames, zoneNames);
     };
 
     const optimizeLayout = () => {
@@ -152,6 +255,8 @@ const WarehouseLayout: React.FC = () => {
         productsWithStock.forEach(product => { next[product.assignmentKey] = suggestedShelf(product.assignmentKey); });
         setAssignments(next);
         localStorage.setItem(storageKey, JSON.stringify(next));
+        syncToCloud(next, shelfNames, zoneNames);
+        success('Đã áp dụng và lưu gợi ý sắp xếp sơ đồ kho');
     };
 
     const clearAssignments = () => {
@@ -159,6 +264,8 @@ const WarehouseLayout: React.FC = () => {
         setAssignments({});
         setSelectedProductId('');
         localStorage.removeItem(storageKey);
+        syncToCloud({}, shelfNames, zoneNames);
+        success('Đã xóa toàn bộ phân bổ mặt hàng');
     };
 
     const removeAssignment = (assignmentKey: string, productName: string) => {
@@ -173,6 +280,8 @@ const WarehouseLayout: React.FC = () => {
         else delete next[selectedShelf.id];
         setShelfNames(next);
         localStorage.setItem(shelfNameStorageKey, JSON.stringify(next));
+        syncToCloud(assignments, next, zoneNames);
+        success('Đã lưu tên kệ');
     };
 
     const saveZoneName = () => {
@@ -182,6 +291,8 @@ const WarehouseLayout: React.FC = () => {
         else delete next[selectedZone.id];
         setZoneNames(next);
         localStorage.setItem(zoneNameStorageKey, JSON.stringify(next));
+        syncToCloud(assignments, shelfNames, next);
+        success('Đã lưu tên khu');
     };
 
     const exportExcel = async () => {
@@ -306,6 +417,13 @@ const WarehouseLayout: React.FC = () => {
         setAssignments(next);
         setSelectedProductId('');
         localStorage.setItem(storageKey, JSON.stringify(next));
+        syncToCloud(next, shelfNames, zoneNames);
+        success(`Đã gỡ các mặt hàng khỏi ${getShelfLabel(selectedShelf, shelfNames)}`);
+    };
+
+    const handleManualSave = async () => {
+        await syncToCloud(assignments, shelfNames, zoneNames);
+        success('Đã lưu toàn bộ cấu hình sơ đồ kho lên hệ thống đám mây (Cloud)');
     };
 
     return (
@@ -315,7 +433,32 @@ const WarehouseLayout: React.FC = () => {
                 subtitle="Tra cứu vị trí kệ và phân bổ hàng hóa theo tồn kho đơn vị (KHO_DV)"
                 icon={<MapPinned size={28} color="white" />}
                 gradientType="blue"
-                actions={<Stack direction="row" spacing={1} flexWrap="wrap"><Button variant="contained" disabled={!assignedSerialRows.length} onClick={exportAssignedSerials} startIcon={<Download size={17} />} sx={{ bgcolor: 'rgba(255,255,255,.26)', border: '1px solid rgba(255,255,255,.35)', color: 'white' }}>Xuất serial đã gán</Button><Button variant="contained" onClick={clearAssignments} startIcon={<Trash2 size={17} />} sx={{ bgcolor: 'rgba(220,38,38,.86)', border: '1px solid rgba(254,202,202,.5)', color: 'white' }}>Xóa gán kệ</Button><Button variant="contained" onClick={exportExcel} startIcon={<Download size={17} />} sx={{ bgcolor: 'rgba(255,255,255,.26)', border: '1px solid rgba(255,255,255,.35)', color: 'white' }}>Xuất Excel</Button><Button variant="contained" onClick={optimizeLayout} startIcon={<Sparkles size={17} />} sx={{ bgcolor: 'rgba(255,255,255,.16)', border: '1px solid rgba(255,255,255,.3)', color: 'white' }}>Gợi ý sắp xếp</Button></Stack>}
+                actions={<Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center">
+                    <Button
+                        variant="contained"
+                        onClick={handleManualSave}
+                        disabled={isSyncing}
+                        startIcon={isSyncing ? <CircularProgress size={16} color="inherit" /> : <Save size={17} />}
+                        sx={{ bgcolor: '#16a34a', '&:hover': { bgcolor: '#15803d' }, color: 'white', fontWeight: 700 }}
+                    >
+                        {isSyncing ? 'Đang lưu Cloud...' : 'Lưu sơ đồ kho'}
+                    </Button>
+                    <Button
+                        variant="contained"
+                        onClick={() => {
+                            dispatch(fetchTransactionsForce());
+                            success('Đã làm mới dữ liệu tồn kho từ hệ thống');
+                        }}
+                        startIcon={<RefreshCw size={16} />}
+                        sx={{ bgcolor: 'rgba(255,255,255,.26)', border: '1px solid rgba(255,255,255,.35)', color: 'white' }}
+                    >
+                        Làm mới tồn kho
+                    </Button>
+                    <Button variant="contained" disabled={!assignedSerialRows.length} onClick={exportAssignedSerials} startIcon={<Download size={17} />} sx={{ bgcolor: 'rgba(255,255,255,.26)', border: '1px solid rgba(255,255,255,.35)', color: 'white' }}>Xuất serial đã gán</Button>
+                    <Button variant="contained" onClick={clearAssignments} startIcon={<Trash2 size={17} />} sx={{ bgcolor: 'rgba(220,38,38,.86)', border: '1px solid rgba(254,202,202,.5)', color: 'white' }}>Xóa gán kệ</Button>
+                    <Button variant="contained" onClick={exportExcel} startIcon={<Download size={17} />} sx={{ bgcolor: 'rgba(255,255,255,.26)', border: '1px solid rgba(255,255,255,.35)', color: 'white' }}>Xuất Excel</Button>
+                    <Button variant="contained" onClick={optimizeLayout} startIcon={<Sparkles size={17} />} sx={{ bgcolor: 'rgba(255,255,255,.16)', border: '1px solid rgba(255,255,255,.3)', color: 'white' }}>Gợi ý sắp xếp</Button>
+                </Stack>}
             />
 
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mb={2.5}>
@@ -368,7 +511,7 @@ const WarehouseLayout: React.FC = () => {
                             <TextField size="small" fullWidth label="Tên / mô tả vị trí" value={shelfNameDraft} onChange={event => setShelfNameDraft(event.target.value)} inputProps={{ maxLength: 60 }} />
                             <Button variant="contained" onClick={saveShelfName} startIcon={<Save size={16} />} sx={{ whiteSpace: 'nowrap' }}>Lưu tên</Button>
                         </Stack>
-                        <Typography variant="caption" color="text.secondary" display="block" mt={1}>Tên khu, tên vị trí và thao tác gán hàng được lưu cục bộ trên trình duyệt; không thay đổi số lượng tồn hoặc chứng từ xuất nhập.</Typography>
+                        <Typography variant="caption" color="text.secondary" display="block" mt={1}>Tên khu, tên vị trí và thao tác gán hàng được tự động lưu trữ an toàn trên Hệ thống Đám mây (Cloud) và máy cục bộ; đồng bộ xuyên suốt khi tắt mở lại ứng dụng.</Typography>
                     </Paper>
                 </Paper>
 
