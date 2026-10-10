@@ -15,7 +15,7 @@ import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import SearchIcon from '@mui/icons-material/Search';
 import { fetchProducts, addNewProduct, updateProduct, deleteProduct, deleteProducts, importProducts } from '../../store/slices/productsSlice';
 import { fetchInventory, selectStockMap } from '../../store/slices/inventorySlice';
-import { fetchTransactions } from '../../store/slices/transactionsSlice';
+import { fetchTransactionsForce } from '../../store/slices/transactionsSlice';
 import TableSkeleton from '../../components/Common/TableSkeleton';
 import { useNotification } from '../../contexts/NotificationContext';
 import { generateProductTemplate, readExcelFile } from '../../utils/excelUtils';
@@ -79,11 +79,15 @@ const ProductList = () => {
         if (inventoryStatus === 'idle') dispatch(fetchInventory());
     }, [status, inventoryStatus, dispatch]);
 
+    useEffect(() => {
+        dispatch(fetchTransactionsForce({ all: true }));
+    }, [dispatch]);
+
     // Tự động refresh khi quay lại tab (sau 5 phút stale)
     useTabVisibility(() => {
         dispatch(fetchProducts());
         dispatch(fetchInventory());
-        dispatch(fetchTransactions());
+        dispatch(fetchTransactionsForce({ all: true }));
     }, 5 * 60 * 1000);
 
     const handleOpenAdd = () => {

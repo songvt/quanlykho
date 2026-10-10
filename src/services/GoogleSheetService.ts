@@ -132,8 +132,8 @@ export const GoogleSheetService = {
     },
 
     // --- Transactions ---
-    async fetchTransactions(): Promise<Transaction[]> {
-        return apiRequest('transactions');
+    async fetchTransactions(options?: { all?: boolean }): Promise<Transaction[]> {
+        return apiRequest(options?.all ? 'transactions?all=true' : 'transactions');
     },
 
     async createInboundTransaction(transaction: Omit<Transaction, 'id' | 'type' | 'group_name' | 'total_price' | 'date' | 'product'>) {

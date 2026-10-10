@@ -1,15 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Box, Button, Chip, CircularProgress, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Stack, TextField, Tooltip, Typography } from '@mui/material';
-import { CloudCheck, Download, LayoutGrid, MapPinned, PackageSearch, RefreshCw, Save, Search, Sparkles, Tag, Trash2 } from 'lucide-react';
+import { CloudCheck, Download, LayoutGrid, MapPinned, PackageSearch, RefreshCw, Save, Search, Sparkles, Tag, Trash2, Upload } from 'lucide-react';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import PageHeader from '../../components/Common/PageHeader';
 import { fetchProducts } from '../../store/slices/productsSlice';
 import { fetchTransactions, fetchTransactionsForce } from '../../store/slices/transactionsSlice';
-import { fetchInventory } from '../../store/slices/inventorySlice';
+import { fetchInventory, selectStockMap } from '../../store/slices/inventorySlice';
 import { supabase } from '../../config/supabase';
 import { useNotification } from '../../contexts/NotificationContext';
+import { readExcelFile } from '../../utils/excelUtils';
 import type { AppDispatch, RootState } from '../../store';
 
 type Shelf = { id: string; zone: string; label: string };
@@ -31,7 +32,17 @@ const shelves: Shelf[] = zones.flatMap(zone => Array.from({ length: 6 }, (_, ind
 const storageKey = 'qlkho_warehouse_shelf_assignments';
 const shelfNameStorageKey = 'qlkho_warehouse_shelf_names';
 const zoneNameStorageKey = 'qlkho_warehouse_zone_names';
+const serialAssignmentStorageKey = 'qlkho_warehouse_serial_assignments';
 const CLOUD_CONFIG_KEY = 'WAREHOUSE_LAYOUT_CONFIG';
+const EXCEL_FONT = { name: 'Times New Roman', size: 12 };
+
+const applyExcelFont = (worksheet: ExcelJS.Worksheet) => {
+    worksheet.eachRow({ includeEmpty: false }, row => {
+        row.eachCell({ includeEmpty: false }, cell => {
+            cell.font = { ...cell.font, ...EXCEL_FONT };
+        });
+    });
+};
 
 const getShelfLabel = (shelf: Shelf, shelfNames: Record<string, string>) => shelfNames[shelf.id]?.trim() || shelf.label;
 const getZoneTitle = (zone: typeof zones[number], zoneNames: Record<string, string>) => zoneNames[zone.id]?.trim() || zone.title;
@@ -55,9 +66,13 @@ const WarehouseLayout: React.FC = () => {
     const products = useSelector((state: RootState) => state.products.items);
     const productStatus = useSelector((state: RootState) => state.products.status);
     const transactions = useSelector((state: RootState) => state.transactions.items);
+    // Dùng đúng selector của màn hình Tồn kho để mọi số lượng hiển thị nhất quán,
+    // gồm cả quy tắc lọc kho và khấu trừ các phiếu đang chờ xử lý.
+    const stockMap = useSelector(selectStockMap);
     const [search, setSearch] = useState('');
     const [selectedProductId, setSelectedProductId] = useState('');
     const [assignments, setAssignments] = useState<Record<string, string>>({});
+    const [serialAssignments, setSerialAssignments] = useState<Record<string, string>>({});
     const [shelfNames, setShelfNames] = useState<Record<string, string>>({});
     const [zoneNames, setZoneNames] = useState<Record<string, string>>({});
     const [selectedZoneId, setSelectedZoneId] = useState(zones[0].id);
@@ -68,19 +83,21 @@ const WarehouseLayout: React.FC = () => {
     const [cloudSynced, setCloudSynced] = useState(false);
 
     // Dùng ref để lưu trữ state mới nhất tránh stale closure khi auto-save
-    const stateRef = useRef({ assignments, shelfNames, zoneNames });
+    const stateRef = useRef({ assignments, serialAssignments, shelfNames, zoneNames });
     useEffect(() => {
-        stateRef.current = { assignments, shelfNames, zoneNames };
-    }, [assignments, shelfNames, zoneNames]);
+        stateRef.current = { assignments, serialAssignments, shelfNames, zoneNames };
+    }, [assignments, serialAssignments, shelfNames, zoneNames]);
 
     // Hàm đồng bộ lên Supabase Cloud
     const syncToCloud = async (
         newAssignments?: Record<string, string>,
         newShelfNames?: Record<string, string>,
-        newZoneNames?: Record<string, string>
+        newZoneNames?: Record<string, string>,
+        newSerialAssignments?: Record<string, string>
     ) => {
         const payloadToSave = {
             assignments: newAssignments ?? stateRef.current.assignments,
+            serialAssignments: newSerialAssignments ?? stateRef.current.serialAssignments,
             shelfNames: newShelfNames ?? stateRef.current.shelfNames,
             zoneNames: newZoneNames ?? stateRef.current.zoneNames,
             updated_at: new Date().toISOString()
@@ -107,18 +124,23 @@ const WarehouseLayout: React.FC = () => {
     // Tải dữ liệu ban đầu từ LocalStorage và Supabase
     useEffect(() => {
         if (productStatus === 'idle') dispatch(fetchProducts());
-        dispatch(fetchTransactions());
+        // Sơ đồ phải thấy toàn bộ tồn kho đã đồng bộ, kể cả các lô có ngày nhập
+        // cũ hơn cửa sổ 30 ngày mặc định của danh sách giao dịch.
+        dispatch(fetchTransactionsForce({ all: true }));
         dispatch(fetchInventory());
 
         // 1. Khôi phục nhanh từ LocalStorage trước
         let localAssignments: Record<string, string> = {};
+        let localSerialAssignments: Record<string, string> = {};
         let localShelfNames: Record<string, string> = {};
         let localZoneNames: Record<string, string> = {};
         try { localAssignments = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch { /* ignore */ }
+        try { localSerialAssignments = JSON.parse(localStorage.getItem(serialAssignmentStorageKey) || '{}'); } catch { /* ignore */ }
         try { localShelfNames = JSON.parse(localStorage.getItem(shelfNameStorageKey) || '{}'); } catch { /* ignore */ }
         try { localZoneNames = JSON.parse(localStorage.getItem(zoneNameStorageKey) || '{}'); } catch { /* ignore */ }
 
         if (Object.keys(localAssignments).length) setAssignments(localAssignments);
+        if (Object.keys(localSerialAssignments).length) setSerialAssignments(localSerialAssignments);
         if (Object.keys(localShelfNames).length) setShelfNames(localShelfNames);
         if (Object.keys(localZoneNames).length) setZoneNames(localZoneNames);
 
@@ -136,14 +158,17 @@ const WarehouseLayout: React.FC = () => {
                         const cloudConfig = JSON.parse(data.storekeeper_name);
                         if (cloudConfig) {
                             const cloudAssignments = cloudConfig.assignments || {};
+                            const cloudSerialAssignments = cloudConfig.serialAssignments || {};
                             const cloudShelf = cloudConfig.shelfNames || {};
                             const cloudZone = cloudConfig.zoneNames || {};
 
                             setAssignments(cloudAssignments);
+                            setSerialAssignments(cloudSerialAssignments);
                             setShelfNames(cloudShelf);
                             setZoneNames(cloudZone);
 
                             localStorage.setItem(storageKey, JSON.stringify(cloudAssignments));
+                            localStorage.setItem(serialAssignmentStorageKey, JSON.stringify(cloudSerialAssignments));
                             localStorage.setItem(shelfNameStorageKey, JSON.stringify(cloudShelf));
                             localStorage.setItem(zoneNameStorageKey, JSON.stringify(cloudZone));
                             setCloudSynced(true);
@@ -156,7 +181,7 @@ const WarehouseLayout: React.FC = () => {
 
                 // Nếu Cloud chưa có nhưng LocalStorage có dữ liệu, tự động đẩy dữ liệu LocalStorage lên Cloud
                 if (Object.keys(localAssignments).length > 0 || Object.keys(localShelfNames).length > 0 || Object.keys(localZoneNames).length > 0) {
-                    syncToCloud(localAssignments, localShelfNames, localZoneNames);
+                    syncToCloud(localAssignments, localShelfNames, localZoneNames, localSerialAssignments);
                 }
             } catch (loadErr) {
                 console.warn('Không thể tải cấu hình sơ đồ kho từ Cloud:', loadErr);
@@ -168,8 +193,8 @@ const WarehouseLayout: React.FC = () => {
 
     useEffect(() => {
         // Làm mới tồn kho đơn vị từ nguồn dữ liệu, kể cả khi thay đổi phát sinh ở máy khác.
-        const refreshId = window.setInterval(() => { dispatch(fetchTransactionsForce()); }, 30_000);
-        const refreshWhenVisible = () => { if (document.visibilityState === 'visible') dispatch(fetchTransactionsForce()); };
+        const refreshId = window.setInterval(() => { dispatch(fetchTransactionsForce({ all: true })); }, 30_000);
+        const refreshWhenVisible = () => { if (document.visibilityState === 'visible') dispatch(fetchTransactionsForce({ all: true })); };
         document.addEventListener('visibilitychange', refreshWhenVisible);
         return () => {
             window.clearInterval(refreshId);
@@ -201,11 +226,47 @@ const WarehouseLayout: React.FC = () => {
         return Object.values(next).filter(row => row.quantity > 0);
     }, [transactions]);
 
-    const productsWithStock = useMemo(() => products.flatMap(product => unitStockRows
-        .filter(row => row.productId === product.id)
-        // Chỉ những mặt hàng đã được người dùng gán (hoặc gán bằng nút gợi ý) mới hiện trên sơ đồ.
-        // Số lượng luôn được liên kết và tính toán trực tiếp từ chênh lệch Nhập - Xuất mới nhất.
-        .map(row => ({ ...product, quantity: row.quantity, shelfId: assignments[`${product.id}|${row.warehouseType}`] || '', warehouseType: row.warehouseType, assignmentKey: `${product.id}|${row.warehouseType}` }))), [products, unitStockRows, assignments]);
+    const productsWithStock = useMemo(() => products.flatMap(product => {
+        const quantity = stockMap[product.id] || 0;
+        if (quantity <= 0) return [];
+
+        // Vị trí gán vẫn được xác định theo kho đơn vị. Một mã hàng chỉ xuất hiện
+        // một lần với chính số tồn đang hiển thị tại danh sách Hàng hóa, tránh cộng
+        // trùng khi lịch sử có nhiều dòng nhập/xuất cho cùng mã hàng.
+        const productRows = unitStockRows.filter(row => row.productId === product.id);
+        const row = productRows.find(item => assignments[`${product.id}|${item.warehouseType}`]) || productRows[0];
+        const warehouseType = row?.warehouseType || 'KHO_DV';
+        const assignmentKey = `${product.id}|${warehouseType}`;
+        const defaultShelfId = assignments[assignmentKey] || '';
+
+        // Serial là ngoại lệ của vị trí mặc định theo mã hàng. Chỉ các serial còn
+        // tồn mới được tách sang kệ riêng, và tổng số lượng giữa các kệ luôn bằng tồn kho.
+        const outboundSerials = new Set(transactions
+            .filter(transaction => transaction.type === 'outbound' && transaction.serial_code)
+            .map(transaction => `${transaction.product_id}|${resolveWarehouseType(transaction)}|${transaction.serial_code!.trim().toUpperCase()}`));
+        const activeSerialKeys = new Set(transactions
+            .filter(transaction => transaction.type === 'inbound' && transaction.product_id && transaction.serial_code)
+            .map(transaction => `${transaction.product_id}|${resolveWarehouseType(transaction)}|${transaction.serial_code!.trim().toUpperCase()}`)
+            .filter(key => !outboundSerials.has(key)));
+        const serialShelves = Object.entries(serialAssignments)
+            .filter(([key]) => key.startsWith(`${assignmentKey}|`) && activeSerialKeys.has(key))
+            .reduce<Record<string, number>>((result, [, shelfId]) => {
+                result[shelfId] = (result[shelfId] || 0) + 1;
+                return result;
+            }, {});
+
+        let remainingQuantity = quantity;
+        const entries: Array<typeof product & { quantity: number; shelfId: string; warehouseType: string; assignmentKey: string }> = [];
+        Object.entries(serialShelves).forEach(([shelfId, serialQuantity]) => {
+            const quantityForShelf = Math.min(serialQuantity, remainingQuantity);
+            if (quantityForShelf > 0) {
+                entries.push({ ...product, quantity: quantityForShelf, shelfId, warehouseType, assignmentKey: `${assignmentKey}|serial|${shelfId}` });
+                remainingQuantity -= quantityForShelf;
+            }
+        });
+        if (remainingQuantity > 0) entries.push({ ...product, quantity: remainingQuantity, shelfId: defaultShelfId, warehouseType, assignmentKey });
+        return entries;
+    }), [products, stockMap, unitStockRows, assignments, serialAssignments, transactions]);
 
     const assignedProducts = useMemo(() => productsWithStock.filter(product => product.shelfId), [productsWithStock]);
 
@@ -216,20 +277,21 @@ const WarehouseLayout: React.FC = () => {
         return unassignedProducts.filter(product => product.name.toLowerCase().includes(term) || product.item_code.toLowerCase().includes(term) || product.warehouseType.toLowerCase().includes(term));
     }, [productsWithStock, search]);
 
-    const assignedSerialRows = useMemo(() => {
+    const serialRows = useMemo(() => {
         const outboundSerials = new Set(transactions
             .filter(transaction => transaction.type === 'outbound' && transaction.serial_code)
             .map(transaction => transaction.serial_code!.trim().toUpperCase()));
-        const serialRows = new Map<string, { productId: string; itemCode: string; productName: string; warehouseType: string; serialCode: string; shelfId: string }>();
+        const rows = new Map<string, { key: string; productId: string; itemCode: string; productName: string; warehouseType: string; serialCode: string; shelfId: string }>();
         transactions.forEach(transaction => {
             const serialCode = transaction.serial_code?.trim();
             if (transaction.type !== 'inbound' || !transaction.product_id || !serialCode || outboundSerials.has(serialCode.toUpperCase())) return;
             const warehouseType = resolveWarehouseType(transaction);
             const assignmentKey = `${transaction.product_id}|${warehouseType}`;
-            const shelfId = assignments[assignmentKey];
-            if (!shelfId) return;
+            const key = `${assignmentKey}|${serialCode.toUpperCase()}`;
+            const shelfId = serialAssignments[key] || assignments[assignmentKey] || '';
             const product = products.find(item => item.id === transaction.product_id);
-            serialRows.set(`${assignmentKey}|${serialCode.toUpperCase()}`, {
+            rows.set(key, {
+                key,
                 productId: transaction.product_id,
                 itemCode: product?.item_code || '',
                 productName: product?.name || transaction.product_name || '',
@@ -238,8 +300,65 @@ const WarehouseLayout: React.FC = () => {
                 shelfId,
             });
         });
-        return [...serialRows.values()];
-    }, [transactions, assignments, products]);
+        return [...rows.values()];
+    }, [transactions, assignments, serialAssignments, products]);
+
+    const assignedSerialRows = useMemo(() => serialRows.filter(row => row.shelfId), [serialRows]);
+
+    const saveSerialAssignment = (serialKey: string, shelfId: string) => {
+        const next = { ...serialAssignments };
+        if (shelfId) next[serialKey] = shelfId;
+        else delete next[serialKey];
+        setSerialAssignments(next);
+        localStorage.setItem(serialAssignmentStorageKey, JSON.stringify(next));
+        syncToCloud(assignments, shelfNames, zoneNames, next);
+    };
+
+    const downloadAssignmentTemplate = async () => {
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet('Gan ke');
+        sheet.columns = [{ width: 20 }, { width: 30 }, { width: 18 }];
+        sheet.addRow(['MA_HANG', 'SERIAL', 'MA_KE']);
+        sheet.addRow(['8041', '', 'A-1']);
+        sheet.addRow(['8041', 'SERIAL-001', 'A-2']);
+        sheet.getRow(1).eachCell(cell => { cell.font = { name: 'Times New Roman', size: 12, bold: true, color: { argb: 'FFFFFFFF' } }; cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } }; });
+        sheet.getRow(2).eachCell(cell => { cell.font = { name: 'Times New Roman', size: 12 }; });
+        sheet.getRow(3).eachCell(cell => { cell.font = { name: 'Times New Roman', size: 12 }; });
+        const buffer = await workbook.xlsx.writeBuffer();
+        saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'Mau_gan_ke_theo_ma_hang_serial.xlsx');
+    };
+
+    const importAssignments = async (file: File) => {
+        const rows = await readExcelFile(file);
+        const nextAssignments = { ...assignments };
+        const nextSerialAssignments = { ...serialAssignments };
+        let imported = 0;
+        const findShelf = (value: unknown) => shelves.find(shelf => shelf.id.toUpperCase() === String(value || '').trim().toUpperCase() || getShelfLabel(shelf, shelfNames).toUpperCase() === String(value || '').trim().toUpperCase());
+        for (const row of rows) {
+            const shelf = findShelf(row.MA_KE || row['MÃ_KỆ']);
+            if (!shelf) continue;
+            const serial = String(row.SERIAL || '').trim().toUpperCase();
+            const code = String(row.MA_HANG || row['MÃ_HÀNG'] || '').trim();
+            if (serial) {
+                const serialRow = serialRows.find(item => item.serialCode.toUpperCase() === serial && (!code || item.itemCode === code));
+                if (!serialRow) continue;
+                nextSerialAssignments[serialRow.key] = shelf.id;
+            } else {
+                const product = products.find(item => item.item_code === code || item.id === code);
+                if (!product) continue;
+                const warehouse = unitStockRows.find(item => item.productId === product.id)?.warehouseType || 'KHO_DV';
+                nextAssignments[`${product.id}|${warehouse}`] = shelf.id;
+            }
+            imported += 1;
+        }
+        if (!imported) throw new Error('Không có dòng hợp lệ. Kiểm tra MA_HANG/SERIAL và MA_KE trong mẫu.');
+        setAssignments(nextAssignments);
+        setSerialAssignments(nextSerialAssignments);
+        localStorage.setItem(storageKey, JSON.stringify(nextAssignments));
+        localStorage.setItem(serialAssignmentStorageKey, JSON.stringify(nextSerialAssignments));
+        await syncToCloud(nextAssignments, shelfNames, zoneNames, nextSerialAssignments);
+        success(`Đã nhập ${imported} vị trí kệ.`);
+    };
 
     const saveAssignment = (productId: string, shelfId: string) => {
         const next = { ...assignments };
@@ -365,6 +484,8 @@ const WarehouseLayout: React.FC = () => {
         productsWithStock.filter(product => !product.shelfId).forEach(product => unassigned.addRow([product.item_code, product.name, product.warehouseType, product.unit || '', product.quantity]));
         unassigned.getColumn(5).numFmt = '#,##0';
         unassigned.views = [{ state: 'frozen', ySplit: 1 }];
+        applyExcelFont(sheet);
+        applyExcelFont(unassigned);
         const buffer = await workbook.xlsx.writeBuffer();
         saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `So_do_kho_${new Date().toISOString().slice(0, 10)}.xlsx`);
     };
@@ -400,6 +521,7 @@ const WarehouseLayout: React.FC = () => {
             });
         }
         sheet.views = [{ state: 'frozen', ySplit: 1 }];
+        applyExcelFont(sheet);
         const buffer = await workbook.xlsx.writeBuffer();
         saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `Serial_da_gan_ke_${new Date().toISOString().slice(0, 10)}.xlsx`);
     };
@@ -446,13 +568,18 @@ const WarehouseLayout: React.FC = () => {
                     <Button
                         variant="contained"
                         onClick={() => {
-                            dispatch(fetchTransactionsForce());
+                            dispatch(fetchTransactionsForce({ all: true }));
                             success('Đã làm mới dữ liệu tồn kho từ hệ thống');
                         }}
                         startIcon={<RefreshCw size={16} />}
                         sx={{ bgcolor: 'rgba(255,255,255,.26)', border: '1px solid rgba(255,255,255,.35)', color: 'white' }}
                     >
                         Làm mới tồn kho
+                    </Button>
+                    <Button variant="contained" onClick={downloadAssignmentTemplate} startIcon={<Download size={17} />} sx={{ bgcolor: 'rgba(255,255,255,.26)', border: '1px solid rgba(255,255,255,.35)', color: 'white' }}>Tải mẫu gán kệ</Button>
+                    <Button component="label" variant="contained" startIcon={<Upload size={17} />} sx={{ bgcolor: 'rgba(255,255,255,.26)', border: '1px solid rgba(255,255,255,.35)', color: 'white' }}>
+                        Nhập gán kệ
+                        <input hidden type="file" accept=".xlsx,.xls" onChange={async event => { const file = event.target.files?.[0]; if (file) { try { await importAssignments(file); } catch (error: any) { notifyError(error.message || 'Không thể nhập file gán kệ.'); } } event.target.value = ''; }} />
                     </Button>
                     <Button variant="contained" disabled={!assignedSerialRows.length} onClick={exportAssignedSerials} startIcon={<Download size={17} />} sx={{ bgcolor: 'rgba(255,255,255,.26)', border: '1px solid rgba(255,255,255,.35)', color: 'white' }}>Xuất serial đã gán</Button>
                     <Button variant="contained" onClick={clearAssignments} startIcon={<Trash2 size={17} />} sx={{ bgcolor: 'rgba(220,38,38,.86)', border: '1px solid rgba(254,202,202,.5)', color: 'white' }}>Xóa gán kệ</Button>
@@ -469,7 +596,7 @@ const WarehouseLayout: React.FC = () => {
 
             <Box display="grid" gridTemplateColumns={{ xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1.65fr) minmax(330px, .85fr)' }} gap={2.5} alignItems="start">
                 <Paper sx={{ p: { xs: 1.5, sm: 2.5 }, minWidth: 0, overflow: 'hidden' }}>
-                    <Stack direction="row" alignItems="center" spacing={1} mb={2}><LayoutGrid size={20} color="#60a5fa" /><Typography fontWeight={800}>Bản đồ vị trí kệ</Typography><Chip size="small" label="Cập nhật theo tồn kho" color="primary" variant="outlined" /></Stack>
+                    <Stack direction="row" alignItems="center" spacing={1} mb={2}><LayoutGrid size={20} color="#60a5fa" /><Typography fontWeight={800}>Bản đồ vị trí kệ</Typography><Chip size="small" label="Khớp số liệu tồn kho" color="primary" variant="outlined" /></Stack>
                     <Box display="grid" gridTemplateColumns={{ xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' }} gap={2}>
                         {zones.map(zone => <Box key={zone.id} sx={{ minWidth: 0, overflow: 'hidden', border: `1px solid ${zone.color}44`, borderRadius: 2, p: 1.5, bgcolor: `${zone.color}0d` }}>
                             <Typography fontWeight={700} fontSize=".85rem" color={zone.color} mb={1.25} noWrap>{getZoneTitle(zone, zoneNames)}</Typography>
@@ -529,6 +656,17 @@ const WarehouseLayout: React.FC = () => {
                         </Box>)}
                         {!matchedProducts.length && <Typography py={4} textAlign="center" color="text.secondary">Không tìm thấy mặt hàng có tồn.</Typography>}
                     </Stack>
+                    <Paper variant="outlined" sx={{ mt: 2, p: 1.25, borderColor: 'rgba(167,139,250,.35)', bgcolor: 'rgba(88,28,135,.08)' }}>
+                        <Typography fontWeight={800} fontSize=".9rem">Gán vị trí theo serial</Typography>
+                        <Typography variant="caption" color="text.secondary" display="block" mb={1}>Vị trí serial được ưu tiên hơn vị trí gán chung của mã hàng.</Typography>
+                        <Stack spacing={.75} maxHeight={260} overflow="auto">
+                            {serialRows.slice(0, 150).map(row => <Stack key={row.key} direction="row" spacing={1} alignItems="center">
+                                <Box minWidth={0} flex={1}><Typography fontSize=".72rem" fontWeight={700} noWrap>{row.serialCode}</Typography><Typography fontSize=".65rem" color="text.secondary" noWrap>{row.productName}</Typography></Box>
+                                <FormControl size="small" sx={{ minWidth: 145 }}><Select value={serialAssignments[row.key] || ''} displayEmpty onChange={event => saveSerialAssignment(row.key, event.target.value)}><MenuItem value=""><em>Theo vị trí mã hàng</em></MenuItem>{shelves.map(shelf => <MenuItem key={shelf.id} value={shelf.id}>{getShelfLabel(shelf, shelfNames)}</MenuItem>)}</Select></FormControl>
+                            </Stack>)}
+                            {!serialRows.length && <Typography variant="body2" color="text.secondary">Chưa có serial còn tồn kho.</Typography>}
+                        </Stack>
+                    </Paper>
                 </Paper>
             </Box>
         </Box>

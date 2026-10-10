@@ -399,12 +399,17 @@ a,
 
 /* ── Mobile: giảm hiệu ứng blob để tiết kiệm GPU ── */
 @media (max-width: 640px) {
+  body {
+    /* Fixed backgrounds and animated blur layers cause noticeable scroll jank on low-end phones. */
+    background-attachment: scroll !important;
+  }
   body::before,
   body::after {
     filter: blur(60px);
     opacity: 0.6;
     width: 80vw;
     height: 80vw;
+    animation: none;
   }
 }
 

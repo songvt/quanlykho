@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
     AppBar,
     Toolbar,
@@ -30,7 +30,15 @@ const ModernHeader: React.FC<ModernHeaderProps> = ({ DRAWER_WIDTH, handleDrawerT
     const { profile } = useSelector((state: RootState) => state.auth);
 
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-    const [themeMode, setThemeMode] = useState<'light' | 'dark'>('light');
+    const [themeMode, setThemeMode] = useState<'light' | 'dark'>(() => {
+        const savedTheme = localStorage.getItem('qlkho_theme');
+        return savedTheme === 'dark' ? 'dark' : 'light';
+    });
+
+    useEffect(() => {
+        document.documentElement.setAttribute('data-theme', themeMode);
+        localStorage.setItem('qlkho_theme', themeMode);
+    }, [themeMode]);
 
     const formattedDate = useMemo(() => {
         return new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -48,7 +56,6 @@ const ModernHeader: React.FC<ModernHeaderProps> = ({ DRAWER_WIDTH, handleDrawerT
     const toggleTheme = () => {
         const newTheme = themeMode === 'light' ? 'dark' : 'light';
         setThemeMode(newTheme);
-        document.documentElement.setAttribute('data-theme', newTheme);
     };
 
     return (
@@ -76,6 +83,7 @@ const ModernHeader: React.FC<ModernHeaderProps> = ({ DRAWER_WIDTH, handleDrawerT
                 <Box display="flex" alignItems="center" gap={2} sx={{ flex: 1, minWidth: 0 }}>
                     <IconButton
                         color="inherit"
+                        aria-label="Mở menu điều hướng"
                         onClick={handleDrawerToggle}
                         sx={{
                             display: { sm: 'none' },
@@ -118,6 +126,7 @@ const ModernHeader: React.FC<ModernHeaderProps> = ({ DRAWER_WIDTH, handleDrawerT
                         <Search size={18} color="var(--text-secondary)" style={{ marginRight: 8 }} />
                         <InputBase
                             placeholder="Tìm kiếm tài sản, hàng hóa, serial..."
+                            inputProps={{ 'aria-label': 'Tìm kiếm tài sản, hàng hóa hoặc serial' }}
                             sx={{ flex: 1, fontSize: '0.9rem', color: 'var(--text-primary)' }}
                         />
                     </Box>
@@ -129,11 +138,15 @@ const ModernHeader: React.FC<ModernHeaderProps> = ({ DRAWER_WIDTH, handleDrawerT
                         {formattedDate}
                     </Typography>
 
-                    <IconButton onClick={toggleTheme} sx={{ color: 'var(--text-secondary)' }}>
+                    <IconButton
+                        aria-label={themeMode === 'light' ? 'Chuyển sang giao diện tối' : 'Chuyển sang giao diện sáng'}
+                        onClick={toggleTheme}
+                        sx={{ color: 'var(--text-secondary)' }}
+                    >
                         {themeMode === 'light' ? <Moon size={20} /> : <Sun size={20} />}
                     </IconButton>
 
-                    <IconButton sx={{ color: 'var(--text-secondary)' }}>
+                    <IconButton aria-label="Thông báo" sx={{ color: 'var(--text-secondary)' }}>
                         <Badge badgeContent={3} color="error" sx={{ '& .MuiBadge-badge': { right: 2, top: 2 } }}>
                             <Bell size={20} />
                         </Badge>

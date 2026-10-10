@@ -39,8 +39,8 @@ export const fetchTransactions = createAsyncThunk(
 
 export const fetchTransactionsForce = createAsyncThunk(
     'transactions/fetchForce',
-    async () => {
-        const data = await SupabaseService.fetchTransactions();
+    async (options?: { all?: boolean }) => {
+        const data = await SupabaseService.fetchTransactions(options);
         return data;
     }
 );
@@ -77,9 +77,9 @@ export const syncInStock = createAsyncThunk(
         const createdBy = profile ? (profile.full_name || profile.username || profile.email) : 'system';
         
         const res = await SupabaseService.syncInStockToInbound(createdBy);
-        if (res?.count > 0) {
-            dispatch(fetchTransactionsForce()); // Refresh transactions
-        }
+        // Wait for the post-sync read. Without awaiting it, the page can render the
+        // pre-sync cache and appear different from the in_stock source file.
+        await dispatch(fetchTransactionsForce({ all: true })).unwrap();
         return res;
     }
 );

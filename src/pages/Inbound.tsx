@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchProducts } from '../store/slices/productsSlice';
+import { fetchProducts, fetchProductsForce } from '../store/slices/productsSlice';
 import { fetchInventory } from '../store/slices/inventorySlice';
 import { fetchTransactions, updateTransaction, deleteTransaction, bulkDeleteTransactions, syncInStock, importInboundTransactions, fetchTransactionsForce } from '../store/slices/transactionsSlice';
 import type { RootState, AppDispatch } from '../store';
@@ -115,8 +115,10 @@ export const Inbound = () => {
                                     setIsSyncing(true);
                                     try {
                                         const res = await dispatch(syncInStock()).unwrap();
+                                        // Cập nhật lại danh mục vì file in_stock có thể bổ sung mã hàng mới.
+                                        await dispatch(fetchProductsForce()).unwrap();
                                         if (res.sync_warning) notifyError(res.message || 'Dữ liệu đã cập nhật nhưng Google Sheets chưa đồng bộ.');
-                                        else success(res.message || 'Đồng bộ thành công!');
+                                        else success(`${res.message || 'Đồng bộ thành công!'} Đã đối soát ${res.count ?? 0} dòng tồn kho.`);
                                     } catch (e: any) { notifyError(e.message); }
                                     finally { setIsSyncing(false); }
                                 }}

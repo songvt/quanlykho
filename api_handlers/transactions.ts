@@ -48,6 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         switch (req.method) {
             case 'GET': {
                 const type = req.query.type as string;
+                const allRecords = String(req.query.all || '').toLowerCase() === 'true';
                 const daysParam = parseInt(req.query.days as string, 10) || 30; // Reduce default from 60 to 30 days for faster load
                 const limitDate = new Date();
                 limitDate.setDate(limitDate.getDate() - daysParam);
@@ -57,8 +58,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 try {
                     if (!type) {
                         const [inbound, outbound] = await Promise.all([
-                            fetchAll('inbound_transactions', '*, product:products(name, item_code, unit)', (q) => q.gte('inbound_date', limitDateIso)),
-                            fetchAll('outbound_transactions', '*, product:products(name, item_code, unit)', (q) => q.gte('outbound_date', limitDateIso))
+                            fetchAll('inbound_transactions', '*, product:products(name, item_code, unit)', (q) => allRecords ? q : q.gte('inbound_date', limitDateIso)),
+                            fetchAll('outbound_transactions', '*, product:products(name, item_code, unit)', (q) => allRecords ? q : q.gte('outbound_date', limitDateIso))
                         ]);
                         const merged = [
                             ...inbound.map(t => ({ ...t, type: 'inbound', date: t.inbound_date })),
@@ -69,7 +70,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     } else {
                         const table = type === 'outbound' ? 'outbound_transactions' : 'inbound_transactions';
                         const dateField = type === 'inbound' ? 'inbound_date' : 'outbound_date';
-                        const data = await fetchAll(table, '*, product:products(name, item_code, unit)', (q) => q.gte(dateField, limitDateIso).order(dateField, { ascending: false }));
+                        const data = await fetchAll(table, '*, product:products(name, item_code, unit)', (q) => (allRecords ? q : q.gte(dateField, limitDateIso)).order(dateField, { ascending: false }));
                         return res.status(200).json(data.map(t => ({ ...t, type, date: type === 'inbound' ? t.inbound_date : t.outbound_date })));
                     }
                 } catch (e: any) {
@@ -302,6 +303,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                             return res.status(503).json({
                                 error: 'Không tạo được hàng đợi đồng bộ Google Sheets; dữ liệu đã được khôi phục và không có thay đổi nào được xác nhận.'
                             });
+                        }
+
+                        // The in_stock sheet is the one-way source. Verify that Supabase now
+                        // contains every validated source row before the client is told the
+                        // sync succeeded. This catches partial writes even when a batch error
+                        // was not surfaced by the transport layer.
+                        const committedRows = await fetchAll('inbound_transactions', 'id');
+                        const expectedIds = new Set(toInsert.map(item => item.id));
+                        const committedIds = new Set(committedRows.map(row => row.id));
+                        const isExactReplacement = committedRows.length === toInsert.length
+                            && expectedIds.size === toInsert.length
+                            && [...expectedIds].every(id => committedIds.has(id));
+                        if (!isExactReplacement) {
+                            throw new Error(`Đối soát tồn kho thất bại: nguồn có ${toInsert.length} dòng, cơ sở dữ liệu có ${committedRows.length} dòng.`);
                         }
                     } catch (writeError) {
                         // Best-effort rollback keeps the previously committed inventory available
