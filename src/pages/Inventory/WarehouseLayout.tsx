@@ -7,7 +7,7 @@ import { saveAs } from 'file-saver';
 import PageHeader from '../../components/Common/PageHeader';
 import { fetchProducts } from '../../store/slices/productsSlice';
 import { fetchTransactions, fetchTransactionsForce } from '../../store/slices/transactionsSlice';
-import { fetchInventory, selectStockMap } from '../../store/slices/inventorySlice';
+import { fetchInventory } from '../../store/slices/inventorySlice';
 import { supabase } from '../../config/supabase';
 import { useNotification } from '../../contexts/NotificationContext';
 import { readExcelFile } from '../../utils/excelUtils';
@@ -66,9 +66,6 @@ const WarehouseLayout: React.FC = () => {
     const products = useSelector((state: RootState) => state.products.items);
     const productStatus = useSelector((state: RootState) => state.products.status);
     const transactions = useSelector((state: RootState) => state.transactions.items);
-    // Dùng đúng selector của màn hình Tồn kho để mọi số lượng hiển thị nhất quán,
-    // gồm cả quy tắc lọc kho và khấu trừ các phiếu đang chờ xử lý.
-    const stockMap = useSelector(selectStockMap);
     const [search, setSearch] = useState('');
     const [selectedProductId, setSelectedProductId] = useState('');
     const [assignments, setAssignments] = useState<Record<string, string>>({});
@@ -226,16 +223,10 @@ const WarehouseLayout: React.FC = () => {
         return Object.values(next).filter(row => row.quantity > 0);
     }, [transactions]);
 
-    const productsWithStock = useMemo(() => products.flatMap(product => {
-        const quantity = stockMap[product.id] || 0;
-        if (quantity <= 0) return [];
-
-        // Vị trí gán vẫn được xác định theo kho đơn vị. Một mã hàng chỉ xuất hiện
-        // một lần với chính số tồn đang hiển thị tại danh sách Hàng hóa, tránh cộng
-        // trùng khi lịch sử có nhiều dòng nhập/xuất cho cùng mã hàng.
-        const productRows = unitStockRows.filter(row => row.productId === product.id);
-        const row = productRows.find(item => assignments[`${product.id}|${item.warehouseType}`]) || productRows[0];
-        const warehouseType = row?.warehouseType || 'KHO_DV';
+    const productsWithStock = useMemo(() => products.flatMap(product => unitStockRows
+        .filter(row => row.productId === product.id)
+        .flatMap(row => {
+        const { quantity, warehouseType } = row;
         const assignmentKey = `${product.id}|${warehouseType}`;
         const defaultShelfId = assignments[assignmentKey] || '';
 
@@ -266,7 +257,7 @@ const WarehouseLayout: React.FC = () => {
         });
         if (remainingQuantity > 0) entries.push({ ...product, quantity: remainingQuantity, shelfId: defaultShelfId, warehouseType, assignmentKey });
         return entries;
-    }), [products, stockMap, unitStockRows, assignments, serialAssignments, transactions]);
+    })), [products, unitStockRows, assignments, serialAssignments, transactions]);
 
     const assignedProducts = useMemo(() => productsWithStock.filter(product => product.shelfId), [productsWithStock]);
 

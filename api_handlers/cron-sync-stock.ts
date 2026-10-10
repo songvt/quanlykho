@@ -79,6 +79,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             Object.assign(productsMap, missingProductsMap);
         }
 
+        // Some source groups have an aggregate quantity plus serial detail rows. Count
+        // only the aggregate row while retaining each serial row for lookup and placement.
+        const aggregateStockKeys = new Set(sRows.flatMap(row => {
+            const productId = String(row.get('product_id') || row.get('MA_HANG') || row.get('Ma_Hang') || row.get('MA_VT') || '').trim();
+            const sourceSerial = String(row.get('serial_code') || row.get('SERIAL') || row.get('Serial') || '').trim();
+            const warehouse = String(row.get('loai_kho') || row.get('district') || row.get('District') || 'Kho Tổng').trim().toUpperCase();
+            return productId && !sourceSerial ? [`${productId}|${warehouse}`] : [];
+        }));
         const toInsert: any[] = [];
         const creator = 'system_cron_20h';
 
@@ -91,9 +99,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const serialRaw = String(row.get('serial_code') || row.get('SERIAL') || row.get('Serial') || '').trim();
             const isVT = String(row.get('check_loại_hang')).trim() === 'VT-TKM';
             const serial = serialRaw || (isVT ? `VT-${row.get('ID')}` : '');
+            const warehouse = String(row.get('loai_kho') || row.get('district') || row.get('District') || 'Kho Tổng').trim().toUpperCase();
 
             const qtyStr = String(row.get('quantity') || '').trim();
-            const qty = qtyStr ? parseFloat(qtyStr.replace(/\./g, '').replace(/,/g, '')) : 1;
+            const sourceQty = qtyStr ? parseFloat(qtyStr.replace(/\./g, '').replace(/,/g, '')) : 1;
+            const qty = serialRaw && aggregateStockKeys.has(`${pIdRaw}|${warehouse}`) ? 0 : sourceQty;
 
             toInsert.push({
                 id: randomUUID(),

@@ -217,6 +217,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         }
                     }
 
+                    // A source sheet can contain one aggregate stock row and separate serial
+                    // detail rows for the same product/warehouse. The aggregate is the
+                    // authoritative quantity; serial rows are retained for traceability but
+                    // must not be added to stock a second time.
+                    const aggregateStockKeys = new Set(sRows.flatMap(row => {
+                        const productId = String(row.get('product_id') || row.get('MA_HANG') || row.get('Ma_Hang') || row.get('MA_VT') || '').trim();
+                        const sourceSerial = String(row.get('serial_code') || row.get('SERIAL') || row.get('Serial') || '').trim();
+                        const warehouse = String(row.get('loai_kho') || row.get('district') || row.get('District') || 'Kho Tổng').trim().toUpperCase();
+                        return productId && !sourceSerial ? [`${productId}|${warehouse}`] : [];
+                    }));
+
                     // Set to avoid duplicates within the current sync file
                     const existingSerials = new Set<string>();
                     const toInsert: any[] = [];
@@ -231,14 +242,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         const serialRaw = String(row.get('serial_code') || row.get('SERIAL') || row.get('Serial') || '').trim();
                         const isVT = String(row.get('check_loại_hang')).trim() === 'VT-TKM';
                         const serial = serialRaw || (isVT ? `VT-${row.get('ID')}` : '');
+                        const warehouse = String(row.get('loai_kho') || row.get('district') || row.get('District') || 'Kho Tổng').trim().toUpperCase();
                         // Items without a serial are valid aggregate stock rows. Deduplicate them
                         // by their source-row identity rather than dropping them entirely.
-                        const sourceKey = `${product.id}|${serial || `NO-SERIAL-${row.get('ID') || rowIndex}`}`;
+                        const sourceKey = `${product.id}|${warehouse}|${serial || `NO-SERIAL-${row.get('ID') || rowIndex}`}`;
 
                         if (!existingSerials.has(sourceKey)) {
                             existingSerials.add(sourceKey);
                             const qtyStr = String(row.get('quantity') || '').trim();
-                            const qty = qtyStr ? parseFloat(qtyStr.replace(/\./g, '').replace(/,/g, '')) : 1;
+                            const sourceQty = qtyStr ? parseFloat(qtyStr.replace(/\./g, '').replace(/,/g, '')) : 1;
+                            const qty = serialRaw && aggregateStockKeys.has(`${String(pIdRaw).trim()}|${warehouse}`) ? 0 : sourceQty;
 
                             toInsert.push({
                                 id: randomUUID(),
