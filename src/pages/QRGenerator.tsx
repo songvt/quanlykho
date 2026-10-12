@@ -141,6 +141,7 @@ const QR_STYLES = `
         height: 94mm;
         border: 3.5px solid #000000;
         display: flex;
+        flex-direction: column;
         background: white;
         page-break-inside: avoid;
         border-radius: 4px;
@@ -153,6 +154,11 @@ const QR_STYLES = `
         display: flex;
         flex-direction: column;
         background-color: #ffffff;
+    }
+    .label-content {
+        display: flex;
+        flex: 1;
+        min-height: 0;
     }
     .blue-header {
         background: #ffffff !important;
@@ -176,7 +182,7 @@ const QR_STYLES = `
         justify-content: center;
     }
     .info-row:last-child { 
-        border-bottom: none; 
+        border-bottom: none;
         background-color: #ffffff;
     }
     .label-text { 
@@ -197,9 +203,9 @@ const QR_STYLES = `
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
+        justify-content: flex-start;
         border-right: 1.5px solid #000000;
-        padding: 12px;
+        padding: 16px 12px 12px;
         background-color: #ffffff;
     }
     .qr-col:last-child { border-right: none; }
@@ -227,6 +233,31 @@ const QR_STYLES = `
         border: 1px solid #cbd5e1;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
+    }
+    .voucher-row {
+        height: 24mm;
+        min-height: 24mm;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 14px;
+        border-top: 1.5px solid #000000;
+        font-size: 1.45rem;
+        font-weight: 950;
+        color: #000000;
+    }
+    .voucher-line {
+        flex: 1;
+        height: 12px;
+        border-bottom: 1.5px solid #000000;
+    }
+    .voucher-date {
+        align-self: flex-end;
+        margin-bottom: 4px;
+        font-size: 0.75rem;
+        font-style: italic;
+        font-weight: 600;
+        white-space: nowrap;
     }
     .watermark {
         position: absolute;
@@ -256,6 +287,7 @@ const QR_STYLES = `
         .qr-col { border-right: 1.5px solid black !important; }
         .qr-col:last-child { border-right: none !important; }
         .qr-label-badge { border: 1px solid black !important; background-color: #f1f5f9 !important; }
+        .voucher-row { border-top: 1.5px solid black !important; }
     }
 `;
 
@@ -1262,46 +1294,44 @@ const QRGenerator = () => {
                                             const boxLabel = group.boxNumber.replace(/(thùng|thung|box)/gi, '').replace(/[:\s]+/g, ' ').trim();
                                             return (
                                                 <div key={group.key} className="label-wrapper">
-                                                    
-                                                    {/* ─ Info Column ─ */}
-                                                    <div className="info-col">
-                                                        <div className="blue-header">
-                                                            {group.district.toUpperCase()} – {docTitle.toUpperCase()}
+                                                    <div className="label-content">
+                                                        {/* ─ Info Column ─ */}
+                                                        <div className="info-col">
+                                                            <div className="blue-header">
+                                                                {group.district.toUpperCase()} – {docTitle.toUpperCase()}
+                                                            </div>
+                                                            <div className="info-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', fontSize: '1.45rem', fontWeight: 950 }}>
+                                                                <span style={{ color: '#000000' }}>SỐ THÙNG :</span>
+                                                                <span style={{ color: '#000000', fontSize: '1.65rem' }}>{boxLabel || group.boxNumber}</span>
+                                                            </div>
+                                                            <div className="info-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', fontSize: '1.45rem', fontWeight: 950 }}>
+                                                                <span style={{ color: '#000000' }}>SỐ LƯỢNG :</span>
+                                                                <span style={{ color: '#000000', fontSize: '1.65rem' }}>{group.totalQuantity}</span>
+                                                            </div>
+                                                            <div className="info-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', fontSize: '1.45rem', fontWeight: 950 }}>
+                                                                <span style={{ color: '#000000' }}>MÃ QR :</span>
+                                                                <span style={{ color: '#000000', fontSize: '1.65rem' }}>{group.qrChunks.length}</span>
+                                                            </div>
                                                         </div>
-                                                        <div className="info-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', fontSize: '1.45rem', fontWeight: 950 }}>
-                                                            <span style={{ color: '#000000' }}>SỐ THÙNG :</span>
-                                                            <span style={{ color: '#000000', fontSize: '1.65rem' }}>{boxLabel || group.boxNumber}</span>
-                                                        </div>
-                                                        <div className="info-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', fontSize: '1.45rem', fontWeight: 950 }}>
-                                                            <span style={{ color: '#000000' }}>SỐ LƯỢNG :</span>
-                                                            <span style={{ color: '#000000', fontSize: '1.65rem' }}>{group.totalQuantity}</span>
-                                                        </div>
-                                                        <div className="info-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', fontSize: '1.45rem', fontWeight: 950 }}>
-                                                            <span style={{ color: '#000000' }}>MÃ QR :</span>
-                                                            <span style={{ color: '#000000', fontSize: '1.65rem' }}>{group.qrChunks.length}</span>
-                                                        </div>
-                                                        <div className="info-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '8px', fontSize: '1.45rem', fontWeight: 950 }}>
-                                                            <div style={{ color: '#000000' }}>SỐ PHIẾU: ________</div>
-                                                        </div></div>
 
-                                                    {/* ─ QR Code Columns ─ */}
-                                                    {group.qrChunks.map((chunk) => (
-                                                        <div key={chunk.label} className="qr-col">
-                                                            <div className="qr-header">
-                                                                <span className="qr-label-title">
-                                                                    {chunk.label}
-                                                                </span>
-                                                                <span className="qr-label-badge">
-                                                                    {chunk.serials.length}/{MAX_SERIALS_PER_QR}
-                                                                </span>
+                                                        {/* ─ QR Code Columns ─ */}
+                                                        {group.qrChunks.map((chunk) => (
+                                                            <div key={chunk.label} className="qr-col">
+                                                                <div className="qr-header">
+                                                                    <span className="qr-label-title">
+                                                                        {chunk.label}
+                                                                    </span>
+                                                                </div>
+                                                                <div style={{ display: 'flex', justifyContent: 'center', padding: '5px', border: '1px solid #f1f5f9', borderRadius: '8px', backgroundColor: '#fafafa' }}>
+                                                                    <QRCodeSVG value={chunk.qrValue} size={135} level="M" includeMargin={false} />
+                                                                </div>
                                                             </div>
-                                                            <div style={{ display: 'flex', justifyContent: 'center', padding: '5px', border: '1px solid #f1f5f9', borderRadius: '8px', backgroundColor: '#fafafa' }}>
-                                                                <QRCodeSVG value={chunk.qrValue} size={135} level="M" includeMargin={false} />
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                    <div style={{ position: 'absolute', bottom: '4px', right: '12px', fontSize: '0.75rem', color: '#333333', fontStyle: 'italic', fontWeight: 600 }}>
-                                                        Ngày in: {new Date().toLocaleDateString('en-GB')}
+                                                        ))}
+                                                    </div>
+                                                    <div className="voucher-row">
+                                                        <span>SỐ PHIẾU:</span>
+                                                        <span className="voucher-line" aria-label="Vùng ghi số phiếu" />
+                                                        <span className="voucher-date">Ngày in: {new Date().toLocaleDateString('en-GB')}</span>
                                                     </div>
                                                 </div>
                                             );
