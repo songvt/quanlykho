@@ -1329,7 +1329,7 @@ const QRGenerator = () => {
                                                         ))}
                                                     </div>
                                                     <div className="voucher-row">
-                                                        <span>SỐ PHIẾU:</span>
+                                                        <span>SỐ PXK :</span>
                                                         <span className="voucher-line" aria-label="Vùng ghi số phiếu" />
                                                         <span className="voucher-date">Ngày in: {new Date().toLocaleDateString('en-GB')}</span>
                                                     </div>
