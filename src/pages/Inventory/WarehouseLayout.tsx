@@ -26,7 +26,7 @@ const zones = [
 const shelves: Shelf[] = zones.flatMap(zone => Array.from({ length: 6 }, (_, index) => ({
     id: `${zone.id}-${index + 1}`,
     zone: zone.id,
-    label: `Kệ ${zone.id}${index + 1}`,
+    label: `KN-${zone.id}${index + 1}`,
 })));
 
 const storageKey = 'qlkho_warehouse_shelf_assignments';
