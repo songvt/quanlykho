@@ -315,7 +315,7 @@ const StockMap: React.FC = () => {
                                             <Chip label={row.warehouseType} size="small" color="info" variant="outlined" />
                                             <Chip label={row.itemStatus} size="small" variant="outlined" color={row.itemStatus === 'Mới' ? 'success' : row.itemStatus === 'Lỗi' ? 'error' : 'default'} />
                                         </Stack>
-                                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>{row.product.unit || 'Cái'} · {formatNumber(row.transactionCount)} bản ghi · Chạm để xem chi tiết</Typography>
+                                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>{row.product.unit || 'Cái'} · Chạm để xem chi tiết</Typography>
                                     </Paper>
                                 </ButtonBase>
                             ))}
@@ -326,7 +326,7 @@ const StockMap: React.FC = () => {
                         <Table stickyHeader size="small" aria-label="Sơ đồ tồn kho theo mã hàng">
                             <TableHead>
                                 <TableRow>
-                                    {['STT', 'Mã kho', 'Mã hàng', 'Tên hàng hóa', 'ĐVT', 'Nhóm hàng', 'Trạng thái hàng', 'Tồn khả dụng', 'Số bản ghi', ''].map(header => (
+                                    {['STT', 'Mã kho', 'Mã hàng', 'Tên hàng hóa', 'ĐVT', 'Nhóm hàng', 'Trạng thái hàng', 'Tồn khả dụng', ''].map(header => (
                                         <TableCell key={header} sx={{ fontWeight: 700, bgcolor: 'background.paper', whiteSpace: 'nowrap' }} align={header === 'Tồn khả dụng' || header === 'Số bản ghi' || header === 'STT' ? 'center' : undefined}>{header}</TableCell>
                                     ))}
                                 </TableRow>
@@ -351,12 +351,11 @@ const StockMap: React.FC = () => {
                                             </Stack>
                                         </TableCell>
                                         <TableCell align="center"><Chip label={formatNumber(row.availableQuantity)} color={row.availableQuantity > 0 ? 'success' : 'default'} size="small" sx={{ fontWeight: 700, minWidth: 72 }} /></TableCell>
-                                        <TableCell align="center">{formatNumber(row.transactionCount)}</TableCell>
                                         <TableCell align="right"><Tooltip title="Xem chi tiết bản ghi"><Button size="small" onClick={event => { event.stopPropagation(); setSelectedRow(row); }}>Chi tiết</Button></Tooltip></TableCell>
                                     </TableRow>
                                 ))}
                                 {filteredRows.length === 0 && (
-                                    <TableRow><TableCell colSpan={10} align="center" sx={{ py: 8, color: 'text.secondary' }}>Không tìm thấy mã hàng phù hợp.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={9} align="center" sx={{ py: 8, color: 'text.secondary' }}>Không tìm thấy mã hàng phù hợp.</TableCell></TableRow>
                                 )}
                             </TableBody>
                         </Table>
