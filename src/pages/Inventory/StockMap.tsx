@@ -7,6 +7,7 @@ import {
 } from '@mui/material';
 import {
     Close as CloseIcon,
+    FileDownload as FileDownloadIcon,
     Inventory2 as InventoryIcon,
     Refresh as RefreshIcon,
     Search as SearchIcon,
@@ -21,6 +22,8 @@ import { fetchProductsForce } from '../../store/slices/productsSlice';
 import { fetchTransactionsForce } from '../../store/slices/transactionsSlice';
 import { formatNumber } from '../../utils/numberUtils';
 import type { Product, Transaction } from '../../types';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 interface StockMapRow {
     product: Product;
@@ -54,6 +57,7 @@ const StockMap: React.FC = () => {
     const [search, setSearch] = useState('');
     const [warehouseFilter, setWarehouseFilter] = useState('');
     const [selectedRow, setSelectedRow] = useState<StockMapRow | null>(null);
+    const [isExporting, setIsExporting] = useState(false);
 
     const refreshData = () => {
         dispatch(fetchProductsForce());
@@ -145,16 +149,110 @@ const StockMap: React.FC = () => {
     const totalTransactions = rows.reduce((sum, row) => sum + row.transactionCount, 0);
     const isLoading = transactionStatus === 'loading' || productStatus === 'loading';
 
+    const styleExportSheet = (sheet: ExcelJS.Worksheet, title: string, headers: string[]) => {
+        sheet.mergeCells(1, 1, 1, headers.length);
+        const titleCell = sheet.getCell('A1');
+        titleCell.value = title;
+        titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+        titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1D4ED8' } };
+        titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+        sheet.getRow(1).height = 28;
+        sheet.mergeCells(2, 1, 2, headers.length);
+        sheet.getCell('A2').value = `Ngày xuất: ${new Date().toLocaleString('vi-VN')}`;
+        sheet.getCell('A2').font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF475569' } };
+        sheet.getCell('A2').alignment = { horizontal: 'center' };
+        const headerRow = sheet.getRow(4);
+        headers.forEach((header, index) => { headerRow.getCell(index + 1).value = header; });
+        headerRow.eachCell(cell => {
+            cell.font = { name: 'Arial', bold: true, color: { argb: 'FFFFFFFF' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+        });
+        headerRow.height = 25;
+        sheet.views = [{ state: 'frozen', ySplit: 4 }];
+    };
+
+    const applyExportDataStyle = (sheet: ExcelJS.Worksheet) => {
+        for (let rowIndex = 5; rowIndex <= sheet.rowCount; rowIndex += 1) {
+            const row = sheet.getRow(rowIndex);
+            row.eachCell(cell => {
+                cell.font = { name: 'Arial', size: 10 };
+                cell.alignment = { vertical: 'middle', wrapText: true };
+                cell.border = { top: { style: 'thin', color: { argb: 'FFE2E8F0' } }, bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } }, left: { style: 'thin', color: { argb: 'FFE2E8F0' } }, right: { style: 'thin', color: { argb: 'FFE2E8F0' } } };
+                if (rowIndex % 2 === 1) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+            });
+        }
+    };
+
+    const exportSummary = async () => {
+        if (!filteredRows.length) return;
+        setIsExporting(true);
+        try {
+            const workbook = new ExcelJS.Workbook();
+            workbook.creator = 'GGS Warehouse';
+            const sheet = workbook.addWorksheet('Tổng hợp tồn kho');
+            const headers = ['STT', 'Mã kho', 'Mã hàng', 'Tên hàng hóa', 'ĐVT', 'Nhóm hàng', 'Trạng thái hàng', 'Tồn khả dụng', 'Số bản ghi'];
+            styleExportSheet(sheet, 'BÁO CÁO TỔNG HỢP SƠ ĐỒ TỒN KHO', headers);
+            sheet.columns = [{ width: 7 }, { width: 18 }, { width: 25 }, { width: 45 }, { width: 12 }, { width: 18 }, { width: 22 }, { width: 16 }, { width: 14 }];
+            filteredRows.forEach((row, index) => sheet.addRow([
+                index + 1, row.warehouseType, row.product.item_code, row.product.name, row.product.unit || 'Cái', row.product.category || '', row.itemStatus, row.availableQuantity, row.transactionCount,
+            ]));
+            applyExportDataStyle(sheet);
+            sheet.getColumn(8).numFmt = '#,##0';
+            sheet.autoFilter = { from: 'A4', to: `I${sheet.rowCount}` };
+            const buffer = await workbook.xlsx.writeBuffer();
+            saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `Tong_hop_so_do_ton_kho_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const exportDetail = async () => {
+        if (!selectedRow || !selectedTransactions.length) return;
+        setIsExporting(true);
+        try {
+            const workbook = new ExcelJS.Workbook();
+            workbook.creator = 'GGS Warehouse';
+            const sheet = workbook.addWorksheet('Chi tiết mã hàng');
+            const headers = ['STT', 'Mã kho', 'Mã hàng', 'Tên hàng hóa', 'Trạng thái hàng', 'Loại giao dịch', 'Ngày', 'Serial', 'Số lượng', 'Quận/Huyện', 'Người thực hiện'];
+            styleExportSheet(sheet, `CHI TIẾT TỒN KHO — ${selectedRow.product.item_code}`, headers);
+            sheet.columns = [{ width: 7 }, { width: 18 }, { width: 24 }, { width: 40 }, { width: 20 }, { width: 16 }, { width: 20 }, { width: 25 }, { width: 14 }, { width: 16 }, { width: 25 }];
+            selectedTransactions.forEach((transaction, index) => {
+                const isOutbound = transaction.type === 'outbound' || Boolean(transaction.outbound_date);
+                sheet.addRow([index + 1, selectedRow.warehouseType, selectedRow.product.item_code, selectedRow.product.name, selectedRow.itemStatus, isOutbound ? 'Xuất kho' : 'Nhập kho', formatDate(transaction.date || transaction.inbound_date || transaction.outbound_date), transaction.serial_code || '', isOutbound ? -Number(transaction.quantity || 0) : Number(transaction.quantity || 0), transaction.district || '', transaction.created_by || transaction.user_name || '']);
+            });
+            applyExportDataStyle(sheet);
+            sheet.getColumn(9).numFmt = '#,##0';
+            sheet.autoFilter = { from: 'A4', to: `K${sheet.rowCount}` };
+            const safeCode = selectedRow.product.item_code.replace(/[^a-zA-Z0-9_-]/g, '_');
+            const buffer = await workbook.xlsx.writeBuffer();
+            saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `Chi_tiet_ton_kho_${safeCode}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     return (
         <Box sx={{ pb: 5 }}>
             <PageHeader
                 title="Sơ đồ tồn kho"
                 subtitle="Tổng quan tồn theo mã hàng và mã kho từ dữ liệu đã đồng bộ; chọn một dòng để xem các bản ghi liên quan."
-                actions={
-                    <Button variant="contained" onClick={refreshData} startIcon={<RefreshIcon />} disabled={isLoading}>
-                        Làm mới dữ liệu
-                    </Button>
-                }
+                actions={<>
+                    <Button
+                        variant="outlined"
+                        onClick={exportSummary}
+                        startIcon={isExporting ? <CircularProgress size={16} /> : <FileDownloadIcon />}
+                        disabled={isLoading || isExporting || !filteredRows.length}
+                        sx={{
+                            color: '#1D4ED8',
+                            borderColor: '#93C5FD',
+                            '&:hover': { bgcolor: '#EFF6FF', borderColor: '#2563EB' },
+                            '&.Mui-disabled': { bgcolor: '#E2E8F0 !important', color: '#64748B !important', borderColor: '#CBD5E1 !important' },
+                        }}
+                    >Xuất Excel tổng</Button>
+                    <Button variant="contained" onClick={refreshData} startIcon={<RefreshIcon />} disabled={isLoading || isExporting}>Làm mới dữ liệu</Button>
+                </>}
             />
 
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} sx={{ mb: 2 }}>
@@ -272,7 +370,10 @@ const StockMap: React.FC = () => {
                     <Typography variant="overline" color="primary.main" fontWeight={700}>CHI TIẾT TỒN KHO</Typography>
                     <Typography variant="h6" fontWeight={800}>{selectedRow?.product.item_code} — {selectedRow?.product.name}</Typography>
                     <Typography variant="body2" color="text.secondary">Mã kho: <strong>{selectedRow?.warehouseType}</strong> · Tồn khả dụng: <strong>{formatNumber(selectedRow?.availableQuantity || 0)} {selectedRow?.product.unit || 'Cái'}</strong></Typography>
-                    <IconButton aria-label="Đóng" onClick={() => setSelectedRow(null)} sx={{ position: 'absolute', right: 12, top: 12 }}><CloseIcon /></IconButton>
+                    <Stack direction="row" spacing={0.5} sx={{ position: 'absolute', right: 12, top: 12 }}>
+                        <Tooltip title="Xuất Excel chi tiết mã hàng"><span><IconButton aria-label="Xuất Excel chi tiết" onClick={exportDetail} disabled={isExporting || !selectedTransactions.length} color="primary"><FileDownloadIcon /></IconButton></span></Tooltip>
+                        <IconButton aria-label="Đóng" onClick={() => setSelectedRow(null)}><CloseIcon /></IconButton>
+                    </Stack>
                 </DialogTitle>
                 <DialogContent dividers sx={{ p: 0 }}>
                     <TableContainer sx={{ maxHeight: isMobile ? 'calc(100vh - 160px)' : 520, overflowX: 'auto' }}>
