@@ -17,7 +17,7 @@ import {
 } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState, AppDispatch } from '../../store';
-import { selectDetailedStockMap } from '../../store/slices/inventorySlice';
+import { selectWarehouseDetailedStockMap } from '../../store/slices/inventorySlice';
 import { fetchTransactions } from '../../store/slices/transactionsSlice';
 import { fetchProducts } from '../../store/slices/productsSlice';
 import ExcelJS from 'exceljs';
@@ -73,7 +73,7 @@ function fmtMoney(val: number) {
 const StockSummaryReport: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
     const { items: products } = useSelector((state: RootState) => state.products);
-    const detailedStockMap = useSelector(selectDetailedStockMap);
+    const warehouseDetailedStockMap = useSelector(selectWarehouseDetailedStockMap);
     const { status: txStatus, items: transactions } = useSelector((state: RootState) => state.transactions);
 
     const [tab, setTab] = useState<GroupBy>('product');
@@ -86,21 +86,12 @@ const StockSummaryReport: React.FC = () => {
 
     // ── Build flat rows ────────────────────────────────────────────────────────
     const allRows: StockRow[] = useMemo(() => {
-        const whMap: Record<string, string> = {};
-        transactions.forEach(t => {
-            if (t.warehouse_type && t.type === 'inbound') {
-                const k = `${t.product_id}|${t.district || ''}|${t.item_status || ''}`;
-                if (!whMap[k]) whMap[k] = t.warehouse_type;
-            }
-        });
-
         const rows: StockRow[] = [];
-        Object.entries(detailedStockMap).forEach(([key, qty]) => {
+        Object.entries(warehouseDetailedStockMap).forEach(([key, qty]) => {
             const parts = key.split('|');
-            if (parts.length !== 3) return;
-            const [productId, district, status] = parts;
+            if (parts.length !== 4) return;
+            const [productId, district, status, warehouseType] = parts;
             if (district === '' && status === '') return;
-            if (status === '*ALL*') return;
             if (qty <= 0) return;
 
             const product = products.find(p => p.id === productId);
@@ -112,7 +103,7 @@ const StockSummaryReport: React.FC = () => {
                 productName: product.name,
                 unit: product.unit || 'Cái',
                 district: district || 'Chưa phân loại',
-                warehouseType: whMap[key] || 'Kho Tổng',
+                warehouseType,
                 itemStatus: status || 'Chưa xác định',
                 quantity: qty,
                 unitPrice: product.unit_price || 0,
@@ -120,7 +111,7 @@ const StockSummaryReport: React.FC = () => {
             });
         });
         return rows;
-    }, [detailedStockMap, products, transactions]);
+    }, [warehouseDetailedStockMap, products]);
 
     // ── Filter options ─────────────────────────────────────────────────────────
     const allStatuses = useMemo(() => ['', ...Array.from(new Set(allRows.map(r => r.itemStatus))).sort()], [allRows]);
@@ -686,7 +677,7 @@ const StockSummaryReport: React.FC = () => {
                                                 </TableCell>
                                             </TableRow>
                                             {rows.map((row, idx) => (
-                                                <TableRow key={`${row.productId}|${row.district}|${row.itemStatus}`} hover
+                                                <TableRow key={`${row.productId}|${row.district}|${row.itemStatus}|${row.warehouseType}`} hover
                                                     sx={{ bgcolor: idx % 2 === 0 ? 'background.paper' : 'action.hover' }}>
                                                     <TableCell align="center" sx={{ color: 'text.secondary', fontSize: '0.75rem' }}>{idx + 1}</TableCell>
                                                     <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'text.secondary' }}>{row.itemCode}</TableCell>

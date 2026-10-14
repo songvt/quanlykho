@@ -12,6 +12,7 @@ import { supabase } from '../../config/supabase';
 import { useNotification } from '../../contexts/NotificationContext';
 import { readExcelFile } from '../../utils/excelUtils';
 import type { AppDispatch, RootState } from '../../store';
+import { normalizeWarehouseType } from '../../utils/warehouse';
 
 type Shelf = { id: string; zone: string; label: string };
 
@@ -46,12 +47,11 @@ const applyExcelFont = (worksheet: ExcelJS.Worksheet) => {
 
 const getShelfLabel = (shelf: Shelf, shelfNames: Record<string, string>) => shelfNames[shelf.id]?.trim() || shelf.label;
 const getZoneTitle = (zone: typeof zones[number], zoneNames: Record<string, string>) => zoneNames[zone.id]?.trim() || zone.title;
-const resolveWarehouseType = (transaction: { warehouse_type?: string; district?: string }) => {
-    const rawWh = (transaction.warehouse_type || '').trim().toUpperCase();
-    if (rawWh.startsWith('KHO_DV_')) return rawWh;
-    const rawDistrict = (transaction.district || '').trim().toUpperCase();
-    if (rawDistrict) return `KHO_DV_${rawDistrict}`;
-    return 'KHO_DV_Q12'; // Fallback về kho đơn vị mặc định
+// Sơ đồ kệ chỉ là kho đơn vị thực tế tại Q12 và Hóc Môn. Không dùng district
+// làm fallback: một giao dịch kho nhân viên cùng quận sẽ bị gán nhầm vào kho DV.
+const resolveWarehouseType = (transaction: { warehouse_type?: string }) => {
+    const warehouse = normalizeWarehouseType(transaction.warehouse_type);
+    return warehouse === 'KHO_DV_Q12' || warehouse === 'KHO_DV_HMN' ? warehouse : null;
 };
 
 const suggestedShelf = (productId: string) => {
@@ -215,6 +215,7 @@ const WarehouseLayout: React.FC = () => {
         transactions.forEach(transaction => {
             if (!transaction.product_id) return;
             const warehouseType = resolveWarehouseType(transaction);
+            if (!warehouseType) return;
             const key = `${transaction.product_id}|${warehouseType}`;
             const quantity = Number(transaction.quantity) || 0;
             if (!next[key]) next[key] = { productId: transaction.product_id, warehouseType, quantity: 0 };
@@ -234,10 +235,16 @@ const WarehouseLayout: React.FC = () => {
         // tồn mới được tách sang kệ riêng, và tổng số lượng giữa các kệ luôn bằng tồn kho.
         const outboundSerials = new Set(transactions
             .filter(transaction => transaction.type === 'outbound' && transaction.serial_code)
-            .map(transaction => `${transaction.product_id}|${resolveWarehouseType(transaction)}|${transaction.serial_code!.trim().toUpperCase()}`));
+            .flatMap(transaction => {
+                const warehouseType = resolveWarehouseType(transaction);
+                return warehouseType ? [`${transaction.product_id}|${warehouseType}|${transaction.serial_code!.trim().toUpperCase()}`] : [];
+            }));
         const activeSerialKeys = new Set(transactions
             .filter(transaction => transaction.type === 'inbound' && transaction.product_id && transaction.serial_code)
-            .map(transaction => `${transaction.product_id}|${resolveWarehouseType(transaction)}|${transaction.serial_code!.trim().toUpperCase()}`)
+            .flatMap(transaction => {
+                const warehouseType = resolveWarehouseType(transaction);
+                return warehouseType ? [`${transaction.product_id}|${warehouseType}|${transaction.serial_code!.trim().toUpperCase()}`] : [];
+            })
             .filter(key => !outboundSerials.has(key)));
         const serialShelves = Object.entries(serialAssignments)
             .filter(([key]) => key.startsWith(`${assignmentKey}|`) && activeSerialKeys.has(key))
@@ -270,13 +277,14 @@ const WarehouseLayout: React.FC = () => {
 
     const serialRows = useMemo(() => {
         const outboundSerials = new Set(transactions
-            .filter(transaction => transaction.type === 'outbound' && transaction.serial_code)
+            .filter(transaction => transaction.type === 'outbound' && transaction.serial_code && resolveWarehouseType(transaction))
             .map(transaction => transaction.serial_code!.trim().toUpperCase()));
         const rows = new Map<string, { key: string; productId: string; itemCode: string; productName: string; warehouseType: string; serialCode: string; shelfId: string }>();
         transactions.forEach(transaction => {
             const serialCode = transaction.serial_code?.trim();
             if (transaction.type !== 'inbound' || !transaction.product_id || !serialCode || outboundSerials.has(serialCode.toUpperCase())) return;
             const warehouseType = resolveWarehouseType(transaction);
+            if (!warehouseType) return;
             const assignmentKey = `${transaction.product_id}|${warehouseType}`;
             const key = `${assignmentKey}|${serialCode.toUpperCase()}`;
             const shelfId = serialAssignments[key] || assignments[assignmentKey] || '';
@@ -543,7 +551,7 @@ const WarehouseLayout: React.FC = () => {
         <Box p={{ xs: 1.5, sm: 3 }}>
             <PageHeader
                 title="SƠ ĐỒ KHO THÔNG MINH"
-                subtitle="Tra cứu vị trí kệ và phân bổ hàng hóa theo tồn kho đơn vị (KHO_DV)"
+                subtitle="Tra cứu vị trí kệ và phân bổ hàng hóa từ KHO_DV_Q12, KHO_DV_HMN"
                 icon={<MapPinned size={28} color="white" />}
                 gradientType="blue"
                 actions={<Stack direction="row" spacing={1} flexWrap="wrap" alignItems="center">
@@ -635,7 +643,7 @@ const WarehouseLayout: React.FC = () => {
 
                 <Paper sx={{ p: { xs: 1.5, sm: 2.5 }, minWidth: 0, width: '100%' }}>
                     <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} mb={1}><Stack direction="row" alignItems="center" spacing={1}><PackageSearch size={20} color="#60a5fa" /><Typography fontWeight={800}>Tra cứu & gán vị trí</Typography></Stack><Chip size="small" label={`${matchedProducts.length} mặt hàng`} /></Stack>
-                    <Typography variant="caption" color="text.secondary" display="block" mb={1.5}>Đang chọn: <Box component="span" color="primary.main" fontWeight={800}>{getShelfLabel(selectedShelf, shelfNames)}</Box>. Chỉ hiển thị tồn kho đơn vị (KHO_DV_*); bấm nút gán để đưa hàng vào kệ này.</Typography>
+                    <Typography variant="caption" color="text.secondary" display="block" mb={1.5}>Đang chọn: <Box component="span" color="primary.main" fontWeight={800}>{getShelfLabel(selectedShelf, shelfNames)}</Box>. Chỉ hiển thị tồn kho từ KHO_DV_Q12 và KHO_DV_HMN; bấm nút gán để đưa hàng vào kệ này.</Typography>
                     <TextField fullWidth size="small" placeholder="Tên hàng hoặc mã SKU..." value={search} onChange={event => setSearch(event.target.value)} InputProps={{ startAdornment: <Search size={18} style={{ marginRight: 8, color: '#94a3b8' }} /> }} />
                     <Stack spacing={1} mt={1.5} maxHeight={370} overflow="auto">
                         {matchedProducts.map(product => <Box key={product.assignmentKey} sx={{ p: 1.25, borderRadius: 1.5, border: '1px solid rgba(148,163,184,.18)', bgcolor: selectedProductId === product.assignmentKey ? 'rgba(59,130,246,.12)' : 'transparent', cursor: 'pointer' }} onClick={() => setSelectedProductId(product.assignmentKey)}>

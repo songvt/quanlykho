@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { createSelector } from 'reselect';
 import type { Transaction, Order, Employee } from '../../types';
 import type { RootState } from '../index';
+import { isTrackedWarehouse, normalizeWarehouseType } from '../../utils/warehouse';
 
 interface InventoryState {
     status: 'idle' | 'loading' | 'succeeded' | 'failed';
@@ -95,6 +96,44 @@ export const selectDetailedStockMap = createSelector(
         }
 
         return detailedStockMap;
+    }
+);
+
+/**
+ * Tồn chi tiết theo đúng kho nguồn.  Khóa có dạng
+ * productId|district|itemStatus|warehouseType, vì district không đủ để phân
+ * biệt KHO_DV_Q12 và KHO_NV_Q12.
+ */
+export const selectWarehouseDetailedStockMap = createSelector(
+    [rawTransactions],
+    (transactions: Transaction[]) => {
+        const stock: Record<string, number> = {};
+        const serialWarehouse = new Map<string, string>();
+
+        transactions.forEach(t => {
+            if (t.type !== 'inbound') return;
+            const warehouse = normalizeWarehouseType(t.warehouse_type);
+            if (!isTrackedWarehouse(warehouse)) return;
+            if (t.serial_code?.trim()) {
+                serialWarehouse.set(`${t.product_id}|${t.serial_code.trim().toUpperCase()}`, warehouse);
+            }
+        });
+
+        transactions.forEach(t => {
+            let warehouse = normalizeWarehouseType(t.warehouse_type);
+            if (t.type === 'outbound' && !isTrackedWarehouse(warehouse) && t.serial_code?.trim()) {
+                warehouse = serialWarehouse.get(`${t.product_id}|${t.serial_code.trim().toUpperCase()}`) || '';
+            }
+            if (t.type === 'inbound' && !isTrackedWarehouse(warehouse)) return;
+            // Các phiếu xuất lịch sử không ghi kho phải hiện riêng để không bị
+            // trừ nhầm vào một kho bất kỳ. Phiếu mới luôn được yêu cầu chọn kho.
+            if (t.type === 'outbound' && !isTrackedWarehouse(warehouse)) warehouse = 'KHO_CHUA_XAC_DINH';
+
+            const key = `${t.product_id}|${t.district || ''}|${t.item_status || ''}|${warehouse}`;
+            const qty = Number(t.quantity) || 0;
+            stock[key] = (stock[key] || 0) + (t.type === 'inbound' ? qty : -qty);
+        });
+        return stock;
     }
 );
 

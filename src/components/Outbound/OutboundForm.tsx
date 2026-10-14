@@ -9,7 +9,8 @@ import SaveIcon from '@mui/icons-material/Save';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState, AppDispatch } from '../../store';
 import { addOutboundTransaction, fetchTransactionsForce, importOutboundTransactions } from '../../store/slices/transactionsSlice';
-import { selectProductStock, selectDetailedStock } from '../../store/slices/inventorySlice';
+import { selectProductStock, selectDetailedStock, selectWarehouseDetailedStockMap } from '../../store/slices/inventorySlice';
+import { WAREHOUSE_TYPES } from '../../utils/warehouse';
 import { useNotification } from '../../contexts/NotificationContext';
 import { AppButton } from '../Common/AppButton';
 import { parseSerialInput, filterNewSerials } from '../../utils/serialParser';
@@ -41,6 +42,7 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
     const [serial, setSerial] = useState('');
     const [receiver, setReceiver] = useState(isAdmin ? '' : (profile?.full_name || ''));
     const [district, setDistrict] = useState(profile?.district || '');
+    const [warehouseType, setWarehouseType] = useState('');
     const [itemStatus, setItemStatus] = useState('Hàng mới');
     const [scannedSerials, setScannedSerials] = useState<string[]>([]);
     const [isSaving, setIsSaving] = useState(false);
@@ -50,6 +52,10 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
     const currentDetailedStock = useSelector((state: RootState) => 
         selectDetailedStock(state, selectedProduct, district, itemStatus)
     );
+    const warehouseDetailedStock = useSelector(selectWarehouseDetailedStockMap);
+    const currentWarehouseStock = warehouseType
+        ? (warehouseDetailedStock[`${selectedProduct}|${district}|${itemStatus}|${warehouseType}`] || 0)
+        : 0;
 
     const handleScanSuccess = useCallback((decodedText: string) => {
         const product = products.find(p => p.id === selectedProduct);
@@ -109,6 +115,7 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
     const handleSave = async () => {
         if (!selectedProduct) return notifyError('Vui lòng chọn sản phẩm');
         if (!receiver) return notifyError('Vui lòng nhập người nhận');
+        if (!warehouseType) return notifyError('Vui lòng chọn kho xuất');
         
         const product = products.find(p => p.id === selectedProduct);
         const isSerialized = product?.category?.toLowerCase() === 'hàng hóa';
@@ -129,6 +136,9 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
         if (isAdmin && district && totalQuantity > currentDetailedStock) {
              success(`⚠️ Kho "${district}" không đủ tồn (Có: ${currentDetailedStock}) — Đang xuất âm!`);
         }
+        if (totalQuantity > currentWarehouseStock) {
+            return notifyError(`Kho ${warehouseType} không đủ tồn (Có: ${currentWarehouseStock})`);
+        }
 
         setIsSaving(true);
         try {
@@ -147,6 +157,7 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
                     unit_price: price, 
                     district, 
                     item_status: itemStatus,
+                    warehouse_type: warehouseType,
                     user_id: profile?.id,
                     created_by: profile?.full_name || profile?.username || profile?.email || 'system'
                 }));
@@ -162,6 +173,7 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
                     receiver_name: receiver,
                     receiver_group: receiver,
                     unit_price: price, district, item_status: itemStatus,
+                    warehouse_type: warehouseType,
                     user_id: profile?.id,
                     created_by: profile?.full_name || profile?.username || profile?.email || 'system'
                 })).unwrap();
@@ -236,6 +248,14 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
                         <MenuItem value="Q12">Q12</MenuItem>
                         <MenuItem value="HMN">HMN</MenuItem>
                         <MenuItem value="CCI">CCI</MenuItem>
+                    </TextField>
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 3 }}>
+                    <TextField fullWidth select required label="Kho xuất" value={warehouseType}
+                        onChange={e => setWarehouseType(e.target.value)} size="small">
+                        <MenuItem value=""><em>-- Chọn kho --</em></MenuItem>
+                        {WAREHOUSE_TYPES.map(warehouse => <MenuItem key={warehouse} value={warehouse}>{warehouse}</MenuItem>)}
                     </TextField>
                 </Grid>
 
