@@ -6,6 +6,7 @@ import {
     Divider, Grid, Avatar, Card, CardContent, useTheme, useMediaQuery, Stack
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import InfoIcon from '@mui/icons-material/Info';
 import HistoryIcon from '@mui/icons-material/History';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
@@ -16,6 +17,8 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { GoogleSheetService } from '../../services/GoogleSheetService';
 import PageHeader from '../../components/Common/PageHeader';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 interface ActionLog {
     id: string;
@@ -66,6 +69,8 @@ const getActionColor = (action: string) => {
             return { bg: 'rgba(251, 191, 36, 0.15)', color: '#fde68a', border: 'rgba(251, 191, 36, 0.34)', label: 'Thu hồi' };
         case 'Điều chuyển':
             return { bg: 'rgba(45, 212, 191, 0.14)', color: '#99f6e4', border: 'rgba(45, 212, 191, 0.32)', label: 'Điều chuyển' };
+        case 'In biên bản':
+            return { bg: 'rgba(59, 130, 246, 0.14)', color: '#bfdbfe', border: 'rgba(59, 130, 246, 0.32)', label: 'In biên bản' };
         case 'Tăng':
             return { bg: 'rgba(52, 211, 153, 0.14)', color: '#a7f3d0', border: 'rgba(52, 211, 153, 0.32)', label: 'Tăng tài sản' };
         case 'Giảm':
@@ -104,6 +109,30 @@ const ActionHistory: React.FC = () => {
     useEffect(() => {
         fetchData();
     }, [tabValue]);
+
+    const exportAssetLogs = async () => {
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'QL Kho GGS';
+        const sheet = workbook.addWorksheet('Nhat ky tai san');
+        sheet.columns = [
+            { header: 'STT', key: 'stt', width: 8 }, { header: 'Thời gian', key: 'time', width: 22 },
+            { header: 'Hành động', key: 'action', width: 18 }, { header: 'Mã tài sản', key: 'code', width: 18 },
+            { header: 'Tên tài sản', key: 'name', width: 42 }, { header: 'Người nhận', key: 'employee', width: 24 },
+            { header: 'Phòng ban', key: 'department', width: 32 }, { header: 'Người thực hiện', key: 'performedBy', width: 24 },
+            { header: 'Chi tiết', key: 'details', width: 60 },
+        ];
+        sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
+        assetLogs.forEach((log, index) => sheet.addRow({
+            stt: index + 1, time: log.created_at ? new Date(log.created_at).toLocaleString('vi-VN') : '', action: log.action,
+            code: log.asset_code, name: log.asset_name, employee: log.employee_name, department: log.department,
+            performedBy: log.performed_by, details: log.details,
+        }));
+        sheet.eachRow(row => { row.alignment = { vertical: 'top', wrapText: true }; });
+        const buffer = await workbook.xlsx.writeBuffer();
+        const date = new Date().toISOString().slice(0, 10);
+        saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `Nhat_ky_tai_san_${date}.xlsx`);
+    };
 
     // Parse details block to display neatly
     const renderParsedDetails = (details: any) => {
@@ -202,7 +231,8 @@ const ActionHistory: React.FC = () => {
                 subtitle="Giám sát trực tiếp các thay đổi, biến động tài sản & hoạt động phát sinh mã QR" 
                 icon={<HistoryIcon sx={{ fontSize: 32, color: 'white' }} />}
                 gradientType="dark" 
-                actions={
+                actions={<Stack direction="row" spacing={1}>
+                    {tabValue === 1 && <Button onClick={exportAssetLogs} startIcon={<FileDownloadIcon />} disabled={!assetLogs.length} variant="contained">Xuất Excel</Button>}
                     <IconButton 
                         onClick={fetchData} 
                         disabled={loading} 
@@ -229,7 +259,7 @@ const ActionHistory: React.FC = () => {
                             }
                         }} />
                     </IconButton>
-                }
+                </Stack>}
             />
 
             {/* Custom Pill tab selector */}

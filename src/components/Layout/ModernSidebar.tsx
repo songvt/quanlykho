@@ -16,8 +16,6 @@ import {
 import {
     LayoutDashboard,
     Users,
-    MonitorSmartphone,
-    Warehouse,
     QrCode,
     History,
     MessageSquare,
@@ -55,7 +53,13 @@ import {
     ImagePlus,
     Volume2,
     BarChart2,
-    Wrench
+    Boxes,
+    BriefcaseBusiness,
+    Building2,
+    ScanLine,
+    Sparkles,
+    SlidersHorizontal,
+    Clock3
     ,MapPinned
 } from 'lucide-react';
 
@@ -146,27 +150,27 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
 
     const menuItems = useMemo(() => [
         ...(profile?.role === 'admin' || (profile?.role === 'staff' && (!profile.permissions || profile.permissions.length === 0)) ? [
-            { text: 'Trang chủ', icon: <LayoutDashboard size={20} />, path: '/' }
+            { text: 'Trang chủ', icon: <LayoutDashboard size={20} color="#38bdf8" />, path: '/' }
+        ] : []),
+        { text: 'Xuất nhập kho', icon: <Boxes size={20} color="#f59e0b" />, path: '/xnk-cdbr' },
+        ...(hasAnyPermission(['assets.view', 'assets.manage', 'assets.list_only', '*']) ? [
+            { text: 'Tài sản', icon: <BriefcaseBusiness size={20} color="#a78bfa" />, path: '/assets' }
         ] : []),
         ...(profile?.role === 'admin' || profile?.role === 'manager' || hasPermission('employees.view') ? [
-            { text: 'Hành chính', icon: <Users size={20} color="#10B981" />, path: '/admin-hr' }
+            { text: 'Hành chính', icon: <Building2 size={20} color="#34d399" />, path: '/admin-hr' }
         ] : []),
-        ...(hasAnyPermission(['assets.view', 'assets.manage', 'assets.list_only', '*']) ? [
-            { text: 'Tài sản', icon: <MonitorSmartphone size={20} />, path: '/assets' }
-        ] : []),
-        { text: 'Xuất nhập kho', icon: <Warehouse size={20} />, path: '/xnk-cdbr' },
         ...(hasPermission('qr.view') ? [
-            { text: 'Tạo QR Code', icon: <QrCode size={20} />, path: '/qr-code-tools' }
+            { text: 'Tạo QR Code', icon: <ScanLine size={20} color="#22d3ee" />, path: '/qr-code-tools' }
         ] : []),
         ...(hasPermission('qr_hcm.view') ? [
             { text: 'Mã QR Code HCM', icon: <QrCode size={20} color="#1e4b9b" />, path: '/qr-generator-hcm' }
         ] : []),
-        { text: 'Tiện ích', icon: <Wrench size={20} color="#a78bfa" />, path: '/utilities' },
+        { text: 'Tiện ích', icon: <Sparkles size={20} color="#f472b6" />, path: '/utilities' },
         ...(hasPermission('*') ? [
-            { text: 'Thiết lập', icon: <Settings size={20} />, path: '/settings' }
+            { text: 'Thiết lập', icon: <SlidersHorizontal size={20} color="#94a3b8" />, path: '/settings' }
         ] : []),
         ...(hasAnyPermission(['reports.view_all', 'reports.handover']) ? [
-            { text: 'Lịch sử', icon: <History size={20} />, path: '/action-history' }
+            { text: 'Lịch sử', icon: <Clock3 size={20} color="#fb923c" />, path: '/action-history' }
         ] : []),
     ], [profile, hasPermission, hasAnyPermission]);
 
@@ -226,54 +230,6 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                 )}
             </Box>
 
-            {/* User Profile compact card */}
-            <Box sx={{ px: 2, py: 2, borderBottom: `1px solid ${UI.border}` }}>
-                <Box
-                    sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1.5,
-                        p: 1.5,
-                        borderRadius: '12px',
-                        cursor: 'pointer',
-                        bgcolor: 'rgba(255, 255, 255, 0.05)',
-                        border: `1px solid ${UI.border}`,
-                        transition: 'all 0.2s ease',
-                        '&:hover': { borderColor: UI.primary, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', bgcolor: 'rgba(255, 255, 255, 0.1)' },
-                    }}
-                >
-                    <Avatar sx={{
-                        width: 36,
-                        height: 36,
-                        background: UI.primary,
-                        color: 'white',
-                        fontSize: '0.9rem',
-                        fontWeight: 700,
-                    }}>
-                        {profile?.full_name?.charAt(0)?.toUpperCase() || 'A'}
-                    </Avatar>
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography sx={{
-                            fontWeight: 700,
-                            color: UI.text,
-                            fontSize: '0.85rem',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                        }}>
-                            {profile?.full_name || 'Administrator'}
-                        </Typography>
-                        <Typography sx={{
-                            fontSize: '0.7rem',
-                            color: UI.muted,
-                            fontWeight: 500,
-                        }}>
-                            {profile?.role === 'admin' ? 'Quản trị viên' : profile?.role === 'manager' ? 'Quản lý' : 'Nhân viên'}
-                        </Typography>
-                    </Box>
-                </Box>
-            </Box>
-
             {/* Menu Items */}
             <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', py: 2, px: 2 }}>
                 <List disablePadding>
@@ -325,7 +281,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                                             onClick={() => { navigate(sub.path); if(isMobile) handleDrawerToggle(); }}
                                                             sx={subItemSx(subActive)}
                                                         >
-                                                            <ListItemIcon sx={{ minWidth: 32, color: subActive ? UI.primary : UI.muted }}>
+                                                            <ListItemIcon sx={{ minWidth: 32, color: subActive ? '#a78bfa' : '#c4b5fd' }}>
                                                                 {sub.icon}
                                                             </ListItemIcon>
                                                             <ListItemText
@@ -399,7 +355,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                                                     onClick={() => setExpandSettlement(p => !p)}
                                                                     sx={subItemSx(isSettlementGroupActive)}
                                                                 >
-                                                                    <ListItemIcon sx={{ minWidth: 32, color: isSettlementGroupActive ? UI.primary : UI.muted }}>
+                                                                    <ListItemIcon sx={{ minWidth: 32, color: isSettlementGroupActive ? '#f59e0b' : '#fcd34d' }}>
                                                                         {sub.icon}
                                                                     </ListItemIcon>
                                                                     <ListItemText
@@ -419,7 +375,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                                                                     onClick={() => { navigate(sSub.path); if(isMobile) handleDrawerToggle(); }}
                                                                                     sx={subItemSx(sSubActive)}
                                                                                 >
-                                                                                    <ListItemIcon sx={{ minWidth: 32, color: sSubActive ? UI.primary : UI.muted }}>
+                                                                                    <ListItemIcon sx={{ minWidth: 32, color: sSubActive ? '#f59e0b' : '#fcd34d' }}>
                                                                                         {sSub.icon}
                                                                                     </ListItemIcon>
                                                                                     <ListItemText
@@ -442,7 +398,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                                             onClick={() => { navigate(sub.path); if(isMobile) handleDrawerToggle(); }}
                                                             sx={subItemSx(subActive)}
                                                         >
-                                                            <ListItemIcon sx={{ minWidth: 32, color: subActive ? UI.primary : UI.muted }}>
+                                                            <ListItemIcon sx={{ minWidth: 32, color: subActive ? '#f59e0b' : '#fcd34d' }}>
                                                                 {sub.icon}
                                                             </ListItemIcon>
                                                             <ListItemText
@@ -482,7 +438,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                                 return (
                                                     <ListItem key={sub.path} disablePadding sx={{ mb: 0.5 }}>
                                                         <ListItemButton onClick={() => { navigate(sub.path); if (isMobile) handleDrawerToggle(); }} sx={subItemSx(subActive)}>
-                                                            <ListItemIcon sx={{ minWidth: 32, color: subActive ? UI.primary : UI.muted }}>{sub.icon}</ListItemIcon>
+                                                            <ListItemIcon sx={{ minWidth: 32, color: subActive ? '#06b6d4' : '#67e8f9' }}>{sub.icon}</ListItemIcon>
                                                             <ListItemText primary={sub.text} primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: subActive ? 600 : 400 }} />
                                                         </ListItemButton>
                                                     </ListItem>
@@ -537,7 +493,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                                             onClick={() => { navigate(sub.path); if(isMobile) handleDrawerToggle(); }}
                                                             sx={subItemSx(subActive, '#10B981')}
                                                         >
-                                                            <ListItemIcon sx={{ minWidth: 32, color: subActive ? '#10B981' : UI.muted }}>
+                                                            <ListItemIcon sx={{ minWidth: 32, color: subActive ? '#10B981' : '#6ee7b7' }}>
                                                                 {sub.icon}
                                                             </ListItemIcon>
                                                             <ListItemText
@@ -582,7 +538,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                             {profile?.role === 'admin' && <>
                                                 <ListItem disablePadding sx={{ mb: 0.5 }}>
                                                     <ListItemButton onClick={() => setExpandZalo(p => !p)} sx={subItemSx(location.pathname.startsWith('/zalo'), '#0ea5e9')}>
-                                                        <ListItemIcon sx={{ minWidth: 32, color: location.pathname.startsWith('/zalo') ? '#0ea5e9' : UI.muted }}><MessageSquare size={18} /></ListItemIcon>
+                                                        <ListItemIcon sx={{ minWidth: 32, color: location.pathname.startsWith('/zalo') ? '#0ea5e9' : '#7dd3fc' }}><MessageSquare size={18} /></ListItemIcon>
                                                         <ListItemText primary="Thông báo Zalo" primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: location.pathname.startsWith('/zalo') ? 600 : 400 }} />
                                                         {expandZalo ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                                                     </ListItemButton>
@@ -591,14 +547,14 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                                     <List disablePadding sx={{ pl: 1.5 }}>
                                                         {zaloSubItems.map(sub => {
                                                             const subActive = location.pathname === sub.path;
-                                                            return <ListItem key={sub.path} disablePadding sx={{ mb: 0.5 }}><ListItemButton onClick={() => { navigate(sub.path); if (isMobile) handleDrawerToggle(); }} sx={subItemSx(subActive, '#0ea5e9')}><ListItemIcon sx={{ minWidth: 32, color: subActive ? '#0ea5e9' : UI.muted }}>{sub.icon}</ListItemIcon><ListItemText primary={sub.text} primaryTypographyProps={{ fontSize: '0.75rem', fontWeight: subActive ? 600 : 400 }} /></ListItemButton></ListItem>;
+                                                            return <ListItem key={sub.path} disablePadding sx={{ mb: 0.5 }}><ListItemButton onClick={() => { navigate(sub.path); if (isMobile) handleDrawerToggle(); }} sx={subItemSx(subActive, '#0ea5e9')}><ListItemIcon sx={{ minWidth: 32, color: subActive ? '#0ea5e9' : '#7dd3fc' }}>{sub.icon}</ListItemIcon><ListItemText primary={sub.text} primaryTypographyProps={{ fontSize: '0.75rem', fontWeight: subActive ? 600 : 400 }} /></ListItemButton></ListItem>;
                                                         })}
                                                     </List>
                                                 </Collapse>
                                             </>}
                                             {utilitySubItems.map(sub => {
                                                 const subActive = location.pathname === sub.path;
-                                                return <ListItem key={sub.path} disablePadding sx={{ mb: 0.5 }}><ListItemButton onClick={() => { navigate(sub.path); if (isMobile) handleDrawerToggle(); }} sx={subItemSx(subActive, '#a78bfa')}><ListItemIcon sx={{ minWidth: 32, color: subActive ? '#a78bfa' : UI.muted }}>{sub.icon}</ListItemIcon><ListItemText primary={sub.text} primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: subActive ? 600 : 400 }} /></ListItemButton></ListItem>;
+                                                return <ListItem key={sub.path} disablePadding sx={{ mb: 0.5 }}><ListItemButton onClick={() => { navigate(sub.path); if (isMobile) handleDrawerToggle(); }} sx={subItemSx(subActive, '#a78bfa')}><ListItemIcon sx={{ minWidth: 32, color: subActive ? '#f472b6' : '#f9a8d4' }}>{sub.icon}</ListItemIcon><ListItemText primary={sub.text} primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: subActive ? 600 : 400 }} /></ListItemButton></ListItem>;
                                             })}
                                         </List>
                                     </Collapse>
@@ -682,6 +638,30 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                         );
                     })}
                 </List>
+            </Box>
+
+            {/* User Profile compact card */}
+            <Box sx={{ px: 2, pt: 2, borderTop: `1px solid ${UI.border}` }}>
+                <Box
+                    sx={{
+                        display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5,
+                        borderRadius: '12px', cursor: 'pointer', bgcolor: 'rgba(255, 255, 255, 0.05)',
+                        border: `1px solid ${UI.border}`, transition: 'all 0.2s ease',
+                        '&:hover': { borderColor: UI.primary, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', bgcolor: 'rgba(255, 255, 255, 0.1)' },
+                    }}
+                >
+                    <Avatar sx={{ width: 36, height: 36, background: UI.primary, color: 'white', fontSize: '0.9rem', fontWeight: 700 }}>
+                        {profile?.full_name?.charAt(0)?.toUpperCase() || 'A'}
+                    </Avatar>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography sx={{ fontWeight: 700, color: UI.text, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {profile?.full_name || 'Administrator'}
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.7rem', color: UI.muted, fontWeight: 500 }}>
+                            {profile?.role === 'admin' ? 'Quản trị viên' : profile?.role === 'manager' ? 'Quản lý' : 'Nhân viên'}
+                        </Typography>
+                    </Box>
+                </Box>
             </Box>
 
             {/* Bottom logout */}

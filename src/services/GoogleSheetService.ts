@@ -481,6 +481,23 @@ export const GoogleSheetService = {
         });
     },
 
+    async saveAssetLog(logData: {
+        asset_code: string;
+        asset_name: string;
+        action: string;
+        details?: string;
+        employee_name?: string;
+        employee_code?: string;
+        department?: string;
+        performed_by?: string;
+    }) {
+        return apiRequest('asset_logs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(logData)
+        });
+    },
+
     // --- Settlement History ---
     async getSettlementHistory(month: string) {
         return apiRequest(`settlement_history?month=${month}`);

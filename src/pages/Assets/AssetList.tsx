@@ -28,6 +28,7 @@ import type { RootState, AppDispatch } from '../../store';
 import type { Asset } from '../../types';
 import TableSkeleton from '../../components/Common/TableSkeleton';
 import AssetHandoverPrint from './AssetHandoverPrint';
+import { GoogleSheetService } from '../../services/GoogleSheetService';
 
 const AssetList = () => {
     const theme = useTheme();
@@ -136,6 +137,27 @@ const AssetList = () => {
             receiverDept: filteredAssets[0]?.location_name || '',
             receiverTitle: filteredAssets[0]?.user_type || '',
         });
+    };
+
+    const logHandoverPrint = async ({ templateType, totalQuantity }: { templateType: 'default' | 'bhl'; totalQuantity: number }) => {
+        const actionLabel = handoverPrint.type === 'revoke' ? 'thu hồi' : handoverPrint.type === 'transfer' ? 'điều chuyển' : 'bàn giao';
+        const assetCodes = handoverPrint.assets.map(asset => asset.asset_code).filter(Boolean);
+        const details = `In biên bản ${actionLabel}${templateType === 'bhl' ? ' BHLĐ' : ''}; người nhận: ${handoverPrint.receiverName || '—'}; số tài sản: ${handoverPrint.assets.length}; tổng số lượng: ${totalQuantity}; mã tài sản: ${assetCodes.join(', ') || '—'}.`;
+        const performedBy = profile?.full_name || profile?.username || profile?.email || 'Hệ thống';
+        try {
+            await GoogleSheetService.saveAssetLog({
+                asset_code: 'BIEN_BAN',
+                asset_name: `Biên bản ${actionLabel} (${handoverPrint.assets.length} tài sản)`,
+                action: 'In biên bản',
+                details,
+                employee_name: handoverPrint.receiverName || '',
+                employee_code: handoverPrint.receiverCode || '',
+                department: handoverPrint.receiverDept || '',
+                performed_by: performedBy,
+            });
+        } catch (error) {
+            console.error('Không thể lưu nhật ký in biên bản:', error);
+        }
     };
 
     const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -922,6 +944,7 @@ const AssetList = () => {
                     uniformSize: matchedProfile?.uniform_size,
                     shoeSize: matchedProfile?.shoe_size,
                 }}
+                onPrint={logHandoverPrint}
             />
         </Box>
     );

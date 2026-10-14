@@ -53,14 +53,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { type } = req.query;
 
     if (type === 'logs') {
-        if (req.method !== 'GET') {
+        if (!['GET', 'POST'].includes(req.method || '')) {
             return res.status(405).json({ error: 'Method Not Allowed' });
         }
         try {
-            const data = await fetchAll('asset_logs', '*', (q) => q.order('created_at', { ascending: false }));
-            return res.status(200).json(data);
+            if (req.method === 'GET') {
+                const data = await fetchAll('asset_logs', '*', (q) => q.order('created_at', { ascending: false }));
+                return res.status(200).json(data);
+            }
+
+            const entry = req.body;
+            if (!entry?.asset_code || !entry?.asset_name || !entry?.action) {
+                return res.status(400).json({ error: 'asset_code, asset_name và action là bắt buộc' });
+            }
+            let doc: any = null;
+            try { doc = await getGoogleSheet(); } catch (err) { console.warn('Không thể kết nối Google Sheets để lưu log:', err); }
+            await logAssetFluctuation(doc, entry);
+            return res.status(201).json({ success: true });
         } catch (err: any) {
-            console.error('Lỗi lấy danh sách biến động tài sản asset_logs:', err);
+            console.error('Lỗi xử lý nhật ký tài sản asset_logs:', err);
             return res.status(500).json({ error: err.message });
         }
     }

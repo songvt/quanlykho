@@ -30,6 +30,7 @@ interface Props {
     actionType: 'allocate' | 'revoke' | 'transfer' | null;
     assets: Asset[];
     handoverInfo: HandoverInfo;
+    onPrint?: (metadata: { templateType: 'default' | 'bhl'; totalQuantity: number }) => void | Promise<void>;
 }
 
 interface BhlItem {
@@ -44,7 +45,7 @@ interface BhlItem {
     note: string;
 }
 
-const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets, handoverInfo }) => {
+const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets, handoverInfo, onPrint }) => {
     const printRef = useRef<HTMLDivElement>(null);
     const [templateType, setTemplateType] = useState<'default' | 'bhl'>('default');
 
@@ -131,6 +132,7 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
         `);
         w.document.close();
         w.focus();
+        void onPrint?.({ templateType, totalQuantity: totalQty });
         setTimeout(() => { w.print(); }, 600);
     };
 
