@@ -61,17 +61,17 @@ const getActionColor = (action: string) => {
                 label: action === 'EXPORT_PDF_HCM' ? 'Xuất PDF (HCM)' : 'Xuất PDF (Chuẩn)' 
             };
         case 'Cấp phát':
-            return { bg: 'rgba(79, 70, 229, 0.08)', color: '#4f46e5', border: '#4f46e530', label: 'Cấp phát' };
+            return { bg: 'rgba(129, 140, 248, 0.16)', color: '#c7d2fe', border: 'rgba(129, 140, 248, 0.36)', label: 'Cấp phát' };
         case 'Thu hồi':
-            return { bg: 'rgba(245, 158, 11, 0.08)', color: '#d97706', border: '#f59e0b30', label: 'Thu hồi' };
+            return { bg: 'rgba(251, 191, 36, 0.15)', color: '#fde68a', border: 'rgba(251, 191, 36, 0.34)', label: 'Thu hồi' };
         case 'Điều chuyển':
-            return { bg: 'rgba(20, 184, 166, 0.08)', color: '#0d9488', border: '#14b8a630', label: 'Điều chuyển' };
+            return { bg: 'rgba(45, 212, 191, 0.14)', color: '#99f6e4', border: 'rgba(45, 212, 191, 0.32)', label: 'Điều chuyển' };
         case 'Tăng':
-            return { bg: 'rgba(16, 185, 129, 0.08)', color: '#059669', border: '#10b98130', label: 'Tăng tài sản' };
+            return { bg: 'rgba(52, 211, 153, 0.14)', color: '#a7f3d0', border: 'rgba(52, 211, 153, 0.32)', label: 'Tăng tài sản' };
         case 'Giảm':
-            return { bg: 'rgba(239, 68, 68, 0.08)', color: '#dc2626', border: '#ef444430', label: 'Giảm tài sản' };
+            return { bg: 'rgba(248, 113, 113, 0.14)', color: '#fecaca', border: 'rgba(248, 113, 113, 0.32)', label: 'Giảm tài sản' };
         default:
-            return { bg: 'rgba(100, 116, 139, 0.08)', color: '#475569', border: '#64748b30', label: action };
+            return { bg: 'rgba(148, 163, 184, 0.12)', color: '#cbd5e1', border: 'rgba(148, 163, 184, 0.28)', label: action };
     }
 };
 
@@ -236,10 +236,10 @@ const ActionHistory: React.FC = () => {
             <Box sx={{ 
                 display: 'inline-flex', 
                 p: 0.6, 
-                bgcolor: '#f1f5f9', 
+                bgcolor: 'rgba(15, 23, 42, 0.72)',
                 borderRadius: '16px', 
                 mb: 4,
-                border: '1px solid #e2e8f0',
+                border: '1px solid var(--border-glass)',
                 gap: 0.5
             }}>
                 <Button 
@@ -249,14 +249,14 @@ const ActionHistory: React.FC = () => {
                         px: 3,
                         py: 1.2,
                         borderRadius: '12px',
-                        color: tabValue === 0 ? '#4f46e5' : '#64748b',
-                        bgcolor: tabValue === 0 ? '#ffffff' : 'transparent',
+                        color: tabValue === 0 ? '#dbeafe' : 'var(--text-secondary)',
+                        bgcolor: tabValue === 0 ? 'rgba(59, 130, 246, 0.17)' : 'transparent',
                         boxShadow: tabValue === 0 ? '0 10px 15px -3px rgba(79, 70, 229, 0.1), 0 4px 6px -4px rgba(79, 70, 229, 0.1)' : 'none',
                         textTransform: 'none',
                         fontWeight: 700,
                         fontSize: '0.875rem',
                         '&:hover': {
-                            bgcolor: tabValue === 0 ? '#ffffff' : 'rgba(0,0,0,0.02)'
+                            bgcolor: tabValue === 0 ? 'rgba(59, 130, 246, 0.22)' : 'rgba(255,255,255,0.05)'
                         },
                         transition: 'all 0.25s ease'
                     }}
@@ -270,14 +270,14 @@ const ActionHistory: React.FC = () => {
                         px: 3,
                         py: 1.2,
                         borderRadius: '12px',
-                        color: tabValue === 1 ? '#4f46e5' : '#64748b',
-                        bgcolor: tabValue === 1 ? '#ffffff' : 'transparent',
+                        color: tabValue === 1 ? '#dbeafe' : 'var(--text-secondary)',
+                        bgcolor: tabValue === 1 ? 'rgba(59, 130, 246, 0.17)' : 'transparent',
                         boxShadow: tabValue === 1 ? '0 10px 15px -3px rgba(79, 70, 229, 0.1), 0 4px 6px -4px rgba(79, 70, 229, 0.1)' : 'none',
                         textTransform: 'none',
                         fontWeight: 700,
                         fontSize: '0.875rem',
                         '&:hover': {
-                            bgcolor: tabValue === 1 ? '#ffffff' : 'rgba(0,0,0,0.02)'
+                            bgcolor: tabValue === 1 ? 'rgba(59, 130, 246, 0.22)' : 'rgba(255,255,255,0.05)'
                         },
                         transition: 'all 0.25s ease'
                     }}
@@ -290,16 +290,16 @@ const ActionHistory: React.FC = () => {
             {loading ? (
                 <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" sx={{ py: 8 }}>
                     <CircularProgress size={36} thickness={4} sx={{ color: '#4f46e5' }} />
-                    <Typography variant="body2" sx={{ mt: 2, color: '#64748b', fontWeight: 500 }}>
+                    <Typography variant="body2" sx={{ mt: 2, color: 'var(--text-secondary)', fontWeight: 500 }}>
                         Đang tải dữ liệu lịch sử...
                     </Typography>
                 </Box>
             ) : (tabValue === 0 ? qrLogs : assetLogs).length === 0 ? (
-                <Paper sx={{ p: 6, textAlign: 'center', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
-                    <Typography variant="h6" sx={{ color: '#94a3b8', fontWeight: 700 }}>
+                <Paper sx={{ p: 6, textAlign: 'center', borderRadius: '20px', border: '1px solid var(--border-glass)' }}>
+                    <Typography variant="h6" sx={{ color: 'var(--text-primary)', fontWeight: 700 }}>
                         Chưa có dữ liệu lịch sử
                     </Typography>
-                    <Typography variant="body2" sx={{ color: '#cbd5e1', mt: 0.5 }}>
+                    <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mt: 0.5 }}>
                         Các hoạt động hệ thống phát sinh sẽ hiển thị tại đây
                     </Typography>
                 </Paper>
@@ -333,8 +333,8 @@ const ActionHistory: React.FC = () => {
                                     {tabValue === 0 ? (
                                         <Box>
                                             <Box display="flex" alignItems="center" gap={1} mb={1}>
-                                                <AccountCircleIcon sx={{ color: '#94a3b8', fontSize: 20 }} />
-                                                <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                                                <AccountCircleIcon sx={{ color: '#93c5fd', fontSize: 20 }} />
+                                                <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                                                     {log.created_by}
                                                 </Typography>
                                             </Box>
@@ -416,22 +416,23 @@ const ActionHistory: React.FC = () => {
                 <TableContainer component={Paper} sx={{ 
                     borderRadius: '20px', 
                     overflow: 'hidden',
-                    border: '1px solid #e2e8f0',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)'
+                    border: '1px solid var(--border-glass)',
+                    bgcolor: 'rgba(10, 15, 25, 0.45)',
+                    boxShadow: 'var(--shadow-glass)'
                 }}>
                     <Table size="medium">
-                        <TableHead sx={{ bgcolor: '#f8fafc' }}>
+                        <TableHead sx={{ bgcolor: 'rgba(15, 23, 42, 0.72)' }}>
                             <TableRow>
-                                <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase', py: 2 }}>
+                                <TableCell sx={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase', py: 2 }}>
                                     <Box display="flex" alignItems="center" gap={0.5}><EventNoteIcon sx={{ fontSize: 16 }} /> Thời gian</Box>
                                 </TableCell>
-                                <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase', py: 2 }}>
+                                <TableCell sx={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase', py: 2 }}>
                                     Hành động
                                 </TableCell>
-                                <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase', py: 2 }}>
+                                <TableCell sx={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase', py: 2 }}>
                                     <Box display="flex" alignItems="center" gap={0.5}><PersonIcon sx={{ fontSize: 16 }} /> {tabValue === 0 ? 'Người dùng' : 'Tài sản'}</Box>
                                 </TableCell>
-                                <TableCell sx={{ fontWeight: 700, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase', py: 2 }}>
+                                <TableCell sx={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase', py: 2 }}>
                                     Chi tiết tác động
                                 </TableCell>
                             </TableRow>
@@ -440,9 +441,9 @@ const ActionHistory: React.FC = () => {
                             {(tabValue === 0 ? qrLogs : assetLogs).map((log: any) => {
                                 const cfg = getActionColor(log.action);
                                 return (
-                                    <TableRow key={log.id} hover sx={{ '&:hover': { bgcolor: '#f8fafc !important' } }}>
+                                    <TableRow key={log.id} hover sx={{ '&:hover': { bgcolor: 'rgba(59, 130, 246, 0.10) !important' } }}>
                                         {/* Date column */}
-                                        <TableCell sx={{ whiteSpace: 'nowrap', py: 2, fontWeight: 500, color: '#334155' }}>
+                                        <TableCell sx={{ whiteSpace: 'nowrap', py: 2, fontWeight: 600, color: 'var(--text-primary)' }}>
                                             {log.created_at ? new Date(log.created_at).toLocaleString('vi-VN') : 'N/A'}
                                         </TableCell>
                                         
@@ -468,17 +469,17 @@ const ActionHistory: React.FC = () => {
                                         <TableCell sx={{ py: 2 }}>
                                             {tabValue === 0 ? (
                                                 <Box display="flex" alignItems="center" gap={1}>
-                                                    <AccountCircleIcon sx={{ color: '#94a3b8', fontSize: 20 }} />
-                                                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                                                    <AccountCircleIcon sx={{ color: '#93c5fd', fontSize: 20 }} />
+                                                    <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                                                         {log.created_by}
                                                     </Typography>
                                                 </Box>
                                             ) : (
                                                 <Box>
-                                                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                                                    <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
                                                         {log.asset_name}
                                                     </Typography>
-                                                    <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 600, bgcolor: '#f1f5f9', px: 1, py: 0.2, borderRadius: '4px', display: 'inline-block', mt: 0.5 }}>
+                                                    <Typography variant="caption" sx={{ color: '#bfdbfe', fontWeight: 700, bgcolor: 'rgba(59, 130, 246, 0.13)', border: '1px solid rgba(96, 165, 250, 0.22)', px: 1, py: 0.2, borderRadius: '4px', display: 'inline-block', mt: 0.5 }}>
                                                         Mã: {log.asset_code}
                                                     </Typography>
                                                 </Box>
@@ -493,10 +494,10 @@ const ActionHistory: React.FC = () => {
                                                 ) : (
                                                     <Box display="flex" alignItems="center" gap={1}>
                                                         <Box sx={{ flex: 1 }}>
-                                                            <Typography variant="body2" sx={{ fontWeight: 600, color: '#334155' }}>
+                                                            <Typography variant="body2" sx={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                                                                 {log.doc_title}
                                                             </Typography>
-                                                            <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500, display: 'block', mt: 0.5 }}>
+                                                            <Typography variant="caption" sx={{ color: 'var(--text-secondary)', fontWeight: 500, display: 'block', mt: 0.5 }}>
                                                                 Tổng số: <b>{log.total_qrs} mã QR</b> ({log.total_serials} dòng dữ liệu)
                                                             </Typography>
                                                         </Box>
@@ -520,26 +521,26 @@ const ActionHistory: React.FC = () => {
                                             ) : (
                                                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                                                     <Box display="flex" alignItems="center" gap={0.5}>
-                                                        <Typography variant="body2" sx={{ color: '#475569' }}>
+                                                        <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>
                                                             Tác nhân: <b>{log.performed_by || 'Hệ thống'}</b>
                                                         </Typography>
                                                     </Box>
                                                     {log.details ? (
-                                                        <Paper variant="outlined" sx={{ p: 1, bgcolor: '#f8fafc', borderColor: '#e2e8f0', borderRadius: '8px', mt: 0.5 }}>
-                                                            <Typography variant="body2" sx={{ color: '#1e293b', fontWeight: 500 }}>
+                                                        <Paper variant="outlined" sx={{ p: 1, bgcolor: 'rgba(15, 23, 42, 0.6)', borderColor: 'var(--border-glass)', borderRadius: '8px', mt: 0.5 }}>
+                                                            <Typography variant="body2" sx={{ color: 'var(--text-primary)', fontWeight: 500 }}>
                                                                 {log.details}
                                                             </Typography>
                                                         </Paper>
                                                     ) : (
                                                         log.employee_name && (
-                                                            <Paper variant="outlined" sx={{ p: 1, bgcolor: '#f8fafc', borderColor: '#e2e8f0', borderRadius: '8px', mt: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                            <Paper variant="outlined" sx={{ p: 1, bgcolor: 'rgba(15, 23, 42, 0.6)', borderColor: 'var(--border-glass)', borderRadius: '8px', mt: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
                                                                 <ArrowForwardIcon sx={{ fontSize: 14, color: '#4f46e5' }} />
                                                                 <Box>
-                                                                    <Typography variant="body2" sx={{ color: '#1e293b', fontWeight: 600 }}>
+                                                                    <Typography variant="body2" sx={{ color: 'var(--text-primary)', fontWeight: 600 }}>
                                                                         Người nhận: {log.employee_name}
                                                                     </Typography>
                                                                     {log.department && (
-                                                                        <Typography variant="caption" sx={{ color: '#64748b', display: 'block' }}>
+                                                                        <Typography variant="caption" sx={{ color: 'var(--text-secondary)', display: 'block' }}>
                                                                             Bộ phận: {log.department}
                                                                         </Typography>
                                                                     )}
