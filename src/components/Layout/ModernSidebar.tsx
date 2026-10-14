@@ -54,7 +54,8 @@ import {
     Scissors,
     ImagePlus,
     Volume2,
-    BarChart2
+    BarChart2,
+    Wrench
     ,MapPinned
 } from 'lucide-react';
 
@@ -125,6 +126,8 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
     const [expandSettlement, setExpandSettlement] = useState(false);
     const [expandAdminHr, setExpandAdminHr] = useState(false);
     const [expandZalo, setExpandZalo] = useState(false);
+    const [expandUtilities, setExpandUtilities] = useState(false);
+    const [expandQr, setExpandQr] = useState(false);
 
     useEffect(() => {
         if (location.pathname.startsWith('/assets')) setExpandAssets(true);
@@ -132,6 +135,8 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
 
         if (['/employees', '/attendance', '/attendance-summary', '/admin-requests', '/kpi-grades', '/payroll', '/bonus-penalty', '/payroll-settings', '/feedback-box'].includes(location.pathname)) setExpandAdminHr(true);
         if (location.pathname.startsWith('/zalo')) setExpandZalo(true);
+        if (location.pathname.startsWith('/zalo') || ['/announcements', '/ai-assistant', '/pdf-tools', '/print-bill'].includes(location.pathname)) setExpandUtilities(true);
+        if (['/qr-generator', '/barcode-generator'].includes(location.pathname)) setExpandQr(true);
     }, [location.pathname]);
 
     const handleLogout = () => {
@@ -151,28 +156,17 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
         ] : []),
         { text: 'Xuất nhập kho', icon: <Warehouse size={20} />, path: '/xnk-cdbr' },
         ...(hasPermission('qr.view') ? [
-            { text: 'Mã QR Code', icon: <QrCode size={20} />, path: '/qr-generator' },
-            { text: 'MÃ VẠCH VHKT', icon: <Barcode size={20} color="#0d9488" />, path: '/barcode-generator' }
+            { text: 'Tạo QR Code', icon: <QrCode size={20} />, path: '/qr-code-tools' }
         ] : []),
         ...(hasPermission('qr_hcm.view') ? [
             { text: 'Mã QR Code HCM', icon: <QrCode size={20} color="#1e4b9b" />, path: '/qr-generator-hcm' }
         ] : []),
-        ...(hasAnyPermission(['reports.view_all', 'reports.handover']) ? [
-            { text: 'Lịch sử', icon: <History size={20} />, path: '/action-history' }
-        ] : []),
-        ...(profile?.role === 'admin' ? [
-            { text: 'Thông báo Zalo', icon: <MessageSquare size={20} color="#0ea5e9" />, path: '/zalo' }
-        ] : []),
-        ...(profile?.role === 'admin' ? [
-            { text: 'Thông báo hệ thống', icon: <Mailbox size={20} color="#f59e0b" />, path: '/announcements' }
-        ] : []),
-        { text: 'Trợ lý AI', icon: <Bot size={20} color="#2563eb" />, path: '/ai-assistant' },
-        ...(hasPermission('pdf.view') ? [
-            { text: 'Tách/Gộp PDF', icon: <Scissors size={20} color="#ec4899" />, path: '/pdf-tools' }
-        ] : []),
-        { text: 'In thông báo cước', icon: <FileText size={20} color="#10B981" />, path: '/print-bill' },
+        { text: 'Tiện ích', icon: <Wrench size={20} color="#a78bfa" />, path: '/utilities' },
         ...(hasPermission('*') ? [
             { text: 'Thiết lập', icon: <Settings size={20} />, path: '/settings' }
+        ] : []),
+        ...(hasAnyPermission(['reports.view_all', 'reports.handover']) ? [
+            { text: 'Lịch sử', icon: <History size={20} />, path: '/action-history' }
         ] : []),
     ], [profile, hasPermission, hasAnyPermission]);
 
@@ -294,11 +288,11 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                 { text: 'Bàn giao CCDC-BHLĐ', path: '/assets/handover-bhl', icon: <ArrowRightLeft size={18} /> },
                                 { text: 'KCS thiết bị bảo hành', path: '/assets/kcs-warranty', icon: <FileSignature size={18} /> },
                                 ...(canViewReports ? [
-                                    { text: 'BC tổng hợp CCDC-TSNT', path: '/assets/report-ccdc', icon: <PieChart size={18} /> },
                                     { text: 'Chi tiết CCDC-TSNT', path: '/assets/detail-ccdc', icon: <FileSearch size={18} /> },
+                                    { text: 'BC tổng hợp CCDC-TSNT', path: '/assets/report-ccdc', icon: <PieChart size={18} /> },
                                     { text: 'BC Quý chi tiết CCDC-TSNT', path: '/assets/quarterly-ccdc', icon: <CalendarCheck size={18} /> },
-                                    { text: 'BC tổng hợp TBVP', path: '/assets/report-tbvp', icon: <FileText size={18} /> },
                                     { text: 'Chi tiết TBVP', path: '/assets/detail-tbvp', icon: <FileSearch size={18} /> },
+                                    { text: 'BC tổng hợp TBVP', path: '/assets/report-tbvp', icon: <FileText size={18} /> },
                                     { text: 'BC Quý chi tiết TBVP', path: '/assets/quarterly-tbvp', icon: <CalendarCheck size={18} /> },
                                     { text: 'BC CCDC-TBVP hỏng', path: '/assets/broken-report', icon: <AlertTriangle size={18} /> },
                                 ] : []),
@@ -351,20 +345,20 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                         // ── Expandable Xuất nhập kho group
                         if (item.path === '/xnk-cdbr') {
                             const xnkSubItems = [
-                                ...(hasPermission('orders.create') || hasPermission('orders.view_own') ? [{ text: 'Đặt hàng', path: '/orders', icon: <ShoppingCart size={18} /> }] : []),
+                                ...(hasPermission('inbound.view') ? [{ text: 'Nhập kho', path: '/inbound', icon: <ArrowDownToLine size={18} /> }] : []),
                                 ...(hasPermission('outbound.view') ? [{ text: 'Xuất kho', path: '/outbound', icon: <Truck size={18} /> }] : []),
                                 ...(hasAnyPermission(['returns.view', 'returns.create']) ? [{ text: 'Trả hàng', path: '/employee-returns', icon: <CornerUpLeft size={18} /> }] : []),
-                                ...(hasAnyPermission(['reports.view_all', 'reports.handover']) ? [{ text: 'Báo cáo - In biên bản', path: '/reports', icon: <PieChart size={18} /> }] : []),
+                                ...(hasPermission('orders.create') || hasPermission('orders.view_own') ? [{ text: 'Đặt hàng', path: '/orders', icon: <ShoppingCart size={18} /> }] : []),
                                 ...(hasPermission('inventory.view') ? [{ text: 'Hàng hóa', path: '/products', icon: <Package size={18} /> }] : []),
-                                ...(hasPermission('inventory.view') ? [{ text: 'Sơ đồ kho thông minh', path: '/warehouse-layout', icon: <MapPinned size={18} /> }] : []),
-                                ...(hasAnyPermission(['audit.view', 'audit.create', 'inventory.view', 'inventory.manage']) ? [{ text: 'Sơ đồ tồn kho', path: '/stock-map', icon: <BarChart2 size={18} /> }] : []),
-                                ...(hasAnyPermission(['audit.view', 'audit.create']) ? [{ text: 'Kiểm kê kho', path: '/audit', icon: <CheckSquare size={18} /> }] : []),
-                                { text: 'Tồn kho chi tiết (in_stock)', path: '/stock-summary-report', icon: <BarChart2 size={18} /> },
-                                { text: 'Upload tồn kho NV', path: '/upload-inventory-nv', icon: <FileText size={18} /> },
-                                { text: 'Upload tồn kho Đơn Vị', path: '/upload-inventory-donvi', icon: <FileText size={18} /> },
-                                ...(hasAnyPermission(['audit.view', 'audit.create']) ? [{ text: 'Quyết toán', path: '/settlement', icon: <PieChart size={18} /> }] : []),
-                                ...(hasPermission('inbound.view') ? [{ text: 'Nhập kho', path: '/inbound', icon: <ArrowDownToLine size={18} /> }] : []),
                                 { text: 'Tra cứu hàng hóa', path: '/inbound-lookup', icon: <FileSearch size={18} /> },
+                                { text: 'Tồn kho chi tiết (in_stock)', path: '/stock-summary-report', icon: <BarChart2 size={18} /> },
+                                ...(hasAnyPermission(['audit.view', 'audit.create', 'inventory.view', 'inventory.manage']) ? [{ text: 'Sơ đồ tồn kho', path: '/stock-map', icon: <BarChart2 size={18} /> }] : []),
+                                ...(hasPermission('inventory.view') ? [{ text: 'Sơ đồ kho thông minh', path: '/warehouse-layout', icon: <MapPinned size={18} /> }] : []),
+                                ...(hasAnyPermission(['audit.view', 'audit.create']) ? [{ text: 'Kiểm kê kho', path: '/audit', icon: <CheckSquare size={18} /> }] : []),
+                                { text: 'Upload tồn kho Đơn Vị', path: '/upload-inventory-donvi', icon: <FileText size={18} /> },
+                                { text: 'Upload tồn kho NV', path: '/upload-inventory-nv', icon: <FileText size={18} /> },
+                                ...(hasAnyPermission(['reports.view_all', 'reports.handover']) ? [{ text: 'Báo cáo - In biên bản', path: '/reports', icon: <PieChart size={18} /> }] : []),
+                                ...(hasAnyPermission(['audit.view', 'audit.create']) ? [{ text: 'Quyết toán', path: '/settlement', icon: <PieChart size={18} /> }] : []),
                             ];
 
                             const settlementSubItems = [
@@ -465,6 +459,41 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                             );
                         }
 
+                        // ── Expandable QR and barcode tools group
+                        if (item.path === '/qr-code-tools') {
+                            const qrSubItems = [
+                                { text: 'Mã QR Code', path: '/qr-generator', icon: <QrCode size={18} /> },
+                                { text: 'MÃ VẠCH VHKT', path: '/barcode-generator', icon: <Barcode size={18} /> },
+                            ];
+                            const isGroupActive = qrSubItems.some(sub => location.pathname === sub.path);
+                            return (
+                                <React.Fragment key="qr-code-tools-group">
+                                    <ListItem disablePadding>
+                                        <ListItemButton onClick={() => setExpandQr(p => !p)} sx={menuItemSx(isGroupActive)}>
+                                            <ListItemIcon sx={menuIconSx(isGroupActive)}>{item.icon}</ListItemIcon>
+                                            <ListItemText primary={item.text} primaryTypographyProps={{ fontWeight: isGroupActive ? 700 : 500, fontSize: '0.875rem' }} />
+                                            {expandQr ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                        </ListItemButton>
+                                    </ListItem>
+                                    <Collapse in={expandQr} timeout="auto" unmountOnExit>
+                                        <List disablePadding sx={{ pl: 1.5, mb: 0.5, mt: 0.5 }}>
+                                            {qrSubItems.map(sub => {
+                                                const subActive = location.pathname === sub.path;
+                                                return (
+                                                    <ListItem key={sub.path} disablePadding sx={{ mb: 0.5 }}>
+                                                        <ListItemButton onClick={() => { navigate(sub.path); if (isMobile) handleDrawerToggle(); }} sx={subItemSx(subActive)}>
+                                                            <ListItemIcon sx={{ minWidth: 32, color: subActive ? UI.primary : UI.muted }}>{sub.icon}</ListItemIcon>
+                                                            <ListItemText primary={sub.text} primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: subActive ? 600 : 400 }} />
+                                                        </ListItemButton>
+                                                    </ListItem>
+                                                );
+                                            })}
+                                        </List>
+                                    </Collapse>
+                                </React.Fragment>
+                            );
+                        }
+
                         // ── Expandable Admin/HR group
                         if (item.path === '/admin-hr') {
                             const adminHrSubItems = [
@@ -518,6 +547,58 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                                         </ListItemButton>
                                                     </ListItem>
                                                 );
+                                            })}
+                                        </List>
+                                    </Collapse>
+                                </React.Fragment>
+                            );
+                        }
+
+                        // ── Expandable Utilities group
+                        if (item.path === '/utilities') {
+                            const zaloSubItems = [
+                                { text: 'Quản lý Bot', path: '/zalo/contacts', icon: <Bot size={18} /> },
+                                { text: 'Chiến dịch gửi', path: '/zalo/campaigns', icon: <Send size={18} /> },
+                                { text: 'Lịch sử gửi', path: '/zalo/logs', icon: <History size={18} /> },
+                            ];
+                            const utilitySubItems = [
+                                ...(profile?.role === 'admin' ? [{ text: 'Thông báo hệ thống', path: '/announcements', icon: <Mailbox size={18} /> }] : []),
+                                { text: 'Trợ lý AI', path: '/ai-assistant', icon: <Bot size={18} /> },
+                                ...(hasPermission('pdf.view') ? [{ text: 'Tách/Gộp PDF', path: '/pdf-tools', icon: <Scissors size={18} /> }] : []),
+                                { text: 'In thông báo cước', path: '/print-bill', icon: <FileText size={18} /> },
+                            ];
+                            const isGroupActive = location.pathname.startsWith('/zalo') || utilitySubItems.some(sub => location.pathname === sub.path);
+                            return (
+                                <React.Fragment key="utilities-group">
+                                    <ListItem disablePadding>
+                                        <ListItemButton onClick={() => setExpandUtilities(p => !p)} sx={menuItemSx(isGroupActive, '#a78bfa')}>
+                                            <ListItemIcon sx={menuIconSx(isGroupActive, '#a78bfa')}>{item.icon}</ListItemIcon>
+                                            <ListItemText primary={item.text} primaryTypographyProps={{ fontWeight: isGroupActive ? 700 : 500, fontSize: '0.875rem' }} />
+                                            {expandUtilities ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                        </ListItemButton>
+                                    </ListItem>
+                                    <Collapse in={expandUtilities} timeout="auto" unmountOnExit>
+                                        <List disablePadding sx={{ pl: 1.5, mb: 0.5, mt: 0.5 }}>
+                                            {profile?.role === 'admin' && <>
+                                                <ListItem disablePadding sx={{ mb: 0.5 }}>
+                                                    <ListItemButton onClick={() => setExpandZalo(p => !p)} sx={subItemSx(location.pathname.startsWith('/zalo'), '#0ea5e9')}>
+                                                        <ListItemIcon sx={{ minWidth: 32, color: location.pathname.startsWith('/zalo') ? '#0ea5e9' : UI.muted }}><MessageSquare size={18} /></ListItemIcon>
+                                                        <ListItemText primary="Thông báo Zalo" primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: location.pathname.startsWith('/zalo') ? 600 : 400 }} />
+                                                        {expandZalo ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                                    </ListItemButton>
+                                                </ListItem>
+                                                <Collapse in={expandZalo} timeout="auto" unmountOnExit>
+                                                    <List disablePadding sx={{ pl: 1.5 }}>
+                                                        {zaloSubItems.map(sub => {
+                                                            const subActive = location.pathname === sub.path;
+                                                            return <ListItem key={sub.path} disablePadding sx={{ mb: 0.5 }}><ListItemButton onClick={() => { navigate(sub.path); if (isMobile) handleDrawerToggle(); }} sx={subItemSx(subActive, '#0ea5e9')}><ListItemIcon sx={{ minWidth: 32, color: subActive ? '#0ea5e9' : UI.muted }}>{sub.icon}</ListItemIcon><ListItemText primary={sub.text} primaryTypographyProps={{ fontSize: '0.75rem', fontWeight: subActive ? 600 : 400 }} /></ListItemButton></ListItem>;
+                                                        })}
+                                                    </List>
+                                                </Collapse>
+                                            </>}
+                                            {utilitySubItems.map(sub => {
+                                                const subActive = location.pathname === sub.path;
+                                                return <ListItem key={sub.path} disablePadding sx={{ mb: 0.5 }}><ListItemButton onClick={() => { navigate(sub.path); if (isMobile) handleDrawerToggle(); }} sx={subItemSx(subActive, '#a78bfa')}><ListItemIcon sx={{ minWidth: 32, color: subActive ? '#a78bfa' : UI.muted }}>{sub.icon}</ListItemIcon><ListItemText primary={sub.text} primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: subActive ? 600 : 400 }} /></ListItemButton></ListItem>;
                                             })}
                                         </List>
                                     </Collapse>
