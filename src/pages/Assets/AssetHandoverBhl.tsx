@@ -288,35 +288,36 @@ const AssetHandoverBhl: React.FC = () => {
                 <meta charset="utf-8"/>
                 <title>In Biên Bản</title>
                 <style>
-                    @page { size: A4; margin: 10mm 12mm; }
+                    @page { size: A4 portrait; margin: 20mm 15mm 20mm 30mm; }
                     * { box-sizing: border-box; }
-                    body { font-family: 'Times New Roman', serif; font-size: 11pt; color: #000; margin: 0; padding: 0; }
+                    body { font-family: 'Times New Roman', Times, serif; font-size: 13pt; color: #000; margin: 0; padding: 0; line-height: 1.35; }
+                    body * { color: #000 !important; font-size: 13pt !important; }
+                    body .document-title { font-size: 16pt !important; }
                     .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
                     .header-left { width: 55%; display: flex; align-items: center; gap: 10px; }
                     .header-right { width: 45%; text-align: center; }
                     .logo-box { width: 55px; height: 55px; background: #cc0000; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14pt; border-radius: 4px; flex-shrink: 0; }
-                    .company-name { font-size: 10.5pt; font-weight: bold; color: #003087; text-align: center; }
-                    .company-sub { font-size: 10.5pt; font-weight: bold; color: #003087; text-align: center; }
-                    .republic { font-size: 10.5pt; font-weight: bold; text-align: center; }
-                    .motto { font-size: 10.5pt; font-weight: bold; text-decoration: underline; text-align: center; }
-                    .date-line { text-align: right; font-style: italic; font-size: 10.5pt; margin: 10px 0 6px; }
+                    .company-name, .company-sub, .republic, .motto { font-size: 13pt; font-weight: bold; text-align: center; }
+                    .motto { text-decoration: underline; }
+                    .date-line { text-align: right; font-style: italic; font-size: 13pt; margin: 10px 0 6px; }
                     .title { text-align: center; font-size: 16pt; font-weight: bold; color: #000; margin: 14px 0 18px; text-transform: uppercase; }
-                    .section-label { font-weight: bold; font-size: 10.5pt; margin: 6px 0 2px; color: #003087; }
-                    .person-row { display: flex; font-size: 10.5pt; margin: 3px 0; align-items: center; }
+                    .section-label { font-weight: bold; font-size: 13pt; margin: 6px 0 2px; }
+                    .person-row { display: flex; font-size: 13pt; margin: 3px 0; align-items: center; }
                     .person-label { width: 120px; font-weight: bold; }
                     .person-name { flex: 1; font-weight: bold; text-transform: uppercase; }
                     .person-right { display: flex; flex: 1; align-items: center; }
                     .person-title-label { font-weight: bold; width: 75px; }
                     .person-title-val { flex: 1; }
                     .person-phone { width: 110px; text-align: right; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 10pt; }
-                    th { background: #f2f2f2; color: #000; border: 1px solid #000; padding: 5px 4px; text-align: center; font-weight: bold; }
-                    td { border: 1px solid #888; padding: 4px; vertical-align: middle; }
-                    .footer-note { font-style: italic; font-size: 9.5pt; margin-top: 8px; border-top: 1px solid #ccc; padding-top: 6px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13pt; }
+                    th { background: #fff; border: 1px solid #000; padding: 5px 4px; text-align: center; font-weight: bold; }
+                    td { border: 1px solid #000; padding: 4px; vertical-align: middle; }
+                    .footer-note { font-style: italic; font-size: 13pt; margin-top: 8px; border-top: 1px solid #000; padding-top: 6px; text-align: justify; }
                     .signatures { display: flex; justify-content: space-between; margin-top: 30px; text-align: center; }
                     .sig-block { width: 30%; }
-                    .sig-title { font-weight: bold; font-size: 11pt; }
-                    .sig-sub { font-style: italic; font-size: 9.5pt; margin-top: 2px; }
+                    .sig-title, .sig-sub { font-size: 13pt; }
+                    .sig-title { font-weight: bold; }
+                    .sig-sub { font-style: italic; margin-top: 2px; }
                     .sig-space { height: 55px; }
                 </style>
             </head>
@@ -719,7 +720,7 @@ const AssetHandoverBhl: React.FC = () => {
                                 </div>
 
                                 {/* Title */}
-                                <div style={{ textAlign: 'center', fontSize: '15pt', fontWeight: 'bold', color: '#000', margin: '14px 0 18px', textTransform: 'uppercase', lineHeight: 1.3 }}>
+                                <div className="document-title" style={{ textAlign: 'center', fontSize: '15pt', fontWeight: 'bold', color: '#000', margin: '14px 0 18px', textTransform: 'uppercase', lineHeight: 1.3 }}>
                                     {currentTitle}
                                 </div>
 

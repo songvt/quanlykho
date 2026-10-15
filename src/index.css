@@ -415,6 +415,10 @@ a,
 
 /* ── Print: hide mobile nav ── */
 @media print {
+  @page {
+    size: A4 portrait;
+    margin: 20mm 15mm 20mm 30mm;
+  }
   .mobile-bottom-nav,
   .mobile-top-appbar {
     display: none !important;
@@ -454,6 +458,8 @@ a,
   /* Force black borders and text on printable documents during print */
   .printable-document,
   .printable-document * {
+    font-family: 'Times New Roman', Times, serif !important;
+    font-size: 13pt !important;
     color: #000000 !important;
     border-color: #000000 !important;
   }

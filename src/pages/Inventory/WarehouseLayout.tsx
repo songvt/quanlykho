@@ -11,6 +11,7 @@ import { fetchInventory } from '../../store/slices/inventorySlice';
 import { supabase } from '../../config/supabase';
 import { useNotification } from '../../contexts/NotificationContext';
 import { readExcelFile } from '../../utils/excelUtils';
+import { GoogleSheetService } from '../../services/GoogleSheetService';
 import type { AppDispatch, RootState } from '../../store';
 import { normalizeWarehouseType } from '../../utils/warehouse';
 
@@ -35,14 +36,55 @@ const shelfNameStorageKey = 'qlkho_warehouse_shelf_names';
 const zoneNameStorageKey = 'qlkho_warehouse_zone_names';
 const serialAssignmentStorageKey = 'qlkho_warehouse_serial_assignments';
 const CLOUD_CONFIG_KEY = 'WAREHOUSE_LAYOUT_CONFIG';
-const EXCEL_FONT = { name: 'Times New Roman', size: 12 };
+const EXCEL_FONT = { name: 'Times New Roman', size: 11 };
+const EXCEL_THIN_BORDER: Partial<ExcelJS.Borders> = {
+    top: { style: 'thin', color: { argb: 'FF000000' } },
+    right: { style: 'thin', color: { argb: 'FF000000' } },
+    bottom: { style: 'thin', color: { argb: 'FF000000' } },
+    left: { style: 'thin', color: { argb: 'FF000000' } },
+};
 
-const applyExcelFont = (worksheet: ExcelJS.Worksheet) => {
-    worksheet.eachRow({ includeEmpty: false }, row => {
-        row.eachCell({ includeEmpty: false }, cell => {
-            cell.font = { ...cell.font, ...EXCEL_FONT };
+const configureExportSheet = (worksheet: ExcelJS.Worksheet, headerRowNumber: number, centeredColumns: number[] = []) => {
+    worksheet.pageSetup = {
+        paperSize: 9,
+        orientation: 'landscape',
+        fitToPage: true,
+        fitToWidth: 1,
+        fitToHeight: 0,
+        horizontalCentered: true,
+        margins: { left: 0.3, right: 0.3, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 },
+    };
+    worksheet.properties.defaultRowHeight = 20;
+    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+        row.eachCell({ includeEmpty: true }, (cell, columnNumber) => {
+            if (rowNumber >= headerRowNumber) {
+                cell.font = { ...cell.font, ...EXCEL_FONT };
+                cell.border = EXCEL_THIN_BORDER as ExcelJS.Borders;
+                cell.alignment = {
+                    horizontal: centeredColumns.includes(columnNumber) ? 'center' : 'left',
+                    vertical: 'middle',
+                    wrapText: true,
+                };
+            }
         });
+        if (rowNumber === headerRowNumber) {
+            row.height = 30;
+            row.eachCell({ includeEmpty: true }, cell => {
+                cell.font = { ...EXCEL_FONT, bold: true, color: { argb: 'FFFFFFFF' } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
+                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            });
+        } else if (rowNumber > headerRowNumber) {
+            let wrappedLines = 1;
+            row.eachCell({ includeEmpty: false }, (cell, columnNumber) => {
+                const width = worksheet.getColumn(columnNumber).width || 12;
+                wrappedLines = Math.max(wrappedLines, Math.ceil(String(cell.value ?? '').length / Math.max(width * 1.05, 1)));
+            });
+            row.height = Math.max(22, Math.min(60, wrappedLines * 15 + 6));
+        }
     });
+    worksheet.views = [{ state: 'frozen', ySplit: headerRowNumber }];
+    worksheet.autoFilter = { from: { row: headerRowNumber, column: 1 }, to: { row: worksheet.rowCount, column: worksheet.columnCount } };
 };
 
 const getShelfLabel = (shelf: Shelf, shelfNames: Record<string, string>) => shelfNames[shelf.id]?.trim() || shelf.label;
@@ -77,6 +119,7 @@ const WarehouseLayout: React.FC = () => {
     const [selectedShelfId, setSelectedShelfId] = useState(shelves[0].id);
     const [shelfNameDraft, setShelfNameDraft] = useState('');
     const [isSyncing, setIsSyncing] = useState(false);
+    const [isSheetSyncing, setIsSheetSyncing] = useState(false);
     const [cloudSynced, setCloudSynced] = useState(false);
 
     // Dùng ref để lưu trữ state mới nhất tránh stale closure khi auto-save
@@ -108,11 +151,14 @@ const WarehouseLayout: React.FC = () => {
             });
             if (error) {
                 console.error('Lỗi lưu cấu hình sơ đồ kho lên Supabase:', error);
+                return false;
             } else {
                 setCloudSynced(true);
+                return true;
             }
         } catch (err) {
             console.error('Lỗi khi gửi cấu hình sơ đồ kho:', err);
+            return false;
         } finally {
             setIsSyncing(false);
         }
@@ -320,9 +366,7 @@ const WarehouseLayout: React.FC = () => {
         sheet.addRow(['MA_HANG', 'SERIAL', 'MA_KE']);
         sheet.addRow(['8041', '', 'A-1']);
         sheet.addRow(['8041', 'SERIAL-001', 'A-2']);
-        sheet.getRow(1).eachCell(cell => { cell.font = { name: 'Times New Roman', size: 12, bold: true, color: { argb: 'FFFFFFFF' } }; cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } }; });
-        sheet.getRow(2).eachCell(cell => { cell.font = { name: 'Times New Roman', size: 12 }; });
-        sheet.getRow(3).eachCell(cell => { cell.font = { name: 'Times New Roman', size: 12 }; });
+        configureExportSheet(sheet, 1, [1, 3]);
         const buffer = await workbook.xlsx.writeBuffer();
         saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'Mau_gan_ke_theo_ma_hang_serial.xlsx');
     };
@@ -431,13 +475,13 @@ const WarehouseLayout: React.FC = () => {
         sheet.mergeCells('A1:H1');
         const title = sheet.getCell('A1');
         title.value = 'BÁO CÁO SƠ ĐỒ SẮP XẾP KHO ĐƠN VỊ';
-        title.font = { bold: true, size: 15, color: { argb: 'FFFFFFFF' } };
+        title.font = { name: 'Times New Roman', bold: true, size: 15, color: { argb: 'FFFFFFFF' } };
         title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
         title.alignment = { horizontal: 'center', vertical: 'middle' };
         sheet.getRow(1).height = 28;
         sheet.mergeCells('A2:H2');
         sheet.getCell('A2').value = `Ngày xuất: ${new Date().toLocaleString('vi-VN')} · Bao gồm cả các kệ chưa có hàng`;
-        sheet.getCell('A2').font = { italic: true, color: { argb: 'FF475569' } };
+        sheet.getCell('A2').font = { name: 'Times New Roman', size: 11, italic: true, color: { argb: 'FF475569' } };
         sheet.getCell('A2').alignment = { horizontal: 'center' };
         const header = sheet.getRow(3);
         header.values = ['Khu vực', 'Mã kệ', 'Tên / vị trí kệ', 'Mã hàng', 'Tên hàng hóa / vật tư', 'Kho đơn vị', 'Đơn vị tính', 'Tồn kho'];
@@ -454,18 +498,8 @@ const WarehouseLayout: React.FC = () => {
             if (!items.length) sheet.addRow([...common, '', 'Chưa gán hàng hóa', '', '', 0]);
             else items.forEach(product => sheet.addRow([...common, product.item_code, product.name, product.warehouseType, product.unit || '', product.quantity]));
         });
-        for (let index = 4; index <= sheet.rowCount; index += 1) {
-            const row = sheet.getRow(index);
-            row.eachCell(cell => {
-                cell.border = {
-                    top: { style: 'thin', color: { argb: 'FFE2E8F0' } }, bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-                    left: { style: 'thin', color: { argb: 'FFE2E8F0' } }, right: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-                };
-                cell.alignment = { vertical: 'middle', wrapText: true };
-            });
-            row.getCell(8).numFmt = '#,##0';
-        }
-        sheet.views = [{ state: 'frozen', ySplit: 3 }];
+        configureExportSheet(sheet, 3, [2, 4, 7, 8]);
+        for (let index = 4; index <= sheet.rowCount; index += 1) sheet.getRow(index).getCell(8).numFmt = '#,##0';
 
         const unassigned = workbook.addWorksheet('Chua gan vi tri');
         unassigned.columns = [
@@ -481,10 +515,8 @@ const WarehouseLayout: React.FC = () => {
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF64748B' } };
         });
         productsWithStock.filter(product => !product.shelfId).forEach(product => unassigned.addRow([product.item_code, product.name, product.warehouseType, product.unit || '', product.quantity]));
+        configureExportSheet(unassigned, 1, [1, 4, 5]);
         unassigned.getColumn(5).numFmt = '#,##0';
-        unassigned.views = [{ state: 'frozen', ySplit: 1 }];
-        applyExcelFont(sheet);
-        applyExcelFont(unassigned);
         const buffer = await workbook.xlsx.writeBuffer();
         saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `So_do_kho_${new Date().toISOString().slice(0, 10)}.xlsx`);
     };
@@ -498,29 +530,16 @@ const WarehouseLayout: React.FC = () => {
             { header: 'Mã kệ', key: 'shelfCode', width: 14 },
             { header: 'Tên kệ', key: 'shelfName', width: 26 },
             { header: 'Kho đơn vị', key: 'warehouse', width: 20 },
-            { header: 'Mã hàng', key: 'itemCode', width: 18 },
-            { header: 'Tên hàng hóa / vật tư', key: 'productName', width: 42 },
-            { header: 'Serial', key: 'serial', width: 28 },
+            { header: 'Mã hàng', key: 'itemCode', width: 25 },
+            { header: 'Tên hàng hóa / vật tư', key: 'productName', width: 40 },
+            { header: 'Serial', key: 'serial', width: 24 },
         ];
-        const header = sheet.getRow(1);
-        header.eachCell(cell => {
-            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
-            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-        });
         assignedSerialRows.forEach(row => {
             const shelf = shelves.find(item => item.id === row.shelfId);
             const zone = zones.find(item => item.id === shelf?.zone);
             sheet.addRow([zone ? getZoneTitle(zone, zoneNames) : '', row.shelfId, shelf ? getShelfLabel(shelf, shelfNames) : row.shelfId, row.warehouseType, row.itemCode, row.productName, row.serialCode]);
         });
-        for (let index = 2; index <= sheet.rowCount; index += 1) {
-            sheet.getRow(index).eachCell(cell => {
-                cell.border = { top: { style: 'thin', color: { argb: 'FFE2E8F0' } }, bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } }, left: { style: 'thin', color: { argb: 'FFE2E8F0' } }, right: { style: 'thin', color: { argb: 'FFE2E8F0' } } };
-                cell.alignment = { vertical: 'middle', wrapText: true };
-            });
-        }
-        sheet.views = [{ state: 'frozen', ySplit: 1 }];
-        applyExcelFont(sheet);
+        configureExportSheet(sheet, 1, [1, 2, 4, 5, 7]);
         const buffer = await workbook.xlsx.writeBuffer();
         saveAs(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `Serial_da_gan_ke_${new Date().toISOString().slice(0, 10)}.xlsx`);
     };
@@ -543,8 +562,24 @@ const WarehouseLayout: React.FC = () => {
     };
 
     const handleManualSave = async () => {
-        await syncToCloud(assignments, shelfNames, zoneNames);
-        success('Đã lưu toàn bộ cấu hình sơ đồ kho lên hệ thống đám mây (Cloud)');
+        const cloudSaved = await syncToCloud(assignments, shelfNames, zoneNames, serialAssignments);
+        if (!cloudSaved) {
+            notifyError('Không thể lưu sơ đồ kho lên Cloud, nên chưa đồng bộ MA_KE.');
+            return;
+        }
+        await syncShelvesToInStock();
+    };
+
+    const syncShelvesToInStock = async () => {
+        try {
+            setIsSheetSyncing(true);
+            const result = await GoogleSheetService.syncWarehouseShelvesToInStock({ assignments, serialAssignments });
+            success(result.message || 'Đã đồng bộ mã kệ vào in_stock.');
+        } catch (syncError: any) {
+            notifyError(syncError?.message || 'Không thể đồng bộ mã kệ vào in_stock.');
+        } finally {
+            setIsSheetSyncing(false);
+        }
     };
 
     return (
@@ -563,6 +598,15 @@ const WarehouseLayout: React.FC = () => {
                         sx={{ bgcolor: '#16a34a', '&:hover': { bgcolor: '#15803d' }, color: 'white', fontWeight: 700 }}
                     >
                         {isSyncing ? 'Đang lưu Cloud...' : 'Lưu sơ đồ kho'}
+                    </Button>
+                    <Button
+                        variant="contained"
+                        onClick={syncShelvesToInStock}
+                        disabled={isSheetSyncing}
+                        startIcon={isSheetSyncing ? <CircularProgress size={16} color="inherit" /> : <RefreshCw size={16} />}
+                        sx={{ bgcolor: '#0f766e', '&:hover': { bgcolor: '#115e59' }, color: 'white', fontWeight: 700 }}
+                    >
+                        {isSheetSyncing ? 'Đang đồng bộ...' : 'Đồng bộ mã kệ → in_stock'}
                     </Button>
                     <Button
                         variant="contained"

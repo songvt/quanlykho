@@ -257,37 +257,35 @@ const Audit: React.FC = () => {
             <head>
                 <title>Biên Bản Kiểm Kê</title>
                 <style>
-                    body { font-family: "Times New Roman", Times, serif; padding: 20px; color: #000; line-height: 1.4; }
+                    @page { size: A4 portrait; margin: 20mm 15mm 20mm 30mm; }
+                    * { box-sizing: border-box; }
+                    body { font-family: "Times New Roman", Times, serif; font-size: 13pt; margin: 0; padding: 0; color: #000; line-height: 1.4; }
                     .print-container { width: 100%; max-width: 1000px; margin: 0 auto; }
                     .company-header { display: flex; justify-content: space-between; margin-bottom: 30px; align-items: flex-start; }
                     .company-left { text-align: center; width: 45%; }
                     .company-right { text-align: center; width: 50%; }
                     .company-name { font-weight: bold; font-size: 13pt; text-transform: uppercase; margin: 0; }
-                    .company-sub { font-weight: bold; font-size: 11pt; margin: 2px 0; }
+                    .company-sub { font-weight: bold; font-size: 13pt; margin: 2px 0; }
                     .header-line { width: 60px; height: 1px; background: #000; margin: 5px auto; }
                     
                     .report-title { text-align: center; margin-bottom: 25px; margin-top: 10px; }
                     .report-title h1 { margin: 0; font-size: 20pt; text-transform: uppercase; font-weight: bold; }
-                    .report-title p { margin: 5px 0; font-size: 12pt; font-style: italic; }
+                    .report-title p { margin: 5px 0; font-size: 13pt; font-style: italic; }
                     
-                    .info-section { margin-bottom: 20px; font-size: 12pt; }
+                    .info-section { margin-bottom: 20px; font-size: 13pt; }
                     .info-row { margin-bottom: 5px; }
                     
-                    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11pt; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13pt; }
                     th, td { border: 1px solid #000; padding: 8px 5px; text-align: center; }
-                    th { background-color: #f2f2f2; font-weight: bold; text-transform: uppercase; }
+                    th { background-color: #fff; font-weight: bold; text-transform: uppercase; }
                     .text-left { text-align: left; padding-left: 8px; }
                     
                     .signature-section { display: flex; justify-content: space-between; margin-top: 40px; page-break-inside: avoid; }
                     .signature-box { text-align: center; width: 30%; }
-                    .signature-title { font-weight: bold; font-size: 12pt; margin-bottom: 80px; }
+                    .signature-title { font-weight: bold; font-size: 13pt; margin-bottom: 80px; }
                     .signature-name { font-weight: bold; text-transform: uppercase; }
                     
-                    @media print {
-                        @page { size: A4 portrait; margin: 15mm; }
-                        body { padding: 0; }
-                        .no-print { display: none; }
-                    }
+                    @media print { .no-print { display: none; } }
                 </style>
             </head>
             <body>
@@ -336,10 +334,10 @@ const Audit: React.FC = () => {
                                     <td class="text-left">${item.name}</td>
                                     <td>${item.system_qty}</td>
                                     <td><strong>${item.actual_qty}</strong></td>
-                                    <td style="color: ${item.discrepancy !== 0 ? (item.discrepancy > 0 ? 'blue' : 'red') : 'black'}">
+                                    <td>
                                         ${item.discrepancy !== 0 ? (item.discrepancy > 0 ? `+${item.discrepancy}` : item.discrepancy) : '0'}
                                     </td>
-                                    <td class="text-left" style="font-size: 9pt;">
+                                    <td class="text-left">
                                         ${item.notes || ''}
                                         ${(item.scanned_serials?.length || 0) > 0 ? `<div style="margin-top:2px;">SN: ${item.scanned_serials.join(', ')}</div>` : ''}
                                     </td>

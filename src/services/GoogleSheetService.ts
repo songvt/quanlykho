@@ -160,6 +160,14 @@ export const GoogleSheetService = {
         });
     },
 
+    async syncWarehouseShelvesToInStock(config: { assignments: Record<string, string>; serialAssignments: Record<string, string> }) {
+        return apiRequest('sync-warehouse-shelves', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ config })
+        });
+    },
+
     async syncQRSheet(productId: string, createdBy?: string) {
         return apiRequest('transactions', {
             method: 'POST',

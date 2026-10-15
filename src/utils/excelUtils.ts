@@ -191,14 +191,14 @@ export const exportStandardReport = async (
 
     // Styles
     const borderStyle: Partial<ExcelJS.Borders> = {
-        top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
+        top: { style: 'thin', color: { argb: 'FF000000' } }, left: { style: 'thin', color: { argb: 'FF000000' } },
+        bottom: { style: 'thin', color: { argb: 'FF000000' } }, right: { style: 'thin', color: { argb: 'FF000000' } }
     };
-    const fontBoldBlue = { name: 'Times New Roman', bold: true, color: { argb: 'FF0070C0' }, size: 10 };
-    const fontBoldRed = { name: 'Times New Roman', bold: true, color: { argb: 'FFFF0000' }, size: 14 };
-    const fontNormal = { name: 'Times New Roman', size: 11 };
-    // Changed to Black Text on Light Grey for better visibility
-    const fontHeader = { name: 'Times New Roman', bold: true, color: { argb: 'FF000000' }, size: 11 };
-    const headerFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+    const fontBoldBlue = { name: 'Times New Roman', bold: true, color: { argb: 'FF000000' }, size: 11 };
+    const fontBoldRed = { name: 'Times New Roman', bold: true, color: { argb: 'FF000000' }, size: 14 };
+    const fontNormal = { name: 'Times New Roman', size: 11, color: { argb: 'FF000000' } };
+    const fontHeader = { name: 'Times New Roman', bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+    const headerFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
 
     // --- HEADER --- (Simplified for generic 5-10 col reports)
     // We will merge roughly half-half for Left/Right header info
@@ -237,11 +237,12 @@ export const exportStandardReport = async (
     cTitle.value = reportTitle.toUpperCase();
     cTitle.font = fontBoldRed;
     cTitle.alignment = { horizontal: 'center', vertical: 'middle' };
+    sheet.getRow(4).height = 24;
 
     sheet.mergeCells(5, 1, 5, totalCols);
     const cDate = sheet.getCell(5, 1);
     cDate.value = `Ngày ${day} tháng ${month} năm ${year}`;
-    cDate.font = { name: 'Times New Roman', italic: true, size: 11, color: { argb: 'FF0070C0' } };
+    cDate.font = { name: 'Times New Roman', italic: true, size: 11, color: { argb: 'FF000000' } };
     cDate.alignment = { horizontal: 'center' };
 
     sheet.addRow([]);

@@ -32,7 +32,9 @@ const AssetBrokenPrint: React.FC<Props> = ({ open, onClose, assets }) => {
                 <style>
                     @page { size: A4 portrait; margin: 20mm 15mm 20mm 30mm; }
                     * { box-sizing: border-box; }
-                    body { font-family: 'Times New Roman', Times, serif; font-size: 11.5pt; color: #000; margin: 0; padding: 0; line-height: 1.4; }
+                    body { font-family: 'Times New Roman', Times, serif; font-size: 13pt; color: #000; margin: 0; padding: 0; line-height: 1.4; }
+                    body * { color: #000 !important; font-size: 13pt !important; }
+                    body .document-title { font-size: 16pt !important; }
                     
                     .page-header { width: 100%; margin-bottom: 20px; }
                     .header-table { width: 100%; border: none; }
@@ -40,43 +42,41 @@ const AssetBrokenPrint: React.FC<Props> = ({ open, onClose, assets }) => {
                     .company-info { width: 45%; }
                     .republic-info { width: 55%; }
                     
-                    .company-name { font-weight: bold; font-size: 11pt; }
-                    .unit-name { font-weight: bold; font-size: 11pt; }
-                    .republic { font-weight: bold; font-size: 12pt; }
-                    .motto { font-weight: bold; font-size: 12pt; }
+                    .company-name, .unit-name, .republic, .motto { font-weight: bold; font-size: 13pt; }
                     .header-divider { width: 120px; border-top: 1px solid black; margin: 5px auto; }
                     
                     .title-container { text-align: center; margin: 25px 0 15px; }
                     .title { font-size: 16pt; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; }
-                    .subtitle { font-style: italic; font-size: 11pt; }
+                    .subtitle { font-style: italic; font-size: 13pt; }
                     
-                    .doc-ref { margin: 15px 0; font-size: 11.5pt; text-align: justify; }
+                    .doc-ref { margin: 15px 0; font-size: 13pt; text-align: justify; }
                     
                     .parties-table { width: 100%; margin: 15px 0; border: none; }
-                    .parties-table td { border: none; padding: 2px 0; font-size: 11.5pt; }
+                    .parties-table td { border: none; padding: 2px 0; font-size: 13pt; }
                     .party-label { font-weight: bold; width: 150px; }
                     .party-val { font-weight: bold; text-transform: uppercase; }
                     .party-role-label { width: 90px; padding-left: 10px; font-weight: normal; }
                     .party-role-val { font-weight: normal; }
 
                     table.data-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-                    table.data-table th { border: 1px solid black; padding: 6px 4px; text-align: center; font-weight: bold; font-size: 10.5pt; background: #f2f2f2; }
-                    table.data-table td { border: 1px solid black; padding: 6px 4px; vertical-align: middle; font-size: 10.5pt; }
+                    table.data-table th, table.data-table td { border: 1px solid #000; padding: 6px 4px; vertical-align: middle; font-size: 13pt; }
+                    table.data-table th { text-align: center; font-weight: bold; background: #fff; }
                     .center { text-align: center; }
                     
-                    .footer-note { margin-top: 25px; font-style: italic; font-size: 11pt; text-align: justify; }
+                    .footer-note { margin-top: 25px; font-style: italic; font-size: 13pt; text-align: justify; }
                     
                     .signature-table { width: 100%; margin-top: 20px; border: none; }
                     .signature-table td { border: none; text-align: center; padding: 10px 5px; vertical-align: top; width: 25%; }
-                    .sig-title { font-weight: bold; font-size: 10pt; text-transform: uppercase; }
-                    .sig-note { font-style: italic; font-size: 9pt; }
+                    .sig-title, .sig-note { font-size: 13pt; }
+                    .sig-title { font-weight: bold; text-transform: uppercase; }
+                    .sig-note { font-style: italic; }
                     .sig-space { height: 80px; }
                     
-                    .form-id { position: absolute; top: 0; right: 0; font-size: 10pt; color: #666; font-family: Arial, sans-serif; }
+                    .form-id { position: absolute; top: 0; right: 0; font-size: 13pt; font-family: 'Times New Roman', Times, serif; }
                 </style>
             </head>
             <body>
-                <div style="position: relative; padding: 10mm;">
+                <div style="position: relative;">
                     <div class="form-id">BM 03/QT.ACT.QLTS.02</div>
                     ${content}
                 </div>
@@ -126,7 +126,7 @@ const AssetBrokenPrint: React.FC<Props> = ({ open, onClose, assets }) => {
                     </table>
 
                     {/* Title */}
-                    <div style={{ textAlign: 'center', margin: '30px 0 15px' }}>
+                        <div className="document-title" style={{ textAlign: 'center', margin: '30px 0 15px' }}>
                         <div style={{ fontSize: '16pt', fontWeight: 'bold' }}>BIÊN BẢN BÀN GIAO VẬT TƯ, THIẾT BỊ THU HỒI</div>
                         <div style={{ fontStyle: 'italic', fontSize: '11pt' }}>(Số: ........./BBBG)</div>
                     </div>

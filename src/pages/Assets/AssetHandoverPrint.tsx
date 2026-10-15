@@ -95,35 +95,36 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                 <style>
                     @page { size: A4 portrait; margin: 20mm 15mm 20mm 30mm; }
                     * { box-sizing: border-box; }
-                    body { font-family: 'Times New Roman', Times, serif; font-size: 11.5pt; color: #000; margin: 0; padding: 0; }
+                    body { font-family: 'Times New Roman', Times, serif; font-size: 13pt; color: #000; margin: 0; padding: 0; line-height: 1.35; }
+                    body * { color: #000 !important; font-size: 13pt !important; }
+                    body .document-title { font-size: 16pt !important; }
                     .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
                     .header-left { width: 55%; display: flex; align-items: center; gap: 10px; }
                     .header-right { width: 45%; text-align: center; }
                     .logo-box { width: 55px; height: 55px; background: #cc0000; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14pt; border-radius: 4px; flex-shrink: 0; }
-                    .company-name { font-size: 10pt; font-weight: bold; color: #003087; text-align: center; }
-                    .company-sub { font-size: 10pt; font-weight: bold; color: #003087; text-align: center; }
-                    .republic { font-size: 10.5pt; font-weight: bold; text-align: center; }
-                    .motto { font-size: 10.5pt; font-weight: bold; text-decoration: underline; text-align: center; }
-                    .date-line { text-align: right; font-style: italic; font-size: 10.5pt; margin: 10px 0 6px; }
+                    .company-name, .company-sub, .republic, .motto { font-size: 13pt; font-weight: bold; text-align: center; }
+                    .motto { text-decoration: underline; }
+                    .date-line { text-align: right; font-style: italic; font-size: 13pt; margin: 10px 0 6px; }
                     .title { text-align: center; font-size: 16pt; font-weight: bold; color: #000; margin: 14px 0 18px; text-transform: uppercase; }
-                    .section-label { font-weight: bold; font-size: 10.5pt; margin: 6px 0 2px; color: #003087; }
-                    .person-row { display: flex; font-size: 10.5pt; margin: 3px 0; }
+                    .section-label { font-weight: bold; font-size: 13pt; margin: 6px 0 2px; }
+                    .person-row { display: flex; font-size: 13pt; margin: 3px 0; }
                     .person-label { width: 120px; font-weight: bold; }
                     .person-name { flex: 1; }
                     .person-right { width: 250px; display: flex; gap: 12px; }
                     .person-title-label { font-weight: bold; width: 70px; }
                     .person-title-val { flex: 1; }
                     .person-phone { width: 110px; text-align: right; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 10pt; }
-                    th { background: #f2f2f2; color: #000; border: 1px solid #000; padding: 5px 4px; text-align: center; font-weight: bold; }
-                    td { border: 1px solid #888; padding: 4px; vertical-align: middle; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13pt; }
+                    th { background: #fff; border: 1px solid #000; padding: 5px 4px; text-align: center; font-weight: bold; }
+                    td { border: 1px solid #000; padding: 4px; vertical-align: middle; }
                     td.center { text-align: center; }
                     tr.total-row td { font-weight: bold; background: #f0f0f0; }
-                    .note-row { font-style: italic; font-size: 9.5pt; margin-top: 8px; border-top: 1px solid #ccc; padding-top: 6px; }
+                    .note-row { font-style: italic; font-size: 13pt; margin-top: 8px; border-top: 1px solid #000; padding-top: 6px; text-align: justify; }
                     .sig-grid { display: flex; justify-content: space-between; margin-top: 30px; text-align: center; }
                     .sig-box { width: 30%; }
-                    .sig-title { font-weight: bold; font-size: 11pt; }
-                    .sig-note { font-style: italic; font-size: 9.5pt; margin-top: 2px; }
+                    .sig-title, .sig-note { font-size: 13pt; }
+                    .sig-title { font-weight: bold; }
+                    .sig-note { font-style: italic; margin-top: 2px; }
                     .sig-space { height: 55px; }
                 </style>
             </head>
@@ -269,7 +270,7 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                         </div>
 
                         {/* Title */}
-                        <div style={{ textAlign: 'center', fontSize: '16pt', fontWeight: 'bold', color: '#000', margin: '14px 0 18px', textTransform: 'uppercase' }}>
+                        <div className="document-title" style={{ textAlign: 'center', fontSize: '16pt', fontWeight: 'bold', color: '#000', margin: '14px 0 18px', textTransform: 'uppercase' }}>
                             {title}
                         </div>
 
