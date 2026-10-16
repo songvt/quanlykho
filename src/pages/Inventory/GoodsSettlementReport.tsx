@@ -210,7 +210,7 @@ const GoodsSettlementReport: React.FC = () => {
             }
         };
         fetchInitialData();
-    }, [monthKey]);
+    }, [monthKey]); // eslint-disable-line react-hooks/exhaustive-deps -- Initial loading is intentionally keyed only by accounting month.
 
     // Nhận products làm tham số để dùng ngay khi allProducts chưa được set vào state
     const loadPreviousBalances = async (productsList?: any[]) => {
@@ -548,7 +548,7 @@ const GoodsSettlementReport: React.FC = () => {
             if (idxB !== -1) return 1;
             return a.item_name.localeCompare(b.item_name, 'vi');
         });
-    }, [inventoryReportData, detailedOutboundData, selectedMonth, historicalData, initialBalances, allProducts, isInitialLoading]);
+    }, [inventoryReportData, detailedOutboundData, monthKey, historicalData, initialBalances, allProducts, isInitialLoading]);
 
 
 

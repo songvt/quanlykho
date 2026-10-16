@@ -108,7 +108,7 @@ const ActionHistory: React.FC = () => {
 
     useEffect(() => {
         fetchData();
-    }, [tabValue]);
+    }, [tabValue]); // eslint-disable-line react-hooks/exhaustive-deps -- Refresh is intentionally driven by the selected tab.
 
     const exportAssetLogs = async () => {
         const workbook = new ExcelJS.Workbook();

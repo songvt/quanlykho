@@ -446,7 +446,7 @@ const KpiGrades = () => {
     // Load / Initialize KPI scores
     useEffect(() => {
         fetchKpiScores();
-    }, [kpiMonth, kpiYear, activeProfilesList]);
+    }, [kpiMonth, kpiYear, activeProfilesList]); // eslint-disable-line react-hooks/exhaustive-deps -- Reload scope is the period and source profiles.
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
     const [selectedReport, setSelectedReport] = useState<InfractionReport | null>(null);
@@ -769,7 +769,7 @@ const KpiGrades = () => {
                 };
             });
         }
-    }, [formData.violatorId, formData.clause, formData.description, activeProfilesList]);
+    }, [formData.violatorId, formData.clause, formData.description, activeProfilesList]); // eslint-disable-line react-hooks/exhaustive-deps -- Avoid overwriting manually edited template fields.
 
     // Manual optimize trigger
     const handleAutoGenerateTexts = () => {
@@ -824,7 +824,7 @@ const KpiGrades = () => {
                 setFormData(prev => ({ ...prev, inspectorId: activeProfilesList[0].id }));
             }
         }
-    }, [profile, activeProfilesList]);
+    }, [profile, activeProfilesList]); // eslint-disable-line react-hooks/exhaustive-deps -- Default inspector is set from identity/profile changes only.
 
     // ── Save KPI Grades ───────────────────────────────────────────────────────
     const handleSaveKpiScores = async () => {

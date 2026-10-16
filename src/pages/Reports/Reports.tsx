@@ -1083,7 +1083,7 @@ const Reports = () => {
         }
 
         return sections;
-    }, [isAdmin, products, stockMap, detailedStockMap, transactions, returns, employees]);
+    }, [isAdmin, products, stockMap, detailedStockMap, transactions, returns, employees]); // eslint-disable-line react-hooks/exhaustive-deps -- Export handlers are event-only and must not rebuild the report card model.
 
     const ReportCard = ({ title, desc, icon, color, category: customCategory, onClick }: any) => {
         const themeColor = color || 'primary';

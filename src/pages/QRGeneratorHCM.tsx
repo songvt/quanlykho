@@ -327,7 +327,7 @@ const QRGeneratorHCM = () => {
         } catch (e) {
             console.error('Lỗi lưu log:', e);
         }
-    }, [notifyError, dataRows, totalQRCodes, groupedBoxes, currentUser]);
+    }, [notifyError, dataRows, totalQRCodes, groupedBoxes, currentUser, printStyles]);
 
     const handleExportPDF = async () => {
         if (!dataRows.length) return;

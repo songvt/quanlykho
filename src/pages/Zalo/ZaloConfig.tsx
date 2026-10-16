@@ -23,7 +23,7 @@ const ZaloConfig: React.FC = () => {
 
     useEffect(() => {
         fetchConfig();
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps -- Load configuration once on mount.
 
     const fetchConfig = async () => {
         try {

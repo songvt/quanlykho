@@ -82,7 +82,7 @@ const MainLayout: React.FC = () => {
             clearInterval(progressInterval);
             clearTimeout(closeTimeout);
         };
-    }, [announcementOpen, announcement]);
+    }, [announcementOpen, announcement]); // eslint-disable-line react-hooks/exhaustive-deps -- Prevent timer reset when close handler is recreated.
 
     const handleCloseAnnouncement = () => {
         if (announcement && profile) {

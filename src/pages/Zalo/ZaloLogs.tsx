@@ -24,7 +24,7 @@ const ZaloLogs: React.FC = () => {
 
     useEffect(() => {
         fetchLogs();
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps -- Load the log snapshot once on mount.
 
     const fetchLogs = async () => {
         setLoading(true);

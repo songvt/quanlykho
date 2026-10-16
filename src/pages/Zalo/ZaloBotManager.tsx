@@ -103,7 +103,7 @@ const ZaloBotManager: React.FC = () => {
             }, 15000); // 15 seconds
         }
         return () => clearInterval(interval);
-    }, [autoSync, syncingAll, tokens]);
+    }, [autoSync, syncingAll, tokens]); // eslint-disable-line react-hooks/exhaustive-deps -- Polling lifecycle follows sync state and token changes.
 
     const fetchData = async () => {
         setLoading(true);

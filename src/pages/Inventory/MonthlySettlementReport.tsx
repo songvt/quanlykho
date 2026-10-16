@@ -146,7 +146,7 @@ const MonthlySettlementReport: React.FC = () => {
             }
         };
         fetchInitialData();
-    }, [monthKey]);
+    }, [monthKey]); // eslint-disable-line react-hooks/exhaustive-deps -- Initial loading is intentionally keyed only by accounting month.
 
     // Fetch previous month's closing balance làm đầu kỳ tháng hiện tại
     // Nhận products làm tham số để dùng ngay khi allProducts chưa được set vào state
@@ -415,7 +415,7 @@ const MonthlySettlementReport: React.FC = () => {
             }
             return row;
         });
-    }, [inventoryReportData, detailedOutboundData, initialBalances, selectedMonth, historicalData, allProducts, isInitialLoading]);
+    }, [inventoryReportData, detailedOutboundData, initialBalances, monthKey, historicalData, allProducts, isInitialLoading]);
 
     const missingProductsWarning = useMemo(() => {
         const missing = new Set<string>();

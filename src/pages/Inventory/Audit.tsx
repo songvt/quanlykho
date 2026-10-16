@@ -122,7 +122,7 @@ const Audit: React.FC = () => {
                 setTitle(`Phiếu kiểm kê ngày ${new Date().toLocaleDateString('vi-VN')}${empName}`);
             }
         }
-    }, [products, stockMap, detailedStockMap, selectedEmployeeId, targetDistrict]);
+    }, [products, stockMap, detailedStockMap, selectedEmployeeId, targetDistrict]); // eslint-disable-line react-hooks/exhaustive-deps -- Preserve entered title and counted quantities during grid recalculation.
 
     const handleQtyChange = (productId: string, value: string) => {
         const val = value === '' ? '' : Number(value);

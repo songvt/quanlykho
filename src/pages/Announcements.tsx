@@ -68,7 +68,7 @@ const Announcements: React.FC = () => {
 
     useEffect(() => {
         fetchAnnouncements();
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps -- This admin list intentionally loads once on mount.
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

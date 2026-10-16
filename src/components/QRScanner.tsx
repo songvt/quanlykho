@@ -180,7 +180,7 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
             isCurrent = false;
             clearTimeout(timer);
         };
-    }, [selectedCameraId, loading, error]);
+    }, [selectedCameraId, loading, error]); // eslint-disable-line react-hooks/exhaustive-deps -- Callback changes must not restart the active camera scanner.
 
     const handleRetry = () => {
         window.location.reload();

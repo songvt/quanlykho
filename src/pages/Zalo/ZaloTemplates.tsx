@@ -23,7 +23,7 @@ const ZaloTemplates: React.FC = () => {
 
     useEffect(() => {
         fetchTemplates();
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps -- Load templates once on mount.
 
     const fetchTemplates = async () => {
         setLoading(true);

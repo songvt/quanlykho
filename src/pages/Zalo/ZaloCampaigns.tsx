@@ -21,7 +21,7 @@ const ZaloCampaigns: React.FC = () => {
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps -- Load campaign inputs once on mount.
 
     const fetchData = async () => {
         setLoading(true);
