@@ -70,7 +70,10 @@ const AssetList = () => {
         assetId: string;
         status: string;
         description: string;
-    }>({ open: false, assetId: '', status: '', description: '' });
+        managerCode: string;
+        managerName: string;
+        serialNumber: string;
+    }>({ open: false, assetId: '', status: '', description: '', managerCode: '', managerName: '', serialNumber: '' });
 
     const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string }>({ open: false, id: '' });
     const [searchEmployee, setSearchEmployee] = useState('');
@@ -362,6 +365,18 @@ const AssetList = () => {
         }
     };
 
+    const openAssetEditor = (asset: Asset) => {
+        setEditStatusModal({
+            open: true,
+            assetId: asset.id,
+            status: asset.status || '',
+            description: asset.status_description || '',
+            managerCode: asset.manager_code || '',
+            managerName: asset.manager_name || '',
+            serialNumber: asset.serial_number || '',
+        });
+    };
+
     const handleEditStatusSubmit = async () => {
         if (editStatusModal.status === 'Hỏng' && !editStatusModal.description.trim()) {
             notifyError('Vui lòng nhập mô tả chi tiết tình trạng khi báo hỏng!');
@@ -373,12 +388,15 @@ const AssetList = () => {
                 updatedAsset: {
                     id: editStatusModal.assetId,
                     status: editStatusModal.status,
-                    status_description: editStatusModal.description
+                    status_description: editStatusModal.description,
+                    manager_code: editStatusModal.managerCode.trim(),
+                    manager_name: editStatusModal.managerName.trim(),
+                    serial_number: editStatusModal.serialNumber.trim(),
                 },
                 performedBy: profile?.full_name
             })).unwrap();
-            success('Đã cập nhật tình trạng tài sản!');
-            setEditStatusModal({ open: false, assetId: '', status: '', description: '' });
+            success('Đã cập nhật thông tin tài sản!');
+            setEditStatusModal({ open: false, assetId: '', status: '', description: '', managerCode: '', managerName: '', serialNumber: '' });
         } catch (err: any) {
             notifyError('Lỗi cập nhật: ' + err.message);
         }
@@ -574,12 +592,7 @@ const AssetList = () => {
                                         <IconButton
                                             size="small"
                                             color="primary"
-                                            onClick={() => setEditStatusModal({
-                                                open: true,
-                                                assetId: asset.id,
-                                                status: asset.status || '',
-                                                description: asset.status_description || ''
-                                            })}
+                                            onClick={() => openAssetEditor(asset)}
                                         >
                                             <EditIcon fontSize="small" />
                                         </IconButton>
@@ -677,12 +690,7 @@ const AssetList = () => {
                                             <IconButton 
                                                 size="small" 
                                                 color="primary" 
-                                                onClick={() => setEditStatusModal({ 
-                                                    open: true, 
-                                                    assetId: asset.id, 
-                                                    status: asset.status || '',
-                                                    description: asset.status_description || ''
-                                                })}
+                                                onClick={() => openAssetEditor(asset)}
                                             >
                                                 <EditIcon fontSize="small" />
                                             </IconButton>
@@ -873,10 +881,49 @@ const AssetList = () => {
                 </DialogActions>
             </Dialog>
 
-            {/* Edit Status Modal */}
+            {/* Asset Editor Modal */}
             <Dialog open={editStatusModal.open} onClose={() => setEditStatusModal({ ...editStatusModal, open: false })} maxWidth="xs" fullWidth>
-                <DialogTitle>Sửa tình trạng tài sản</DialogTitle>
+                <DialogTitle>Cập nhật thông tin tài sản</DialogTitle>
                 <DialogContent>
+                        <Autocomplete
+                            options={hrProfiles}
+                            getOptionLabel={(option) => `${option.full_name} (${option.id})`}
+                            value={hrProfiles.find(profileOption => profileOption.id === editStatusModal.managerCode) || null}
+                            onChange={(_, manager) => setEditStatusModal(previous => ({
+                                ...previous,
+                                managerCode: manager?.id || '',
+                                managerName: manager?.full_name || '',
+                            }))}
+                            loading={hrProfilesStatus === 'loading'}
+                            renderInput={(params) => (
+                                <TextField {...params} margin="dense" label="Chọn người quản lý" size="small" placeholder="Gõ tên hoặc mã nhân viên..." />
+                            )}
+                            sx={{ mt: 1 }}
+                        />
+                        <TextField
+                            margin="dense"
+                            label="Mã người quản lý"
+                            fullWidth
+                            size="small"
+                            value={editStatusModal.managerCode}
+                            onChange={(e) => setEditStatusModal({ ...editStatusModal, managerCode: e.target.value })}
+                        />
+                        <TextField
+                            margin="dense"
+                            label="Tên người quản lý"
+                            fullWidth
+                            size="small"
+                            value={editStatusModal.managerName}
+                            onChange={(e) => setEditStatusModal({ ...editStatusModal, managerName: e.target.value })}
+                        />
+                        <TextField
+                            margin="dense"
+                            label="Số serial"
+                            fullWidth
+                            size="small"
+                            value={editStatusModal.serialNumber}
+                            onChange={(e) => setEditStatusModal({ ...editStatusModal, serialNumber: e.target.value })}
+                        />
                         <TextField
                             select
                             margin="dense"
