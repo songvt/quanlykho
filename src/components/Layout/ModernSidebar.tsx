@@ -241,6 +241,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                             const canViewReports = hasAnyPermission(['assets.view', 'assets.manage', '*']);
                             const assetSubItems = [
                                 { text: 'Danh sách tài sản', path: '/assets', icon: <ListIcon size={18} /> },
+                                { text: 'In mã QR tài sản', path: '/assets/print-qr', icon: <QrCode size={18} /> },
                                 { text: 'Bàn giao CCDC-BHLĐ', path: '/assets/handover-bhl', icon: <ArrowRightLeft size={18} /> },
                                 { text: 'KCS thiết bị bảo hành', path: '/assets/kcs-warranty', icon: <FileSignature size={18} /> },
                                 ...(canViewReports ? [

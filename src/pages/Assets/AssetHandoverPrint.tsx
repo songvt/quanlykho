@@ -9,6 +9,7 @@ import PrintIcon from '@mui/icons-material/Print';
 import CloseIcon from '@mui/icons-material/Close';
 import type { Asset } from '../../types';
 import { formatPhone } from '../../utils/format';
+import { sortAssetsByNameAndUser } from '../../utils/assetSorting';
 
 interface HandoverInfo {
     giverName?: string;
@@ -48,6 +49,7 @@ interface BhlItem {
 const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets, handoverInfo, onPrint }) => {
     const printRef = useRef<HTMLDivElement>(null);
     const [templateType, setTemplateType] = useState<'default' | 'bhl'>('default');
+    const sortedAssets = sortAssetsByNameAndUser(assets);
 
     // State for the 7 protective equipment items
     const [bhlItems, setBhlItems] = useState<BhlItem[]>([
@@ -79,7 +81,7 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
     const qtyLabel = actionType === 'revoke' ? 'SL thu hồi' : actionType === 'transfer' ? 'SL điều chuyển' : 'SL bàn giao';
 
     const totalQty = templateType === 'default'
-        ? assets.reduce((sum, a) => sum + (a.quantity || 1), 0)
+        ? sortedAssets.reduce((sum, a) => sum + (a.quantity || 1), 0)
         : activeBhlItems.reduce((sum, item) => sum + item.quantity, 0);
 
     const handlePrint = () => {
@@ -346,8 +348,8 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                             </thead>
                             <tbody>
                                 {templateType === 'default' ? (
-                                    assets.length > 0 ? (
-                                        assets.map((a, i) => (
+                                    sortedAssets.length > 0 ? (
+                                        sortedAssets.map((a, i) => (
                                             <tr key={i}>
                                                 <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center', verticalAlign: 'middle' }}>{a.asset_code}</td>
                                                 <td style={{ border: '1px solid #888', padding: '4px', verticalAlign: 'middle' }}>{a.asset_name}</td>

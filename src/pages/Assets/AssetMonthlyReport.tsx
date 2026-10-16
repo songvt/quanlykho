@@ -178,7 +178,11 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                     department: Array.from(g.departments).join(', ') || '-'
                 };
             })
-            .filter(g => g.openingQty > 0 || g.increaseQty > 0 || g.decreaseQty > 0 || g.totalQty > 0);
+            .filter(g => g.openingQty > 0 || g.increaseQty > 0 || g.decreaseQty > 0 || g.totalQty > 0)
+            .sort((left, right) => (
+                (left.name || '').localeCompare(right.name || '', 'vi', { sensitivity: 'base', numeric: true })
+                || (left.type || '').localeCompare(right.type || '', 'vi', { sensitivity: 'base', numeric: true })
+            ));
     }, [allAssets, allLogs, reportType, month, year]);
 
     const summary = useMemo(() => {

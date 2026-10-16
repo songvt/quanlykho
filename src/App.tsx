@@ -48,6 +48,7 @@ const AssetDetailReport  = lazy(() => import('./pages/Assets/AssetDetailReport')
 const AssetQuarterlyReport = lazy(() => import('./pages/Assets/AssetQuarterlyReport'));
 const AssetBrokenReport  = lazy(() => import('./pages/Assets/AssetBrokenReport'));
 const AssetHandoverBhl   = lazy(() => import('./pages/Assets/AssetHandoverBhl'));
+const AssetQrPrint       = lazy(() => import('./pages/Assets/AssetQrPrint'));
 const KCSWarrantyList    = lazy(() => import('./pages/Assets/KCSWarranty/KCSWarrantyList'));
 const KCSWarrantyForm    = lazy(() => import('./pages/Assets/KCSWarranty/KCSWarrantyForm'));
 
@@ -131,6 +132,7 @@ function App() {
                                 <Route element={<ProtectedRoute allowedPermissions={['assets.view', 'assets.manage', 'assets.list_only', '*']} />}>
                                     <Route path="assets" element={<AssetList />} />
                                     <Route path="assets/handover-bhl" element={<AssetHandoverBhl />} />
+                                    <Route path="assets/print-qr" element={<AssetQrPrint />} />
                                     <Route path="assets/kcs-warranty" element={<KCSWarrantyList />} />
                                     <Route path="assets/kcs-warranty/new" element={<KCSWarrantyForm />} />
                                 </Route>

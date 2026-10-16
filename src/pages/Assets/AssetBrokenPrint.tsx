@@ -6,6 +6,7 @@ import {
 import PrintIcon from '@mui/icons-material/Print';
 import CloseIcon from '@mui/icons-material/Close';
 import type { Asset } from '../../types';
+import { sortAssetsByNameAndUser } from '../../utils/assetSorting';
 
 interface Props {
     open: boolean;
@@ -15,6 +16,7 @@ interface Props {
 
 const AssetBrokenPrint: React.FC<Props> = ({ open, onClose, assets }) => {
     const printRef = useRef<HTMLDivElement>(null);
+    const sortedAssets = sortAssetsByNameAndUser(assets);
 
     const now = new Date();
     const dateStr = `Tháng ${(now.getMonth() + 1).toString().padStart(2, '0')} năm ${now.getFullYear()}`;
@@ -203,7 +205,7 @@ const AssetBrokenPrint: React.FC<Props> = ({ open, onClose, assets }) => {
                             </tr>
                         </thead>
                         <tbody>
-                            {assets.map((asset, index) => (
+                            {sortedAssets.map((asset, index) => (
                                 <tr key={asset.id}>
                                     <td style={{ textAlign: 'center', border: '1px solid black', padding: '6px 4px' }}>{index + 1}</td>
                                     <td style={{ textAlign: 'center', border: '1px solid black', padding: '6px 4px' }}>{asset.asset_code}</td>

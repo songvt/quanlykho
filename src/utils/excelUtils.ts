@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { sortAssetsByNameAndUser } from './assetSorting';
 // Helper to remove Vietnamese tones
 export const removeVietnameseTones = (str: string) => {
     str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
@@ -1213,6 +1214,7 @@ export const exportHandoverHistory = async (history: any[], fileName: string) =>
 };
 
 export const exportAssetReport = async (assets: any[], reporterName: string = 'Admin') => {
+    const sortedAssets = sortAssetsByNameAndUser(assets);
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Bao_Cao_Tai_San', {
         pageSetup: {
@@ -1307,7 +1309,7 @@ export const exportAssetReport = async (assets: any[], reporterName: string = 'A
     let totalQty = 0;
     let totalVal = 0;
 
-    assets.forEach((item, index) => {
+    sortedAssets.forEach((item, index) => {
         const qty = Number(item.quantity) || 1;
         const price = Number(item.unit_price) || 0;
         const val = Number(item.total_value) || (qty * price);

@@ -16,6 +16,7 @@ import AssetBrokenPrint from './AssetBrokenPrint';
 import { exportStandardReport } from '../../utils/excelUtils';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { useNotification } from '../../contexts/NotificationContext';
+import { sortAssetsByNameAndUser } from '../../utils/assetSorting';
 
 const AssetBrokenReport = () => {
     const theme = useTheme();
@@ -62,13 +63,16 @@ const AssetBrokenReport = () => {
             });
         }
 
-        if (!searchTerm.trim()) return list;
-        const s = searchTerm.toLowerCase();
-        return list.filter(a => 
-            a.asset_code.toLowerCase().includes(s) ||
-            a.asset_name.toLowerCase().includes(s) ||
-            (a.user_employee_name || '').toLowerCase().includes(s)
-        );
+        if (searchTerm.trim()) {
+            const s = searchTerm.toLowerCase();
+            list = list.filter(a =>
+                a.asset_code.toLowerCase().includes(s) ||
+                a.asset_name.toLowerCase().includes(s) ||
+                (a.user_employee_name || '').toLowerCase().includes(s)
+            );
+        }
+
+        return sortAssetsByNameAndUser(list);
     }, [brokenAssets, searchTerm, categoryFilter]);
 
     const handleSelectAll = (checked: boolean) => {
@@ -82,11 +86,11 @@ const AssetBrokenReport = () => {
     };
 
     const selectedAssetsForPrint = useMemo(() => {
-        return assets.filter(a => selectedIds.includes(a.id));
+        return sortAssetsByNameAndUser(assets.filter(a => selectedIds.includes(a.id)));
     }, [assets, selectedIds]);
 
     const handleExportExcel = async () => {
-        const dataToExport = selectedIds.length > 0 ? selectedAssetsForPrint : filteredAssets;
+        const dataToExport = sortAssetsByNameAndUser(selectedIds.length > 0 ? selectedAssetsForPrint : filteredAssets);
         
         const cols = [
             { header: 'STT', key: 'stt', width: 6, align: 'center' as const },

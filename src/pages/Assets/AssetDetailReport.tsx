@@ -10,6 +10,7 @@ import ExcelJS from 'exceljs';
 import { fetchAssets, fetchAssetLogs } from '../../store/slices/assetsSlice';
 import type { AppDispatch, RootState } from '../../store';
 import type { Asset } from '../../types';
+import { sortAssetsByNameAndUser } from '../../utils/assetSorting';
 
 interface Props {
     reportType: 'CCDC' | 'TBVP';
@@ -35,7 +36,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
     const printRef = useRef<HTMLDivElement>(null);
 
     const assets = useMemo(() => {
-        return allAssets.filter((a: Asset) => {
+        return sortAssetsByNameAndUser(allAssets.filter((a: Asset) => {
             const typeCode = (a.asset_type || '').trim().toUpperCase();
             const grpCode  = (a.asset_group || '').trim().toUpperCase();
             const isMatch = reportType === 'CCDC'
@@ -60,7 +61,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                 }
             }
             return true;
-        });
+        }));
     }, [allAssets, reportType, month, year]);
 
     const assetIncreasesDecreases = useMemo(() => {

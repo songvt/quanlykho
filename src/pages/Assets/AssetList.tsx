@@ -29,6 +29,7 @@ import type { Asset } from '../../types';
 import TableSkeleton from '../../components/Common/TableSkeleton';
 import AssetHandoverPrint from './AssetHandoverPrint';
 import { GoogleSheetService } from '../../services/GoogleSheetService';
+import { sortAssetsByNameAndUser } from '../../utils/assetSorting';
 
 const AssetList = () => {
     const theme = useTheme();
@@ -86,7 +87,7 @@ const AssetList = () => {
     }, [status, hrProfilesStatus, dispatch]);
 
     const handleSelectAll = (checked: boolean) => {
-        if (checked) setSelectedIds(assets.map(a => a.id));
+        if (checked) setSelectedIds(filteredAssets.map(a => a.id));
         else setSelectedIds([]);
     };
 
@@ -112,15 +113,18 @@ const AssetList = () => {
             });
         }
 
-        if (!searchEmployee.trim()) return list;
-        const s = searchEmployee.toLowerCase();
-        return list.filter(a => 
-            (a.user_employee_name || '').toLowerCase().includes(s) ||
-            (a.manager_name || '').toLowerCase().includes(s) ||
-            (a.asset_name || '').toLowerCase().includes(s) ||
-            (a.status || '').toLowerCase().includes(s) ||
-            (a.asset_code || '').toLowerCase().includes(s)
-        );
+        if (searchEmployee.trim()) {
+            const s = searchEmployee.toLowerCase();
+            list = list.filter(a =>
+                (a.user_employee_name || '').toLowerCase().includes(s) ||
+                (a.manager_name || '').toLowerCase().includes(s) ||
+                (a.asset_name || '').toLowerCase().includes(s) ||
+                (a.status || '').toLowerCase().includes(s) ||
+                (a.asset_code || '').toLowerCase().includes(s)
+            );
+        }
+
+        return sortAssetsByNameAndUser(list);
     }, [assets, searchEmployee, categoryFilter]);
 
     const handlePrintByEmployee = () => {
@@ -338,7 +342,7 @@ const AssetList = () => {
             success(`Đã xử lý thành công ${selectedIds.length} tài sản!`);
 
             // Open handover print dialog
-            const selectedAssets = assets.filter(a => selectedIds.includes(a.id));
+            const selectedAssets = sortAssetsByNameAndUser(assets.filter(a => selectedIds.includes(a.id)));
             setHandoverPrint({
                 open: true,
                 type: actionModal.type,
