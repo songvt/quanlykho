@@ -120,7 +120,6 @@ const AssetList = () => {
             const s = searchEmployee.toLowerCase();
             list = list.filter(a =>
                 (a.user_employee_name || '').toLowerCase().includes(s) ||
-                (a.manager_name || '').toLowerCase().includes(s) ||
                 (a.asset_name || '').toLowerCase().includes(s) ||
                 (a.status || '').toLowerCase().includes(s) ||
                 (a.asset_code || '').toLowerCase().includes(s)
@@ -131,18 +130,33 @@ const AssetList = () => {
     }, [assets, searchEmployee, categoryFilter]);
 
     const handlePrintByEmployee = () => {
-        if (!searchEmployee.trim()) {
+        const employeeSearch = searchEmployee.trim();
+        if (!employeeSearch) {
             notifyError('Vui lòng nhập tên nhân viên.');
             return;
         }
+
+        // The list search is intentionally broad (it also includes manager name),
+        // but a handover record must contain only assets assigned to its receiver.
+        const normalizedEmployeeSearch = employeeSearch.toLocaleLowerCase('vi-VN');
+        const employeeAssets = filteredAssets.filter(asset =>
+            (asset.user_employee_name || '').toLocaleLowerCase('vi-VN').includes(normalizedEmployeeSearch)
+        );
+
+        if (employeeAssets.length === 0) {
+            notifyError(`Không tìm thấy tài sản đang được sử dụng bởi "${employeeSearch}".`);
+            return;
+        }
+
+        const receiver = employeeAssets[0];
         setHandoverPrint({
             open: true,
             type: 'allocate', // Default to handover style
-            assets: filteredAssets,
-            receiverName: searchEmployee.trim(),
-            receiverCode: filteredAssets[0]?.user_employee_code || '',
-            receiverDept: filteredAssets[0]?.location_name || '',
-            receiverTitle: filteredAssets[0]?.user_type || '',
+            assets: employeeAssets,
+            receiverName: receiver.user_employee_name || employeeSearch,
+            receiverCode: receiver.user_employee_code || '',
+            receiverDept: receiver.location_name || '',
+            receiverTitle: receiver.user_type || '',
         });
     };
 
@@ -509,7 +523,7 @@ const AssetList = () => {
             {/* Search + selection info */}
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} mb={2} alignItems={{ sm: 'center' }}>
                 <TextField
-                    placeholder="Tìm theo tên TS, tình trạng, nhân viên..."
+                    placeholder="Tìm theo người sử dụng, tên/mã TS, tình trạng..."
                     size="small"
                     fullWidth={isMobile}
                     sx={{ width: isMobile ? '100%' : 350 }}
