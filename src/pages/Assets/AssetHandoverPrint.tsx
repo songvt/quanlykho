@@ -131,7 +131,7 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                     .sig-title, .sig-note { font-size: 13pt; }
                     .sig-title { font-weight: bold; }
                     .sig-note { font-style: italic; margin-top: 2px; }
-                    .sig-space { height: 45px; }
+                    .sig-space { height: 70px; }
                     .handover-note-header { white-space: nowrap; }
                 </style>
             </head>
@@ -419,19 +419,19 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                             <div className="sig-box" style={{ width: '30%' }}>
                                 <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>BÊN GIAO</div>
                                 <div style={{ fontStyle: 'italic', fontSize: '9.5pt', marginTop: 2 }}>(Ký, ghi rõ họ tên)</div>
-                                <div className="sig-space" style={{ height: 45 }}></div>
+                                <div className="sig-space" style={{ height: 70 }}></div>
                                 <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>{handoverInfo.giverName2 || ''}</div>
                             </div>
                             <div className="sig-box" style={{ width: '30%' }}>
                                 <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>BÊN NHẬN</div>
                                 <div style={{ fontStyle: 'italic', fontSize: '9.5pt', marginTop: 2 }}>(Ký, ghi rõ họ tên)</div>
-                                <div className="sig-space" style={{ height: 45 }}></div>
+                                <div className="sig-space" style={{ height: 70 }}></div>
                                 <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>{handoverInfo.receiverName || ''}</div>
                             </div>
                             <div className="sig-box" style={{ width: '30%' }}>
                                 <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>GIÁM ĐỐC TRUNG TÂM</div>
                                 <div style={{ fontStyle: 'italic', fontSize: '9.5pt', marginTop: 2 }}>(Ký, ghi rõ họ tên)</div>
-                                <div className="sig-space" style={{ height: 45 }}></div>
+                                <div className="sig-space" style={{ height: 70 }}></div>
                                 <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>{handoverInfo.giverName || ''}</div>
                             </div>
                         </div>
