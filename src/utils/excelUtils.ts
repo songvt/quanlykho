@@ -1082,6 +1082,45 @@ export const generateAssetTemplate = async () => {
     downloadAsDataUri(buffer, 'Mau_Import_Tai_San.xlsx');
 };
 
+// Mẫu tối giản dùng riêng cho màn hình in mã QR: chỉ cần một mã tài sản mỗi dòng.
+export const generateQrPrintTemplate = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Danh_sach_in_QR');
+
+    sheet.columns = [{ header: 'Mã tài sản', key: 'assetCode', width: 28 }];
+    const header = sheet.getRow(1);
+    header.height = 24;
+    header.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+    header.alignment = { horizontal: 'center', vertical: 'middle' };
+    header.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E4B9B' } };
+    header.getCell(1).border = {
+        top: { style: 'thin' }, left: { style: 'thin' },
+        bottom: { style: 'thin' }, right: { style: 'thin' },
+    };
+
+    const sample = sheet.addRow({ assetCode: 'TS-2024-001' });
+    sample.font = { name: 'Arial', size: 10, italic: true, color: { argb: 'FF64748B' } };
+    sample.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFDE7' } };
+
+    for (let rowIndex = 3; rowIndex <= 102; rowIndex += 1) {
+        const row = sheet.getRow(rowIndex);
+        row.height = 18;
+        row.getCell(1).border = {
+            top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+            right: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+        };
+    }
+
+    sheet.getCell('A104').value = 'Nhập một mã tài sản trên mỗi dòng. Có thể xóa dòng ví dụ trước khi tải lên.';
+    sheet.getCell('A104').font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FF64748B' } };
+    sheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    downloadAsDataUri(buffer, 'Mau_danh_sach_in_ma_QR.xlsx');
+};
+
 export const exportHandoverHistory = async (history: any[], fileName: string) => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Lich_Su_Ban_Giao', {

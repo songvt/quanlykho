@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import DownloadIcon from '@mui/icons-material/Download';
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import PersonSearchIcon from '@mui/icons-material/PersonSearch';
 import PrintIcon from '@mui/icons-material/Print';
@@ -16,7 +17,7 @@ import type { AppDispatch, RootState } from '../../store';
 import type { Asset } from '../../types';
 import { fetchAssets } from '../../store/slices/assetsSlice';
 import { useNotification } from '../../contexts/NotificationContext';
-import { readExcelFile } from '../../utils/excelUtils';
+import { generateQrPrintTemplate, readExcelFile } from '../../utils/excelUtils';
 import { sortAssetsByNameAndUser } from '../../utils/assetSorting';
 
 const normalizeCode = (value: unknown) => String(value || '').trim().toLocaleUpperCase('vi');
@@ -169,6 +170,9 @@ const AssetQrPrint = () => {
                         <Button component="label" variant="outlined" startIcon={<CloudUploadIcon />}>
                             Chọn file Excel
                             <input hidden type="file" accept=".xlsx,.xls" onChange={handleImport} />
+                        </Button>
+                        <Button variant="text" startIcon={<DownloadIcon />} onClick={generateQrPrintTemplate}>
+                            Tải file mẫu
                         </Button>
                         <Typography variant="body2" color="text.secondary">File cần có cột <b>Mã tài sản</b>; mỗi dòng là một mã cần in.</Typography>
                     </Stack>
