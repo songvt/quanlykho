@@ -95,10 +95,12 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                 <meta charset="utf-8"/>
                 <title>Biên bản bàn giao</title>
                 <style>
-                    @page { size: A4 portrait; margin: 20mm 15mm 20mm 30mm; }
+                    @page { size: A4 portrait; margin: 12mm 12mm 12mm 16mm; }
                     * { box-sizing: border-box; }
-                    body { font-family: 'Times New Roman', Times, serif; font-size: 13pt; color: #000; margin: 0; padding: 0; line-height: 1.35; }
-                    body * { color: #000 !important; font-size: 13pt !important; }
+                    body { font-family: 'Times New Roman', Times, serif; font-size: 10.5pt; color: #000; margin: 0; padding: 0; line-height: 1.2; }
+                    /* Do not force a font size on every descendant: the table and signature
+                       use smaller sizes so the complete record stays on the A4 page. */
+                    body * { color: #000 !important; }
                     body .document-title { font-size: 16pt !important; }
                     .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
                     .header-left { width: 55%; display: flex; align-items: center; gap: 10px; }
@@ -116,18 +118,21 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                     .person-title-label { font-weight: bold; width: 70px; }
                     .person-title-val { flex: 1; }
                     .person-phone { width: 110px; text-align: right; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13pt; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                    thead { display: table-header-group; }
+                    tr { break-inside: avoid; page-break-inside: avoid; }
                     th { background: #fff; border: 1px solid #000; padding: 5px 4px; text-align: center; font-weight: bold; }
                     td { border: 1px solid #000; padding: 4px; vertical-align: middle; }
                     td.center { text-align: center; }
                     tr.total-row td { font-weight: bold; background: #f0f0f0; }
                     .note-row { font-style: italic; font-size: 13pt; margin-top: 8px; border-top: 1px solid #000; padding-top: 6px; text-align: justify; }
-                    .sig-grid { display: flex; justify-content: space-between; margin-top: 30px; text-align: center; }
+                    .sig-grid { display: flex; justify-content: space-between; margin-top: 16px; text-align: center; break-inside: avoid; page-break-inside: avoid; }
                     .sig-box { width: 30%; }
                     .sig-title, .sig-note { font-size: 13pt; }
                     .sig-title { font-weight: bold; }
                     .sig-note { font-style: italic; margin-top: 2px; }
-                    .sig-space { height: 55px; }
+                    .sig-space { height: 45px; }
+                    .handover-note-header { white-space: nowrap; }
                 </style>
             </head>
             <body>${content}</body>
@@ -324,9 +329,9 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                                             { label: 'Số lượng', w: '10%' },
                                             { label: 'Loại tài sản', w: '15%' },
                                             { label: 'Serial (nếu có)', w: '15%' },
-                                            { label: 'Ghi Chú', w: '10%' },
+                                            { label: 'Ghi Chú', w: '10%', className: 'handover-note-header' },
                                         ].map((h, i) => (
-                                            <th key={i} style={{ width: h.w, background: '#f2f2f2', color: '#000', border: '1px solid #000', padding: '5px 4px', textAlign: 'center', fontWeight: 'bold' }}>{h.label}</th>
+                                            <th key={i} className={h.className} style={{ width: h.w, background: '#f2f2f2', color: '#000', border: '1px solid #000', padding: '5px 4px', textAlign: 'center', fontWeight: 'bold' }}>{h.label}</th>
                                         ))}
                                     </tr>
                                 ) : (
@@ -339,9 +344,9 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                                             { label: 'Số lượng định mức', w: '12%' },
                                             { label: qtyLabel, w: '10%' },
                                             { label: 'Quy cách, TCKT', w: '20%' },
-                                            { label: 'Ghi chú', w: '10%' },
+                                            { label: 'Ghi chú', w: '10%', className: 'handover-note-header' },
                                         ].map((h, i) => (
-                                            <th key={i} style={{ width: h.w, background: '#f2f2f2', color: '#000', border: '1px solid #000', padding: '5px 4px', textAlign: 'center', fontWeight: 'bold' }}>{h.label}</th>
+                                            <th key={i} className={h.className} style={{ width: h.w, background: '#f2f2f2', color: '#000', border: '1px solid #000', padding: '5px 4px', textAlign: 'center', fontWeight: 'bold' }}>{h.label}</th>
                                         ))}
                                     </tr>
                                 )}
@@ -410,23 +415,23 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                         </div>
 
                         {/* Signatures */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 30, textAlign: 'center' }}>
-                            <div style={{ width: '30%' }}>
+                        <div className="sig-grid" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16, textAlign: 'center' }}>
+                            <div className="sig-box" style={{ width: '30%' }}>
                                 <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>BÊN GIAO</div>
                                 <div style={{ fontStyle: 'italic', fontSize: '9.5pt', marginTop: 2 }}>(Ký, ghi rõ họ tên)</div>
-                                <div style={{ height: 55 }}></div>
+                                <div className="sig-space" style={{ height: 45 }}></div>
                                 <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>{handoverInfo.giverName2 || ''}</div>
                             </div>
-                            <div style={{ width: '30%' }}>
+                            <div className="sig-box" style={{ width: '30%' }}>
                                 <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>BÊN NHẬN</div>
                                 <div style={{ fontStyle: 'italic', fontSize: '9.5pt', marginTop: 2 }}>(Ký, ghi rõ họ tên)</div>
-                                <div style={{ height: 55 }}></div>
+                                <div className="sig-space" style={{ height: 45 }}></div>
                                 <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>{handoverInfo.receiverName || ''}</div>
                             </div>
-                            <div style={{ width: '30%' }}>
+                            <div className="sig-box" style={{ width: '30%' }}>
                                 <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>GIÁM ĐỐC TRUNG TÂM</div>
                                 <div style={{ fontStyle: 'italic', fontSize: '9.5pt', marginTop: 2 }}>(Ký, ghi rõ họ tên)</div>
-                                <div style={{ height: 55 }}></div>
+                                <div className="sig-space" style={{ height: 45 }}></div>
                                 <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>{handoverInfo.giverName || ''}</div>
                             </div>
                         </div>
