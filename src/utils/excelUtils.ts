@@ -1121,6 +1121,55 @@ export const generateQrPrintTemplate = async () => {
     downloadAsDataUri(buffer, 'Mau_danh_sach_in_ma_QR.xlsx');
 };
 
+export const exportPeriodicAssetAuditReport = async (records: any[]) => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Chi_tiet_kiem_ke');
+    const columns = [
+        ['STT', 7], ['THỜI GIAN KIỂM KÊ', 23], ['MÃ TÀI SẢN', 18], ['TÊN TÀI SẢN', 34],
+        ['TÌNH TRẠNG', 18], ['VỊ TRÍ', 24], ['NGƯỜI SỬ DỤNG', 24], ['NGƯỜI QUẢN LÝ', 24],
+        ['NGƯỜI KIỂM KÊ', 24], ['GHI CHÚ', 32],
+    ] as const;
+    sheet.columns = columns.map(([, width]) => ({ width }));
+    sheet.mergeCells(1, 1, 1, columns.length);
+    const title = sheet.getCell('A1');
+    title.value = 'BÁO CÁO CHI TIẾT KIỂM KÊ TÀI SẢN';
+    title.font = { name: 'Times New Roman', size: 16, bold: true, color: { argb: 'FF1E4B9B' } };
+    title.alignment = { horizontal: 'center', vertical: 'middle' };
+    sheet.getRow(1).height = 30;
+    sheet.mergeCells(2, 1, 2, columns.length);
+    const subtitle = sheet.getCell('A2');
+    subtitle.value = `Thời gian xuất: ${new Date().toLocaleString('vi-VN')} | Số bản ghi: ${records.length}`;
+    subtitle.font = { name: 'Times New Roman', size: 10, italic: true };
+    subtitle.alignment = { horizontal: 'center' };
+    sheet.addRow([]);
+    const headerRow = sheet.addRow(columns.map(([header]) => header));
+    headerRow.height = 28;
+    headerRow.eachCell(cell => {
+        cell.font = { name: 'Times New Roman', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E4B9B' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    });
+    records.forEach((record, index) => {
+        const row = sheet.addRow([
+            index + 1, record.checked_at ? new Date(record.checked_at).toLocaleString('vi-VN') : '', record.asset_code || '',
+            record.asset_name || '', record.status || '', record.location_name || '', record.user_employee_name || '',
+            record.manager_name || '', record.checked_by || '', record.notes || '',
+        ]);
+        row.height = 22;
+        row.eachCell((cell, cellIndex) => {
+            cell.font = { name: 'Times New Roman', size: 10 };
+            cell.alignment = { horizontal: cellIndex === 1 ? 'center' : 'left', vertical: 'middle', wrapText: true };
+            cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        });
+    });
+    sheet.views = [{ state: 'frozen', ySplit: 4 }];
+    sheet.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+    const buffer = await workbook.xlsx.writeBuffer();
+    const date = new Date();
+    downloadAsDataUri(buffer, `Bao_cao_chi_tiet_kiem_ke_${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}.xlsx`);
+};
+
 export const exportHandoverHistory = async (history: any[], fileName: string) => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Lich_Su_Ban_Giao', {
@@ -1289,6 +1338,7 @@ export const exportAssetReport = async (assets: any[], reporterName: string = 'A
         { header: 'TÌNH TRẠNG', key: 'status', width: 15, align: 'center' },
         { header: 'VỊ TRÍ', key: 'location_name', width: 22, align: 'left' },
         { header: 'NGƯỜI SỬ DỤNG', key: 'user_employee_name', width: 22, align: 'left' },
+        { header: 'NGƯỜI QUẢN LÝ', key: 'manager_name', width: 22, align: 'left' },
         { header: 'PHÒNG BAN', key: 'user_department_name', width: 25, align: 'left' },
         { header: 'SỐ SERIAL', key: 'serial_number', width: 18, align: 'left' },
         { header: 'NGÀY MUA', key: 'purchase_date', width: 14, align: 'center' }
@@ -1308,18 +1358,18 @@ export const exportAssetReport = async (assets: any[], reporterName: string = 'A
     sheet.getCell('A2').alignment = { horizontal: 'left' };
 
     // National Title
-    sheet.mergeCells('H1:N1');
+    sheet.mergeCells('H1:O1');
     sheet.getCell('H1').value = "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM";
     sheet.getCell('H1').font = fontBoldBlue;
     sheet.getCell('H1').alignment = { horizontal: 'center' };
 
-    sheet.mergeCells('H2:N2');
+    sheet.mergeCells('H2:O2');
     sheet.getCell('H2').value = "Độc lập - Tự do - Hạnh phúc";
     sheet.getCell('H2').font = { ...fontBoldBlue, size: 10, italic: true };
     sheet.getCell('H2').alignment = { horizontal: 'center' };
 
     // Report Title
-    sheet.mergeCells('A4:N4');
+    sheet.mergeCells('A4:O4');
     sheet.getCell('A4').value = "BÁO CÁO CHI TIẾT DANH SÁCH TÀI SẢN";
     sheet.getCell('A4').font = fontTitle;
     sheet.getCell('A4').alignment = { horizontal: 'center', vertical: 'middle' };
@@ -1327,7 +1377,7 @@ export const exportAssetReport = async (assets: any[], reporterName: string = 'A
 
     // Date
     const dateObj = new Date();
-    sheet.mergeCells('A5:N5');
+    sheet.mergeCells('A5:O5');
     sheet.getCell('A5').value = `Ngày ${dateObj.getDate()} tháng ${dateObj.getMonth() + 1} năm ${dateObj.getFullYear()}`;
     sheet.getCell('A5').font = { name: 'Times New Roman', size: 11, italic: true, color: { argb: 'FF0070C0' } };
     sheet.getCell('A5').alignment = { horizontal: 'center' };
@@ -1368,6 +1418,7 @@ export const exportAssetReport = async (assets: any[], reporterName: string = 'A
             item.status || 'Mới',
             item.location_name || '',
             item.user_employee_name || '-',
+            item.manager_name || '-',
             item.user_department_name || '-',
             item.serial_number || '',
             item.purchase_date ? new Date(item.purchase_date).toLocaleDateString('vi-VN') : ''
@@ -1390,7 +1441,7 @@ export const exportAssetReport = async (assets: any[], reporterName: string = 'A
 
     // Summary Row
     const totalRow = sheet.addRow([
-        'TỔNG CỘNG', '', '', '', totalQty, '', '', totalVal, '', '', '', '', '', ''
+        'TỔNG CỘNG', '', '', '', totalQty, '', '', totalVal, '', '', '', '', '', '', ''
     ]);
     sheet.mergeCells(`A${totalRow.number}:D${totalRow.number}`);
     totalRow.height = 24;
@@ -1420,10 +1471,10 @@ export const exportAssetReport = async (assets: any[], reporterName: string = 'A
     sheet.getCell(lastRow, 1).font = { ...fontNormal, bold: true };
     sheet.getCell(lastRow, 1).alignment = { horizontal: 'center' };
 
-    sheet.mergeCells(lastRow, 11, lastRow, 14);
-    sheet.getCell(lastRow, 11).value = 'Người lập biểu';
-    sheet.getCell(lastRow, 11).font = { ...fontNormal, bold: true };
-    sheet.getCell(lastRow, 11).alignment = { horizontal: 'center' };
+    sheet.mergeCells(lastRow, 12, lastRow, 15);
+    sheet.getCell(lastRow, 12).value = 'Người lập biểu';
+    sheet.getCell(lastRow, 12).font = { ...fontNormal, bold: true };
+    sheet.getCell(lastRow, 12).alignment = { horizontal: 'center' };
 
     const nameRow = lastRow + 4;
     sheet.mergeCells(nameRow, 1, nameRow, 4);
@@ -1431,10 +1482,10 @@ export const exportAssetReport = async (assets: any[], reporterName: string = 'A
     sheet.getCell(nameRow, 1).font = { ...fontNormal, bold: true };
     sheet.getCell(nameRow, 1).alignment = { horizontal: 'center' };
 
-    sheet.mergeCells(nameRow, 11, nameRow, 14);
-    sheet.getCell(nameRow, 11).value = reporterName.toUpperCase();
-    sheet.getCell(nameRow, 11).font = { ...fontNormal, bold: true };
-    sheet.getCell(nameRow, 11).alignment = { horizontal: 'center' };
+    sheet.mergeCells(nameRow, 12, nameRow, 15);
+    sheet.getCell(nameRow, 12).value = reporterName.toUpperCase();
+    sheet.getCell(nameRow, 12).font = { ...fontNormal, bold: true };
+    sheet.getCell(nameRow, 12).alignment = { horizontal: 'center' };
 
     const buffer = await workbook.xlsx.writeBuffer();
     downloadAsDataUri(buffer, `Bao_Cao_Chi_Tiet_Tai_San_${dateObj.getFullYear()}${String(dateObj.getMonth() + 1).padStart(2, '0')}${String(dateObj.getDate()).padStart(2, '0')}`);

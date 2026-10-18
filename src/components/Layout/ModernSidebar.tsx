@@ -126,6 +126,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
     const { hasPermission, hasAnyPermission } = usePermission();
 
     const [expandAssets, setExpandAssets] = useState(false);
+    const [expandPeriodicAudit, setExpandPeriodicAudit] = useState(false);
     const [expandXnk, setExpandXnk] = useState(false);
     const [expandSettlement, setExpandSettlement] = useState(false);
     const [expandAdminHr, setExpandAdminHr] = useState(false);
@@ -135,6 +136,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
 
     useEffect(() => {
         if (location.pathname.startsWith('/assets')) setExpandAssets(true);
+        if (location.pathname.startsWith('/assets/periodic-audit')) setExpandPeriodicAudit(true);
         if (['/inventory-report', '/detailed-outbound-report', '/monthly-settlement', '/goods-settlement', '/stock-summary-report', '/warehouse-layout', '/stock-map'].includes(location.pathname)) setExpandXnk(true);
 
         if (['/employees', '/attendance', '/attendance-summary', '/admin-requests', '/kpi-grades', '/payroll', '/bonus-penalty', '/payroll-settings', '/feedback-box'].includes(location.pathname)) setExpandAdminHr(true);
@@ -152,6 +154,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
         ...(profile?.role === 'admin' || (profile?.role === 'staff' && (!profile.permissions || profile.permissions.length === 0)) ? [
             { text: 'Trang chủ', icon: <LayoutDashboard size={20} color="#38bdf8" />, path: '/' }
         ] : []),
+        { text: 'Kiểm kê định kỳ', icon: <ClipboardList size={20} color="#a78bfa" />, path: '/assets/periodic-audit' },
         { text: 'Xuất nhập kho', icon: <Boxes size={20} color="#f59e0b" />, path: '/xnk-cdbr' },
         ...(hasAnyPermission(['assets.view', 'assets.manage', 'assets.list_only', '*']) ? [
             { text: 'Tài sản', icon: <BriefcaseBusiness size={20} color="#a78bfa" />, path: '/assets' }
@@ -242,6 +245,11 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                             const assetSubItems = [
                                 { text: 'Danh sách tài sản', path: '/assets', icon: <ListIcon size={18} /> },
                                 { text: 'In mã QR tài sản', path: '/assets/print-qr', icon: <QrCode size={18} /> },
+                                { text: 'Kiểm kê định kỳ', path: '', icon: <ClipboardList size={18} />, children: [
+                                    { text: 'Kiểm kê', path: '/assets/periodic-audit', icon: <ClipboardList size={16} /> },
+                                    { text: 'Chi tiết kiểm kê', path: '/assets/periodic-audit-details', icon: <FileSearch size={16} /> },
+                                    { text: 'Lịch sử kiểm kê', path: '/assets/periodic-audit-history', icon: <History size={16} /> },
+                                ] },
                                 { text: 'Bàn giao CCDC-BHLĐ', path: '/assets/handover-bhl', icon: <ArrowRightLeft size={18} /> },
                                 { text: 'KCS thiết bị bảo hành', path: '/assets/kcs-warranty', icon: <FileSignature size={18} /> },
                                 ...(canViewReports ? [
@@ -275,6 +283,26 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                     <Collapse in={expandAssets} timeout="auto" unmountOnExit>
                                         <List disablePadding sx={{ pl: 1.5, mb: 0.5, mt: 0.5 }}>
                                             {assetSubItems.map(sub => {
+                                                if ('children' in sub) {
+                                                    const auditActive = location.pathname.startsWith('/assets/periodic-audit');
+                                                    return <React.Fragment key={sub.text}>
+                                                        <ListItem disablePadding sx={{ mb: 0.5 }}>
+                                                            <ListItemButton onClick={() => setExpandPeriodicAudit(value => !value)} sx={subItemSx(auditActive)}>
+                                                                <ListItemIcon sx={{ minWidth: 32, color: auditActive ? '#a78bfa' : '#c4b5fd' }}>{sub.icon}</ListItemIcon>
+                                                                <ListItemText primary={sub.text} primaryTypographyProps={{ fontSize: '0.8rem', fontWeight: auditActive ? 600 : 400 }} />
+                                                                {expandPeriodicAudit ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                                            </ListItemButton>
+                                                        </ListItem>
+                                                        <Collapse in={expandPeriodicAudit} timeout="auto" unmountOnExit>
+                                                            <List disablePadding sx={{ pl: 2 }}>
+                                                                {(sub.children || []).map(child => {
+                                                                    const childActive = location.pathname === child.path;
+                                                                    return <ListItem key={child.path} disablePadding sx={{ mb: 0.5 }}><ListItemButton onClick={() => { navigate(child.path); if (isMobile) handleDrawerToggle(); }} sx={subItemSx(childActive)}><ListItemIcon sx={{ minWidth: 30, color: childActive ? '#a78bfa' : '#c4b5fd' }}>{child.icon}</ListItemIcon><ListItemText primary={child.text} primaryTypographyProps={{ fontSize: '0.76rem', fontWeight: childActive ? 600 : 400 }} /></ListItemButton></ListItem>;
+                                                                })}
+                                                            </List>
+                                                        </Collapse>
+                                                    </React.Fragment>;
+                                                }
                                                 const subActive = location.pathname === sub.path;
                                                 return (
                                                     <ListItem key={sub.path} disablePadding sx={{ mb: 0.5 }}>

@@ -681,6 +681,7 @@ const AssetList = () => {
                                 <TableCell><b>TÊN TÀI SẢN</b></TableCell>
                                 <TableCell><b>TÌNH TRẠNG</b></TableCell>
                                 <TableCell><b>NGƯỜI SỬ DỤNG</b></TableCell>
+                                <TableCell><b>NGƯỜI QUẢN LÝ</b></TableCell>
                                 <TableCell><b>PHÒNG BAN</b></TableCell>
                                 <TableCell align="center"><b>THAO TÁC</b></TableCell>
                             </TableRow>
@@ -698,6 +699,7 @@ const AssetList = () => {
                                     <TableCell>{asset.asset_name}</TableCell>
                                     <TableCell>{asset.status}</TableCell>
                                     <TableCell>{asset.user_employee_name || '-'}</TableCell>
+                                    <TableCell>{asset.manager_name || '-'}</TableCell>
                                     <TableCell>{asset.user_department_name || '-'}</TableCell>
                                     <TableCell align="center">
                                         <Stack direction="row" spacing={0.5} justifyContent="center">
@@ -721,7 +723,7 @@ const AssetList = () => {
                             ))}
                             {assets.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={7} align="center" sx={{ py: 3 }}>Chưa có tài sản nào.</TableCell>
+                                    <TableCell colSpan={8} align="center" sx={{ py: 3 }}>Chưa có tài sản nào.</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
