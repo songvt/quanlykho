@@ -57,13 +57,21 @@ CREATE TABLE inbound_transactions (
 CREATE TABLE outbound_transactions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   receiver_group TEXT,            -- NHOM_NHAN_HANG (Người/Đơn vị nhận)
+  group_name TEXT,                -- Tên nhóm/người nhận (tương thích giao diện)
+  receiver_name TEXT,             -- Tên người nhận
   product_id UUID REFERENCES products(id), -- MA_HANG
   serial_code TEXT,               -- SERIAL QR CODE
   quantity INTEGER NOT NULL,      -- SO_LUONG
   unit_price NUMERIC,             -- DON_GIA (Lúc xuất)
   total_price NUMERIC GENERATED ALWAYS AS (quantity * unit_price) STORED, -- THANH_TIEN
+  district TEXT,                  -- QUẬN/HUYỆN
+  item_status TEXT,               -- TRẠNG THÁI HÀNG
+  warehouse_type TEXT,            -- KHO XUẤT
+  user_id UUID REFERENCES auth.users(id),
   outbound_date TIMESTAMPTZ DEFAULT NOW(), -- NGAY_XUAT_KHO
-  created_by UUID REFERENCES auth.users(id)
+  created_by TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Row Level Security (RLS) Policies (Basic)

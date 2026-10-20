@@ -459,9 +459,14 @@ a,
   .printable-document,
   .printable-document * {
     font-family: 'Times New Roman', Times, serif !important;
-    font-size: 13pt !important;
     color: #000000 !important;
     border-color: #000000 !important;
+  }
+
+  /* Do not let the animated application backdrop leak into printed documents. */
+  body::before,
+  body::after {
+    display: none !important;
   }
   .printable-document td,
   .printable-document th,

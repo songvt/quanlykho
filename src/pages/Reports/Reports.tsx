@@ -299,7 +299,10 @@ const Reports = () => {
             item_status: t.item_status || '',
             district: t.district || '',
             partner: t.group_name || 'N/A',
-            user: t.user_name || 'N/A',
+            // Giao dịch xuất lưu người thao tác trực tiếp trong `created_by`.
+            // `user_name` chỉ có ở một số dữ liệu đã join nên không dùng làm
+            // nguồn duy nhất cho cột Người thực hiện.
+            user: t.user_name || t.created_by || 'N/A',
             serial: t.serial_code || ''
         }));
 

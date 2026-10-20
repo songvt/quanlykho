@@ -142,20 +142,20 @@ const HandoverTemplate = ({ data, employeeName, date, reporterName, senderPhone,
             </Typography>
 
             {/* Signatures */}
-            <Box display="flex" justifyContent="space-between" mt={6} mb={4}>
+            <Box className="handover-signatures" display="flex" justifyContent="space-between" mt={2} mb={0} sx={{ '@media print': { mt: 1, mb: 0 } }}>
                 <Box textAlign="center" sx={{ width: '30%' }}>
                     <Typography sx={{ fontWeight: 700, fontSize: '11pt' }}>Người nhận hàng</Typography>
-                    <Typography sx={{ fontSize: '9pt', fontStyle: 'italic', color: '#000000', mb: 10 }}>(Ký và ghi rõ họ tên)</Typography>
+                    <Typography className="signature-note" sx={{ fontSize: '9pt', fontStyle: 'italic', color: '#000000', mb: 4 }}>(Ký và ghi rõ họ tên)</Typography>
                     <Typography sx={{ fontWeight: 700, fontSize: '11pt', textTransform: 'uppercase' }}>{employeeName}</Typography>
                 </Box>
                 <Box textAlign="center" sx={{ width: '30%' }}>
                     <Typography sx={{ fontWeight: 700, fontSize: '11pt' }}>Thủ kho</Typography>
-                    <Typography sx={{ fontSize: '9pt', fontStyle: 'italic', color: '#000000', mb: 10 }}>(Ký và ghi rõ họ tên)</Typography>
+                    <Typography className="signature-note" sx={{ fontSize: '9pt', fontStyle: 'italic', color: '#000000', mb: 4 }}>(Ký và ghi rõ họ tên)</Typography>
                     <Typography sx={{ fontWeight: 700, fontSize: '11pt', textTransform: 'uppercase' }}>{reporterName}</Typography>
                 </Box>
                 <Box textAlign="center" sx={{ width: '30%' }}>
                     <Typography sx={{ fontWeight: 700, fontSize: '11pt' }}>Trưởng bộ phận</Typography>
-                    <Typography sx={{ fontSize: '9pt', fontStyle: 'italic', color: '#000000', mb: 10 }}>(Ký và ghi rõ họ tên)</Typography>
+                    <Typography className="signature-note" sx={{ fontSize: '9pt', fontStyle: 'italic', color: '#000000', mb: 4 }}>(Ký và ghi rõ họ tên)</Typography>
                     <Typography sx={{ fontWeight: 700, fontSize: '11pt', textTransform: 'uppercase' }}>TRẦN KIM HÙNG</Typography>
                 </Box>
             </Box>
@@ -186,10 +186,12 @@ const HandoverPreview = (props: HandoverPreviewProps) => {
                             size: A4 portrait;
                             margin: 20mm 15mm 20mm 30mm;
                         }
-                        /* Hard overrides for print sharpness and contrast */
-                        * {
-                            background-color: transparent !important;
-                            background: transparent !important;
+                        #print-portal-root,
+                        #print-portal-root .printable-document {
+                            background: #ffffff !important;
+                            background-image: none !important;
+                        }
+                        #print-portal-root .printable-document * {
                             color: #000000 !important;
                             box-shadow: none !important;
                             text-shadow: none !important;
@@ -203,6 +205,13 @@ const HandoverPreview = (props: HandoverPreviewProps) => {
                         table {
                             border-collapse: collapse !important;
                             border: 1.5px solid #000000 !important;
+                        }
+                        .handover-signatures {
+                            break-inside: auto !important;
+                            page-break-inside: auto !important;
+                        }
+                        .handover-signatures .signature-note {
+                            margin-bottom: 14mm !important;
                         }
                     }
                     /* Hide print portal normally */

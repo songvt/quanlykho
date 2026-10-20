@@ -131,20 +131,27 @@ const OutboundReportTemplate = ({ data, delivererName, date, receiverName, sende
             </Typography>
 
             {/* Signatures */}
-            <Box display="flex" justifyContent="space-between" mt={6} mb={4}>
+            <Box
+                className="outbound-signatures"
+                display="flex"
+                justifyContent="space-between"
+                mt={2}
+                mb={0}
+                sx={{ '@media print': { mt: 1, mb: 0 } }}
+            >
                 <Box textAlign="center" flex={1}>
                     <Typography sx={{ fontWeight: 700, fontSize: '11pt' }}>Người nhận</Typography>
-                    <Typography sx={{ fontSize: '9pt', fontStyle: 'italic', color: '#000000', mb: 10 }}>(Ký và ghi rõ họ tên)</Typography>
+                    <Typography className="signature-note" sx={{ fontSize: '9pt', fontStyle: 'italic', color: '#000000', mb: 4 }}>(Ký và ghi rõ họ tên)</Typography>
                     <Typography sx={{ fontWeight: 700, fontSize: '11pt', textTransform: 'uppercase' }}>{receiverName}</Typography>
                 </Box>
                 <Box textAlign="center" flex={1}>
                     <Typography sx={{ fontWeight: 700, fontSize: '11pt' }}>Thủ kho</Typography>
-                    <Typography sx={{ fontSize: '9pt', fontStyle: 'italic', color: '#000000', mb: 10 }}>(Ký và ghi rõ họ tên)</Typography>
+                    <Typography className="signature-note" sx={{ fontSize: '9pt', fontStyle: 'italic', color: '#000000', mb: 4 }}>(Ký và ghi rõ họ tên)</Typography>
                     <Typography sx={{ fontWeight: 700, fontSize: '11pt', textTransform: 'uppercase' }}>{delivererName}</Typography>
                 </Box>
                 <Box textAlign="center" flex={1}>
                     <Typography sx={{ fontWeight: 700, fontSize: '11pt' }}>Trưởng bộ phận</Typography>
-                    <Typography sx={{ fontSize: '9pt', fontStyle: 'italic', color: '#000000', mb: 10 }}>(Ký và ghi rõ họ tên)</Typography>
+                    <Typography className="signature-note" sx={{ fontSize: '9pt', fontStyle: 'italic', color: '#000000', mb: 4 }}>(Ký và ghi rõ họ tên)</Typography>
                     <Typography sx={{ fontWeight: 700, fontSize: '11pt', textTransform: 'uppercase' }}>Trần Kim Hùng</Typography>
                 </Box>
             </Box>
@@ -175,10 +182,14 @@ const OutboundReportPreview = (props: OutboundReportPreviewProps) => {
                             size: A4 portrait;
                             margin: 20mm 15mm 20mm 30mm;
                         }
-                        /* Hard overrides for print sharpness and contrast */
-                        * {
-                            background-color: transparent !important;
-                            background: transparent !important;
+                        /* Keep the print portal opaque; otherwise the app's animated
+                           backdrop can appear as grey shadows in the print preview. */
+                        #print-portal-root,
+                        #print-portal-root .printable-document {
+                            background: #ffffff !important;
+                            background-image: none !important;
+                        }
+                        #print-portal-root .printable-document * {
                             color: #000000 !important;
                             box-shadow: none !important;
                             text-shadow: none !important;
@@ -192,6 +203,13 @@ const OutboundReportPreview = (props: OutboundReportPreviewProps) => {
                         table {
                             border-collapse: collapse !important;
                             border: 1.5px solid #000000 !important;
+                        }
+                        .outbound-signatures {
+                            break-inside: auto !important;
+                            page-break-inside: auto !important;
+                        }
+                        .outbound-signatures .signature-note {
+                            margin-bottom: 14mm !important;
                         }
                     }
                     /* Hide print portal normally */
