@@ -335,7 +335,8 @@ a,
 /* When bottom nav is visible on mobile, add padding to main content */
 @media (max-width: 600px) {
   .main-content-mobile-pad {
-    padding-bottom: calc(64px + var(--safe-bottom, 0px)) !important;
+    /* Keep forms and the final list item clear of the bottom navigation/FAB. */
+    padding-bottom: calc(94px + var(--safe-bottom, 0px)) !important;
   }
 }
 
@@ -405,11 +406,34 @@ a,
   }
   body::before,
   body::after {
-    filter: blur(60px);
-    opacity: 0.6;
-    width: 80vw;
-    height: 80vw;
-    animation: none;
+    display: none;
+  }
+
+  /* Backdrop blur is expensive during long lists/scrolling. Use an opaque,
+     high-contrast surface on touch devices instead. */
+  .premium-glass {
+    background: rgba(15, 23, 42, 0.94) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .MuiTableContainer-root {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .MuiSnackbar-root {
+    bottom: calc(82px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .MuiButton-root:not(.MuiIconButton-root) {
+    min-height: 44px;
+  }
+
+  .MuiDrawer-paper {
+    max-width: min(86vw, 320px);
   }
 }
 
@@ -692,5 +716,66 @@ select {
     border-bottom: 1px solid #000000 !important;
     border-color: #000000 !important;
   }
+}
+
+/* ── Login: explicit high-contrast surface ────────────────────────────────
+   The application uses a dark glass theme globally.  The authentication card
+   deliberately stays light so labels and credential fields remain legible in
+   every browser/theme setting. */
+.login-shell .login-card.MuiPaper-root {
+  background: rgba(255, 255, 255, 0.97) !important;
+  color: #0f172a !important;
+  border-color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.login-shell .login-card-title {
+  color: #0f172a !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.025em !important;
+}
+
+.login-shell .login-card-subtitle {
+  color: #475569 !important;
+  font-weight: 600 !important;
+}
+
+.login-shell .login-field-label {
+  color: #1e293b !important;
+  font-weight: 800 !important;
+}
+
+.login-shell .login-card .MuiOutlinedInput-root {
+  background: #f8fafc !important;
+  border-radius: 12px !important;
+}
+
+.login-shell .login-card .MuiOutlinedInput-root:hover,
+.login-shell .login-card .MuiOutlinedInput-root.Mui-focused {
+  background: #ffffff !important;
+}
+
+.login-shell .login-card .MuiOutlinedInput-notchedOutline {
+  border-color: #cbd5e1 !important;
+}
+
+.login-shell .login-card .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: #2563eb !important;
+  border-width: 2px !important;
+}
+
+.login-shell .login-card .MuiInputBase-input {
+  color: #0f172a !important;
+  font-weight: 600 !important;
+}
+
+.login-shell .login-card .MuiInputBase-input::placeholder {
+  color: #64748b !important;
+  opacity: 1 !important;
+}
+
+.login-shell .login-submit-button.MuiButton-contained:not(.Mui-disabled) {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%) !important;
+  font-weight: 800 !important;
 }
 

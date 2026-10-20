@@ -34,6 +34,7 @@ const Login = () => {
 
     return (
         <Box
+            className="login-shell"
             sx={{
                 minHeight: '100svh',
                 display: 'flex',
@@ -124,6 +125,7 @@ const Login = () => {
 
                 {/* Login Card */}
                 <Paper
+                    className="login-card"
                     elevation={0}
                     sx={{
                         p: { xs: 3, sm: 4 },
@@ -137,7 +139,7 @@ const Login = () => {
                         animation: 'fadeInUp 0.5s ease 0.1s both',
                     }}
                 >
-                    <Typography sx={{
+                    <Typography className="login-card-title" sx={{
                         fontWeight: 800,
                         fontSize: '1.4rem',
                         color: '#0f172a',
@@ -146,7 +148,7 @@ const Login = () => {
                     }}>
                         Đăng nhập
                     </Typography>
-                    <Typography sx={{
+                    <Typography className="login-card-subtitle" sx={{
                         fontSize: '0.875rem',
                         color: '#475569',
                         mb: 3,
@@ -174,7 +176,7 @@ const Login = () => {
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         {/* Email Field */}
                         <Box>
-                            <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: '#374151', mb: 0.75, letterSpacing: '0.01em' }}>
+                            <Typography className="login-field-label" sx={{ fontSize: '0.8rem', fontWeight: 700, color: '#374151', mb: 0.75, letterSpacing: '0.01em' }}>
                                 Email
                             </Typography>
                             <TextField
@@ -207,7 +209,7 @@ const Login = () => {
 
                         {/* Password Field */}
                         <Box>
-                            <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: '#374151', mb: 0.75, letterSpacing: '0.01em' }}>
+                            <Typography className="login-field-label" sx={{ fontSize: '0.8rem', fontWeight: 700, color: '#374151', mb: 0.75, letterSpacing: '0.01em' }}>
                                 Mật khẩu
                             </Typography>
                             <TextField
@@ -251,6 +253,7 @@ const Login = () => {
 
                         {/* Login Button */}
                         <Button
+                            className="login-submit-button"
                             type="submit"
                             fullWidth
                             variant="contained"

@@ -14,10 +14,10 @@ import TransferWithinAStationIcon from '@mui/icons-material/TransferWithinAStati
 import EditIcon from '@mui/icons-material/Edit';
 import PrintIcon from '@mui/icons-material/Print';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CloseIcon from '@mui/icons-material/Close';
 import SaveIcon from '@mui/icons-material/Save';
 import CheckIcon from '@mui/icons-material/Check';
+import TableChartIcon from '@mui/icons-material/TableChart';
 
 import { AppButton } from '../../components/Common/AppButton';
 import { fetchAssets, deleteAsset, importAssets, updateAsset } from '../../store/slices/assetsSlice';
@@ -78,6 +78,7 @@ const AssetList = () => {
     const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string }>({ open: false, id: '' });
     const [searchEmployee, setSearchEmployee] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');
+    const [managerFilter, setManagerFilter] = useState('');
 
 
     useEffect(() => {
@@ -116,10 +117,15 @@ const AssetList = () => {
             });
         }
 
+        if (managerFilter) {
+            list = list.filter(asset => asset.manager_name === managerFilter);
+        }
+
         if (searchEmployee.trim()) {
             const s = searchEmployee.toLowerCase();
             list = list.filter(a =>
                 (a.user_employee_name || '').toLowerCase().includes(s) ||
+                (a.manager_name || '').toLowerCase().includes(s) ||
                 (a.asset_name || '').toLowerCase().includes(s) ||
                 (a.status || '').toLowerCase().includes(s) ||
                 (a.asset_code || '').toLowerCase().includes(s)
@@ -127,7 +133,13 @@ const AssetList = () => {
         }
 
         return sortAssetsByNameAndUser(list);
-    }, [assets, searchEmployee, categoryFilter]);
+    }, [assets, searchEmployee, categoryFilter, managerFilter]);
+
+    const managerOptions = useMemo(() => Array.from(new Set(
+        assets
+            .map(asset => asset.manager_name?.trim())
+            .filter((name): name is string => Boolean(name))
+    )).sort((a, b) => a.localeCompare(b, 'vi')), [assets]);
 
     const handlePrintByEmployee = () => {
         const employeeSearch = searchEmployee.trim();
@@ -464,9 +476,11 @@ const AssetList = () => {
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
                     <AppButton
                         variant="outlined"
+                        color="primary"
                         component="label"
-                        icon={<CloudUploadIcon />}
+                        icon={<UploadFileIcon />}
                         title="Nhập Excel"
+                        sx={{ '& .MuiSvgIcon-root': { fontSize: 22 } }}
                     >
                         <input type="file" hidden accept=".xlsx, .xls" onChange={handleImportExcel} />
                     </AppButton>
@@ -476,13 +490,15 @@ const AssetList = () => {
                         icon={<FileDownloadIcon />}
                         onClick={() => generateAssetTemplate()}
                         title="Tải mẫu Excel"
+                        sx={{ '& .MuiSvgIcon-root': { fontSize: 22 } }}
                     />
                     <AppButton
                         variant="outlined"
                         color="info"
-                        icon={<FileDownloadIcon />}
+                        icon={<TableChartIcon />}
                         onClick={() => exportAssetReport(filteredAssets, profile?.full_name || 'Admin')}
                         title="Xuất Excel"
+                        sx={{ '& .MuiSvgIcon-root': { fontSize: 22 } }}
                     />
                     {selectedIds.length > 0 && (
                         <>
@@ -523,7 +539,7 @@ const AssetList = () => {
             {/* Search + selection info */}
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} mb={2} alignItems={{ sm: 'center' }}>
                 <TextField
-                    placeholder="Tìm theo người sử dụng, tên/mã TS, tình trạng..."
+                    placeholder="Tìm người dùng/quản lý, tên/mã TS, tình trạng..."
                     size="small"
                     fullWidth={isMobile}
                     sx={{ width: isMobile ? '100%' : 350 }}
@@ -541,6 +557,23 @@ const AssetList = () => {
                     <MenuItem value="all">Tất cả danh mục (CCDC & TBVP)</MenuItem>
                     <MenuItem value="ccdc">Công cụ dụng cụ (CCDC)</MenuItem>
                     <MenuItem value="tbvp">Thiết bị văn phòng (TBVP)</MenuItem>
+                </TextField>
+                <TextField
+                    select
+                    size="small"
+                    label="Người quản lý"
+                    value={managerFilter}
+                    onChange={(e) => {
+                        setManagerFilter(e.target.value);
+                        setPage(0);
+                    }}
+                    SelectProps={{ native: false }}
+                    sx={{ width: isMobile ? '100%' : 220 }}
+                >
+                    <MenuItem value="">Tất cả người quản lý</MenuItem>
+                    {managerOptions.map(manager => (
+                        <MenuItem key={manager} value={manager}>{manager}</MenuItem>
+                    ))}
                 </TextField>
                 {selectedIds.length > 0 && (
                     <Chip 

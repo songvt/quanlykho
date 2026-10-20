@@ -13,11 +13,12 @@ export const AppButton = React.forwardRef<HTMLButtonElement, AppButtonProps>(
       <Button
         {...props}
         ref={ref}
+        aria-label={title}
         disabled={disabled}
         sx={{
-          minWidth: 40,
-          width: 40,
-          height: 40,
+          minWidth: 44,
+          width: 44,
+          height: 44,
           borderRadius: '10px',
           p: 0,
           ...sx,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, BottomNavigation, BottomNavigationAction, Paper } from '@mui/material';
+import { Box, BottomNavigation, BottomNavigationAction, Paper, IconButton } from '@mui/material';
 import { Home, Package, QrCode, CheckSquare, Users } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -17,8 +17,9 @@ const MobileBottomNav: React.FC = () => {
         if (profile?.role === 'admin' || profile?.role === 'staff') items.push({ label: 'Dashboard', icon: <Home size={24} strokeWidth={1.5} />, path: '/' });
         if (hasPermission('inventory.view')) items.push({ label: 'Kho', icon: <Package size={24} strokeWidth={1.5} />, path: '/products' });
         
-        // Placeholder for QR
-        items.push({ label: 'QR', icon: <Box sx={{ width: 24 }} />, path: '__qr_scan__' });
+        // The center action is mirrored by the floating scanner button, so users
+        // can discover it from both the bar label and the primary touch target.
+        items.push({ label: 'Quét QR', icon: <QrCode size={24} strokeWidth={1.8} />, path: '__qr_scan__' });
         
         if (hasPermission('orders.create') || hasPermission('orders.view_own')) items.push({ label: 'Phiếu', icon: <CheckSquare size={24} strokeWidth={1.5} />, path: '/orders' });
         items.push({ label: 'Tài khoản', icon: <Users size={24} strokeWidth={1.5} />, path: '/profile' });
@@ -41,7 +42,8 @@ const MobileBottomNav: React.FC = () => {
     return (
         <>
             {/* Floating QR Scanner Button */}
-            <Box
+            <IconButton
+                aria-label="Quét mã QR"
                 onClick={() => navigate('/scanner')}
                 sx={{
                     position: 'fixed',
@@ -57,7 +59,6 @@ const MobileBottomNav: React.FC = () => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     boxShadow: '0 8px 30px rgba(37, 99, 235, 0.4)',
-                    cursor: 'pointer',
                     transition: 'transform 0.2s ease',
                     border: '4px solid var(--bg-default)',
                     '&:active': {
@@ -66,7 +67,7 @@ const MobileBottomNav: React.FC = () => {
                 }}
             >
                 <QrCode color="white" size={28} strokeWidth={2} />
-            </Box>
+            </IconButton>
 
             {/* Bottom Navigation Bar */}
             <Paper
@@ -78,7 +79,7 @@ const MobileBottomNav: React.FC = () => {
                     right: 0,
                     display: { sm: 'none' },
                     zIndex: 1300,
-                    pb: 'env(safe-area-inset-bottom)',
+                    pb: 'max(env(safe-area-inset-bottom), 6px)',
                     borderTop: '1px solid var(--border-color)',
                     boxShadow: '0 -8px 30px rgba(0, 0, 0, 0.03)',
                 }}
@@ -89,12 +90,13 @@ const MobileBottomNav: React.FC = () => {
                     value={value >= 0 ? value : false}
                     onChange={handleNavChange}
                     sx={{
-                        height: 64,
+                        height: 68,
                         bgcolor: 'transparent',
                         '& .MuiBottomNavigationAction-root': {
                             color: 'var(--text-secondary)',
                             minWidth: 'auto',
-                            padding: '6px 0',
+                            minHeight: 60,
+                            padding: '7px 0 5px',
                             transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                             '&.Mui-selected': {
                                 color: 'var(--brand-primary)',

@@ -172,7 +172,7 @@ const MainLayout: React.FC = () => {
                     position: 'relative',
                 }}
             >
-                <Box sx={{ p: { xs: 2, sm: 3 }, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                <Box sx={{ p: { xs: 1.5, sm: 3 }, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                     <Outlet />
                 </Box>
             </Box>
