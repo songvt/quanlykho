@@ -66,6 +66,8 @@ const PDFTools       = lazy(() => import('./pages/PDFTools'));
 
 const FullScreenScanner = lazy(() => import('./pages/FullScreenScanner'));
 const Announcements     = lazy(() => import('./pages/Announcements'));
+const DocumentSummary   = lazy(() => import('./pages/DocumentSummary'));
+const ImageMerge        = lazy(() => import('./pages/ImageMerge'));
 
 const NotFound = lazy(() => import('./pages/NotFound').catch(() => ({
     default: () => <Box p={6} textAlign="center" sx={{ color: 'text.secondary', fontSize: 24 }}>404 — Không tìm thấy trang</Box>
@@ -179,6 +181,8 @@ function App() {
 
                                 <Route path="profile" element={<UserProfile />} />
                                 <Route path="ai-assistant" element={<AIAssistant />} />
+                                <Route path="document-summary" element={<DocumentSummary />} />
+                                <Route path="image-merge" element={<ImageMerge />} />
                                 <Route path="inbound-lookup" element={<InboundLookup />} />
                                 
                                 <Route element={<ProtectedRoute allowedPermissions={['pdf.view']} />}>

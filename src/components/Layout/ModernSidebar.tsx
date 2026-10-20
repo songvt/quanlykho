@@ -141,7 +141,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
 
         if (['/employees', '/attendance', '/attendance-summary', '/admin-requests', '/kpi-grades', '/payroll', '/bonus-penalty', '/payroll-settings', '/feedback-box'].includes(location.pathname)) setExpandAdminHr(true);
         if (location.pathname.startsWith('/zalo')) setExpandZalo(true);
-        if (location.pathname.startsWith('/zalo') || ['/announcements', '/ai-assistant', '/pdf-tools', '/print-bill'].includes(location.pathname)) setExpandUtilities(true);
+        if (location.pathname.startsWith('/zalo') || ['/announcements', '/ai-assistant', '/document-summary', '/image-merge', '/pdf-tools', '/print-bill'].includes(location.pathname)) setExpandUtilities(true);
         if (['/qr-generator', '/barcode-generator'].includes(location.pathname)) setExpandQr(true);
     }, [location.pathname]);
 
@@ -549,6 +549,8 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                             const utilitySubItems = [
                                 ...(profile?.role === 'admin' ? [{ text: 'Thông báo hệ thống', path: '/announcements', icon: <Mailbox size={18} /> }] : []),
                                 { text: 'Trợ lý AI', path: '/ai-assistant', icon: <Bot size={18} /> },
+                                { text: 'Tóm tắt tài liệu', path: '/document-summary', icon: <FileText size={18} /> },
+                                { text: 'Gộp hình ảnh', path: '/image-merge', icon: <ImagePlus size={18} /> },
                                 ...(hasPermission('pdf.view') ? [{ text: 'Tách/Gộp PDF', path: '/pdf-tools', icon: <Scissors size={18} /> }] : []),
                                 { text: 'In thông báo cước', path: '/print-bill', icon: <FileText size={18} /> },
                             ];

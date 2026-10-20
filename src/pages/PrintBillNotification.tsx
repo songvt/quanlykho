@@ -7,6 +7,9 @@ import {
 import { Download as DownloadIcon, Upload as UploadIcon, Print as PrintIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import ExcelJS from 'exceljs';
 import { useReactToPrint } from 'react-to-print';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import BillTemplateA5 from '../components/BillTemplateA5';
 import type { BillData } from '../components/BillTemplateA5';
 import { parseExcelNumber, numberToWordsVN, formatNumber } from '../utils/numberUtils';
@@ -14,6 +17,7 @@ import { parseExcelNumber, numberToWordsVN, formatNumber } from '../utils/number
 const PrintBillNotification: React.FC = () => {
     const [data, setData] = useState<BillData[]>([]);
     const [loading, setLoading] = useState(false);
+    const [exportingPdf, setExportingPdf] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const printRef = useRef<HTMLDivElement>(null);
 
@@ -136,6 +140,36 @@ const PrintBillNotification: React.FC = () => {
         `
     });
 
+    const handleExportPdf = async () => {
+        if (!printRef.current || data.length === 0) return;
+        setExportingPdf(true);
+        setError(null);
+        try {
+            const bills = Array.from(printRef.current.querySelectorAll<HTMLElement>('[data-bill-page]'));
+            if (!bills.length) throw new Error('Không tìm thấy nội dung thông báo để xuất PDF.');
+
+            const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a5', compress: true });
+            for (const [index, bill] of bills.entries()) {
+                const canvas = await html2canvas(bill, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    logging: false,
+                    windowWidth: bill.scrollWidth,
+                    windowHeight: bill.scrollHeight,
+                });
+                if (index > 0) pdf.addPage('a5', 'landscape');
+                pdf.addImage(canvas.toDataURL('image/jpeg', 0.94), 'JPEG', 0, 0, 210, 148.5, undefined, 'FAST');
+            }
+            pdf.save(`Thong_bao_cuoc_A5_${new Date().toISOString().slice(0, 10)}.pdf`);
+        } catch (err: any) {
+            console.error('PDF export error:', err);
+            setError(err.message || 'Không thể xuất file PDF. Vui lòng thử lại.');
+        } finally {
+            setExportingPdf(false);
+        }
+    };
+
     const clearData = () => {
         if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ danh sách?')) {
             setData([]);
@@ -181,6 +215,16 @@ const PrintBillNotification: React.FC = () => {
                         onClick={() => handlePrint()}
                     >
                         In {data.length > 0 ? `(${data.length})` : ''}
+                    </Button>
+
+                    <Button
+                        variant="contained"
+                        color="error"
+                        startIcon={exportingPdf ? <CircularProgress size={18} color="inherit" /> : <PictureAsPdfIcon />}
+                        disabled={data.length === 0 || exportingPdf}
+                        onClick={handleExportPdf}
+                    >
+                        {exportingPdf ? 'Đang xuất PDF...' : `Xuất PDF A5${data.length > 0 ? ` (${data.length})` : ''}`}
                     </Button>
                     
                     {data.length > 0 && (
@@ -238,11 +282,13 @@ const PrintBillNotification: React.FC = () => {
                 </TableContainer>
             </Paper>
 
-            {/* Hidden container for printing */}
-            <Box sx={{ display: 'none' }}>
+            {/* Kept offscreen rather than display:none so html2canvas can create an A5 PDF. */}
+            <Box sx={{ position: 'fixed', left: '-10000px', top: 0, width: '209mm', bgcolor: '#fff', pointerEvents: 'none', zIndex: -1 }}>
                 <div ref={printRef}>
                     {data.map((item) => (
-                        <BillTemplateA5 key={item.id} data={item} />
+                        <div key={item.id} data-bill-page="true" style={{ width: '209mm', height: '145mm', overflow: 'hidden', background: '#fff' }}>
+                            <BillTemplateA5 data={item} />
+                        </div>
                     ))}
                 </div>
             </Box>
