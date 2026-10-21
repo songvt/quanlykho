@@ -364,7 +364,7 @@ const AssetHandoverBhl: React.FC = () => {
                         }
                     }}
                 >
-                    In biên bản A4
+                    In biên bản
                 </Button>
             </Box>
 
@@ -578,15 +578,16 @@ const AssetHandoverBhl: React.FC = () => {
                         )}
 
                         {/* 4. Lịch sử bàn giao gần đây */}
-                        <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+                        <Card className="handover-history-panel" variant="outlined" sx={{ borderRadius: 3, border: '1px solid #334155', boxShadow: '0 8px 24px rgba(15,23,42,0.18)' }}>
                             <CardContent sx={{ p: 3 }}>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                    <Typography variant="subtitle1" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1, color: '#1e293b' }}>
+                                    <Typography className="handover-history-title" variant="subtitle1" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
                                         <HistoryIcon sx={{ color: '#2563eb' }} /> Lịch sử bàn giao gần đây
                                     </Typography>
                                     {history.length > 0 && (
                                         <Tooltip title="Xuất Excel" arrow>
                                             <Button
+                                                className="handover-history-export"
                                                 variant="outlined"
                                                 onClick={handleExportHistory}
                                                 sx={{ minWidth: 40, width: 40, height: 40, borderRadius: '10px', p: 0 }}
@@ -621,6 +622,7 @@ const AssetHandoverBhl: React.FC = () => {
                                             return (
                                                 <Box 
                                                     key={h.id} 
+                                                    className="handover-history-record"
                                                     sx={{ 
                                                         p: 1.5, 
                                                         borderRadius: 2, 
@@ -633,10 +635,10 @@ const AssetHandoverBhl: React.FC = () => {
                                                     }}
                                                 >
                                                     <Box>
-                                                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#0f172a' }}>
+                                                        <Typography className="handover-history-name" variant="body2" sx={{ fontWeight: 700 }}>
                                                             {h.receiver_name}
                                                         </Typography>
-                                                        <Typography variant="caption" sx={{ color: '#64748b', display: 'block', mt: 0.2 }}>
+                                                        <Typography className="handover-history-meta" variant="caption" sx={{ display: 'block', mt: 0.2 }}>
                                                             {formattedDate} • {h.template_type === 'bhl' ? 'Mẫu BHLĐ' : 'Mẫu TSCĐ'} ({h.total_quantity} món)
                                                         </Typography>
                                                         <Box sx={{ display: 'inline-block', mt: 0.5, px: 1, py: 0.25, borderRadius: 1, bgcolor: `${actionColor}15`, border: `1px solid ${actionColor}30` }}>
@@ -682,10 +684,11 @@ const AssetHandoverBhl: React.FC = () => {
                         display: 'flex', 
                         justifyContent: 'center',
                         p: { xs: 0, lg: 2 },
-                        bgcolor: { xs: 'transparent', lg: '#cbd5e1' },
+                        bgcolor: { xs: 'transparent', lg: '#e2e8f0' },
                         borderRadius: 3
                     }}>
                         <Paper 
+                            id="asset-handover-preview"
                             elevation={4} 
                             sx={{ 
                                 bgcolor: 'white', 
@@ -698,7 +701,7 @@ const AssetHandoverBhl: React.FC = () => {
                                 flexDirection: 'column'
                             }}
                         >
-                            <Box ref={printRef} sx={{ fontFamily: 'Times New Roman', fontSize: '11pt', color: '#000', flexGrow: 1 }}>
+                            <Box ref={printRef} className="asset-handover-document" sx={{ fontFamily: 'Times New Roman', fontSize: '11pt', color: '#000', flexGrow: 1 }}>
                                 
                                 {/* Header */}
                                 <div className="header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

@@ -95,6 +95,13 @@ const parseImportedDate = (val: any) => {
 };
 
 const timesTheme = createTheme({
+    palette: {
+        text: {
+            primary: '#f8fafc',
+            secondary: '#cbd5e1',
+        },
+        divider: 'rgba(148, 163, 184, 0.28)',
+    },
     typography: {
         fontFamily: "'Times New Roman', Times, serif",
         allVariants: {
@@ -741,7 +748,13 @@ const EmployeeList = () => {
                     mb: 3, 
                     borderBottom: 1, 
                     borderColor: 'divider',
-                    '& .MuiTab-root': { fontWeight: 'bold', minWidth: { xs: '50%', sm: 'auto' } }
+                    '& .MuiTab-root': {
+                        color: '#94a3b8',
+                        fontWeight: 'bold',
+                        minWidth: { xs: '50%', sm: 'auto' },
+                        '&.Mui-selected': { color: '#38bdf8' },
+                    },
+                    '& .MuiTabs-indicator': { backgroundColor: '#38bdf8', height: 3 },
                 }}
             >
                 <Tab label="Bảng Thông Tin Nhân Sự (hr_profiles)" value="personnel" />

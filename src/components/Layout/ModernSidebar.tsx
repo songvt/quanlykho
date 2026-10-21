@@ -21,6 +21,7 @@ import {
     MessageSquare,
     Settings,
     Package,
+    PackageSearch,
     ChevronDown,
     ChevronUp,
     ChevronRight,
@@ -32,7 +33,6 @@ import {
     CornerUpLeft,
     PieChart,
     CheckSquare,
-    List as ListIcon,
     ArrowRightLeft,
     FileSearch,
     AlertTriangle,
@@ -43,8 +43,6 @@ import {
     ClipboardList,
     FileSignature,
     Target,
-    Banknote,
-    Calculator as CalculatorIcon,
     Mailbox,
     Bot,
     Send,
@@ -243,7 +241,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                         if (item.path === '/assets') {
                             const canViewReports = hasAnyPermission(['assets.view', 'assets.manage', '*']);
                             const assetSubItems = [
-                                { text: 'Danh sách tài sản', path: '/assets', icon: <ListIcon size={18} /> },
+                                { text: 'Danh sách tài sản', path: '/assets', icon: <PackageSearch size={18} /> },
                                 { text: 'In mã QR tài sản', path: '/assets/print-qr', icon: <QrCode size={18} /> },
                                 { text: 'Kiểm kê định kỳ', path: '', icon: <ClipboardList size={18} />, children: [
                                     { text: 'Kiểm kê', path: '/assets/periodic-audit', icon: <ClipboardList size={16} /> },
@@ -484,17 +482,11 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                             const adminHrSubItems = [
                                 ...(hasPermission('employees.view') ? [{ text: 'Nhân viên', path: '/employees', icon: <Users size={18} /> }] : []),
                                 ...(profile?.role === 'admin' || profile?.role === 'manager' ? [
-                                    { text: 'Chấm công', path: '/attendance', icon: <CalendarCheck size={18} /> },
-                                    { text: 'Tổng hợp chấm công', path: '/attendance-summary', icon: <ClipboardList size={18} /> },
                                     { text: 'Phiếu hành chính', path: '/admin-requests', icon: <FileSignature size={18} /> },
                                     { text: 'Chấm điểm KPI', path: '/kpi-grades', icon: <Target size={18} /> },
-                                    { text: 'Bảng lương', path: '/payroll', icon: <Banknote size={18} /> },
-                                    { text: 'Điểm cộng trừ', path: '/bonus-penalty', icon: <CalculatorIcon size={18} /> },
-                                    { text: 'Thiết lập công lương', path: '/payroll-settings', icon: <Settings size={18} /> },
-                                    { text: 'Hòm thư góp ý', path: '/feedback-box', icon: <Mailbox size={18} /> },
                                 ] : [])
                             ];
-                            const isGroupActive = ['/employees', '/attendance', '/attendance-summary', '/admin-requests', '/kpi-grades', '/payroll', '/bonus-penalty', '/payroll-settings', '/feedback-box'].includes(location.pathname);
+                            const isGroupActive = ['/employees', '/admin-requests', '/kpi-grades'].includes(location.pathname);
                             return (
                                 <React.Fragment key="admin-hr-group">
                                     <ListItem disablePadding>

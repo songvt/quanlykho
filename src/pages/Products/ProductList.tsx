@@ -242,9 +242,9 @@ const ProductList = () => {
                                     icon={<FileDownloadIcon />}
                                     title="Tải mẫu Excel"
                                     sx={{ 
-                                        color: 'white',
-                                        borderColor: 'rgba(255,255,255,0.4)',
-                                        '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.15)', borderColor: 'white' }
+                                        color: '#1d4ed8',
+                                        borderColor: 'rgba(29, 78, 216, 0.35)',
+                                        '&:hover': { bgcolor: '#eff6ff', borderColor: '#1d4ed8' }
                                     }}
                                 />
                                 <AppButton
@@ -253,9 +253,9 @@ const ProductList = () => {
                                     icon={<UploadFileIcon />}
                                     title="Nhập Excel"
                                     sx={{ 
-                                        color: 'white',
-                                        borderColor: 'rgba(255,255,255,0.4)',
-                                        '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.15)', borderColor: 'white' }
+                                        color: '#047857',
+                                        borderColor: 'rgba(4, 120, 87, 0.35)',
+                                        '&:hover': { bgcolor: '#ecfdf5', borderColor: '#047857' }
                                     }}
                                 >
                                     <input

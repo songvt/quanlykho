@@ -779,3 +779,75 @@ select {
   font-weight: 800 !important;
 }
 
+/* ── Asset handover: high-contrast document preview ───────────────────── */
+#asset-handover-preview.MuiPaper-root {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+#asset-handover-preview .asset-handover-document {
+  color: #0f172a !important;
+}
+
+#asset-handover-preview .asset-handover-document table {
+  color: #0f172a;
+}
+
+#asset-handover-preview .asset-handover-document th {
+  background: #1e3a5f !important;
+  color: #ffffff !important;
+  border-color: #334e68 !important;
+}
+
+#asset-handover-preview .asset-handover-document td {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+#asset-handover-preview .asset-handover-document tbody tr:nth-child(even) td {
+  background: #f8fafc !important;
+}
+
+#asset-handover-preview .asset-handover-document tbody tr:last-child td {
+  background: #eaf2fb !important;
+  border-color: #bfdbfe !important;
+}
+
+/* ── Asset handover: recent-history panel ─────────────────────────────── */
+.handover-history-panel.MuiCard-root {
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.97), rgba(30, 41, 59, 0.94)) !important;
+  border-color: rgba(96, 165, 250, 0.28) !important;
+  color: #f8fafc !important;
+}
+
+.handover-history-panel .handover-history-title {
+  color: #f8fafc !important;
+}
+
+.handover-history-panel .handover-history-export {
+  color: #bfdbfe !important;
+  border-color: rgba(147, 197, 253, 0.4) !important;
+  background-color: rgba(59, 130, 246, 0.1) !important;
+}
+
+.handover-history-panel .handover-history-export:hover {
+  background-color: rgba(59, 130, 246, 0.22) !important;
+  border-color: #60a5fa !important;
+}
+
+.handover-history-panel .handover-history-record {
+  background: rgba(30, 41, 59, 0.9) !important;
+  border-color: rgba(148, 163, 184, 0.24) !important;
+}
+
+.handover-history-panel .handover-history-name {
+  color: #f8fafc !important;
+}
+
+.handover-history-panel .handover-history-meta {
+  color: #cbd5e1 !important;
+}
+
