@@ -117,7 +117,7 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                 try { scannerInstance.clear(); } catch(e) {}
             }
         };
-    }, []);
+    }, [regionId]);
 
     // Start Scanning Effect
     useEffect(() => {
