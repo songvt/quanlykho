@@ -13,7 +13,10 @@ interface QRScannerProps {
 }
 
 const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProps) => {
-    const regionId = "custom-reader-box";
+    // A scanner is rendered in several dialogs throughout the application. A fixed
+    // element id lets a stale dialog instance attach to the next scanner, which can
+    // leave the camera track locked and produces "Could not start video source".
+    const regionId = useRef(`custom-reader-box-${crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)}`).current;
     const scannerRef = useRef<Html5Qrcode | null>(null);
     const [cameras, setCameras] = useState<Array<{ id: string, label: string }>>([]);
     const [selectedCameraId, setSelectedCameraId] = useState<string>('');
@@ -120,24 +123,24 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                     setIsScanning(false);
                 }
 
-                await scanner.start(
-                    selectedCameraId,
-                    {
-                        fps: 12,
-                        qrbox: (viewWidth, viewHeight) => {
-                            // A smaller centred region lets the camera keep exposure/focus on the
-                            // code instead of analysing the whole mobile preview.
-                            const width = Math.floor(Math.min(viewWidth * 0.82, 420));
-                            const height = Math.floor(Math.min(viewHeight * 0.62, Math.max(180, width * 0.72)));
-                            return { width, height };
-                        },
-                        videoConstraints: {
-                            facingMode: { ideal: "environment" },
-                            width: { ideal: 1920 },
-                            height: { ideal: 1080 },
-                        } as any
+                const config = {
+                    // Serial barcodes (especially Code 128) are long and narrow. A higher
+                    // frame rate makes it more forgiving while the phone is moving into focus.
+                    fps: 18,
+                    qrbox: (viewWidth: number, viewHeight: number) => {
+                        // Scan virtually the whole preview. A constrained central box works
+                        // well for QR codes but can crop the quiet zones at both ends of a
+                        // long serial barcode, causing noticeably worse results than AppSheet.
+                        const width = Math.floor(viewWidth * 0.96);
+                        const height = Math.floor(viewHeight * 0.90);
+                        return { width, height };
                     },
-                    (decodedText) => {
+                    // Warehouse serial labels are normal black-on-white prints; skipping the
+                    // mirrored retry leaves more processing time for the next camera frame.
+                    disableFlip: true,
+                };
+
+                const onDecoded = (decodedText: string) => {
                         const now = Date.now();
                         if (scanLockedRef.current || (decodedText === lastScanRef.current && (now - lastScanTimeRef.current < 2200))) return;
 
@@ -148,9 +151,13 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                         if (window.navigator?.vibrate) window.navigator.vibrate(100);
                         onScanSuccess(decodedText);
                         window.setTimeout(() => { scanLockedRef.current = false; }, 800);
-                    },
-                    () => { }
-                );
+                    };
+
+                // Do not combine an exact device id with resolution/facing-mode
+                // constraints. Several Windows webcams reject that combination with
+                // NotReadableError / "Could not start video source". The selected id
+                // is already enough to request the intended camera.
+                await scanner.start(selectedCameraId, config, onDecoded, () => { });
 
                 if (isCurrent) {
                     setIsScanning(true);
@@ -183,7 +190,10 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
     }, [selectedCameraId, loading, error]); // eslint-disable-line react-hooks/exhaustive-deps -- Callback changes must not restart the active camera scanner.
 
     const handleRetry = () => {
-        window.location.reload();
+        // Retry only the camera request. Reloading loses the unfinished warehouse form
+        // and does not release a camera held by another application.
+        setError(null);
+        setLoading(false);
     };
 
     const toggleTorch = async () => {
