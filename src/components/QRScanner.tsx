@@ -69,7 +69,17 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                 });
                 scannerRef.current = scannerInstance;
 
-                const devices = await Html5Qrcode.getCameras();
+                // Html5Qrcode.getCameras() opens a temporary video stream before it
+                // enumerates devices, then immediately closes it. On a number of Android
+                // browsers that second camera request fails with "Could not start video
+                // source". Enumerating does not open the camera; the sole permission and
+                // camera request now happens below in scanner.start().
+                if (!navigator.mediaDevices?.enumerateDevices) {
+                    throw new Error('Trình duyệt không hỗ trợ truy cập camera. Hãy mở bằng Chrome hoặc Edge qua HTTPS.');
+                }
+                const devices = (await navigator.mediaDevices.enumerateDevices())
+                    .filter((device) => device.kind === 'videoinput')
+                    .map((device) => ({ id: device.deviceId, label: device.label }));
                 if (isMounted) {
                     if (devices && devices.length > 0) {
                         setCameras(devices);
@@ -91,7 +101,7 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
             } catch (err: any) {
                 console.error("Error initializing scanner", err);
                 if (isMounted) {
-                    setError(`Lỗi khởi tạo: ${err.message || "Không thể truy cập camera"}`);
+                    setError(`Lỗi khởi tạo camera: ${err.message || "Không thể truy cập camera"}`);
                     setLoading(false);
                 }
             }
