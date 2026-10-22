@@ -39,6 +39,7 @@ const AssetList = () => {
     const { items: hrProfiles, status: hrProfilesStatus } = useSelector((state: RootState) => state.hrProfiles);
     const { profile } = useSelector((state: RootState) => state.auth);
     const { success, error: notifyError } = useNotification();
+    const isAdmin = profile?.role === 'admin';
 
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [page, setPage] = useState(0);
@@ -350,18 +351,12 @@ const AssetList = () => {
     const handleActionSubmit = async () => {
         try {
             const updates = selectedIds.map(id => {
-                let statusUpdate = '';
-                if (actionModal.type === 'allocate') statusUpdate = 'Đã cấp phát';
-                if (actionModal.type === 'revoke') statusUpdate = 'Chưa sử dụng';
-                if (actionModal.type === 'transfer') statusUpdate = 'Đã điều chuyển';
-
                 return dispatch(updateAsset({
                     updatedAsset: {
                         id,
                         user_employee_name: actionModal.type === 'revoke' ? '' : employeeName,
                         user_employee_code: actionModal.type === 'revoke' ? '' : employeeCode,
                         user_department_name: actionModal.type === 'revoke' ? '' : department,
-                        status: statusUpdate
                     },
                     performedBy: profile?.full_name
                 })).unwrap();
@@ -410,15 +405,18 @@ const AssetList = () => {
         }
 
         try {
+            const updatedAsset: Partial<Asset> & { id: string } = {
+                id: editStatusModal.assetId,
+                status_description: editStatusModal.description,
+                manager_code: editStatusModal.managerCode.trim(),
+                manager_name: editStatusModal.managerName.trim(),
+                serial_number: editStatusModal.serialNumber.trim(),
+            };
+            // Chỉ quản trị viên mới được chủ động thay đổi tình trạng tài sản.
+            if (isAdmin) updatedAsset.status = editStatusModal.status;
+
             await dispatch(updateAsset({
-                updatedAsset: {
-                    id: editStatusModal.assetId,
-                    status: editStatusModal.status,
-                    status_description: editStatusModal.description,
-                    manager_code: editStatusModal.managerCode.trim(),
-                    manager_name: editStatusModal.managerName.trim(),
-                    serial_number: editStatusModal.serialNumber.trim(),
-                },
+                updatedAsset,
                 performedBy: profile?.full_name
             })).unwrap();
             success('Đã cập nhật thông tin tài sản!');
@@ -981,6 +979,7 @@ const AssetList = () => {
                             size="small"
                             value={editStatusModal.status}
                             onChange={(e) => setEditStatusModal({ ...editStatusModal, status: e.target.value })}
+                            disabled={!isAdmin}
                             SelectProps={{ native: true }}
                             sx={{ mt: 1 }}
                         >
@@ -990,6 +989,11 @@ const AssetList = () => {
                             <option value="Mất">Mất</option>
                             <option value="Thanh lý">Thanh lý</option>
                         </TextField>
+                        {!isAdmin && (
+                            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                                Tình trạng chỉ được cập nhật bởi quản trị viên.
+                            </Typography>
+                        )}
 
                         <TextField
                             margin="dense"

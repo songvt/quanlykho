@@ -192,15 +192,14 @@ const ProductList = () => {
             (p.item_code?.toLowerCase() || '').includes(lowerTerm)
         );
 
+        // Danh sách hàng hóa chỉ phục vụ theo dõi các mặt hàng còn số lượng
+        // hoặc đang âm cần xử lý; các mặt hàng tồn kho bằng 0 không hiển thị.
+        result = result.filter(p => (stockMap[p.id] || 0) !== 0);
+
         if (filterParam === 'low_stock') {
             result = result.filter(p => {
                 const qty = stockMap[p.id] || 0;
                 return qty > 0 && qty < 10;
-            });
-        } else if (filterParam === 'out_of_stock') {
-            result = result.filter(p => {
-                const qty = stockMap[p.id] || 0;
-                return qty <= 0;
             });
         } else if (filterParam === 'negative_stock') {
             result = result.filter(p => (stockMap[p.id] || 0) < 0);
@@ -396,7 +395,6 @@ const ProductList = () => {
                     >
                         <MenuItem value="all">Tất cả sản phẩm</MenuItem>
                         <MenuItem value="low_stock">Sắp hết hàng</MenuItem>
-                        <MenuItem value="out_of_stock">Hết hàng</MenuItem>
                         <MenuItem value="negative_stock">
                             <Box display="flex" alignItems="center" gap={0.5}>
                                 <WarningAmberRoundedIcon fontSize="small" sx={{ color: 'error.main' }} />

@@ -274,28 +274,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 let prevEmployeeName = '';
                 let prevEmployeeCode = '';
                 let prevDepartment = '';
-                let prevStatus = 'Chưa sử dụng';
+                // Hoàn tác cấp phát/thu hồi chỉ khôi phục người sử dụng; tình trạng
+                // là thông tin nghiệp vụ do quản trị viên quản lý riêng.
+                const prevStatus = asset.status;
 
                 if (targetLog.action === 'Cấp phát') {
                     // Trước cấp phát: chưa có người dùng
                     prevEmployeeName = '';
                     prevEmployeeCode = '';
                     prevDepartment = '';
-                    prevStatus = 'Chưa sử dụng';
                 } else if (targetLog.action === 'Thu hồi') {
                     // Parse "Thu hồi từ [TÊN] về kho" → lấy TÊN
                     const matchRevoke = (targetLog.details || '').match(/Thu hồi từ \[(.+?)\] về kho/);
                     prevEmployeeName = matchRevoke ? matchRevoke[1] : (targetLog.employee_name || '');
                     prevEmployeeCode = targetLog.employee_code || '';
                     prevDepartment = targetLog.department || '';
-                    prevStatus = 'Đã cấp phát';
                 } else if (targetLog.action === 'Điều chuyển') {
                     // Parse "Thay đổi người sử dụng: A -> B" hoặc "Điều chuyển từ [A] sang [B]" → lấy A
                     const matchTransfer = (targetLog.details || '').match(/(?:Thay đổi người sử dụng:|Điều chuyển từ) \[?(.+?)\]? (?:->|sang)/);
                     prevEmployeeName = matchTransfer ? matchTransfer[1] : (targetLog.employee_name || '');
                     prevEmployeeCode = targetLog.employee_code || '';
                     prevDepartment = targetLog.department || '';
-                    prevStatus = 'Đã cấp phát';
                 }
 
                 // Cập nhật asset về state cũ
@@ -485,6 +484,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 // Fetch old state to detect changes for logging
                 const { data: oldData } = await supabase.from('assets').select('*').eq('id', updatedAsset.id).single();
 
+                // Cấp phát, thu hồi và điều chuyển chỉ cập nhật thông tin người sử
+                // dụng. Bảo vệ ở API để tình trạng không bị đổi dù client gửi kèm
+                // giá trị status trong các thao tác này.
+                const isUserAssignmentUpdate = [
+                    'user_employee_name',
+                    'user_employee_code',
+                    'user_department_name',
+                    'user_department_code'
+                ].some(field => Object.prototype.hasOwnProperty.call(updatedAsset, field));
+                if (isUserAssignmentUpdate && oldData) {
+                    updatedAsset.status = oldData.status;
+                }
+
                 // 1. Supabase
                 const { data: sbData, error: sbError } = await supabase.from('assets').update(updatedAsset).eq('id', updatedAsset.id).select();
                 if (sbError) {
@@ -509,13 +521,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const oldUser = oldData.user_employee_name || 'Kho';
                     const newUser = updatedAsset.user_employee_name !== undefined ? (updatedAsset.user_employee_name || 'Kho') : oldUser;
 
-                    if (updatedAsset.status?.toLowerCase().includes('cấp phát')) {
+                    if (updatedAsset.user_employee_name !== undefined &&
+                        updatedAsset.user_employee_name &&
+                        !oldData.user_employee_name) {
                         logAction = 'Cấp phát';
                         logDetails = `Cấp phát cho: ${newUser}`;
-                    } else if (updatedAsset.status?.toLowerCase().includes('điều chuyển')) {
-                        logAction = 'Điều chuyển';
-                        logDetails = `Điều chuyển từ [${oldUser}] sang [${newUser}]`;
-                    } else if (updatedAsset.user_employee_name === '' || updatedAsset.status === 'Chưa sử dụng') {
+                    } else if (updatedAsset.user_employee_name === '') {
                         logAction = 'Thu hồi';
                         logDetails = `Thu hồi từ [${oldUser}] về kho`;
                     } else if (updatedAsset.user_employee_name && updatedAsset.user_employee_name !== oldData.user_employee_name) {
