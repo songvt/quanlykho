@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
     Box, Typography, Paper, Table, TableBody, TableCell, 
     TableContainer, TableHead, TableRow, TextField, Button,
-    Chip, Alert, Snackbar, CircularProgress, IconButton, TablePagination, Autocomplete, Grid, Dialog, DialogTitle, DialogContent,
+    Chip, Alert, Snackbar, CircularProgress, IconButton, TablePagination, Autocomplete, Grid, Dialog, DialogTitle, DialogContent, DialogActions,
     useTheme, useMediaQuery, Card, CardContent, Divider, Stack
 } from '@mui/material';
-import { Save as SaveIcon, Print as PrintIcon } from '@mui/icons-material';
+import { Save as SaveIcon, Print as PrintIcon, FileDownload as FileDownloadIcon, PlaylistRemove as PlaylistRemoveIcon } from '@mui/icons-material';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import CloseIcon from '@mui/icons-material/Close';
@@ -16,11 +16,14 @@ import { playBeep } from '../../utils/audio';
 import { parseSerialInput, filterNewSerials } from '../../utils/serialParser';
 import { useSelector, useDispatch } from 'react-redux';
 import type { RootState, AppDispatch } from '../../store';
-import { selectStockMap, selectDetailedStockMap } from '../../store/slices/inventorySlice';
+import { selectStockMap, selectDetailedStockMap, selectWarehouseDetailedStockMap } from '../../store/slices/inventorySlice';
 import { fetchProducts } from '../../store/slices/productsSlice';
 import { fetchTransactions } from '../../store/slices/transactionsSlice';
 import { fetchEmployees } from '../../store/slices/employeesSlice';
 import { useNotification } from '../../contexts/NotificationContext';
+import { downloadAsDataUri, exportStandardReport } from '../../utils/excelUtils';
+import ExcelJS from 'exceljs';
+import { isTrackedWarehouse, normalizeWarehouseType } from '../../utils/warehouse';
 
 interface AuditItem {
     product_id: string;
@@ -41,9 +44,11 @@ const Audit: React.FC = () => {
     const products = useSelector((state: RootState) => state.products.items);
     const prodStatus = useSelector((state: RootState) => state.products.status);
     const transStatus = useSelector((state: RootState) => state.transactions.status);
+    const transactions = useSelector((state: RootState) => state.transactions.items);
     const { items: employees, status: empStatus } = useSelector((state: RootState) => state.employees);
     const stockMap = useSelector(selectStockMap);
     const detailedStockMap = useSelector(selectDetailedStockMap);
+    const warehouseDetailedStockMap = useSelector(selectWarehouseDetailedStockMap);
     const { profile } = useSelector((state: RootState) => state.auth);
     const isAdmin = profile?.role?.toLowerCase() === 'admin';
     const { success, error: notifyError } = useNotification();
@@ -52,7 +57,11 @@ const Audit: React.FC = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [title, setTitle] = useState('');
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>(!isAdmin && profile ? profile.id : '');
+    const [selectedWarehouse, setSelectedWarehouse] = useState('');
     const [openScannerFor, setOpenScannerFor] = useState<string | null>(null);
+    const [viewScannedSerialsFor, setViewScannedSerialsFor] = useState<string | null>(null);
+    const [serialInputs, setSerialInputs] = useState<Record<string, string>>({});
+    const serialInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
     
     // Pagination state
     const [page, setPage] = useState(0);
@@ -61,6 +70,11 @@ const Audit: React.FC = () => {
     const paginatedItems = useMemo(() => {
         return auditItems.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
     }, [auditItems, page, rowsPerPage]);
+
+    const viewedSerialItem = useMemo(
+        () => auditItems.find(item => item.product_id === viewScannedSerialsFor) || null,
+        [auditItems, viewScannedSerialsFor]
+    );
 
     useEffect(() => {
         if (prodStatus === 'idle') dispatch(fetchProducts());
@@ -72,12 +86,93 @@ const Audit: React.FC = () => {
     const targetDistrict = targetEmployee?.district || (isAdmin && !selectedEmployeeId ? '' : profile?.district || '');
 
     const getSystemQty = (productId: string) => {
+        if (selectedWarehouse) {
+            return Object.entries(warehouseDetailedStockMap).reduce((total, [key, qty]) => {
+                const [mappedProductId, district, , warehouse] = key.split('|');
+                const belongsToTargetDistrict = !targetDistrict || district === targetDistrict;
+                return mappedProductId === productId && warehouse === selectedWarehouse && belongsToTargetDistrict
+                    ? total + qty
+                    : total;
+            }, 0);
+        }
         if (isAdmin && !selectedEmployeeId) {
             return stockMap[productId] || 0; // Total warehouse stock
         }
         // Specific district stock
         return detailedStockMap[`${productId}|${targetDistrict}|*ALL*`] || 0;
     };
+
+    const warehouseOptions = useMemo(() => {
+        const totals = new Map<string, number>();
+        Object.entries(warehouseDetailedStockMap).forEach(([key, qty]) => {
+            const [, district, , warehouse] = key.split('|');
+            if (!warehouse || (targetDistrict && district !== targetDistrict)) return;
+            totals.set(warehouse, (totals.get(warehouse) || 0) + qty);
+        });
+        return [...totals.entries()]
+            .filter(([, qty]) => qty > 0)
+            .map(([warehouse]) => warehouse)
+            .sort((a, b) => a.localeCompare(b, 'vi'));
+    }, [warehouseDetailedStockMap, targetDistrict]);
+
+    // Dòng serial chi tiết của in_stock có thể có số lượng 0, nên danh sách
+    // serial khả dụng được xác định theo lần nhập/xuất cuối cùng của từng serial.
+    const availableSerialsByProduct = useMemo(() => {
+        const serialStates = new Map<string, { productId: string; serial: string; warehouse: string; district: string; inStock: boolean; time: number }>();
+        const serialWarehouse = new Map<string, string>();
+        const sortedTransactions = [...transactions].sort((a, b) => {
+            const timeA = new Date(a.inbound_date || a.outbound_date || a.date || a.created_at || 0).getTime();
+            const timeB = new Date(b.inbound_date || b.outbound_date || b.date || b.created_at || 0).getTime();
+            return timeA - timeB;
+        });
+
+        sortedTransactions.forEach(transaction => {
+            const serial = String(transaction.serial_code || '').trim();
+            if (!serial || !transaction.product_id) return;
+            const serialKey = `${transaction.product_id}|${serial.toUpperCase()}`;
+            const isOutbound = transaction.type === 'outbound' || Boolean(transaction.outbound_date);
+            let warehouse = normalizeWarehouseType(transaction.warehouse_type);
+            if (!isOutbound && isTrackedWarehouse(warehouse)) serialWarehouse.set(serialKey, warehouse);
+            if (isOutbound && !isTrackedWarehouse(warehouse)) warehouse = serialWarehouse.get(serialKey) || '';
+            if (!isTrackedWarehouse(warehouse)) return;
+
+            serialStates.set(serialKey, {
+                productId: transaction.product_id,
+                serial,
+                warehouse,
+                district: transaction.district || '',
+                inStock: !isOutbound,
+                time: new Date(transaction.inbound_date || transaction.outbound_date || transaction.date || transaction.created_at || 0).getTime(),
+            });
+        });
+
+        const result = new Map<string, string[]>();
+        serialStates.forEach(state => {
+            if (!state.inStock) return;
+            if (targetDistrict && state.district !== targetDistrict) return;
+            if (selectedWarehouse && state.warehouse !== selectedWarehouse) return;
+            result.set(state.productId, [...(result.get(state.productId) || []), state.serial]);
+        });
+        result.forEach(serials => serials.sort((a, b) => a.localeCompare(b, 'vi')));
+        return result;
+    }, [transactions, selectedWarehouse, targetDistrict]);
+
+    const missingSerialRows = useMemo(() => {
+        const scannedSerials = new Set(
+            auditItems.flatMap(item => item.scanned_serials || []).map(serial => serial.trim().toLowerCase())
+        );
+        return auditItems.flatMap(item =>
+            (availableSerialsByProduct.get(item.product_id) || [])
+                .filter(serial => !scannedSerials.has(serial.trim().toLowerCase()))
+                .map(serial => ({
+                    item_code: item.item_code,
+                    name: item.name,
+                    serial,
+                    warehouse: selectedWarehouse || 'Tất cả kho',
+                    audit_status: item.actual_qty === '' ? 'Chưa kiểm kê' : 'Chưa quét serial',
+                }))
+        );
+    }, [auditItems, availableSerialsByProduct, selectedWarehouse]);
 
     useEffect(() => {
         if (products.length > 0) {
@@ -122,7 +217,7 @@ const Audit: React.FC = () => {
                 setTitle(`Phiếu kiểm kê ngày ${new Date().toLocaleDateString('vi-VN')}${empName}`);
             }
         }
-    }, [products, stockMap, detailedStockMap, selectedEmployeeId, targetDistrict]); // eslint-disable-line react-hooks/exhaustive-deps -- Preserve entered title and counted quantities during grid recalculation.
+    }, [products, stockMap, detailedStockMap, warehouseDetailedStockMap, selectedEmployeeId, selectedWarehouse, targetDistrict]); // eslint-disable-line react-hooks/exhaustive-deps -- Preserve entered title and counted quantities during grid recalculation.
 
     const handleQtyChange = (productId: string, value: string) => {
         const val = value === '' ? '' : Number(value);
@@ -144,11 +239,17 @@ const Audit: React.FC = () => {
 
         setAuditItems(prev => prev.map(item => {
             if (item.product_id === productId) {
-                const newSerials = filterNewSerials(codes, item.scanned_serials || []);
+                // Serial là định danh duy nhất trong cùng phiếu kiểm kê. Khóa
+                // serial đã quét ở bất kỳ mã hàng nào để không cộng trùng số lượng.
+                const allScannedSerials = prev.flatMap(auditItem => auditItem.scanned_serials || []);
+                const newSerials = filterNewSerials(codes, allScannedSerials);
                 if (newSerials.length > 0) {
                     const updatedSerials = [...(item.scanned_serials || []), ...newSerials];
                     const newActualQty = updatedSerials.length;
                     playBeep(800);
+                    if (newSerials.length < codes.length) {
+                        notifyError('Một số serial đã được quét trước đó nên không được cộng lại.');
+                    }
                     return {
                         ...item,
                         scanned_serials: updatedSerials,
@@ -156,11 +257,21 @@ const Audit: React.FC = () => {
                         discrepancy: newActualQty - item.system_qty
                     };
                 } else {
-                    notifyError("Mã serial này đã được quét.");
+                    notifyError('Serial này đã được quét và đã bị khóa để tránh đếm trùng.');
                 }
             }
             return item;
         }));
+    };
+
+    const submitSerial = (productId: string, serial: string) => {
+        const value = serial.trim();
+        if (!value) return;
+        handleAddSerial(productId, value);
+        setSerialInputs(prev => ({ ...prev, [productId]: '' }));
+        // Máy quét mã vạch thường gửi Enter sau mã serial. Giữ tiêu điểm tại
+        // ô hiện tại để có thể quét liên tục nhiều serial cho cùng mã hàng.
+        requestAnimationFrame(() => serialInputRefs.current[productId]?.focus());
     };
 
     const handleNoteChange = (productId: string, value: string) => {
@@ -219,12 +330,9 @@ const Audit: React.FC = () => {
             handlePrint(checkedItems);
             
             // Reset for next audit
-            setAuditItems(products.map(p => ({
-                product_id: p.id,
-                item_code: p.item_code,
-                name: p.name,
-                category: p.category || '',
-                system_qty: stockMap[p.id] || 0,
+            setAuditItems(previous => previous.map(item => ({
+                ...item,
+                system_qty: getSystemQty(item.product_id),
                 actual_qty: '' as number | '',
                 discrepancy: 0,
                 notes: '',
@@ -236,6 +344,114 @@ const Audit: React.FC = () => {
             notifyError(error.message);
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleExportExcel = async () => {
+        const checkedItems = auditItems.filter(item => item.actual_qty !== '');
+        if (checkedItems.length === 0) {
+            notifyError('Chưa có kết quả kiểm kê để xuất Excel.');
+            return;
+        }
+
+        try {
+            await exportStandardReport(
+                checkedItems.map(item => ({
+                    item_code: item.item_code,
+                    name: item.name,
+                    system_qty: item.system_qty,
+                    actual_qty: item.actual_qty,
+                    discrepancy: item.discrepancy,
+                    scanned_serials: item.scanned_serials.join('\n'),
+                    notes: item.notes,
+                })),
+                `Ket_qua_kiem_ke_${new Date().toISOString().slice(0, 10)}`,
+                title.trim() || 'BÁO CÁO KẾT QUẢ KIỂM KÊ',
+                [
+                    { header: 'STT', key: 'stt', width: 6, align: 'center' },
+                    { header: 'Mã vật tư', key: 'item_code', width: 22 },
+                    { header: 'Tên vật tư', key: 'name', width: 35 },
+                    { header: 'Tồn hệ thống', key: 'system_qty', width: 14, align: 'center' },
+                    { header: 'Thực tế', key: 'actual_qty', width: 12, align: 'center' },
+                    { header: 'Chênh lệch', key: 'discrepancy', width: 13, align: 'center' },
+                    { header: 'Serial đã quét', key: 'scanned_serials', width: 35 },
+                    { header: 'Ghi chú / Tình trạng', key: 'notes', width: 30 },
+                ],
+                profile?.full_name || profile?.email || 'Người kiểm kê'
+            );
+            success('Đã xuất báo cáo kết quả kiểm kê Excel!');
+        } catch (error: any) {
+            console.error('Export audit Excel failed:', error);
+            notifyError(`Không thể xuất Excel: ${error.message || 'Lỗi không xác định'}`);
+        }
+    };
+
+    const handleExportPendingExcel = async () => {
+        const pendingItems = auditItems.filter(item => item.actual_qty === '');
+        if (pendingItems.length === 0 && missingSerialRows.length === 0) {
+            success('Tất cả vật tư trong danh sách hiện tại đã được kiểm kê.');
+            return;
+        }
+
+        try {
+            const workbook = new ExcelJS.Workbook();
+            const border: Partial<ExcelJS.Borders> = {
+                top: { style: 'thin', color: { argb: 'FF94A3B8' } },
+                left: { style: 'thin', color: { argb: 'FF94A3B8' } },
+                bottom: { style: 'thin', color: { argb: 'FF94A3B8' } },
+                right: { style: 'thin', color: { argb: 'FF94A3B8' } },
+            };
+            const createSheet = (sheetName: string, reportTitle: string, columns: Array<{ header: string; key: string; width: number }>, rows: Record<string, unknown>[]) => {
+                const sheet = workbook.addWorksheet(sheetName, { pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1 } });
+                sheet.columns = columns.map(column => ({ key: column.key, width: column.width }));
+                sheet.mergeCells(1, 1, 1, columns.length);
+                const titleCell = sheet.getCell(1, 1);
+                titleCell.value = reportTitle;
+                titleCell.font = { name: 'Times New Roman', bold: true, size: 14, color: { argb: 'FF0F172A' } };
+                titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+                sheet.getRow(1).height = 26;
+                sheet.mergeCells(2, 1, 2, columns.length);
+                sheet.getCell(2, 1).value = `Phiếu: ${title || 'Kiểm kê'} | Kho: ${selectedWarehouse || 'Tất cả kho'} | Xuất ngày: ${new Date().toLocaleDateString('vi-VN')}`;
+                sheet.getCell(2, 1).font = { name: 'Times New Roman', size: 11, italic: true };
+                sheet.getCell(2, 1).alignment = { horizontal: 'center' };
+                sheet.addRow(columns.map(column => column.header));
+                const headerRow = sheet.getRow(3);
+                headerRow.height = 28;
+                headerRow.eachCell(cell => {
+                    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
+                    cell.font = { name: 'Times New Roman', bold: true, color: { argb: 'FFFFFFFF' } };
+                    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                    cell.border = border as ExcelJS.Borders;
+                });
+                rows.forEach((row, index) => {
+                    const excelRow = sheet.addRow(columns.map(column => column.key === 'stt' ? index + 1 : row[column.key] ?? ''));
+                    excelRow.eachCell((cell, columnNumber) => {
+                        cell.border = border as ExcelJS.Borders;
+                        cell.font = { name: 'Times New Roman', size: 11 };
+                        cell.alignment = { vertical: 'middle', wrapText: true, horizontal: columnNumber === 1 ? 'center' : 'left' };
+                    });
+                });
+                sheet.views = [{ state: 'frozen', ySplit: 3 }];
+            };
+
+            createSheet('Chưa kiểm kê', 'DANH SÁCH VẬT TƯ CÒN THIẾU KIỂM KÊ', [
+                { header: 'STT', key: 'stt', width: 6 }, { header: 'Mã vật tư', key: 'item_code', width: 22 },
+                { header: 'Tên vật tư', key: 'name', width: 38 }, { header: 'Danh mục', key: 'category', width: 18 },
+                { header: 'Tồn hệ thống', key: 'system_qty', width: 14 }, { header: 'Trạng thái kiểm kê', key: 'status', width: 20 },
+            ], pendingItems.map(item => ({ item_code: item.item_code, name: item.name, category: item.category, system_qty: item.system_qty, status: 'Chưa kiểm kê' })));
+
+            createSheet('Serial thiếu', 'CHI TIẾT SERIAL CÒN THIẾU KIỂM KÊ', [
+                { header: 'STT', key: 'stt', width: 6 }, { header: 'Mã vật tư', key: 'item_code', width: 22 },
+                { header: 'Tên vật tư', key: 'name', width: 38 }, { header: 'Serial', key: 'serial', width: 30 },
+                { header: 'Mã kho', key: 'warehouse', width: 20 }, { header: 'Trạng thái', key: 'audit_status', width: 20 },
+            ], missingSerialRows);
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            downloadAsDataUri(buffer, `Danh_sach_chua_kiem_ke_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            success(`Đã xuất ${pendingItems.length} vật tư chưa kiểm kê và ${missingSerialRows.length} serial thiếu ra Excel!`);
+        } catch (error: any) {
+            console.error('Export pending audit Excel failed:', error);
+            notifyError(`Không thể xuất Excel: ${error.message || 'Lỗi không xác định'}`);
         }
     };
 
@@ -391,6 +607,38 @@ const Audit: React.FC = () => {
                 gradientType="slate"
                 actions={
                     <>
+                        <AppButton
+                            variant="contained"
+                            onClick={handleExportPendingExcel}
+                            sx={{
+                                bgcolor: 'rgba(255, 255, 255, 0.15)',
+                                color: '#ffffff',
+                                backdropFilter: 'blur(12px)',
+                                border: '1px solid rgba(255, 255, 255, 0.2)',
+                                width: 46,
+                                height: 46,
+                                '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.25)', transform: 'translateY(-2px)' },
+                                '&:active': { transform: 'scale(0.95)' }
+                            }}
+                            icon={<PlaylistRemoveIcon />}
+                            title={`Danh sách chưa kiểm kê (${auditItems.filter(item => item.actual_qty === '').length})`}
+                        />
+                        <AppButton
+                            variant="contained"
+                            onClick={handleExportExcel}
+                            sx={{
+                                bgcolor: 'rgba(255, 255, 255, 0.15)',
+                                color: '#ffffff',
+                                backdropFilter: 'blur(12px)',
+                                border: '1px solid rgba(255, 255, 255, 0.2)',
+                                width: 46,
+                                height: 46,
+                                '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.25)', transform: 'translateY(-2px)' },
+                                '&:active': { transform: 'scale(0.95)' }
+                            }}
+                            icon={<FileDownloadIcon />}
+                            title="Xuất Excel"
+                        />
                         <AppButton 
                             variant="contained" 
                             onClick={() => handlePrint()}
@@ -441,7 +689,7 @@ const Audit: React.FC = () => {
 
             <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
                 <Grid container spacing={2}>
-                    <Grid size={{ xs: 12, md: isAdmin ? 8 : 12 }}>
+                    <Grid size={{ xs: 12, md: isAdmin ? 6 : 8 }}>
                         <TextField 
                             label="Tên phiếu kiểm kê" 
                             variant="outlined" 
@@ -451,7 +699,7 @@ const Audit: React.FC = () => {
                         />
                     </Grid>
                     {isAdmin && (
-                        <Grid size={{ xs: 12, md: 4 }}>
+                        <Grid size={{ xs: 12, md: 3 }}>
                             <Autocomplete
                                 fullWidth
                                 options={employees}
@@ -465,6 +713,18 @@ const Audit: React.FC = () => {
                             />
                         </Grid>
                     )}
+                    <Grid size={{ xs: 12, md: isAdmin ? 3 : 4 }}>
+                        <Autocomplete
+                            fullWidth
+                            options={warehouseOptions}
+                            value={selectedWarehouse || null}
+                            onChange={(_, warehouse) => {
+                                setSelectedWarehouse(warehouse || '');
+                                setAuditItems([]);
+                            }}
+                            renderInput={(params) => <TextField {...params} label="Lọc theo mã kho" placeholder="Tất cả kho" />}
+                        />
+                    </Grid>
                 </Grid>
             </Paper>
 
@@ -535,14 +795,13 @@ const Audit: React.FC = () => {
                                                     size="small"
                                                     placeholder="Quét mã..."
                                                     fullWidth
+                                                    inputRef={(element) => { serialInputRefs.current[item.product_id] = element; }}
+                                                    value={serialInputs[item.product_id] || ''}
+                                                    onChange={(e) => setSerialInputs(prev => ({ ...prev, [item.product_id]: e.target.value }))}
                                                     onKeyDown={(e) => {
                                                         if (e.key === 'Enter') {
                                                             e.preventDefault();
-                                                            const val = (e.target as HTMLInputElement).value;
-                                                            if (val.trim()) {
-                                                                handleAddSerial(item.product_id, val.trim());
-                                                                (e.target as HTMLInputElement).value = '';
-                                                            }
+                                                            submitSerial(item.product_id, serialInputs[item.product_id] || '');
                                                         }
                                                     }}
                                                 />
@@ -560,9 +819,13 @@ const Audit: React.FC = () => {
                                                 </IconButton>
                                             </Box>
                                             {(item.scanned_serials?.length || 0) > 0 && (
-                                                <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
-                                                    Đã quét: <b>{item.scanned_serials.length}</b> serial ({item.scanned_serials.join(', ')})
-                                                </Typography>
+                                                <Button
+                                                    size="small"
+                                                    onClick={() => setViewScannedSerialsFor(item.product_id)}
+                                                    sx={{ alignSelf: 'flex-start', px: 0, minWidth: 0, textTransform: 'none', fontSize: '0.75rem' }}
+                                                >
+                                                    Xem {item.scanned_serials.length} serial đã quét
+                                                </Button>
                                             )}
                                         </Box>
                                     )}
@@ -638,14 +901,13 @@ const Audit: React.FC = () => {
                                                             size="small"
                                                             placeholder="Quét mã..."
                                                             fullWidth
+                                                            inputRef={(element) => { serialInputRefs.current[item.product_id] = element; }}
+                                                            value={serialInputs[item.product_id] || ''}
+                                                            onChange={(e) => setSerialInputs(prev => ({ ...prev, [item.product_id]: e.target.value }))}
                                                             onKeyDown={(e) => {
                                                                 if (e.key === 'Enter') {
                                                                     e.preventDefault();
-                                                                    const val = (e.target as HTMLInputElement).value;
-                                                                    if (val.trim()) {
-                                                                        handleAddSerial(item.product_id, val.trim());
-                                                                        (e.target as HTMLInputElement).value = '';
-                                                                    }
+                                                                    submitSerial(item.product_id, serialInputs[item.product_id] || '');
                                                                 }
                                                             }}
                                                         />
@@ -654,9 +916,13 @@ const Audit: React.FC = () => {
                                                         </IconButton>
                                                     </Box>
                                                     {(item.scanned_serials?.length || 0) > 0 && (
-                                                        <Typography variant="caption" color="text.secondary">
-                                                            Đã quét: <b>{item.scanned_serials.length}</b> serial
-                                                        </Typography>
+                                                        <Button
+                                                            size="small"
+                                                            onClick={() => setViewScannedSerialsFor(item.product_id)}
+                                                            sx={{ alignSelf: 'flex-start', px: 0, minWidth: 0, textTransform: 'none', fontSize: '0.75rem' }}
+                                                        >
+                                                            Xem {item.scanned_serials.length} serial đã quét
+                                                        </Button>
                                                     )}
                                                 </Box>
                                             ) : (
@@ -712,6 +978,33 @@ const Audit: React.FC = () => {
                     </DialogContent>
                 </Dialog>
             )}
+
+            <Dialog
+                open={!!viewScannedSerialsFor}
+                onClose={() => setViewScannedSerialsFor(null)}
+                fullWidth
+                maxWidth="sm"
+                PaperProps={{ sx: { borderRadius: 3 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 800 }}>
+                    Serial đã quét{viewedSerialItem ? ` — ${viewedSerialItem.item_code}` : ''}
+                </DialogTitle>
+                <DialogContent dividers>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        {viewedSerialItem?.name} · Tổng cộng {viewedSerialItem?.scanned_serials.length || 0} serial
+                    </Typography>
+                    <Box component="ol" sx={{ m: 0, pl: 3, maxHeight: 360, overflowY: 'auto' }}>
+                        {viewedSerialItem?.scanned_serials.map(serial => (
+                            <Box component="li" key={serial} sx={{ py: 0.5, fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                                {serial}
+                            </Box>
+                        ))}
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <AppButton onClick={() => setViewScannedSerialsFor(null)} icon={<CloseIcon />} title="Đóng" />
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };
