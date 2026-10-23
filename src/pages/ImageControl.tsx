@@ -208,7 +208,6 @@ export default function ImageControl() {
                 <Box><Typography variant="caption" color="text.secondary">Loại yêu cầu · Dịch vụ</Typography><Typography fontWeight={700}>{row.requestType || '—'}</Typography><Typography variant="body2">{row.service || '—'}</Typography></Box>
                 <Divider />
                 <Box><Typography variant="caption" color="text.secondary">Khách hàng · Account</Typography><Typography fontWeight={600}>{row.customer || '—'}</Typography><Typography variant="body2" color="text.secondary">{row.account || '—'}</Typography></Box>{isAdmin && <Typography variant="body2"><b>Nhân viên NT:</b> {row.installer || '—'}</Typography>}
-                <Box><Typography variant="caption" color="text.secondary">Địa chỉ lắp đặt</Typography><Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>{row.address || '—'}</Typography></Box>
                 <Stack spacing={0.75}>{(Object.keys(typeLabels) as ImageType[]).map((type) => <Stack key={type} direction="row" alignItems="center" justifyContent="space-between" gap={1} sx={{ p: 0.75, borderRadius: 1, bgcolor: 'action.hover', display: type === 'appointment' && !isAppointmentRequired(row.appointmentTick) ? 'none' : 'flex' }}><Typography variant="body2" fontWeight={600}>{typeLabels[type]}</Typography>{type === 'appointment' && !isAppointmentRequired(row.appointmentTick)
                     ? null
                     : row.links[type]
