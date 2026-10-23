@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import {
     Alert, Box, Button, Card, CardContent, CircularProgress, Divider,
-    Pagination, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography,
+    MenuItem, Pagination, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -65,6 +65,8 @@ export default function ImageControl() {
     const fileInput = useRef<HTMLInputElement>(null);
     const cameraInput = useRef<HTMLInputElement>(null);
     const [query, setQuery] = useState('');
+    const [installerFilter, setInstallerFilter] = useState('');
+    const [installers, setInstallers] = useState<string[]>([]);
     const [rows, setRows] = useState<ControlRow[]>([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
@@ -73,20 +75,22 @@ export default function ImageControl() {
     const [pickerTarget, setPickerTarget] = useState<{ rowNumber: number; imageType: ImageType } | null>(null);
     const [drafts, setDrafts] = useState<Record<number, StagedImages>>({});
     const [message, setMessage] = useState<{ severity: 'success' | 'error' | 'info'; text: string } | null>(null);
+    const isAdmin = profile?.role === 'admin';
     const pages = useMemo(() => Math.max(1, Math.ceil(total / 30)), [total]);
 
-    const search = async (requestedPage = 1) => {
+    const search = async (requestedPage = 1, selectedInstaller = installerFilter) => {
         const term = query.trim();
         setLoading(true); setMessage(null);
         try {
             const installerName = profile?.full_name?.trim();
             if (!installerName) throw new Error('Tài khoản chưa có thông tin họ tên để đối chiếu Nhân viên NT.');
-            const response = await fetch(`/api/image-control?q=${encodeURIComponent(term)}&installerName=${encodeURIComponent(installerName)}&page=${requestedPage}&pageSize=30`);
+            const response = await fetch(`/api/image-control?q=${encodeURIComponent(term)}&installerName=${encodeURIComponent(installerName)}&installerFilter=${encodeURIComponent(selectedInstaller)}&admin=${isAdmin}&page=${requestedPage}&pageSize=30`);
             const raw = await response.text();
             let data: any = {};
             try { data = raw ? JSON.parse(raw) : {}; } catch { throw new Error(`Máy chủ trả phản hồi không hợp lệ (HTTP ${response.status}).`); }
             if (!response.ok) throw new Error(data.error || 'Không thể tải dữ liệu.');
             setRows(data.rows); setTotal(data.total); setPage(requestedPage);
+            if (isAdmin && Array.isArray(data.installers)) setInstallers(data.installers);
         } catch (error: any) { setMessage({ severity: 'error', text: error.message || 'Không thể tải dữ liệu.' }); }
         finally { setLoading(false); }
     };
@@ -95,7 +99,7 @@ export default function ImageControl() {
         if (profile?.full_name?.trim()) search(1);
         // Chỉ tải lại khi nhân viên đăng nhập thay đổi; search được gọi thủ công khi đổi từ khóa.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [profile?.full_name]);
+    }, [profile?.full_name, isAdmin]);
 
     const chooseFile = (row: ControlRow, type: ImageType, source: 'file' | 'camera') => {
         setPickerTarget({ rowNumber: row.rowNumber, imageType: type }); setMessage(null);
@@ -161,12 +165,16 @@ export default function ImageControl() {
     return <Box sx={{ maxWidth: 1280, mx: 'auto', p: { xs: 2, md: 3 } }}>
         <Stack spacing={1} mb={3}>
             <Typography variant="h4" fontWeight={800}>Kiểm soát hình ảnh</Typography>
-            <Typography color="text.secondary">Ảnh trước và Ảnh sau luôn bắt buộc. BB HẸN chỉ bắt buộc khi TICK HẸN là “Tích hẹnn: OK”.</Typography>
+            <Typography color="text.secondary">{isAdmin ? 'Xem biên bản của toàn bộ nhân viên, bao gồm đã tải và chưa tải.' : 'Ảnh trước và Ảnh sau luôn bắt buộc. BB HẸN chỉ bắt buộc khi TICK HẸN là “Tích hẹnn: OK”.'}</Typography>
         </Stack>
         <Card sx={{ mb: 2 }}><CardContent>
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ md: 'center' }}>
                 <TextField fullWidth label="Lọc thêm theo mã, Account hoặc khách hàng" value={query}
                     onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && search(1)} />
+                {isAdmin && <TextField select fullWidth label="Nhân viên NT" value={installerFilter} onChange={(e) => { setInstallerFilter(e.target.value); search(1, e.target.value); }} sx={{ minWidth: 230 }}>
+                    <MenuItem value="">Tất cả nhân viên</MenuItem>
+                    {installers.map((installer) => <MenuItem key={installer} value={installer}>{installer}</MenuItem>)}
+                </TextField>}
                 <Button variant="contained" startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <Search size={18} />} onClick={() => search(1)} disabled={loading} sx={{ minWidth: 130, height: 56 }}>Tìm kiếm</Button>
             </Stack>
         </CardContent></Card>
@@ -174,31 +182,31 @@ export default function ImageControl() {
         <input ref={fileInput} type="file" accept="image/*" hidden onChange={stageFile} />
         <input ref={cameraInput} type="file" accept="image/*" capture="environment" hidden onChange={stageFile} />
         {rows.length > 0 && !isMobile && <TableContainer component={Card} variant="outlined"><Table size="small" sx={{ minWidth: 1250 }}><TableHead><TableRow>
-            {['Loại yêu cầu', 'Dịch vụ', 'Tên khách hàng', 'Account', 'Địa chỉ lắp đặt', 'Image trước', 'Image Sau', 'BB HẸN', 'Lưu'].map((heading) => <TableCell key={heading} sx={{ fontWeight: 800, whiteSpace: 'nowrap' }}>{heading}</TableCell>)}
+            {['Loại yêu cầu', 'Dịch vụ', 'Tên khách hàng', 'Account', 'Địa chỉ lắp đặt', ...(isAdmin ? ['Nhân viên NT'] : []), 'Image trước', 'Image Sau', 'BB HẸN', ...(isAdmin ? [] : ['Lưu'])].map((heading) => <TableCell key={heading} sx={{ fontWeight: 800, whiteSpace: 'nowrap' }}>{heading}</TableCell>)}
         </TableRow></TableHead><TableBody>{rows.map((row) => <TableRow key={row.rowNumber} hover>
-            <TableCell>{row.requestType}</TableCell><TableCell>{row.service}</TableCell><TableCell>{row.customer}</TableCell><TableCell>{row.account}</TableCell><TableCell sx={{ minWidth: 260 }}>{row.address}</TableCell>
+            <TableCell>{row.requestType}</TableCell><TableCell>{row.service}</TableCell><TableCell>{row.customer}</TableCell><TableCell>{row.account}</TableCell><TableCell sx={{ minWidth: 260 }}>{row.address}</TableCell>{isAdmin && <TableCell>{row.installer || '—'}</TableCell>}
             {(Object.keys(typeLabels) as ImageType[]).map((type) => <TableCell key={type} sx={{ minWidth: 120 }}>{type === 'appointment' && !isAppointmentRequired(row.appointmentTick)
                 ? null
                 : row.links[type]
                 ? <Button component="a" href={row.links[type]} target="_blank" rel="noreferrer" size="small">Xem ảnh</Button>
-                : <Stack spacing={0.5}>{drafts[row.rowNumber]?.[type] && <Typography variant="caption" color="success.main" noWrap sx={{ maxWidth: 115 }}>Đã chọn</Typography>}<Stack direction="row" spacing={0.5}><Button size="small" variant="outlined" disabled={uploading === row.rowNumber} onClick={() => chooseFile(row, type, 'file')}>Chọn ảnh</Button><Button size="small" variant="outlined" disabled={uploading === row.rowNumber} onClick={() => chooseFile(row, type, 'camera')} startIcon={<Camera size={14} />}>Chụp ảnh</Button></Stack></Stack>}</TableCell>)}
-            <TableCell><Button size="small" variant="contained" disabled={uploading === row.rowNumber || !Object.keys(drafts[row.rowNumber] || {}).length} onClick={() => saveRow(row)}>{uploading === row.rowNumber ? <CircularProgress size={15} color="inherit" /> : 'Lưu'}</Button></TableCell>
+                : isAdmin ? <Typography color="text.secondary">—</Typography> : <Stack spacing={0.5}>{drafts[row.rowNumber]?.[type] && <Typography variant="caption" color="success.main" noWrap sx={{ maxWidth: 115 }}>Đã chọn</Typography>}<Stack direction="row" spacing={0.5}><Button size="small" variant="outlined" disabled={uploading === row.rowNumber} onClick={() => chooseFile(row, type, 'file')}>Chọn ảnh</Button><Button size="small" variant="outlined" disabled={uploading === row.rowNumber} onClick={() => chooseFile(row, type, 'camera')} startIcon={<Camera size={14} />}>Chụp ảnh</Button></Stack></Stack>}</TableCell>)}
+            {!isAdmin && <TableCell><Button size="small" variant="contained" disabled={uploading === row.rowNumber || !Object.keys(drafts[row.rowNumber] || {}).length} onClick={() => saveRow(row)}>{uploading === row.rowNumber ? <CircularProgress size={15} color="inherit" /> : 'Lưu'}</Button></TableCell>}
         </TableRow>)}</TableBody></Table></TableContainer>}
         {rows.length > 0 && isMobile && <Stack spacing={1.5}>{rows.map((row) => <Card key={row.rowNumber} variant="outlined"><CardContent sx={{ p: 1.75, '&:last-child': { pb: 1.75 } }}>
             <Stack spacing={1.15}>
                 <Box><Typography variant="caption" color="text.secondary">Loại yêu cầu · Dịch vụ</Typography><Typography fontWeight={700}>{row.requestType || '—'}</Typography><Typography variant="body2">{row.service || '—'}</Typography></Box>
                 <Divider />
-                <Box><Typography variant="caption" color="text.secondary">Khách hàng · Account</Typography><Typography fontWeight={600}>{row.customer || '—'}</Typography><Typography variant="body2" color="text.secondary">{row.account || '—'}</Typography></Box>
+                <Box><Typography variant="caption" color="text.secondary">Khách hàng · Account</Typography><Typography fontWeight={600}>{row.customer || '—'}</Typography><Typography variant="body2" color="text.secondary">{row.account || '—'}</Typography></Box>{isAdmin && <Typography variant="body2"><b>Nhân viên NT:</b> {row.installer || '—'}</Typography>}
                 <Box><Typography variant="caption" color="text.secondary">Địa chỉ lắp đặt</Typography><Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>{row.address || '—'}</Typography></Box>
                 <Stack spacing={0.75}>{(Object.keys(typeLabels) as ImageType[]).map((type) => <Stack key={type} direction="row" alignItems="center" justifyContent="space-between" gap={1} sx={{ p: 0.75, borderRadius: 1, bgcolor: 'action.hover', display: type === 'appointment' && !isAppointmentRequired(row.appointmentTick) ? 'none' : 'flex' }}><Typography variant="body2" fontWeight={600}>{typeLabels[type]}</Typography>{type === 'appointment' && !isAppointmentRequired(row.appointmentTick)
                     ? null
                     : row.links[type]
                     ? <Button component="a" href={row.links[type]} target="_blank" rel="noreferrer" size="small">Xem ảnh</Button>
-                    : <Stack direction="row" spacing={0.5} alignItems="center">{drafts[row.rowNumber]?.[type] && <Typography variant="caption" color="success.main">Đã chọn</Typography>}<Button size="small" disabled={uploading === row.rowNumber} onClick={() => chooseFile(row, type, 'file')}>Chọn ảnh</Button><Button size="small" disabled={uploading === row.rowNumber} onClick={() => chooseFile(row, type, 'camera')} startIcon={<Camera size={14} />}>Chụp ảnh</Button></Stack>}</Stack>)}</Stack>
-                <Button fullWidth variant="contained" disabled={uploading === row.rowNumber || !Object.keys(drafts[row.rowNumber] || {}).length} onClick={() => saveRow(row)}>{uploading === row.rowNumber ? 'Đang lưu…' : 'Lưu tất cả ảnh đã chọn'}</Button>
+                    : isAdmin ? <Typography color="text.secondary">—</Typography> : <Stack direction="row" spacing={0.5} alignItems="center">{drafts[row.rowNumber]?.[type] && <Typography variant="caption" color="success.main">Đã chọn</Typography>}<Button size="small" disabled={uploading === row.rowNumber} onClick={() => chooseFile(row, type, 'file')}>Chọn ảnh</Button><Button size="small" disabled={uploading === row.rowNumber} onClick={() => chooseFile(row, type, 'camera')} startIcon={<Camera size={14} />}>Chụp ảnh</Button></Stack>}</Stack>)}</Stack>
+                {!isAdmin && <Button fullWidth variant="contained" disabled={uploading === row.rowNumber || !Object.keys(drafts[row.rowNumber] || {}).length} onClick={() => saveRow(row)}>{uploading === row.rowNumber ? 'Đang lưu…' : 'Lưu tất cả ảnh đã chọn'}</Button>}
             </Stack>
         </CardContent></Card>)}</Stack>}
-        {!loading && rows.length === 0 && <Card variant="outlined"><CardContent><Stack alignItems="center" spacing={1}><ImageIcon size={32} /><Typography color="text.secondary">Bạn không còn công việc nào thiếu ảnh bắt buộc.</Typography></Stack></CardContent></Card>}
+        {!loading && rows.length === 0 && <Card variant="outlined"><CardContent><Stack alignItems="center" spacing={1}><ImageIcon size={32} /><Typography color="text.secondary">{isAdmin ? 'Không có biên bản phù hợp.' : 'Bạn không còn công việc nào thiếu ảnh bắt buộc.'}</Typography></Stack></CardContent></Card>}
         {total > 0 && <><Divider sx={{ my: 2 }} /><Stack direction="row" justifyContent="space-between" alignItems="center"><Typography variant="body2" color="text.secondary">Tìm thấy {total.toLocaleString('vi-VN')} dòng</Typography><Pagination count={pages} page={page} onChange={(_, value) => search(value)} color="primary" /></Stack></>}
     </Box>;
 }

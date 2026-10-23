@@ -170,23 +170,32 @@ export default async function imageControlHandler(req: VercelRequest, res: Verce
         if (req.method === 'GET') {
             const query = String(req.query.q || '').trim().toLocaleLowerCase('vi');
             const installerName = String(req.query.installerName || '').trim();
+            const installerFilter = String(req.query.installerFilter || '').trim();
+            const isAdminView = String(req.query.admin || '') === 'true';
             const page = Math.max(1, Number(req.query.page) || 1);
             const pageSize = Math.min(100, Math.max(10, Number(req.query.pageSize) || 30));
             if (!installerName) return res.status(400).json({ error: 'Không xác định được nhân viên đăng nhập.' });
             const index = await loadIndex();
             const expectedInstaller = normalizeName(installerName);
+            const expectedFilter = normalizeName(installerFilter);
             const matches = index.filter((row) => {
-                const belongsToEmployee = normalizeName(row.installer) === expectedInstaller;
+                const belongsToEmployee = isAdminView || normalizeName(row.installer) === expectedInstaller;
+                const matchesInstaller = !isAdminView || !expectedFilter || normalizeName(row.installer) === expectedFilter;
                 const requiresAppointmentRecord = needsAppointmentImages(row.appointmentTick);
                 // Ảnh trước và Ảnh sau luôn bắt buộc. BB HẸN chỉ bắt buộc khi TICK HẸN là OK.
                 const isPending = !row.images.before.trim()
                     || !row.images.after.trim()
                     || (requiresAppointmentRecord && !row.images.appointment.trim());
                 const matchesSearch = !query || [row.key, row.account, row.customer].some((value) => value.toLocaleLowerCase('vi').includes(query));
-                return belongsToEmployee && isPending && matchesSearch;
+                // Admin xem cả biên bản đã đủ ảnh và chưa đủ ảnh; nhân viên chỉ xem phần việc còn thiếu.
+                return belongsToEmployee && matchesInstaller && (isAdminView || isPending) && matchesSearch;
             });
             const start = (page - 1) * pageSize;
-            return res.json({ rows: matches.slice(start, start + pageSize), total: matches.length, page, pageSize });
+            const installers = isAdminView
+                ? [...new Map(index.map((row) => [normalizeName(row.installer), row.installer.trim()] as const).filter(([name]) => Boolean(name))).values()]
+                    .sort((a, b) => a.localeCompare(b, 'vi'))
+                : undefined;
+            return res.json({ rows: matches.slice(start, start + pageSize), total: matches.length, page, pageSize, installers });
         }
 
         if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
