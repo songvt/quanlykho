@@ -66,7 +66,9 @@ export default function ImageControl() {
     const cameraInput = useRef<HTMLInputElement>(null);
     const [query, setQuery] = useState('');
     const [installerFilter, setInstallerFilter] = useState('');
+    const [uploadStatus, setUploadStatus] = useState<'all' | 'uploaded' | 'pending'>('all');
     const [installers, setInstallers] = useState<string[]>([]);
+    const [summary, setSummary] = useState<{ total: number; uploaded: number; pending: number } | null>(null);
     const [rows, setRows] = useState<ControlRow[]>([]);
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
@@ -78,19 +80,20 @@ export default function ImageControl() {
     const isAdmin = profile?.role === 'admin';
     const pages = useMemo(() => Math.max(1, Math.ceil(total / 30)), [total]);
 
-    const search = async (requestedPage = 1, selectedInstaller = installerFilter) => {
+    const search = async (requestedPage = 1, selectedInstaller = installerFilter, selectedStatus = uploadStatus) => {
         const term = query.trim();
         setLoading(true); setMessage(null);
         try {
             const installerName = profile?.full_name?.trim();
             if (!installerName) throw new Error('Tài khoản chưa có thông tin họ tên để đối chiếu Nhân viên NT.');
-            const response = await fetch(`/api/image-control?q=${encodeURIComponent(term)}&installerName=${encodeURIComponent(installerName)}&installerFilter=${encodeURIComponent(selectedInstaller)}&admin=${isAdmin}&page=${requestedPage}&pageSize=30`);
+            const response = await fetch(`/api/image-control?q=${encodeURIComponent(term)}&installerName=${encodeURIComponent(installerName)}&installerFilter=${encodeURIComponent(selectedInstaller)}&uploadStatus=${selectedStatus}&admin=${isAdmin}&page=${requestedPage}&pageSize=30`);
             const raw = await response.text();
             let data: any = {};
             try { data = raw ? JSON.parse(raw) : {}; } catch { throw new Error(`Máy chủ trả phản hồi không hợp lệ (HTTP ${response.status}).`); }
             if (!response.ok) throw new Error(data.error || 'Không thể tải dữ liệu.');
             setRows(data.rows); setTotal(data.total); setPage(requestedPage);
             if (isAdmin && Array.isArray(data.installers)) setInstallers(data.installers);
+            if (isAdmin) setSummary(data.summary || null);
         } catch (error: any) { setMessage({ severity: 'error', text: error.message || 'Không thể tải dữ liệu.' }); }
         finally { setLoading(false); }
     };
@@ -175,9 +178,17 @@ export default function ImageControl() {
                     <MenuItem value="">Tất cả nhân viên</MenuItem>
                     {installers.map((installer) => <MenuItem key={installer} value={installer}>{installer}</MenuItem>)}
                 </TextField>}
+                {isAdmin && <TextField select fullWidth label="Trạng thái upload" value={uploadStatus} onChange={(e) => { const status = e.target.value as 'all' | 'uploaded' | 'pending'; setUploadStatus(status); search(1, installerFilter, status); }} sx={{ minWidth: 190 }}>
+                    <MenuItem value="all">Tất cả</MenuItem><MenuItem value="uploaded">Đã up</MenuItem><MenuItem value="pending">Chưa up</MenuItem>
+                </TextField>}
                 <Button variant="contained" startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <Search size={18} />} onClick={() => search(1)} disabled={loading} sx={{ minWidth: 130, height: 56 }}>Tìm kiếm</Button>
             </Stack>
         </CardContent></Card>
+        {isAdmin && summary && <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 2 }}>
+            <Typography variant="body2" fontWeight={700}>Tổng biên bản: {summary.total.toLocaleString('vi-VN')}</Typography>
+            <Typography variant="body2" color="success.main">Đã up: {summary.uploaded.toLocaleString('vi-VN')}</Typography>
+            <Typography variant="body2" color="warning.main">Chưa up: {summary.pending.toLocaleString('vi-VN')}</Typography>
+        </Stack>}
         {message && <Alert severity={message.severity} sx={{ mb: 2 }} onClose={() => setMessage(null)}>{message.text}</Alert>}
         <input ref={fileInput} type="file" accept="image/*" hidden onChange={stageFile} />
         <input ref={cameraInput} type="file" accept="image/*" capture="environment" hidden onChange={stageFile} />
