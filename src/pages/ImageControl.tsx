@@ -8,6 +8,7 @@ import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { Camera, Image as ImageIcon, Search } from 'lucide-react';
 import type { RootState } from '../store';
+import { enqueueImageUpload, imageUploadQueueEvent, processImageUploadQueue } from '../services/imageUploadQueue';
 
 type ImageType = 'before' | 'after' | 'appointment';
 type ControlRow = {
@@ -26,15 +27,12 @@ const isAppointmentRequired = (value: string) => {
     return normalized.includes('tich hen') && normalized.includes('ok');
 };
 
-const toBase64 = (file: File) => new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Không thể đọc tệp ảnh.'));
-    reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
-    reader.readAsDataURL(file);
-});
+const MAX_SOURCE_IMAGE_BYTES = 20 * 1024 * 1024;
+// Cân bằng 4G với yêu cầu phải đọc rõ chữ, chữ ký và dấu trên biên bản.
+const TARGET_IMAGE_BYTES = 1.5 * 1024 * 1024;
+const MAX_IMAGE_SIDE = 1600;
 
 async function optimizeImageForUpload(file: File) {
-    if (file.size <= 1.5 * 1024 * 1024) return file;
     try {
         const url = URL.createObjectURL(file);
         const image = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -43,20 +41,25 @@ async function optimizeImageForUpload(file: File) {
             element.onerror = reject;
             element.src = url;
         });
-        const scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight));
+        const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(image.naturalWidth, image.naturalHeight));
+        // Không mã hóa lại các ảnh đã nhỏ cả về dung lượng lẫn độ phân giải.
+        if (scale === 1 && file.size <= TARGET_IMAGE_BYTES) {
+            URL.revokeObjectURL(url);
+            return file;
+        }
         const canvas = document.createElement('canvas');
         canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
         canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
         canvas.getContext('2d')?.drawImage(image, 0, 0, canvas.width, canvas.height);
         URL.revokeObjectURL(url);
-        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.72));
+        // Ưu tiên chất lượng cao để chữ, chữ ký và con dấu vẫn rõ nét.
+        let blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.82));
+        if (blob && blob.size > TARGET_IMAGE_BYTES) {
+            blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.72));
+        }
         return blob ? new File([blob], `${file.name.replace(/\.[^.]+$/, '')}.jpg`, { type: 'image/jpeg' }) : file;
     } catch { return file; }
 }
-
-const isRowPending = (row: ControlRow) => !row.images.before.trim()
-    || !row.images.after.trim()
-    || (isAppointmentRequired(row.appointmentTick) && !row.images.appointment.trim());
 
 export default function ImageControl() {
     const { profile } = useSelector((state: RootState) => state.auth);
@@ -104,6 +107,25 @@ export default function ImageControl() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [profile?.full_name, isAdmin]);
 
+    useEffect(() => {
+        const resume = () => void processImageUploadQueue();
+        const handleQueueEvent = (event: Event) => {
+            const detail = (event as CustomEvent<any>).detail;
+            if (detail.type === 'success') {
+                setMessage({ severity: 'success', text: 'Ảnh đã đồng bộ thành công lên Drive.' });
+                search(page);
+            } else if (detail.type === 'retrying') {
+                setMessage({ severity: 'info', text: 'Đang chờ kết nối ổn định để tự đồng bộ lại ảnh.' });
+            }
+        };
+        window.addEventListener('online', resume);
+        window.addEventListener(imageUploadQueueEvent, handleQueueEvent);
+        resume();
+        return () => { window.removeEventListener('online', resume); window.removeEventListener(imageUploadQueueEvent, handleQueueEvent); };
+        // Queue events only need the latest mounted page; search is intentionally invoked on success.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const chooseFile = (row: ControlRow, type: ImageType, source: 'file' | 'camera') => {
         setPickerTarget({ rowNumber: row.rowNumber, imageType: type }); setMessage(null);
         (source === 'camera' ? cameraInput : fileInput).current?.click();
@@ -114,7 +136,7 @@ export default function ImageControl() {
         event.target.value = '';
         if (!file || !pickerTarget) return;
         if (!file.type.startsWith('image/')) { setMessage({ severity: 'error', text: 'Chỉ có thể tải tệp hình ảnh.' }); return; }
-        if (file.size > 10 * 1024 * 1024) { setMessage({ severity: 'error', text: 'Dung lượng ảnh không được vượt quá 10 MB.' }); return; }
+        if (file.size > MAX_SOURCE_IMAGE_BYTES) { setMessage({ severity: 'error', text: 'Ảnh gốc không được vượt quá 20 MB.' }); return; }
         setUploading(pickerTarget.rowNumber); setMessage({ severity: 'info', text: 'Đang tối ưu ảnh để chuẩn bị lưu…' });
         const target = pickerTarget;
         const controller = new AbortController();
@@ -122,7 +144,7 @@ export default function ImageControl() {
         try {
             const optimizedFile = await optimizeImageForUpload(file);
             if (optimizedFile.size > 2.5 * 1024 * 1024) {
-                throw new Error('Ảnh vẫn quá lớn sau tối ưu. Vui lòng chụp lại ở độ phân giải thấp hơn hoặc chọn ảnh dưới 2.5 MB.');
+                throw new Error('Ảnh vẫn quá lớn sau khi nén. Vui lòng chụp lại rõ nét hơn nhưng ở độ phân giải thấp hơn.');
             }
             setDrafts((current) => ({ ...current, [target.rowNumber]: { ...current[target.rowNumber], [target.imageType]: optimizedFile } }));
             setMessage({ severity: 'success', text: `Đã chọn ${typeLabels[target.imageType]}. Chọn đủ ảnh rồi bấm “Lưu tất cả ảnh”.` });
@@ -137,32 +159,19 @@ export default function ImageControl() {
         const missing = (['before', 'after'] as ImageType[]).filter((type) => !row.images[type].trim() && !staged[type]);
         if (isAppointmentRequired(row.appointmentTick) && !row.images.appointment.trim() && !staged.appointment) missing.push('appointment');
         if (missing.length) { setMessage({ severity: 'error', text: `Cần chọn đủ: ${missing.map((type) => typeLabels[type]).join(', ')}.` }); return; }
-        setUploading(row.rowNumber); setMessage({ severity: 'info', text: 'Đang kiểm tra và lưu toàn bộ ảnh…' });
-        const controller = new AbortController();
-        const uploadTimeout = window.setTimeout(() => controller.abort(), 120_000);
+        setUploading(row.rowNumber);
         try {
-            const response = await fetch('/api/image-control', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ rowNumber: row.rowNumber, installerName: profile?.full_name, files: await Promise.all(files.map(async ([imageType, selectedFile]) => ({ imageType, fileName: selectedFile.name, mimeType: selectedFile.type, fileData: await toBase64(selectedFile) }))) }),
-                signal: controller.signal,
-            });
-            const raw = await response.text();
-            let data: any = {};
-            try { data = raw ? JSON.parse(raw) : {}; } catch { throw new Error(`Máy chủ trả phản hồi không hợp lệ (HTTP ${response.status}).`); }
-            if (!raw) throw new Error(`Máy chủ không trả phản hồi (HTTP ${response.status}). Vui lòng thử lại.`);
-            if (!response.ok) throw new Error(data.error || 'Không thể tải ảnh lên.');
-            setMessage({ severity: 'success', text: `Đã lưu ${data.files?.length || files.length} ảnh vào Drive và cập nhật Sheet một lần.` });
-            let rowWasRemoved = false;
-            setRows((currentRows) => currentRows.map((currentRow) => currentRow.rowNumber === row.rowNumber
-                ? { ...currentRow, images: { ...currentRow.images, ...Object.fromEntries((data.files || []).map((item: any) => [item.imageType, item.storageName])) }, links: { ...currentRow.links, ...Object.fromEntries((data.files || []).map((item: any) => [item.imageType, item.link || ''])) } }
-                : currentRow).filter((currentRow) => {
-                    const keep = isRowPending(currentRow);
-                    if (currentRow.rowNumber === row.rowNumber && !keep) rowWasRemoved = true;
-                    return keep;
-                }));
-            if (rowWasRemoved) setTotal((current) => Math.max(0, current - 1));
-        } catch (error: any) { setMessage({ severity: 'error', text: error.name === 'AbortError' ? 'Tải ảnh quá 90 giây. Vui lòng kiểm tra lại kết nối Drive và thử lại.' : (error.message || 'Không thể tải ảnh lên.') }); }
-        finally { window.clearTimeout(uploadTimeout); setUploading(null); if (!controller.signal.aborted) setDrafts((current) => { const next = { ...current }; delete next[row.rowNumber]; return next; }); }
+            await Promise.all(files.map(([imageType, file]) => enqueueImageUpload({
+                rowNumber: row.rowNumber,
+                installerName: profile?.full_name || '',
+                imageType,
+                file,
+            })));
+            setDrafts((current) => { const next = { ...current }; delete next[row.rowNumber]; return next; });
+            setMessage({ severity: 'success', text: `Đã xếp hàng ${files.length} ảnh. Bạn có thể tiếp tục sử dụng app; ảnh sẽ tự đồng bộ lên Drive.` });
+        } catch (error: any) {
+            setMessage({ severity: 'error', text: error.message || 'Không thể lưu ảnh tạm trên thiết bị.' });
+        } finally { setUploading(null); }
     };
 
     return <Box sx={{ maxWidth: 1280, mx: 'auto', p: { xs: 2, md: 3 } }}>

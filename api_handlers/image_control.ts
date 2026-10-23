@@ -102,69 +102,6 @@ function parseVietnamDateTime(value: string) {
     return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour) - 7, Number(minute), Number(second)));
 }
 
-async function validateDocumentImage(fileData: string, mimeType: string) {
-    const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-    if (!apiKey) throw new Error('Chưa cấu hình GEMINI_API_KEY để kiểm tra biên bản.');
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30_000);
-    try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            signal: controller.signal,
-            body: JSON.stringify({
-                contents: [{ parts: [
-                    { text: `Phân loại ảnh tải lên cho hệ thống lưu biên bản. Chỉ chấp nhận ảnh là văn bản/biên bản/phiếu có nội dung chữ đọc được, có thể gồm con dấu, chữ ký, bảng biểu hoặc chữ viết tay. Từ chối ảnh chủ yếu là người, đồ vật, phương tiện, hiện trường, phong cảnh, ảnh selfie hoặc ảnh không phải tài liệu. Trả về JSON duy nhất: {"isValidDocument": boolean, "reason": "lý do ngắn gọn tiếng Việt"}.` },
-                    { inlineData: { mimeType, data: fileData } },
-                ] }],
-                generationConfig: { responseMimeType: 'application/json', temperature: 0, maxOutputTokens: 120 },
-            }),
-        });
-        if (!response.ok) {
-            const errorBody = await response.text();
-            // Hết quota/token Gemini: không chặn nghiệp vụ upload ảnh.
-            if (response.status === 429 || /resource_exhausted|quota|rate limit/i.test(errorBody)) {
-                console.warn('[image-control] Gemini quota exhausted; skipping document validation.');
-                return;
-            }
-            throw new Error(`Không thể kiểm tra ảnh biên bản (HTTP ${response.status}).`);
-        }
-        const payload: any = await response.json();
-        const raw = String(payload.candidates?.[0]?.content?.parts?.[0]?.text || '');
-        // Gemini đôi khi thêm câu dẫn như "Here is the JSON" dù đã yêu cầu JSON mode.
-        const jsonText = raw.match(/\{[\s\S]*\}/)?.[0];
-        if (!jsonText) {
-            const normalized = normalizeName(raw);
-            if (/nguoi|do vat|phuong tien|phong canh|hien truong|selfie|khong phai.*tai lieu/.test(normalized)) {
-                const error: any = new Error('Biên bản không hợp lệ: Ảnh không phải văn bản/biên bản.');
-                error.statusCode = 422;
-                throw error;
-            }
-            console.warn('[image-control] Gemini returned no JSON; allowing upload without AI validation.');
-            return;
-        }
-        let result: any;
-        try {
-            result = JSON.parse(jsonText);
-        } catch {
-            console.warn('[image-control] Gemini returned malformed JSON; allowing upload without AI validation.');
-            return;
-        }
-        if (result.isValidDocument !== true) {
-            const reason = typeof result.reason === 'string' ? result.reason : 'Ảnh không phải văn bản/biên bản hợp lệ.';
-            const error: any = new Error(`Biên bản không hợp lệ: ${reason}`);
-            error.statusCode = 422;
-            throw error;
-        }
-    } catch (error: any) {
-        if (error?.name === 'AbortError') throw new Error('Kiểm tra ảnh biên bản quá thời gian chờ. Vui lòng thử lại.');
-        throw error;
-    } finally {
-        clearTimeout(timeout);
-    }
-}
-
 export default async function imageControlHandler(req: VercelRequest, res: VercelResponse) {
     try {
         if (req.method === 'GET') {
@@ -254,9 +191,6 @@ export default async function imageControlHandler(req: VercelRequest, res: Verce
         const completionTime = parseVietnamDateTime(row.completedAt);
         if (!completionTime) return res.status(422).json({ error: 'Ngày kết thúc thực tế không đúng định dạng dd/MM/yyyy HH:mm:ss.' });
         const note = uploadTime.getTime() - completionTime.getTime() > 48 * 60 * 60 * 1000 ? 'Quá hạn' : 'Trong hạn';
-        // Kiểm tra trước toàn bộ ảnh, sau đó mới bắt đầu ghi Drive. Khi AI hết quota,
-        // validateDocumentImage tự bỏ qua để không chặn nghiệp vụ.
-        await Promise.all(requestedFiles.map((item) => validateDocumentImage(item.fileData, item.mimeType)));
         const uploadedFiles = await Promise.all(requestedFiles.map(async (item) => {
             const config = typeConfig[item.imageType as ImageType];
             const extension = (String(item.fileName || '').split('.').pop() || item.mimeType.split('/').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();

@@ -1,6 +1,8 @@
 import { google } from 'googleapis';
 import { Readable } from 'stream';
 
+const APPS_SCRIPT_TIMEOUT_MS = 40_000;
+
 export const uploadToGoogleDrive = async (
     fileBuffer: Buffer,
     fileName: string,
@@ -12,16 +14,29 @@ export const uploadToGoogleDrive = async (
         if (appsScriptUrl) {
             console.log('Uploading via Google Apps Script Web App...');
             const base64Data = fileBuffer.toString('base64');
-            const response = await fetch(appsScriptUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    fileName,
-                    mimeType,
-                    fileData: base64Data,
-                    folderId
-                })
-            });
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), APPS_SCRIPT_TIMEOUT_MS);
+            let response: Response;
+            try {
+                response = await fetch(appsScriptUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    signal: controller.signal,
+                    body: JSON.stringify({
+                        fileName,
+                        mimeType,
+                        fileData: base64Data,
+                        folderId
+                    })
+                });
+            } catch (error: any) {
+                if (error?.name === 'AbortError') {
+                    throw new Error('Google Drive phản hồi quá chậm. Ảnh chưa được lưu, vui lòng thử lại khi kết nối ổn định hơn.');
+                }
+                throw error;
+            } finally {
+                clearTimeout(timeout);
+            }
             if (!response.ok) {
                 throw new Error(`Apps Script HTTP error! status: ${response.status}`);
             }
