@@ -49,6 +49,7 @@ import {
     Barcode,
     Scissors,
     ImagePlus,
+    Images,
     Volume2,
     BarChart2,
     Boxes,
@@ -166,11 +167,14 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
         ...(hasPermission('qr_hcm.view') ? [
             { text: 'Mã QR Code HCM', icon: <QrCode size={20} color="#1e4b9b" />, path: '/qr-generator-hcm' }
         ] : []),
-        { text: 'Tiện ích', icon: <Sparkles size={20} color="#f472b6" />, path: '/utilities' },
+        { text: 'Kiểm soát hình ảnh', icon: <Images size={20} color="#22c55e" />, path: '/image-control' },
+        ...(profile?.role !== 'staff' ? [
+            { text: 'Tiện ích', icon: <Sparkles size={20} color="#f472b6" />, path: '/utilities' }
+        ] : []),
         ...(hasPermission('*') ? [
             { text: 'Thiết lập', icon: <SlidersHorizontal size={20} color="#94a3b8" />, path: '/settings' }
         ] : []),
-        ...(hasAnyPermission(['reports.view_all', 'reports.handover']) ? [
+        ...(profile?.role !== 'staff' && hasAnyPermission(['reports.view_all', 'reports.handover']) ? [
             { text: 'Lịch sử', icon: <Clock3 size={20} color="#fb923c" />, path: '/action-history' }
         ] : []),
     ], [profile, hasPermission, hasAnyPermission]);
@@ -334,12 +338,14 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                 ...(hasPermission('orders.create') || hasPermission('orders.view_own') ? [{ text: 'Đặt hàng', path: '/orders', icon: <ShoppingCart size={18} /> }] : []),
                                 ...(hasPermission('inventory.view') ? [{ text: 'Hàng hóa', path: '/products', icon: <Package size={18} /> }] : []),
                                 { text: 'Tra cứu hàng hóa', path: '/inbound-lookup', icon: <FileSearch size={18} /> },
-                                { text: 'Tồn kho chi tiết (in_stock)', path: '/stock-summary-report', icon: <BarChart2 size={18} /> },
+                                ...(profile?.role !== 'staff' ? [{ text: 'Tồn kho chi tiết (in_stock)', path: '/stock-summary-report', icon: <BarChart2 size={18} /> }] : []),
                                 ...(hasAnyPermission(['audit.view', 'audit.create', 'inventory.view', 'inventory.manage']) ? [{ text: 'Sơ đồ tồn kho', path: '/stock-map', icon: <BarChart2 size={18} /> }] : []),
                                 ...(hasPermission('inventory.view') ? [{ text: 'Sơ đồ kho thông minh', path: '/warehouse-layout', icon: <MapPinned size={18} /> }] : []),
                                 ...(hasAnyPermission(['audit.view', 'audit.create']) ? [{ text: 'Kiểm kê kho', path: '/audit', icon: <CheckSquare size={18} /> }] : []),
-                                { text: 'Upload tồn kho Đơn Vị', path: '/upload-inventory-donvi', icon: <FileText size={18} /> },
-                                { text: 'Upload tồn kho NV', path: '/upload-inventory-nv', icon: <FileText size={18} /> },
+                                ...(profile?.role !== 'staff' ? [
+                                    { text: 'Upload tồn kho Đơn Vị', path: '/upload-inventory-donvi', icon: <FileText size={18} /> },
+                                    { text: 'Upload tồn kho NV', path: '/upload-inventory-nv', icon: <FileText size={18} /> },
+                                ] : []),
                                 ...(hasAnyPermission(['reports.view_all', 'reports.handover']) ? [{ text: 'Báo cáo - In biên bản', path: '/reports', icon: <PieChart size={18} /> }] : []),
                                 ...(hasAnyPermission(['audit.view', 'audit.create']) ? [{ text: 'Quyết toán', path: '/settlement', icon: <PieChart size={18} /> }] : []),
                             ];

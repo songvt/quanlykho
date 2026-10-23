@@ -26,6 +26,7 @@ import weeklyBackupHandler from './api_handlers/weekly-backup.js';
 import uploadInventoryNVHandler from './api_handlers/upload_inventory_nv.js';
 import uploadInventoryDonViHandler from './api_handlers/upload_inventory_donvi.js';
 import syncWarehouseShelvesHandler from './api_handlers/sync-warehouse-shelves.js';
+import imageControlHandler from './api_handlers/image_control.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -69,6 +70,7 @@ app.all('/api/weekly-backup', createVercelHandler(weeklyBackupHandler));
 app.all('/api/upload_inventory_nv', createVercelHandler(uploadInventoryNVHandler));
 app.all('/api/upload_inventory_donvi', createVercelHandler(uploadInventoryDonViHandler));
 app.all('/api/sync-warehouse-shelves', createVercelHandler(syncWarehouseShelvesHandler));
+app.all('/api/image-control', createVercelHandler(imageControlHandler));
 
 // Helper to safely override Express prototype query getter
 const setQueryType = (req: express.Request, type: string) => {

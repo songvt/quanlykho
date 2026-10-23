@@ -68,6 +68,7 @@ const FullScreenScanner = lazy(() => import('./pages/FullScreenScanner'));
 const Announcements     = lazy(() => import('./pages/Announcements'));
 const DocumentSummary   = lazy(() => import('./pages/DocumentSummary'));
 const ImageMerge        = lazy(() => import('./pages/ImageMerge'));
+const ImageControl      = lazy(() => import('./pages/ImageControl'));
 
 const NotFound = lazy(() => import('./pages/NotFound').catch(() => ({
     default: () => <Box p={6} textAlign="center" sx={{ color: 'text.secondary', fontSize: 24 }}>404 — Không tìm thấy trang</Box>
@@ -108,6 +109,9 @@ function App() {
 
                                 <Route element={<ProtectedRoute allowedPermissions={['reports.view_all', 'reports.handover']} />}>
                                     <Route path="reports" element={<Reports />} />
+                                </Route>
+
+                                <Route element={<ProtectedRoute allowedRoles={['admin', 'manager']} />}>
                                     <Route path="action-history" element={<ActionHistory />} />
                                 </Route>
 
@@ -125,12 +129,15 @@ function App() {
                                     <Route path="detailed-outbound-report" element={<DetailedOutboundReport />} />
                                     <Route path="monthly-settlement" element={<MonthlySettlementReport />} />
                                     <Route path="goods-settlement" element={<GoodsSettlementReport />} />
-                                    <Route path="stock-summary-report" element={<StockSummaryReport />} />
-                                    <Route path="upload-inventory-nv" element={<UploadInventoryNV />} />
-                                    <Route path="upload-inventory-donvi" element={<UploadInventoryDonVi />} />
                                     <Route path="warehouse-layout" element={<WarehouseLayout />} />
                                     <Route path="stock-map" element={<StockMap />} />
 
+                                </Route>
+
+                                <Route element={<ProtectedRoute allowedRoles={['admin', 'manager']} />}>
+                                    <Route path="stock-summary-report" element={<StockSummaryReport />} />
+                                    <Route path="upload-inventory-nv" element={<UploadInventoryNV />} />
+                                    <Route path="upload-inventory-donvi" element={<UploadInventoryDonVi />} />
                                 </Route>
 
                                 <Route element={<ProtectedRoute />}>
@@ -183,6 +190,7 @@ function App() {
                                 <Route path="ai-assistant" element={<AIAssistant />} />
                                 <Route path="document-summary" element={<DocumentSummary />} />
                                 <Route path="image-merge" element={<ImageMerge />} />
+                                <Route path="image-control" element={<ImageControl />} />
                                 <Route path="inbound-lookup" element={<InboundLookup />} />
                                 
                                 <Route element={<ProtectedRoute allowedPermissions={['pdf.view']} />}>
