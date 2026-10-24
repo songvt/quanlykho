@@ -61,6 +61,14 @@ export const selectDetailedStockMap = createSelector(
             detailedStockMap[totalKey] = (detailedStockMap[totalKey] || 0) + qty;
         });
 
+        // Build the employee lookup once. The previous Array.find for every
+        // order made this selector O(orders × employees) on every data change.
+        const employeeDistrictByRequester = new Map<string, string>();
+        employees?.forEach(employee => {
+            if (employee.full_name) employeeDistrictByRequester.set(employee.full_name, employee.district || '');
+            if (employee.username) employeeDistrictByRequester.set(employee.username, employee.district || '');
+        });
+
         // Deduct pending and approved orders from available stock
         if (orders && Array.isArray(orders)) {
             orders.forEach((o) => {
@@ -77,9 +85,8 @@ export const selectDetailedStockMap = createSelector(
                     const qty = Number(o.quantity) || 0;
                     const pId = o.product_id;
                     if (pId) {
-                        // Tìm nhân viên để xác định quận
-                        const emp = employees?.find(e => e.full_name === o.requester_group || e.username === o.requester_group);
-                        const empDistrict = emp?.district || '';
+                        // Tìm nhân viên để xác định quận bằng chỉ mục O(1).
+                        const empDistrict = employeeDistrictByRequester.get(o.requester_group || '') || '';
 
                         // Khấu trừ khỏi tổng tồn kho
                         const totalKey = `${pId}||`;

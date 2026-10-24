@@ -3,6 +3,10 @@ import type { Product, Transaction, DashboardStats, FifoAgingItem, EmployeeRetur
 const API_BASE = '/api';
 const REQUEST_TIMEOUT_MS = 60000; // Tăng lên 60 giây cho các tác vụ Import lớn
 const MAX_RETRIES = 2;            // Retry tối đa 2 lần nếu lỗi mạng
+// Several screens mount at the same time (for example, the dashboard and a
+// navigation prefetch).  Coalesce identical reads so they don't each download
+// the same, potentially large, payload.
+const inFlightGetRequests = new Map<string, Promise<any>>();
 
 /** Delay helper */
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -13,7 +17,7 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
  * - Retry: 2 lần với exponential backoff (1s, 2s) cho lỗi mạng
  * - Không retry lỗi 4xx (client error)
  */
-const apiRequest = async (endpoint: string, options?: RequestInit, retryCount = 0): Promise<any> => {
+const performApiRequest = async (endpoint: string, options?: RequestInit, retryCount = 0): Promise<any> => {
     const url = `${API_BASE}/${endpoint}`;
 
     const controller = new AbortController();
@@ -46,7 +50,7 @@ const apiRequest = async (endpoint: string, options?: RequestInit, retryCount = 
             // 5xx → có thể retry
             if (retryCount < MAX_RETRIES) {
                 await delay(1000 * (retryCount + 1)); // 1s, 2s
-                return apiRequest(endpoint, options, retryCount + 1);
+                return performApiRequest(endpoint, options, retryCount + 1);
             }
             throw new Error(errMsg);
         }
@@ -61,7 +65,7 @@ const apiRequest = async (endpoint: string, options?: RequestInit, retryCount = 
             // Timeout
             if (retryCount < MAX_RETRIES) {
                 await delay(1000 * (retryCount + 1));
-                return apiRequest(endpoint, options, retryCount + 1);
+                return performApiRequest(endpoint, options, retryCount + 1);
             }
             throw new Error('Kết nối quá lâu, vui lòng thử lại');
         }
@@ -70,7 +74,7 @@ const apiRequest = async (endpoint: string, options?: RequestInit, retryCount = 
         if (err instanceof TypeError && retryCount < MAX_RETRIES) {
             console.warn(`[API] Network error on ${endpoint}, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
             await delay(1000 * (retryCount + 1));
-            return apiRequest(endpoint, options, retryCount + 1);
+            return performApiRequest(endpoint, options, retryCount + 1);
         }
 
         if (err instanceof TypeError) {
@@ -79,6 +83,21 @@ const apiRequest = async (endpoint: string, options?: RequestInit, retryCount = 
 
         throw err;
     }
+};
+
+const apiRequest = (endpoint: string, options?: RequestInit): Promise<any> => {
+    const method = (options?.method || 'GET').toUpperCase();
+    if (method !== 'GET') return performApiRequest(endpoint, options);
+
+    const key = `${method}:${endpoint}`;
+    const existing = inFlightGetRequests.get(key);
+    if (existing) return existing;
+
+    const request = performApiRequest(endpoint, options).finally(() => {
+        inFlightGetRequests.delete(key);
+    });
+    inFlightGetRequests.set(key, request);
+    return request;
 };
 
 

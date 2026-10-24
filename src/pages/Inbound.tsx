@@ -56,11 +56,15 @@ export const Inbound = () => {
     const handleEditSave = async () => {
         if (!editItem) return;
         try {
+            // Serial detail rows imported alongside an aggregate in_stock row use
+            // quantity 0 internally. Keeping that value prevents the serial details
+            // from being counted again in total stock; the list still displays SL 1.
+            const isDerivedSerialDetail = Boolean(editItem.serial_code?.trim()) && Number(editItem.quantity) === 0;
             await dispatch(updateTransaction({
                 id: editItem.id,
                 type: 'inbound',
                 payload: {
-                    quantity: Number(editData.quantity),
+                    quantity: isDerivedSerialDetail ? 0 : Number(editData.quantity),
                     unit_price: Number(editData.unit_price),
                     serial_code: editData.serial_code,
                     district: editData.district,
@@ -97,6 +101,8 @@ export const Inbound = () => {
     };
 
     if (productStatus === 'loading') return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
+
+    const isDerivedSerialDetail = Boolean(editItem?.serial_code?.trim()) && Number(editItem?.quantity) === 0;
 
     return (
         <Box p={{ xs: 1, sm: 3 }} sx={{ maxWidth: '100%', mx: 'auto', width: '100%', overflowX: 'hidden' }}>
@@ -217,7 +223,15 @@ export const Inbound = () => {
                 <DialogTitle>Chỉnh sửa giao dịch</DialogTitle>
                 <DialogContent>
                     <Box pt={2} display="flex" flexDirection="column" gap={2}>
-                        <TextField fullWidth label="Số lượng" type="number" value={editData.quantity} onChange={e => setEditData({ ...editData, quantity: e.target.value })} />
+                        <TextField
+                            fullWidth
+                            label={isDerivedSerialDetail ? 'Số lượng (mỗi serial)' : 'Số lượng'}
+                            type="number"
+                            value={isDerivedSerialDetail ? 1 : editData.quantity}
+                            onChange={e => setEditData({ ...editData, quantity: e.target.value })}
+                            disabled={isDerivedSerialDetail}
+                            helperText={isDerivedSerialDetail ? 'Dòng serial hiển thị 1 đơn vị; tổng tồn được tính từ dòng tổng để không cộng dồn.' : undefined}
+                        />
                         <TextField fullWidth label="Đơn giá" type="number" value={editData.unit_price} onChange={e => setEditData({ ...editData, unit_price: e.target.value })} />
                         <TextField fullWidth label="Serial" value={editData.serial_code || ''} onChange={e => setEditData({ ...editData, serial_code: e.target.value })} />
                     </Box>

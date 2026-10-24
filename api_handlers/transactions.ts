@@ -26,6 +26,16 @@ const parseLocalDate = (dateStr: any) => {
     return isNaN(d.getTime()) ? new Date(0) : d;
 };
 
+// The source sheet uses Vietnamese number formatting in different exports
+// (for example `1.250`, `1,250`, or `1250`). Stock is always an integer.
+const parseSourceQuantity = (value: any, fallback = 1) => {
+    const raw = String(value ?? '').trim();
+    if (!raw) return fallback;
+    const normalized = raw.replace(/\s/g, '').replace(/\./g, '').replace(/,/g, '');
+    const quantity = Number(normalized);
+    return Number.isFinite(quantity) && quantity >= 0 ? Math.round(quantity) : fallback;
+};
+
 // --- Helper to send webhook ---
 const sendWebhook = async (type: 'inbound' | 'outbound', data: any) => {
     const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL;
@@ -249,15 +259,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                         if (!existingSerials.has(sourceKey)) {
                             existingSerials.add(sourceKey);
-                            const qtyStr = String(row.get('quantity') || '').trim();
-                            const sourceQty = qtyStr ? parseFloat(qtyStr.replace(/\./g, '').replace(/,/g, '')) : 1;
-                            const qty = serialRaw && aggregateStockKeys.has(`${String(pIdRaw).trim()}|${warehouse}`) ? 0 : sourceQty;
+                            const hasAggregateRow = aggregateStockKeys.has(`${String(pIdRaw).trim()}|${warehouse}`);
+                            // A product/warehouse with an aggregate row must use that row as
+                            // its one authoritative stock quantity. Its serial records are
+                            // traceability details only, so their stored contribution is zero.
+                            // If the file has no aggregate row, every unique serial represents
+                            // one physical item and becomes the authoritative quantity itself.
+                            const qty = serialRaw
+                                ? (hasAggregateRow ? 0 : 1)
+                                : parseSourceQuantity(row.get('quantity'));
 
                             toInsert.push({
                                 id: randomUUID(),
                                 product_id: product.id,
                                 serial_code: serial,
-                                quantity: isNaN(qty) ? 1 : Math.round(qty),
+                                quantity: qty,
                                 item_status: row.get('item_status') || row.get('status') || 'Mới',
                                 district: row.get('district') || row.get('District') || 'Kho Tổng',
                                 // Preserve the source receipt date. Falling back to the sync time is

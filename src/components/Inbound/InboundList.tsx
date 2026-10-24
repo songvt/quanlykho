@@ -35,6 +35,12 @@ const InboundList: React.FC<InboundListProps> = ({ onEdit, onDelete, onBulkDelet
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
+    // When stock is imported from `in_stock`, an aggregate row is the source of
+    // the inventory quantity and its serial-detail rows are stored with quantity 0.
+    // Showing 1 here describes the physical unit represented by that serial without
+    // adding it to inventory a second time.
+    const displayQuantity = (row: Transaction) => row.serial_code?.trim() ? 1 : Number(row.quantity) || 0;
+
     const filteredTransactions = useMemo(() => {
         const searchStr = debouncedSearchTerm.toLowerCase();
         const userTransactions = transactions.filter(t => {
@@ -139,7 +145,7 @@ const InboundList: React.FC<InboundListProps> = ({ onEdit, onDelete, onBulkDelet
                                                     <Checkbox size="small" sx={{ p: 0 }} checked={selectedIds.includes(row.id)} onChange={e => handleSelectOne(row.id, e.target.checked)} />
                                                     <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1e293b' }}>{row.product?.name || 'Unknown'}</Typography>
                                                 </Box>
-                                                <Chip label={`SL: ${row.quantity.toLocaleString('vi-VN')}`} size="small" sx={{ fontWeight: 700, bgcolor: '#f1f5f9' }} />
+                                                <Chip label={`SL: ${displayQuantity(row).toLocaleString('vi-VN')}`} size="small" sx={{ fontWeight: 700, bgcolor: '#f1f5f9' }} />
                                             </Box>
                                             <Divider sx={{ my: 1.5, borderColor: '#f1f5f9' }} />
                                             <Grid container spacing={2}>
@@ -210,7 +216,7 @@ const InboundList: React.FC<InboundListProps> = ({ onEdit, onDelete, onBulkDelet
                                             <TableCell sx={{ fontSize: '0.875rem' }}>{formatDate(row.date || row.inbound_date || null)}</TableCell>
                                             <TableCell sx={{ fontWeight: 600, color: '#1e293b' }}>{row.product?.name}</TableCell>
                                             <TableCell sx={{ color: '#64748b', fontSize: '0.875rem' }}>{row.serial_code || '-'}</TableCell>
-                                            <TableCell sx={{ fontWeight: 700, color: '#2563eb' }}>{row.quantity.toLocaleString('vi-VN')}</TableCell>
+                                            <TableCell sx={{ fontWeight: 700, color: '#2563eb' }}>{displayQuantity(row).toLocaleString('vi-VN')}</TableCell>
                                             <TableCell sx={{ fontWeight: 500 }}>{Number(row.unit_price || 0).toLocaleString('vi-VN')} đ</TableCell>
                                             <TableCell>{row.district || '-'}</TableCell>
                                             <TableCell>
