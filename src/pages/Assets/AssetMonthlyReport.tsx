@@ -294,15 +294,21 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
         w.document.write(`
             <html><head><meta charset="utf-8"/><title>In Báo Cáo Tổng Hợp</title>
             <style>
-                @page { size: A4 landscape; margin: 20mm 15mm 20mm 20mm; }
+                /* Reserve a stable bottom area for handwritten signatures. */
+                @page { size: A4 landscape; margin: 20mm 15mm 22mm 20mm; }
                 body { font-family: 'Times New Roman', serif; font-size: 10.5pt; margin: 0; padding: 0; }
                 table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: auto; }
                 th, td { border: 1px solid #000; padding: 4px 3px; text-align: center; vertical-align: middle; word-wrap: break-word; font-size: 8.5pt; }
                 th { background: #e0e0e0; font-weight: bold; }
-                .footer-container { margin-top: 40px; }
+                .footer-container {
+                    margin-top: 12mm;
+                    min-height: 46mm;
+                    break-inside: avoid;
+                    page-break-inside: avoid;
+                }
                 .sig-date { text-align: right; font-style: italic; margin-bottom: 5px; padding-right: 50px; font-size: 10pt; }
                 .sig-grid { display: flex; justify-content: space-between; text-align: center; width: 100%; }
-                .sig-box { width: 32%; display: inline-block; vertical-align: top; }
+                .sig-box { width: 32%; min-height: 34mm; display: inline-block; vertical-align: top; }
                 .sig-title { font-weight: bold; font-size: 10.5pt; }
                 .sig-note { font-style: italic; font-size: 9pt; }
                 /* Flex layout for print */
@@ -425,7 +431,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                 </table>
 
                 {/* Robust Printed Footer */}
-                <div className="footer-container" style={{ marginTop: '40px', fontFamily: 'Times New Roman' }}>
+                <div className="footer-container" style={{ fontFamily: 'Times New Roman' }}>
                     <div className="sig-date" style={{ textAlign: 'right', fontStyle: 'italic', marginBottom: '5px', paddingRight: '50px' }}>
                         {dateFooterStr}
                     </div>
