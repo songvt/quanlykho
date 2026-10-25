@@ -21,6 +21,9 @@ type IndexRow = {
     installer: string;
     appointmentTick: string;
     check: string;
+    reviewResult: string;
+    rejectionReason: string;
+    aiReview: string;
     images: Record<ImageType, string>;
     links: Record<ImageType, string>;
 };
@@ -31,8 +34,41 @@ const needsAppointmentImages = (value: string) => {
     return normalized.includes('tich hen') && normalized.includes('ok');
 };
 
+/**
+ * Một biên bản không đạt khi kết quả duyệt/lý do từ chối hoặc AI ghi nhận lỗi,
+ * hoặc thiếu bất kỳ ảnh bắt buộc nào.
+ */
+function getImageFailureReason(row: IndexRow) {
+    const reasons: string[] = [];
+    const rejectionReason = row.rejectionReason.trim();
+    if (rejectionReason) reasons.push(rejectionReason);
+    else if (/(khong dat|tu choi)/.test(normalizeName(row.reviewResult))) reasons.push(row.reviewResult.trim());
+    const aiReview = row.aiReview.trim();
+    if (aiReview && !normalizeName(aiReview).includes('ai dat')) reasons.push(aiReview.replace(/^\[AI\]\s*/i, ''));
+
+    const missing: string[] = [];
+    if (!row.images.before.trim()) missing.push('Ảnh trước');
+    if (!row.images.after.trim()) missing.push('Ảnh sau');
+    if (needsAppointmentImages(row.appointmentTick) && !row.images.appointment.trim()) missing.push('Biên bản hẹn');
+    if (missing.length) reasons.push(`Thiếu ${missing.join(', ')}`);
+
+    return reasons.join('; ');
+}
+
+function isImagesUploaded(row: IndexRow) {
+    return Boolean(row.images.before.trim()
+        && row.images.after.trim()
+        && (!needsAppointmentImages(row.appointmentTick) || row.images.appointment.trim()));
+}
+
+function matchesMonth(value: string, month: string) {
+    const match = value.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    return Boolean(match && `${match[3]}-${match[2].padStart(2, '0')}` === month);
+}
+
 let cachedIndex: IndexRow[] | null = null;
 let cacheLoadedAt = 0;
+let aiColumnEnsured = false;
 
 function getAuth() {
     const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
@@ -60,15 +96,28 @@ const toIndexRow = (values: string[], rowNumber: number): IndexRow => ({
     customer: valueAt(values, 3), account: valueAt(values, 4), address: valueAt(values, 5),
     completedAt: valueAt(values, 6), installer: valueAt(values, 7), appointmentTick: valueAt(values, 8),
     images: { before: valueAt(values, 9), after: valueAt(values, 10), appointment: valueAt(values, 11) },
-    check: valueAt(values, 12),
+    check: valueAt(values, 12), reviewResult: valueAt(values, 15), rejectionReason: valueAt(values, 16), aiReview: valueAt(values, 28),
     links: { before: valueAt(values, 21), after: valueAt(values, 22), appointment: valueAt(values, 23) },
 });
 
 async function loadIndex(force = false) {
     if (!force && cachedIndex && Date.now() - cacheLoadedAt < CACHE_MS) return cachedIndex;
     // Đọc theo tọa độ cột để không bị lỗi khi Sheet có tiêu đề #REF! trùng nhau.
-    const response = await getSheetsApi().spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: `'${SHEET_NAME}'!A2:X` });
-    cachedIndex = (response.data.values || []).map((row, index) => toIndexRow(row.map(String), index + 2)).filter((row) => row.key || row.account);
+    const sheets = getSheetsApi();
+    const response = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: `'${SHEET_NAME}'!A2:X` });
+    let aiRows: string[][] = [];
+    try {
+        const aiResponse = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: `'${SHEET_NAME}'!AC2:AC` });
+        aiRows = aiResponse.data.values || [];
+    } catch (error: any) {
+        // Cột AI chỉ được tạo khi quản trị viên chạy quét lần đầu.
+        if (error?.code !== 400) throw error;
+    }
+    cachedIndex = (response.data.values || []).map((row, index) => {
+        const values = row.map(String);
+        values[28] = String(aiRows[index]?.[0] || '');
+        return toIndexRow(values, index + 2);
+    }).filter((row) => row.key || row.account);
     cacheLoadedAt = Date.now();
     return cachedIndex;
 }
@@ -78,6 +127,62 @@ const typeConfig: Record<ImageType, { label: string; fileLabel: string; valueCol
     after: { label: 'Ảnh sau', fileLabel: 'Image Sau', valueColumn: 'K', linkColumn: 'W' },
     appointment: { label: 'Biên bản hẹn', fileLabel: 'BB HẸN', valueColumn: 'L', linkColumn: 'X' },
 };
+
+async function ensureAiReviewColumn(sheets: ReturnType<typeof getSheetsApi>) {
+    if (aiColumnEnsured) return;
+    const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: SHEET_ID, fields: 'sheets.properties(sheetId,title,gridProperties(columnCount))' });
+    const target = spreadsheet.data.sheets?.find((sheet) => sheet.properties?.title === SHEET_NAME)?.properties;
+    if (target?.sheetId === undefined) throw new Error('Không tìm thấy trang dữ liệu kiểm soát hình ảnh.');
+    if ((target.gridProperties?.columnCount || 0) < 29) {
+        await sheets.spreadsheets.batchUpdate({
+            spreadsheetId: SHEET_ID,
+            requestBody: { requests: [{ appendDimension: { sheetId: target.sheetId, dimension: 'COLUMNS', length: 1 } }] },
+        });
+    }
+    await sheets.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID, range: `'${SHEET_NAME}'!AC1`, valueInputOption: 'USER_ENTERED',
+        requestBody: { values: [['Kết quả AI ảnh']] },
+    });
+    aiColumnEnsured = true;
+}
+
+async function analyzeImagesWithGemini(row: IndexRow) {
+    const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    if (!apiKey || apiKey === 'YOUR_GEMINI_API_KEY_HERE') throw new Error('Chưa cấu hình GEMINI_API_KEY để quét ảnh.');
+    const imageEntries = (Object.entries(row.links) as [ImageType, string][]).filter(([, link]) => Boolean(link.trim()));
+    if (!imageEntries.length) return '[AI] Không đạt: Không có ảnh để kiểm tra.';
+
+    const imageParts = await Promise.all(imageEntries.map(async ([type, link]) => {
+        const response = await fetch(link, { redirect: 'follow' });
+        const contentType = response.headers.get('content-type') || 'image/jpeg';
+        if (!response.ok || !contentType.startsWith('image/')) throw new Error(`Không thể tải ${typeConfig[type].label} để kiểm tra.`);
+        const bytes = Buffer.from(await response.arrayBuffer());
+        if (!bytes.length || bytes.length > 4 * 1024 * 1024) throw new Error(`${typeConfig[type].label} không hợp lệ hoặc quá lớn để quét.`);
+        return { inlineData: { mimeType: contentType, data: bytes.toString('base64') } };
+    }));
+    const prompt = `Bạn kiểm tra chất lượng ảnh nghiệm thu/lắp đặt. Mỗi ảnh theo thứ tự là: ${imageEntries.map(([type]) => typeConfig[type].label).join(', ')}.
+Đánh giá KHÔNG ĐẠT nếu có một trong các lỗi: ảnh mờ, bị che/lộ ngón tay hoặc không đọc được; ảnh sai loại (chỉ chụp biên bản/chứng từ thay vì hiện trạng hoặc thiết bị trước/sau lắp đặt); biên bản ngày tháng cũ hoặc không phù hợp ngày thực hiện ${row.completedAt}; biên bản thiếu nội dung/chữ ký cần thiết; góc chụp không chuyên nghiệp, không chứng minh được hiện trạng.
+Chỉ trả JSON hợp lệ: {"status":"pass"|"fail"|"review","reason":"một câu tiếng Việt ngắn"}. Chỉ dùng pass khi ảnh thực sự đủ rõ và đúng loại; review khi không chắc.`;
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: prompt }, ...imageParts] }],
+            generationConfig: { temperature: 0, maxOutputTokens: 160, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } },
+        }),
+    });
+    if (!response.ok) {
+        const message = await response.text();
+        throw new Error(response.status === 429 ? 'Gemini đã đạt giới hạn quota. Vui lòng thử lại sau.' : `Gemini không thể quét ảnh: ${message.slice(0, 180)}`);
+    }
+    const result = await response.json();
+    const text = result.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text || '').join('') || '';
+    let review: { status?: string; reason?: string };
+    const jsonText = String(text).match(/\{[\s\S]*\}/)?.[0] || '';
+    try { review = JSON.parse(jsonText); } catch { throw new Error('Gemini trả về kết quả kiểm tra không hợp lệ.'); }
+    const reason = String(review.reason || '').replace(/\s+/g, ' ').trim().slice(0, 450);
+    if (review.status === 'pass') return '[AI] Đạt';
+    return `[AI] ${review.status === 'review' ? 'Cần kiểm tra lại' : 'Không đạt'}: ${reason || 'Ảnh không đáp ứng tiêu chí kiểm tra.'}`;
+}
 
 function safeFilePart(value: string) {
     return value.replace(/[\\/:*?"<>|]/g, '-').replace(/\s+/g, ' ').trim().slice(0, 160) || 'PT_MOI';
@@ -109,6 +214,9 @@ export default async function imageControlHandler(req: VercelRequest, res: Verce
             const installerName = String(req.query.installerName || '').trim();
             const installerFilter = String(req.query.installerFilter || '').trim();
             const uploadStatus = String(req.query.uploadStatus || 'all');
+            const isFailedReport = String(req.query.report || '') === 'failed';
+            const isScanCandidates = String(req.query.report || '') === 'scan-candidates';
+            const scanMonth = String(req.query.month || '');
             const isAdminView = String(req.query.admin || '') === 'true';
             const page = Math.max(1, Number(req.query.page) || 1);
             const pageSize = Math.min(100, Math.max(10, Number(req.query.pageSize) || 30));
@@ -127,17 +235,37 @@ export default async function imageControlHandler(req: VercelRequest, res: Verce
                 const matchesSearch = !query || [row.key, row.account, row.customer].some((value) => value.toLocaleLowerCase('vi').includes(query));
                 return belongsToEmployee && matchesInstaller && matchesSearch;
             });
-            const isUploaded = (row: IndexRow) => Boolean(row.images.before.trim()
-                && row.images.after.trim()
-                && (!needsAppointmentImages(row.appointmentTick) || row.images.appointment.trim()));
             const summary = isAdminView ? visibleRows.reduce((result, row) => {
-                if (isUploaded(row)) result.uploaded += 1;
+                if (isImagesUploaded(row)) result.uploaded += 1;
                 else result.pending += 1;
                 result.total += 1;
                 return result;
             }, { total: 0, uploaded: 0, pending: 0 }) : undefined;
+            if (isFailedReport) {
+                if (!isAdminView) return res.status(403).json({ error: 'Chỉ quản trị viên được xuất báo cáo ảnh không đạt.' });
+                const reportRows = visibleRows
+                    .filter((row) => {
+                        const uploaded = isImagesUploaded(row);
+                        if (uploadStatus === 'uploaded') return uploaded;
+                        if (uploadStatus === 'pending') return !uploaded;
+                        return true;
+                    })
+                    .map((row) => ({ ...row, failureReason: getImageFailureReason(row) }))
+                    .filter((row) => Boolean(row.failureReason));
+                return res.json({ rows: reportRows, total: reportRows.length });
+            }
+            if (isScanCandidates) {
+                if (!isAdminView || !installerFilter || !/^\d{4}-\d{2}$/.test(scanMonth)) {
+                    return res.status(400).json({ error: 'Chọn nhân viên và tháng hợp lệ trước khi quét AI.' });
+                }
+                const scanRows = visibleRows
+                    .filter((row) => matchesMonth(row.completedAt, scanMonth) && isImagesUploaded(row) && !row.aiReview.trim())
+                    .filter((row) => Object.values(row.links).some((link) => link.trim()))
+                    .map((row) => ({ rowNumber: row.rowNumber, account: row.account, customer: row.customer, installer: row.installer }));
+                return res.json({ rows: scanRows, total: scanRows.length });
+            }
             const matches = visibleRows.filter((row) => {
-                const uploaded = isUploaded(row);
+                const uploaded = isImagesUploaded(row);
                 if (!isAdminView) return !uploaded;
                 if (uploadStatus === 'uploaded') return uploaded;
                 if (uploadStatus === 'pending') return !uploaded;
@@ -152,7 +280,29 @@ export default async function imageControlHandler(req: VercelRequest, res: Verce
         }
 
         if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
-        const { rowNumber, imageType, fileName, mimeType, fileData, installerName, files } = req.body || {};
+        const { action, rowNumber, imageType, fileName, mimeType, fileData, installerName, files } = req.body || {};
+        if (action === 'scan-image-row') {
+            if (req.body?.admin !== true) return res.status(403).json({ error: 'Chỉ quản trị viên được quét ảnh AI.' });
+            if (!Number.isInteger(Number(rowNumber)) || Number(rowNumber) < 2) return res.status(400).json({ error: 'Dòng dữ liệu không hợp lệ.' });
+            const targetRow = Number(rowNumber);
+            const sheets = getSheetsApi();
+            await ensureAiReviewColumn(sheets);
+            const lookup = await sheets.spreadsheets.values.get({ spreadsheetId: SHEET_ID, range: `'${SHEET_NAME}'!A${targetRow}:AC${targetRow}` });
+            const values = (lookup.data.values?.[0] || []).map(String);
+            if (!values.length) return res.status(404).json({ error: 'Không tìm thấy dòng dữ liệu cần quét.' });
+            const row = toIndexRow(values, targetRow);
+            if (row.aiReview.trim()) return res.json({ skipped: true, rowNumber, review: row.aiReview });
+            const review = await analyzeImagesWithGemini(row);
+            await sheets.spreadsheets.values.update({
+                spreadsheetId: SHEET_ID,
+                range: `'${SHEET_NAME}'!AC${targetRow}`,
+                valueInputOption: 'USER_ENTERED',
+                requestBody: { values: [[review]] },
+            });
+            cachedIndex = null;
+            cacheLoadedAt = 0;
+            return res.json({ success: true, rowNumber, review });
+        }
         if (!Number.isInteger(Number(rowNumber)) || Number(rowNumber) < 2) return res.status(400).json({ error: 'Dòng dữ liệu không hợp lệ.' });
         const requestedFiles = Array.isArray(files)
             ? files

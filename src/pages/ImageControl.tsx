@@ -9,6 +9,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { Camera, Image as ImageIcon, Search } from 'lucide-react';
 import type { RootState } from '../store';
 import { enqueueImageUpload, imageUploadQueueEvent, processImageUploadQueue } from '../services/imageUploadQueue';
+import { exportToExcel } from '../utils/excelUtils';
 
 type ImageType = 'before' | 'after' | 'appointment';
 type ControlRow = {
@@ -76,6 +77,10 @@ export default function ImageControl() {
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(false);
+    const [exporting, setExporting] = useState(false);
+    const [scanMonth, setScanMonth] = useState(() => new Date().toISOString().slice(0, 7));
+    const [scanning, setScanning] = useState(false);
+    const [scanProgress, setScanProgress] = useState<{ completed: number; total: number; issues: number } | null>(null);
     const [uploading, setUploading] = useState<number | null>(null);
     const [pickerTarget, setPickerTarget] = useState<{ rowNumber: number; imageType: ImageType } | null>(null);
     const [drafts, setDrafts] = useState<Record<number, StagedImages>>({});
@@ -99,6 +104,62 @@ export default function ImageControl() {
             if (isAdmin) setSummary(data.summary || null);
         } catch (error: any) { setMessage({ severity: 'error', text: error.message || 'Không thể tải dữ liệu.' }); }
         finally { setLoading(false); }
+    };
+
+    const exportFailedImages = async () => {
+        setExporting(true); setMessage(null);
+        try {
+            const installerName = profile?.full_name?.trim();
+            if (!installerName) throw new Error('Tài khoản chưa có thông tin họ tên để lập báo cáo.');
+            const response = await fetch(`/api/image-control?q=${encodeURIComponent(query.trim())}&installerName=${encodeURIComponent(installerName)}&installerFilter=${encodeURIComponent(installerFilter)}&uploadStatus=${uploadStatus}&admin=true&report=failed`);
+            const raw = await response.text();
+            let data: { rows?: Array<ControlRow & { failureReason: string }>; error?: string } = {};
+            try { data = raw ? JSON.parse(raw) : {}; } catch { throw new Error(`Máy chủ trả phản hồi không hợp lệ (HTTP ${response.status}).`); }
+            if (!response.ok) throw new Error(data.error || 'Không thể lập báo cáo.');
+            const reportRows = data.rows || [];
+            if (!reportRows.length) { setMessage({ severity: 'info', text: 'Không có hình ảnh không đạt theo điều kiện đang lọc.' }); return; }
+            const date = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
+            await exportToExcel(reportRows.map((row) => ({
+                Account: row.account || '—',
+                'Tên nhân viên': row.installer || '—',
+                'Lý do lỗi': row.failureReason,
+            })), `Bao_cao_anh_khong_dat_${date}`, 'Ảnh không đạt', {
+                title: 'BÁO CÁO HÌNH ẢNH KHÔNG ĐẠT', reporter: profile?.full_name || '',
+            });
+            setMessage({ severity: 'success', text: `Đã xuất ${reportRows.length.toLocaleString('vi-VN')} dòng ảnh không đạt.` });
+        } catch (error: any) { setMessage({ severity: 'error', text: error.message || 'Không thể xuất Excel.' }); }
+        finally { setExporting(false); }
+    };
+
+    const runAiScan = async () => {
+        if (!installerFilter) { setMessage({ severity: 'info', text: 'Hãy chọn một nhân viên trước khi quét AI.' }); return; }
+        setScanning(true); setMessage(null); setScanProgress(null);
+        try {
+            const installerName = profile?.full_name?.trim();
+            if (!installerName) throw new Error('Tài khoản chưa có thông tin họ tên để thực hiện quét.');
+            const candidateResponse = await fetch(`/api/image-control?installerName=${encodeURIComponent(installerName)}&installerFilter=${encodeURIComponent(installerFilter)}&admin=true&report=scan-candidates&month=${encodeURIComponent(scanMonth)}`);
+            const candidateData = await candidateResponse.json().catch(() => ({}));
+            if (!candidateResponse.ok) throw new Error(candidateData.error || 'Không thể lấy danh sách ảnh cần quét.');
+            const candidates: Array<{ rowNumber: number }> = candidateData.rows || [];
+            if (!candidates.length) { setMessage({ severity: 'info', text: 'Không có biên bản mới cần quét theo nhân viên và tháng đã chọn.' }); return; }
+            const scanBatch = candidates.slice(0, 50);
+            let issues = 0;
+            setScanProgress({ completed: 0, total: scanBatch.length, issues });
+            for (let index = 0; index < scanBatch.length; index += 1) {
+                const response = await fetch('/api/image-control', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'scan-image-row', rowNumber: scanBatch[index].rowNumber, admin: true }),
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.error || 'Không thể quét một biên bản.');
+                if (/không đạt|cần kiểm tra lại/i.test(String(data.review || ''))) issues += 1;
+                setScanProgress({ completed: index + 1, total: scanBatch.length, issues });
+            }
+            const remaining = candidates.length - scanBatch.length;
+            setMessage({ severity: 'success', text: `Đã quét ${scanBatch.length.toLocaleString('vi-VN')} biên bản; phát hiện ${issues.toLocaleString('vi-VN')} biên bản không đạt hoặc cần kiểm tra lại.${remaining ? ` Còn ${remaining.toLocaleString('vi-VN')} biên bản, bấm quét lần nữa để tiếp tục.` : ''}` });
+            search(1);
+        } catch (error: any) { setMessage({ severity: 'error', text: error.message || 'Quét AI bị gián đoạn.' }); }
+        finally { setScanning(false); }
     };
 
     useEffect(() => {
@@ -191,7 +252,18 @@ export default function ImageControl() {
                     <MenuItem value="all">Tất cả</MenuItem><MenuItem value="uploaded">Đã up</MenuItem><MenuItem value="pending">Chưa up</MenuItem>
                 </TextField>}
                 <Button variant="contained" startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <Search size={18} />} onClick={() => search(1)} disabled={loading} sx={{ minWidth: 130, height: 56 }}>Tìm kiếm</Button>
+                {isAdmin && <Button variant="outlined" onClick={exportFailedImages} disabled={exporting} sx={{ minWidth: 160, height: 56, whiteSpace: 'nowrap' }}>
+                    {exporting ? <CircularProgress size={18} /> : 'Xuất Excel không đạt'}
+                </Button>}
             </Stack>
+            {isAdmin && <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ md: 'center' }} sx={{ mt: 1.5 }}>
+                <TextField label="Tháng quét AI" type="month" value={scanMonth} onChange={(e) => setScanMonth(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ minWidth: 180 }} />
+                <Button variant="contained" color="secondary" onClick={runAiScan} disabled={scanning || !installerFilter} sx={{ minWidth: 180, height: 56 }}>
+                    {scanning ? <CircularProgress size={18} color="inherit" /> : 'Quét ảnh AI'}
+                </Button>
+                <Typography variant="caption" color="text.secondary">Chọn một nhân viên để quét tối đa 50 biên bản chưa được AI đánh giá mỗi lần.</Typography>
+                {scanProgress && <Typography variant="body2" fontWeight={700}>Đã quét {scanProgress.completed}/{scanProgress.total} · Cần xử lý: {scanProgress.issues}</Typography>}
+            </Stack>}
         </CardContent></Card>
         {isAdmin && summary && <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 2 }}>
             <Typography variant="body2" fontWeight={700}>Tổng biên bản: {summary.total.toLocaleString('vi-VN')}</Typography>
