@@ -94,7 +94,16 @@ export default function ImageControl() {
         try {
             const installerName = profile?.full_name?.trim();
             if (!installerName) throw new Error('Tài khoản chưa có thông tin họ tên để đối chiếu Nhân viên NT.');
-            const response = await fetch(`/api/image-control?q=${encodeURIComponent(term)}&installerName=${encodeURIComponent(installerName)}&installerFilter=${encodeURIComponent(selectedInstaller)}&uploadStatus=${selectedStatus}&admin=${isAdmin}&page=${requestedPage}&pageSize=30`);
+            const url = `/api/image-control?q=${encodeURIComponent(term)}&installerName=${encodeURIComponent(installerName)}&installerFilter=${encodeURIComponent(selectedInstaller)}&uploadStatus=${selectedStatus}&admin=${isAdmin}&page=${requestedPage}&pageSize=30`;
+            let response: Response | undefined;
+            for (let attempt = 0; attempt < 2; attempt += 1) {
+                try { response = await fetch(url); break; }
+                catch (error) {
+                    if (attempt === 1) throw new Error('Không thể kết nối máy chủ. Vui lòng kiểm tra 4G/Wi‑Fi rồi thử lại.');
+                    await new Promise((resolve) => window.setTimeout(resolve, 800));
+                }
+            }
+            if (!response) throw new Error('Không thể kết nối máy chủ. Vui lòng thử lại.');
             const raw = await response.text();
             let data: any = {};
             try { data = raw ? JSON.parse(raw) : {}; } catch { throw new Error(`Máy chủ trả phản hồi không hợp lệ (HTTP ${response.status}).`); }

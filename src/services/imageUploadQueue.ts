@@ -73,28 +73,44 @@ export async function processImageUploadQueue() {
     processing = true;
     try {
         const jobs = (await readJobs()).sort((a, b) => a.createdAt - b.createdAt);
+        const processed = new Set<string>();
         for (const job of jobs) {
+            if (processed.has(job.id)) continue;
             if (!navigator.onLine) break;
             if (job.nextAttemptAt > Date.now()) {
                 scheduleRetry(job.nextAttemptAt - Date.now());
                 continue;
             }
-            notify({ type: 'uploading', rowNumber: job.rowNumber, imageType: job.imageType });
+            // Gộp ảnh cùng một biên bản thành một lượt gửi: nhanh hơn trên 4G và
+            // tránh nhiều lần đọc/ghi Google Sheet cho Ảnh trước, Ảnh sau, BB hẹn.
+            const group = jobs.filter((candidate) => candidate.rowNumber === job.rowNumber
+                && candidate.installerName === job.installerName
+                && !processed.has(candidate.id)
+                && candidate.nextAttemptAt <= Date.now()).slice(0, 3);
+            if (!group.length) continue;
+            group.forEach((item) => notify({ type: 'uploading', rowNumber: item.rowNumber, imageType: item.imageType }));
             const controller = new AbortController();
             const timeout = window.setTimeout(() => controller.abort(), 55_000);
             try {
                 const response = await fetch('/api/image-control', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
-                    body: JSON.stringify({ rowNumber: job.rowNumber, installerName: job.installerName, imageType: job.imageType, fileName: job.file.name, mimeType: job.file.type, fileData: await toBase64(job.file) }),
+                    body: JSON.stringify({
+                        rowNumber: job.rowNumber,
+                        installerName: job.installerName,
+                        files: await Promise.all(group.map(async (item) => ({
+                            imageType: item.imageType, fileName: item.file.name, mimeType: item.file.type, fileData: await toBase64(item.file),
+                        }))),
+                    }),
                 });
                 const data = await response.json().catch(() => ({}));
                 if (!response.ok) throw new Error(data.error || 'Không thể lưu ảnh lên Drive.');
-                await deleteJob(job.id);
+                await Promise.all(group.map((item) => deleteJob(item.id)));
+                group.forEach((item) => processed.add(item.id));
                 notify({ type: 'success', rowNumber: job.rowNumber, imageType: job.imageType, files: data.files || [] });
             } catch (error: any) {
-                const attempts = job.attempts + 1;
+                const attempts = Math.max(...group.map((item) => item.attempts)) + 1;
                 const delay = Math.min(5 * 60_000, 5_000 * 2 ** Math.min(attempts, 6));
-                await putJob({ ...job, attempts, nextAttemptAt: Date.now() + delay });
+                await Promise.all(group.map((item) => putJob({ ...item, attempts: item.attempts + 1, nextAttemptAt: Date.now() + delay })));
                 notify({ type: 'retrying', rowNumber: job.rowNumber, imageType: job.imageType, message: error?.message, delay });
                 scheduleRetry(delay);
                 break;
