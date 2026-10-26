@@ -323,34 +323,71 @@ export const exportToExcel = async (data: any[], fileName: string, sheetName: st
             margins: { left: 1.18, right: 0.59, top: 0.79, bottom: 0.79, header: 0.3, footer: 0.3 }
         }
     });
-    
+    workbook.creator = 'Hệ thống quản lý kho BSG';
+    workbook.created = new Date();
+    const reportFont: Partial<ExcelJS.Font> = { name: 'Times New Roman', size: 11 };
+    const borderThin: Partial<ExcelJS.Borders> = {
+        top: { style: 'thin', color: { argb: 'FF000000' } },
+        left: { style: 'thin', color: { argb: 'FF000000' } },
+        bottom: { style: 'thin', color: { argb: 'FF000000' } },
+        right: { style: 'thin', color: { argb: 'FF000000' } },
+    };
+
     let currentRow = 1;
+    const tableKeys = data.length > 0 ? Object.keys(data[0]) : [];
+    const totalColumns = Math.max(1, tableKeys.length);
     if (options?.title) {
-        sheet.mergeCells(currentRow, 1, currentRow, 6);
+        sheet.mergeCells(currentRow, 1, currentRow, totalColumns);
         sheet.getCell(currentRow, 1).value = options.title.toUpperCase();
+        sheet.getCell(currentRow, 1).font = { name: 'Times New Roman', size: 15, bold: true, color: { argb: 'FF1F4E78' } };
+        sheet.getCell(currentRow, 1).alignment = { horizontal: 'center', vertical: 'middle' };
+        sheet.getRow(currentRow).height = 26;
         currentRow++;
     }
     if (options?.reporter) {
         sheet.getCell(currentRow, 1).value = 'Người lập báo cáo:';
         sheet.getCell(currentRow, 2).value = options.reporter;
+        sheet.getCell(currentRow, 1).font = { ...reportFont, bold: true };
+        sheet.getCell(currentRow, 2).font = reportFont;
         currentRow++;
     }
     const now = new Date();
     sheet.getCell(currentRow, 1).value = 'Thời gian xuất:';
     sheet.getCell(currentRow, 2).value = `${now.toLocaleTimeString('vi-VN')} - ${now.toLocaleDateString('vi-VN')}`;
+    sheet.getCell(currentRow, 1).font = { ...reportFont, bold: true };
+    sheet.getCell(currentRow, 2).font = reportFont;
     currentRow += 2; // Add a blank line
 
-    const tableKeys = data.length > 0 ? Object.keys(data[0]) : [];
+    const headerRow = currentRow;
     sheet.getRow(currentRow).values = tableKeys;
+    sheet.getRow(currentRow).height = 24;
+    sheet.getRow(currentRow).eachCell((cell) => {
+        cell.font = { name: 'Times New Roman', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F4E78' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = borderThin as ExcelJS.Borders;
+    });
     currentRow++;
 
     data.forEach(row => {
         const rowValues = tableKeys.map(key => row[key] !== undefined && row[key] !== null ? row[key] : '');
         sheet.getRow(currentRow).values = rowValues;
+        sheet.getRow(currentRow).height = 30;
+        sheet.getRow(currentRow).eachCell((cell) => {
+            cell.font = reportFont;
+            cell.alignment = { vertical: 'top', wrapText: true };
+            cell.border = borderThin as ExcelJS.Borders;
+        });
         currentRow++;
     });
 
-    sheet.columns = tableKeys.map(key => ({ width: Math.max(key.length, 20) }));
+    sheet.columns = tableKeys.map((key, index) => ({
+        width: index === 0 ? 26 : index === 1 ? 28 : Math.max(42, key.length + 10),
+    }));
+    sheet.views = [{ state: 'frozen', ySplit: headerRow }];
+    if (tableKeys.length && data.length) {
+        sheet.autoFilter = { from: { row: headerRow, column: 1 }, to: { row: currentRow - 1, column: tableKeys.length } };
+    }
 
     const buffer = await workbook.xlsx.writeBuffer();
     downloadAsDataUri(buffer, `${fileName}.xlsx`);
