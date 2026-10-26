@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Button, Checkbox, CircularProgress, Paper, Stack, TextField, Typography } from '@mui/material';
+import { Box, Button, Checkbox, CircularProgress, FormControlLabel, Paper, Stack, TextField, Typography } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
 import DownloadIcon from '@mui/icons-material/Download';
 import SearchIcon from '@mui/icons-material/Search';
@@ -57,10 +57,14 @@ const AssetInspectionMinutes = () => {
     const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
     const [inspectionDate, setInspectionDate] = useState(currentDate());
     const [inspectionTime, setInspectionTime] = useState(currentTime());
+    const [includeTimestamp, setIncludeTimestamp] = useState(true);
     const [location, setLocation] = useState('Văn phòng Trung tâm ACT KV Bắc Sài Gòn');
     const [inspectionTeam, setInspectionTeam] = useState(DEFAULT_INSPECTION_TEAM);
     const [content, setContent] = useState('Kiểm tra CCDC cá nhân theo danh mục và Bảo hộ lao động.');
     const [notes, setNotes] = useState('');
+    const inspectionOpening = includeTimestamp
+        ? `Hôm nay, vào lúc ${inspectionTime} ngày ${inspectionDate}, tại ${location}, chúng tôi gồm:`
+        : `Hôm nay, vào lúc ........ giờ ........ phút, ngày ........ tháng ........ năm ........, tại ${location}, chúng tôi gồm:`;
 
     useEffect(() => { dispatch(fetchEmployees()); }, [dispatch]);
 
@@ -142,7 +146,7 @@ const AssetInspectionMinutes = () => {
             writeMerged('D2:F2', 'Độc lập - Tự do - Hạnh phúc', { alignment: center });
             ['A2', 'D2'].forEach(address => sheet.getCell(address).border = { bottom: { style: 'thin' } });
             writeMerged('A4:F4', 'BIÊN BẢN KIỂM TRA', { bold: true, size: 14, alignment: center });
-            writeMerged('A5:F5', `Hôm nay, vào lúc ${inspectionTime} ngày ${inspectionDate}, tại ${location}, chúng tôi gồm:`, { size: 10 });
+            writeMerged('A5:F5', inspectionOpening, { size: 10 });
             writeMerged('A6:F6', 'A. ĐOÀN KIỂM TRA', { bold: true });
             let rowNumber = 7;
             teamMembers.forEach(member => {
@@ -209,6 +213,7 @@ const AssetInspectionMinutes = () => {
         <Typography color="text.secondary" mb={2}>Chọn nhân viên để in biên bản riêng cho từng người. Danh mục CCDC trong biên bản được cố định theo mẫu Word.</Typography>
         <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 2, borderRadius: 3 }}>
             <Stack spacing={1.5} direction={{ xs: 'column', md: 'row' }}><TextField label="Ngày lập biên bản" value={inspectionDate} onChange={event => setInspectionDate(event.target.value)} fullWidth /><TextField label="Thời gian" value={inspectionTime} onChange={event => setInspectionTime(event.target.value)} fullWidth /><TextField label="Địa điểm kiểm tra" value={location} onChange={event => setLocation(event.target.value)} fullWidth /></Stack>
+            <FormControlLabel sx={{ mt: 0.75, ml: 0 }} control={<Checkbox checked={includeTimestamp} onChange={event => setIncludeTimestamp(event.target.checked)} />} label="Ghi ngày, giờ vào biên bản" />
             <Stack spacing={1.5} direction={{ xs: 'column', md: 'row' }} mt={1.5}><TextField label="Đoàn kiểm tra" helperText="Mỗi dòng theo cấu trúc: Họ và tên | Chức vụ." value={inspectionTeam} onChange={event => setInspectionTeam(event.target.value)} fullWidth multiline minRows={6} /><TextField label="Nội dung kiểm tra" value={content} onChange={event => setContent(event.target.value)} fullWidth multiline minRows={3} /><TextField label="Ghi chú kết quả" value={notes} onChange={event => setNotes(event.target.value)} fullWidth multiline minRows={3} /></Stack>
         </Paper>
         <Paper sx={{ borderRadius: 3, overflow: 'hidden' }}>
@@ -224,7 +229,7 @@ const AssetInspectionMinutes = () => {
         </Paper>
         <Box ref={printRef} sx={{ display: 'none' }}>{printGroups.map(group => <div className="inspection-page" key={group.id}>
             <div className="header"><div><p>CÔNG TY CỔ PHẦN VIỄN THÔNG ACT</p><p className="company-unit">TRUNG TÂM BẮC SÀI GÒN</p></div><div><p>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</p><p className="company-unit">Độc lập - Tự do - Hạnh phúc</p></div></div><div className="title">BIÊN BẢN KIỂM TRA</div>
-            <div className="line">Hôm nay, vào lúc {inspectionTime} ngày {inspectionDate}, tại {location}, chúng tôi gồm:</div><div className="section">A. ĐOÀN KIỂM TRA</div>{teamMembers.length ? teamMembers.map(member => <div className="team-row" key={member.name}><div>Họ và tên: {member.name}</div><div>Chức vụ: {member.title || '................................'}</div></div>) : <div className="line">Họ và tên: ................................................................................................</div>}
+            <div className="line">{inspectionOpening}</div><div className="section">A. ĐOÀN KIỂM TRA</div>{teamMembers.length ? teamMembers.map(member => <div className="team-row" key={member.name}><div>Họ và tên: {member.name}</div><div>Chức vụ: {member.title || '................................'}</div></div>) : <div className="line">Họ và tên: ................................................................................................</div>}
             <div className="subject-heading"><div className="section">B. ĐỐI TƯỢNG KIỂM TRA</div><div>{group.department ? `Nhóm/đơn vị: ${group.department}` : ''}</div></div><div className="line">1. Họ và tên: {group.name}</div><div className="line"><b>1. Nội dung kiểm tra:</b> {content}</div><div className="line"><b>2. Kết quả kiểm tra như sau:</b></div>
             <div className="section">I. CÔNG CỤ DỤNG CỤ (CCDC)</div><table><thead><tr><th>STT</th><th>Nội dung yêu cầu</th><th>Số lượng</th><th>Số lượng định mức</th><th>Quy cách, TCKT</th><th>Ghi chú</th></tr></thead><tbody>{FIXED_INSPECTION_ITEMS.map((item, index) => <tr key={item.name}><td className="center">{index + 1}</td><td>{item.name}</td><td className="center"></td><td className="center">{item.quota}</td><td>{item.specification || item.name}</td><td></td></tr>)}</tbody></table>
             <div className="section section-two">II. TRANG BỊ BẢO HỘ LAO ĐỘNG</div><table><thead><tr><th>STT</th><th>Nội dung yêu cầu</th><th>Đơn vị tính</th><th>Số lượng</th><th>Ghi chú</th></tr></thead><tbody>{FIXED_PROTECTIVE_ITEMS.map((item, index) => <tr key={item.name}><td className="center">{index + 1}</td><td>{item.name}</td><td className="center">{item.unit}</td><td className="center"></td><td></td></tr>)}</tbody></table>
