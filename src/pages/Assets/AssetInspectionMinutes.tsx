@@ -62,6 +62,10 @@ const AssetInspectionMinutes = () => {
     const [inspectionTeam, setInspectionTeam] = useState(DEFAULT_INSPECTION_TEAM);
     const [content, setContent] = useState('Kiểm tra CCDC cá nhân theo danh mục và Bảo hộ lao động.');
     const [notes, setNotes] = useState('');
+    const inspectionPeriod = (() => {
+        const [, month, year] = inspectionDate.split('/');
+        return month && year ? `Kỳ kiểm tra tháng ${month}.${year}` : 'Kỳ kiểm tra tháng chưa xác định';
+    })();
     const inspectionOpening = includeTimestamp
         ? `Hôm nay, vào lúc ${inspectionTime} ngày ${inspectionDate}, tại ${location}, chúng tôi gồm:`
         : `Hôm nay, vào lúc ........ giờ ........ phút, ngày ........ tháng ........ năm ........, tại ${location}, chúng tôi gồm:`;
@@ -123,6 +127,35 @@ const AssetInspectionMinutes = () => {
 
     const exportInspectionExcel = async () => {
         if (!printGroups.length) return;
+        let assetLogs: any[];
+        try {
+            const result = await GoogleSheetService.getAssetLogs();
+            assetLogs = Array.isArray(result) ? result : [];
+        } catch (error) {
+            console.error('Không thể tải log kiểm tra để xuất báo cáo:', error);
+            window.alert('Không thể tải lịch sử kiểm tra. Vui lòng thử lại sau để xuất báo cáo đối chiếu chính xác.');
+            return;
+        }
+        const [, inspectionMonth, inspectionYear] = inspectionDate.split('/');
+        const vietnamDateParts = (value: string) => {
+            const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(value));
+            return Object.fromEntries(parts.filter(part => ['year', 'month', 'day'].includes(part.type)).map(part => [part.type, part.value]));
+        };
+        const periodLogs = assetLogs.filter(log => {
+            if (log.asset_code !== 'BIEN_BAN_KIEM_TRA' || log.action !== 'In biên bản kiểm tra' || !log.employee_name || !log.created_at) return false;
+            const date = vietnamDateParts(log.created_at);
+            return date.month === inspectionMonth && date.year === inspectionYear;
+        });
+        const latestLogByEmployeeDay = new Map<string, any>();
+        periodLogs.forEach(log => {
+            const date = vietnamDateParts(log.created_at);
+            const key = `${log.employee_name.trim().toLocaleLowerCase('vi')}|${date.year}-${date.month}-${date.day}`;
+            const saved = latestLogByEmployeeDay.get(key);
+            if (!saved || new Date(log.created_at).getTime() > new Date(saved.created_at).getTime()) latestLogByEmployeeDay.set(key, log);
+        });
+        const reportLogs = [...latestLogByEmployeeDay.values()].sort((first, second) => new Date(second.created_at).getTime() - new Date(first.created_at).getTime());
+        const checkedEmployeeNames = new Set(reportLogs.map(log => log.employee_name.trim().toLocaleLowerCase('vi')));
+        const formatLogTime = (value: string) => new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value)).replace(',', '');
         const workbook = new ExcelJS.Workbook();
         const performedBy = profile?.full_name || profile?.username || profile?.email || 'Hệ thống';
         const tableBorder = { top: { style: 'thin' as const }, left: { style: 'thin' as const }, bottom: { style: 'thin' as const }, right: { style: 'thin' as const } };
@@ -194,10 +227,28 @@ const AssetInspectionMinutes = () => {
             sheet.getRow(signatureRow + 1).height = 16; sheet.getRow(signatureRow + 2).height = 16; sheet.getRow(signatureRow + 3).height = 16; sheet.getRow(signatureRow + 4).height = 16;
         });
         const logSheet = workbook.addWorksheet('Log in bien ban');
-        logSheet.columns = [{ width: 7 }, { width: 22 }, { width: 30 }, { width: 28 }, { width: 24 }, { width: 28 }];
-        logSheet.addRow(['STT', 'Thời gian lập', 'Loại biên bản', 'Nhân viên được kiểm tra', 'Đơn vị / bộ phận', 'Người lập / in']);
-        printGroups.forEach((group, index) => logSheet.addRow([index + 1, `${inspectionTime} ${inspectionDate}`, 'Biên bản kiểm tra CCDC', group.name, group.department || '-', performedBy]));
+        logSheet.columns = [{ width: 7 }, { width: 22 }, { width: 24 }, { width: 30 }, { width: 28 }, { width: 24 }, { width: 28 }];
+        logSheet.addRow(['STT', 'Kỳ kiểm tra tháng', 'Thời gian lập', 'Loại biên bản', 'Nhân viên được kiểm tra', 'Đơn vị / bộ phận', 'Người lập / in']);
+        reportLogs.forEach((log, index) => logSheet.addRow([index + 1, inspectionPeriod, formatLogTime(log.created_at), log.asset_name || 'Biên bản kiểm tra CCDC', log.employee_name, log.department || '-', log.performed_by || '-']));
         logSheet.eachRow((row, rowIndex) => row.eachCell(cell => { cell.font = { name: 'Times New Roman', size: 10, bold: rowIndex === 1 }; cell.border = tableBorder; cell.alignment = { vertical: 'middle', wrapText: true, horizontal: rowIndex === 1 ? 'center' : 'left' }; }));
+        const uncheckedEmployees = employeeGroups.filter(group => !checkedEmployeeNames.has(group.name.toLocaleLowerCase('vi')));
+        const uncheckedSheet = workbook.addWorksheet('Chưa kiểm tra');
+        uncheckedSheet.columns = [{ width: 8 }, { width: 24 }, { width: 32 }, { width: 28 }, { width: 25 }];
+        uncheckedSheet.mergeCells('A1:E1');
+        uncheckedSheet.getCell('A1').value = `DANH SÁCH NHÂN VIÊN CHƯA KIỂM TRA - NGÀY ${inspectionDate}`;
+        uncheckedSheet.getCell('A1').font = { name: 'Times New Roman', size: 13, bold: true };
+        uncheckedSheet.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
+        uncheckedSheet.getRow(1).height = 24;
+        uncheckedSheet.getRow(3).values = ['STT', 'Kỳ kiểm tra tháng', 'Họ và tên', 'Đơn vị / bộ phận', 'Trạng thái'];
+        uncheckedEmployees.forEach((group, index) => uncheckedSheet.addRow([index + 1, inspectionPeriod, group.name, group.department || '-', 'Chưa kiểm tra']));
+        uncheckedSheet.eachRow((row, rowIndex) => row.eachCell((cell, column) => {
+            if (rowIndex < 3) return;
+            cell.font = { name: 'Times New Roman', size: 11, bold: rowIndex === 3 };
+            cell.border = tableBorder;
+            cell.alignment = { vertical: 'middle', wrapText: true, horizontal: rowIndex === 3 || column === 1 ? 'center' : 'left' };
+        }));
+        uncheckedSheet.views = [{ showGridLines: false }];
+        uncheckedSheet.pageSetup = { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: { left: 0.35, right: 0.35, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 } };
         downloadAsDataUri(await workbook.xlsx.writeBuffer(), 'Bieu_mau_bien_ban_kiem_tra.xlsx');
     };
 

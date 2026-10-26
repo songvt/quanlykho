@@ -70,13 +70,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { type } = req.query;
 
     if (type === 'logs') {
-        if (!['GET', 'POST'].includes(req.method || '')) {
+        if (!['GET', 'POST', 'DELETE'].includes(req.method || '')) {
             return res.status(405).json({ error: 'Method Not Allowed' });
         }
         try {
             if (req.method === 'GET') {
                 const data = await fetchAll('asset_logs', '*', (q) => q.order('created_at', { ascending: false }));
                 return res.status(200).json(data);
+            }
+
+            if (req.method === 'DELETE') {
+                const ids = Array.isArray(req.body?.ids) ? req.body.ids.filter((id: unknown) => typeof id === 'string' && id) : [];
+                if (!ids.length) return res.status(400).json({ error: 'Danh sách ID log cần xóa là bắt buộc' });
+                const { error: deleteError } = await supabase.from('asset_logs').delete().in('id', ids);
+                if (deleteError) throw deleteError;
+                let doc: any = null;
+                try { doc = await getGoogleSheet(); } catch (err) { console.warn('Không thể kết nối Google Sheets để xóa log:', err); }
+                if (doc) {
+                    const logSheet = await getSheetByTitle(doc, 'asset_logs');
+                    const rows = await logSheet.getRows();
+                    for (const row of rows) if (ids.includes(row.get('id'))) await row.delete();
+                } else await supabase.from('gs_sync_queue').insert({ table_name: 'asset_logs', action: 'delete', payload: { ids }, error_message: 'Google Sheets document not initialized during log deletion' });
+                return res.status(200).json({ success: true, deleted: ids.length });
             }
 
             const entry = req.body;
