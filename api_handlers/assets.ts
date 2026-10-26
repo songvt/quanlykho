@@ -3,7 +3,7 @@ import { getGoogleSheet, getSheetByTitle } from './_utils/googleSheets.js';
 import { supabase, fetchAll } from './_utils/supabase.js';
 import { randomUUID } from 'crypto';
 
-const logAssetFluctuation = async (doc: any, logEntries: any | any[]) => {
+const logAssetFluctuation = async (doc: any, logEntries: any | any[], operation: 'insert' | 'update' = 'insert') => {
     const entries = Array.isArray(logEntries) ? logEntries : [logEntries];
     const formattedEntries = entries.map(entry => ({
         ...entry,
@@ -13,7 +13,10 @@ const logAssetFluctuation = async (doc: any, logEntries: any | any[]) => {
     
     // 1. Supabase
     try {
-        await supabase.from('asset_logs').insert(formattedEntries);
+        const { error } = operation === 'update'
+            ? await supabase.from('asset_logs').upsert(formattedEntries)
+            : await supabase.from('asset_logs').insert(formattedEntries);
+        if (error) throw error;
     } catch (sbErr) {
         console.error('[logAssetFluctuation] Supabase insert failed:', sbErr);
     }
@@ -23,7 +26,14 @@ const logAssetFluctuation = async (doc: any, logEntries: any | any[]) => {
         try {
             const logSheet = await getSheetByTitle(doc, 'asset_logs');
             const gsWritePromise = async () => {
-                await logSheet.addRows(formattedEntries);
+                if (operation === 'update') {
+                    const rows = await logSheet.getRows();
+                    await Promise.all(formattedEntries.map(async entry => {
+                        const row = rows.find((sheetRow: any) => sheetRow.get('id') === entry.id);
+                        if (row) { row.assign(entry); await row.save(); }
+                        else await logSheet.addRow(entry);
+                    }));
+                } else await logSheet.addRows(formattedEntries);
             };
             await Promise.race([
                 gsWritePromise(),
@@ -33,7 +43,7 @@ const logAssetFluctuation = async (doc: any, logEntries: any | any[]) => {
             console.warn('GS Log Write fallback to queue:', e.message);
             await supabase.from('gs_sync_queue').insert({
                 table_name: 'asset_logs',
-                action: 'insert',
+                action: operation,
                 payload: formattedEntries,
                 error_message: e.message
             });
@@ -42,11 +52,18 @@ const logAssetFluctuation = async (doc: any, logEntries: any | any[]) => {
         console.warn('GS Log skipped: Google Sheets document not initialized');
         await supabase.from('gs_sync_queue').insert({
             table_name: 'asset_logs',
-            action: 'insert',
+            action: operation,
             payload: formattedEntries,
             error_message: 'Google Sheets document not initialized during logAssetFluctuation'
         });
     }
+};
+
+const vietnamDayRange = (timestamp: Date) => {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(timestamp);
+    const date = `${parts.find(part => part.type === 'year')?.value}-${parts.find(part => part.type === 'month')?.value}-${parts.find(part => part.type === 'day')?.value}`;
+    const start = new Date(`${date}T00:00:00+07:00`);
+    return { start: start.toISOString(), end: new Date(start.getTime() + 24 * 60 * 60 * 1000).toISOString() };
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -68,8 +85,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
             let doc: any = null;
             try { doc = await getGoogleSheet(); } catch (err) { console.warn('Không thể kết nối Google Sheets để lưu log:', err); }
-            await logAssetFluctuation(doc, entry);
-            return res.status(201).json({ success: true });
+            const isInspectionPrint = entry.asset_code === 'BIEN_BAN_KIEM_TRA' && entry.action === 'In biên bản kiểm tra' && !!entry.employee_name;
+            if (!isInspectionPrint) {
+                await logAssetFluctuation(doc, entry);
+                return res.status(201).json({ success: true });
+            }
+
+            const createdAt = new Date();
+            const { start, end } = vietnamDayRange(createdAt);
+            const { data: todayLogs, error: findError } = await supabase
+                .from('asset_logs')
+                .select('id')
+                .eq('asset_code', entry.asset_code)
+                .eq('action', entry.action)
+                .eq('employee_name', entry.employee_name)
+                .gte('created_at', start)
+                .lt('created_at', end)
+                .order('created_at', { ascending: false });
+            if (findError) throw findError;
+
+            const [latestLog, ...duplicateLogs] = todayLogs || [];
+            if (duplicateLogs.length) {
+                const duplicateIds = duplicateLogs.map(log => log.id);
+                const { error: deleteError } = await supabase.from('asset_logs').delete().in('id', duplicateIds);
+                if (deleteError) throw deleteError;
+                if (doc) {
+                    const logSheet = await getSheetByTitle(doc, 'asset_logs');
+                    const rows = await logSheet.getRows();
+                    for (const row of rows) if (duplicateIds.includes(row.get('id'))) await row.delete();
+                } else await supabase.from('gs_sync_queue').insert({ table_name: 'asset_logs', action: 'delete', payload: { ids: duplicateIds }, error_message: 'Google Sheets document not initialized during inspection-log cleanup' });
+            }
+
+            const logEntry = { ...entry, ...(latestLog ? { id: latestLog.id, created_at: createdAt.toISOString() } : {}) };
+            await logAssetFluctuation(doc, logEntry, latestLog ? 'update' : 'insert');
+            return res.status(latestLog ? 200 : 201).json({ success: true, updated: !!latestLog });
         } catch (err: any) {
             console.error('Lỗi xử lý nhật ký tài sản asset_logs:', err);
             return res.status(500).json({ error: err.message });
