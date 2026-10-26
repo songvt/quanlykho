@@ -6,8 +6,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import ExcelJS from 'exceljs';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../../store';
-import { fetchEmployees } from '../../store/slices/employeesSlice';
-import type { Employee } from '../../types';
+import { fetchHRProfiles } from '../../store/slices/hrProfilesSlice';
+import type { HRProfile } from '../../types';
 import { downloadAsDataUri } from '../../utils/excelUtils';
 import { GoogleSheetService } from '../../services/GoogleSheetService';
 
@@ -49,7 +49,7 @@ const FIXED_PROTECTIVE_ITEMS = [
 
 const AssetInspectionMinutes = () => {
     const dispatch = useDispatch<AppDispatch>();
-    const { items: employees, status } = useSelector((state: RootState) => state.employees);
+    const { items: employees, status } = useSelector((state: RootState) => state.hrProfiles);
     const { profile } = useSelector((state: RootState) => state.auth);
     const printRef = useRef<HTMLDivElement>(null);
     const blankPrintRef = useRef<HTMLDivElement>(null);
@@ -70,10 +70,10 @@ const AssetInspectionMinutes = () => {
         ? `Hôm nay, vào lúc ${inspectionTime} ngày ${inspectionDate}, tại ${location}, chúng tôi gồm:`
         : `Hôm nay, vào lúc ........ giờ ........ phút, ngày ........ tháng ........ năm ........, tại ${location}, chúng tôi gồm:`;
 
-    useEffect(() => { dispatch(fetchEmployees()); }, [dispatch]);
+    useEffect(() => { dispatch(fetchHRProfiles()); }, [dispatch]);
 
     const employeeGroups = useMemo(() => {
-        return employees.filter((employee: Employee) => employee.full_name?.trim()).map((employee: Employee) => ({ id: employee.id, name: employee.full_name.trim(), department: employee.department || employee.district || '' })).sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+        return employees.filter((employee: HRProfile) => employee.full_name?.trim()).map((employee: HRProfile) => ({ id: employee.id, name: employee.full_name.trim(), department: employee.department || '' })).sort((a, b) => a.name.localeCompare(b.name, 'vi'));
     }, [employees]);
     const filteredEmployees = useMemo(() => {
         const needle = keyword.trim().toLocaleLowerCase('vi');
