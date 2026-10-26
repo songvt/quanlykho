@@ -51,6 +51,7 @@ const AssetHandoverBhl   = lazy(() => import('./pages/Assets/AssetHandoverBhl'))
 const AssetQrPrint       = lazy(() => import('./pages/Assets/AssetQrPrint'));
 const PeriodicAssetAudit = lazy(() => import('./pages/Assets/PeriodicAssetAudit'));
 const PeriodicAssetAuditDetails = lazy(() => import('./pages/Assets/PeriodicAssetAuditDetails'));
+const AssetInspectionMinutes = lazy(() => import('./pages/Assets/AssetInspectionMinutes'));
 const KCSWarrantyList    = lazy(() => import('./pages/Assets/KCSWarranty/KCSWarrantyList'));
 const KCSWarrantyForm    = lazy(() => import('./pages/Assets/KCSWarranty/KCSWarrantyForm'));
 
@@ -144,6 +145,7 @@ function App() {
                                     <Route path="assets/periodic-audit" element={<PeriodicAssetAudit />} />
                                     <Route path="assets/periodic-audit-details" element={<PeriodicAssetAuditDetails />} />
                                     <Route path="assets/periodic-audit-history" element={<PeriodicAssetAuditDetails />} />
+                                    <Route path="assets/inspection-minutes" element={<AssetInspectionMinutes />} />
                                 </Route>
 
                                 <Route element={<ProtectedRoute allowedPermissions={['assets.view', 'assets.manage', 'assets.list_only', '*']} />}>

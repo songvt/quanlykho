@@ -251,6 +251,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                     { text: 'Kiểm kê', path: '/assets/periodic-audit', icon: <ClipboardList size={16} /> },
                                     { text: 'Chi tiết kiểm kê', path: '/assets/periodic-audit-details', icon: <FileSearch size={16} /> },
                                     { text: 'Lịch sử kiểm kê', path: '/assets/periodic-audit-history', icon: <History size={16} /> },
+                                    { text: 'Biên bản kiểm tra', path: '/assets/inspection-minutes', icon: <FileSignature size={16} /> },
                                 ] },
                                 { text: 'Bàn giao CCDC-BHLĐ', path: '/assets/handover-bhl', icon: <ArrowRightLeft size={18} /> },
                                 { text: 'KCS thiết bị bảo hành', path: '/assets/kcs-warranty', icon: <FileSignature size={18} /> },
@@ -286,7 +287,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                         <List disablePadding sx={{ pl: 1.5, mb: 0.5, mt: 0.5 }}>
                                             {assetSubItems.map(sub => {
                                                 if ('children' in sub) {
-                                                    const auditActive = location.pathname.startsWith('/assets/periodic-audit');
+                                                    const auditActive = location.pathname.startsWith('/assets/periodic-audit') || location.pathname === '/assets/inspection-minutes';
                                                     return <React.Fragment key={sub.text}>
                                                         <ListItem disablePadding sx={{ mb: 0.5 }}>
                                                             <ListItemButton onClick={() => setExpandPeriodicAudit(value => !value)} sx={subItemSx(auditActive)}>
