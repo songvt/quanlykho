@@ -301,20 +301,25 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
             r.eachCell((c, column) => {
                 c.border = border;
                 c.font = { size:9, name:'Times New Roman' };
-                c.alignment = { vertical:'middle', wrapText:true, horizontal: [1, 4, 5, 6, 7, 8, 9, 10, 11, 12].includes(column) ? 'center' : 'left' };
+                c.alignment = {
+                    vertical: 'middle',
+                    wrapText: true,
+                    shrinkToFit: false,
+                    horizontal: [1, 4, 5, 6, 7, 8, 9, 10, 11, 12].includes(column) ? 'center' : 'left',
+                };
             });
             const wrappedLines = Math.max(
                 Math.ceil((g.name || '').length / 21),
                 Math.ceil((g.type || '').length / 17),
                 1,
             );
-            r.height = Math.max(18, wrappedLines * 12);
+            r.height = Math.max(22, wrappedLines * 15 + 3);
         });
 
         const lastDataRow = ws.rowCount;
         // Keep the last detail rows and signature block together. Without an
         // explicit break, Excel can move only the signatures to a nearly blank page.
-        const signatureRowsToKeep = 6;
+        const signatureRowsToKeep = 5;
         if (lastDataRow - firstDataRow + 1 > signatureRowsToKeep) {
             // Row-level breaks happen after the specified row.  Start a fresh
             // final page with six detail rows, leaving room for signatures.
