@@ -11,6 +11,7 @@ import ExcelJS from 'exceljs';
 import { fetchAssets, fetchAssetLogs } from '../../store/slices/assetsSlice';
 import type { AppDispatch, RootState } from '../../store';
 import type { Asset } from '../../types';
+import { calculateInspectionQuantity, calculateQuantityDifference } from '../../utils/assetMonthlyReportMath';
 
 interface Props {
     reportType: 'CCDC' | 'TBVP';
@@ -20,6 +21,7 @@ const STATUS_USING = ['Đang sử dụng', 'Đang SD', 'Active'];
 const STATUS_BROKEN = ['Hỏng', 'Hỏng hóc', 'Broken'];
 const STATUS_UNUSED = ['Chưa sử dụng', 'Mới', 'New', 'Tồn kho'];
 const STATUS_REPAIR = ['Đang bảo dưỡng', 'Sửa chữa', 'Bảo dưỡng', 'Maintenance'];
+const STATUS_LOST = ['Thất thoát', 'Mất', 'Lost'];
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 const YEARS = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - 2 + i);
@@ -70,17 +72,21 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                     brokenQty: 0, 
                     unusedQty: 0, 
                     repairQty: 0, 
+                    lostQty: 0,
                     increaseQty: 0,
                     decreaseQty: 0,
-                    departments: new Set() 
+                    departments: new Set(),
+                    units: new Set()
                 };
             }
             const qty = a.quantity || 0;
             groups[key].currentQty += qty;
+            if (a.unit) groups[key].units.add(a.unit);
 
             const s = (a.status || '').trim();
             if (STATUS_USING.some(prefix => s.includes(prefix))) groups[key].usingQty += qty;
             else if (STATUS_BROKEN.some(prefix => s.includes(prefix))) groups[key].brokenQty += qty;
+            else if (STATUS_LOST.some(prefix => s.includes(prefix))) groups[key].lostQty += qty;
             else if (STATUS_UNUSED.some(prefix => s.includes(prefix))) groups[key].unusedQty += qty;
             else if (STATUS_REPAIR.some(prefix => s.includes(prefix))) groups[key].repairQty += qty;
             else groups[key].usingQty += qty;
@@ -110,9 +116,11 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                         brokenQty: 0,
                         unusedQty: 0,
                         repairQty: 0,
+                        lostQty: 0,
                         increaseQty: 0,
                         decreaseQty: 0,
-                        departments: new Set()
+                        departments: new Set(),
+                        units: new Set()
                     };
                 }
             }
@@ -147,34 +155,44 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                 let brokenQty = g.brokenQty;
                 let unusedQty = g.unusedQty;
                 let repairQty = g.repairQty;
+                let lostQty = g.lostQty;
 
                 if (totalQty === 0) {
                     usingQty = 0;
                     brokenQty = 0;
                     unusedQty = 0;
                     repairQty = 0;
+                    lostQty = 0;
                 } else {
-                    const currentSum = usingQty + brokenQty + unusedQty + repairQty;
+                    const currentSum = usingQty + brokenQty + unusedQty + repairQty + lostQty;
                     if (currentSum > 0 && currentSum !== totalQty) {
                         const ratio = totalQty / currentSum;
                         usingQty = Math.round(usingQty * ratio);
                         brokenQty = Math.round(brokenQty * ratio);
                         unusedQty = Math.round(unusedQty * ratio);
-                        repairQty = totalQty - (usingQty + brokenQty + unusedQty);
+                        lostQty = Math.round(lostQty * ratio);
+                        repairQty = totalQty - (usingQty + brokenQty + unusedQty + lostQty);
                     }
                 }
+
+                const openingQty = totalQty - g.increaseQty + g.decreaseQty;
+                const inspectionQty = calculateInspectionQuantity(openingQty, g.increaseQty, g.decreaseQty);
 
                 return {
                     name: g.name,
                     type: g.type,
+                    unit: Array.from(g.units).join(', ') || '-',
                     totalQty,
                     usingQty,
                     brokenQty,
                     unusedQty,
                     repairQty,
+                    lostQty,
                     increaseQty: g.increaseQty,
                     decreaseQty: g.decreaseQty,
-                    openingQty: totalQty - g.increaseQty + g.decreaseQty,
+                    openingQty,
+                    inspectionQty,
+                    differenceQty: calculateQuantityDifference(openingQty, inspectionQty),
                     department: Array.from(g.departments).join(', ') || '-'
                 };
             })
@@ -190,21 +208,20 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
             opening: acc.opening + (g.openingQty || 0),
             increase: acc.increase + (g.increaseQty || 0),
             decrease: acc.decrease + (g.decreaseQty || 0),
-            total: acc.total + g.totalQty, 
+            inspection: acc.inspection + g.inspectionQty,
+            difference: acc.difference + g.differenceQty,
             using: acc.using + g.usingQty, 
             broken: acc.broken + g.brokenQty, 
             unused: acc.unused + g.unusedQty, 
-            repair: acc.repair + g.repairQty
-        }), { opening: 0, increase: 0, decrease: 0, total: 0, using: 0, broken: 0, unused: 0, repair: 0 });
+            repair: acc.repair + g.repairQty,
+            lost: acc.lost + g.lostQty
+        }), { opening: 0, increase: 0, decrease: 0, inspection: 0, difference: 0, using: 0, broken: 0, unused: 0, repair: 0, lost: 0 });
     }, [groupedAssets]);
 
     const currentDay   = now.getDate().toString().padStart(2, '0');
     const currentMonth = (now.getMonth() + 1).toString().padStart(2, '0');
     const currentYear  = now.getFullYear();
     const dateFooterStr = `TP.Hồ Chí Minh, ngày ${currentDay} tháng ${currentMonth} năm ${currentYear}`;
-
-    const prevMonthEnd   = new Date(year, month - 1, 0);
-    const prevMonthLabel = `${prevMonthEnd.getDate().toString().padStart(2,'0')}/${(prevMonthEnd.getMonth()+1).toString().padStart(2,'0')}/${prevMonthEnd.getFullYear()}`;
 
     const handleExportExcel = async () => {
         const wb = new ExcelJS.Workbook();
@@ -240,27 +257,35 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
         ws.getCell('A3').font = { italic:true, size:11, name:'Times New Roman' };
         ws.getCell('A3').alignment = { horizontal:'center' };
 
-        const headers = [
-            {label:'STT', width:6}, {label:'Loại tài sản', width:22}, {label:'Tên tài sản', width:35},
-            {label:`SL ${prevMonthLabel}`, width:12}, {label:'Tăng', width:8}, {label:'Giảm', width:8},
-            {label:'Tổng cộng', width:12}, {label:'Đang SD', width:12}, {label:'Hỏng', width:9},
-            {label:'Chưa SD', width:10}, {label:'Bảo dưỡng', width:12}, {label:'Phòng/Ban', width:20}, {label:'Loại', width:8}
-        ];
-        headers.forEach((h, i) => {
-            const cell = ws.getCell(5, i + 1);
-            cell.value = h.label;
+        [6, 35, 28, 10, 12, 9, 9, 12, 9, 9, 10, 10, 20].forEach((width, index) => { ws.getColumn(index + 1).width = width; });
+        ws.mergeCells('A5:A6'); ws.mergeCells('B5:B6'); ws.mergeCells('C5:C6'); ws.mergeCells('D5:D6'); ws.mergeCells('E5:E6');
+        ws.mergeCells('F5:G5'); ws.mergeCells('H5:H6'); ws.mergeCells('I5:K5'); ws.mergeCells('L5:L6'); ws.mergeCells('M5:M6');
+        const setHeader = (address: string, value: string, fill = 'FFD0D0D0') => {
+            const cell = ws.getCell(address);
+            cell.value = value;
             cell.font = { bold:true, size:10, name:'Times New Roman' };
             cell.alignment = { horizontal:'center', vertical:'middle', wrapText:true };
-            cell.fill = hFill('FFD0D0D0');
+            cell.fill = hFill(fill);
             cell.border = border;
-            ws.getColumn(i + 1).width = h.width;
-        });
+        };
+        [
+            ['A5', 'TT'], ['B5', 'Tên tài sản'], ['C5', 'Loại tài sản'], ['D5', 'ĐVT'], ['E5', 'Số lượng\nsổ sách'],
+            ['F5', `BIẾN ĐỘNG\nTHÁNG: ${month}`], ['H5', 'Số lượng\nkiểm'], ['I5', 'Tình trạng'], ['L5', 'Chênh\nlệch'], ['M5', 'Ghi chú'],
+            ['F6', 'Tăng', 'FFFFFF00'], ['G6', 'Giảm', 'FFFFFF00'], ['I6', 'Tốt'], ['J6', 'Hỏng'], ['K6', 'Thất\nthoát'],
+        ].forEach(([address, value, fill]) => setHeader(address, value, fill));
+        for (let column = 1; column <= 13; column += 1) {
+            const cell = ws.getCell(7, column);
+            cell.value = `(${column})`;
+            cell.font = { bold:true, size:9, name:'Times New Roman' };
+            cell.alignment = { horizontal:'center', vertical:'middle' };
+            cell.border = border;
+        }
 
-        const totRow = ws.addRow(['Tổng','','',summary.opening,summary.increase,summary.decrease,summary.total,summary.using,summary.broken,summary.unused,summary.repair,'','']);
+        const totRow = ws.addRow(['Tổng','','','',summary.opening,summary.increase,summary.decrease,summary.inspection,summary.using,summary.broken,summary.lost,summary.difference,'']);
         totRow.eachCell(c => { c.font = { bold:true }; c.fill = hFill('FFE8E8E8'); c.border = border; });
 
         groupedAssets.forEach((g, idx) => {
-            const r = ws.addRow([idx+1, g.type, g.name, g.openingQty, g.increaseQty || '-', g.decreaseQty || '-', g.totalQty, g.usingQty, g.brokenQty, g.unusedQty, g.repairQty, g.department, reportType]);
+            const r = ws.addRow([idx+1, g.name, g.type, g.unit, g.openingQty, g.increaseQty || '-', g.decreaseQty || '-', g.inspectionQty, g.usingQty, g.brokenQty, g.lostQty, g.differenceQty, g.department]);
             r.eachCell(c => { c.border = border; c.font = { size:10, name:'Times New Roman' }; });
         });
 
@@ -384,46 +409,48 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                     <thead>
                         <tr>
                             <th style={headerStyle} rowSpan={2}>STT</th>
-                            <th style={headerStyle} rowSpan={2}>Loại tài sản</th>
                             <th style={headerStyle} rowSpan={2}>Tên tài sản</th>
-                            <th style={headerStyle} rowSpan={2}>SL {prevMonthLabel}</th>
-                            <th style={headerStyle} colSpan={2}>Số lượng thay đổi</th>
-                            <th style={headerStyle} rowSpan={2}>Tổng cộng</th>
-                            <th style={headerStyle} colSpan={4}>Số lượng hiện có</th>
-                            <th style={headerStyle} rowSpan={2}>Phòng/Ban</th>
+                            <th style={headerStyle} rowSpan={2}>Loại tài sản</th>
+                            <th style={headerStyle} rowSpan={2}>ĐVT</th>
+                            <th style={headerStyle} rowSpan={2}>Số lượng sổ sách</th>
+                            <th style={headerStyle} colSpan={2}>BIẾN ĐỘNG THÁNG: {month}</th>
+                            <th style={headerStyle} rowSpan={2}>Số lượng kiểm</th>
+                            <th style={headerStyle} colSpan={3}>Tình trạng</th>
+                            <th style={headerStyle} rowSpan={2}>Chênh lệch</th>
+                            <th style={headerStyle} rowSpan={2}>Ghi chú</th>
                         </tr>
                         <tr>
                             <th style={headerStyle}>Tăng</th>
                             <th style={headerStyle}>Giảm</th>
-                            <th style={headerStyle}>Đang SD</th>
+                            <th style={headerStyle}>Tốt</th>
                             <th style={headerStyle}>Hỏng</th>
-                            <th style={headerStyle}>Chưa SD</th>
-                            <th style={headerStyle}>Bảo dưỡng</th>
+                            <th style={headerStyle}>Thất thoát</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr style={{ backgroundColor: '#e0e0e0', fontWeight: 'bold' }}>
-                            <td style={colStyle}>Tổng</td><td colSpan={2} style={colStyle}></td>
+                            <td style={colStyle}>Tổng</td><td colSpan={3} style={colStyle}></td>
                             <td style={colStyle}>{summary.opening}</td>
                             <td style={colStyle}>{summary.increase}</td>
                             <td style={colStyle}>{summary.decrease}</td>
-                            <td style={colStyle}>{summary.total}</td><td style={colStyle}>{summary.using}</td>
-                            <td style={colStyle}>{summary.broken}</td><td style={colStyle}>{summary.unused}</td><td style={colStyle}>{summary.repair}</td>
+                            <td style={colStyle}>{summary.inspection}</td><td style={colStyle}>{summary.using}</td>
+                            <td style={colStyle}>{summary.broken}</td><td style={colStyle}>{summary.lost}</td><td style={colStyle}>{summary.difference}</td>
                             <td style={colStyle}></td>
                         </tr>
                         {groupedAssets.map((g, i) => (
                             <tr key={i}>
                                 <td style={colStyle}>{i + 1}</td>
-                                <td style={{ ...colStyle, textAlign: 'left' }}>{g.type}</td>
                                 <td style={{ ...colStyle, textAlign: 'left' }}>{g.name}</td>
+                                <td style={{ ...colStyle, textAlign: 'left' }}>{g.type}</td>
+                                <td style={colStyle}>{g.unit}</td>
                                 <td style={colStyle}>{g.openingQty}</td>
                                 <td style={colStyle}>{g.increaseQty || '-'}</td>
                                 <td style={colStyle}>{g.decreaseQty || '-'}</td>
-                                <td style={colStyle}>{g.totalQty}</td>
+                                <td style={colStyle}>{g.inspectionQty}</td>
                                 <td style={colStyle}>{g.usingQty}</td>
                                 <td style={colStyle}>{g.brokenQty}</td>
-                                <td style={colStyle}>{g.unusedQty}</td>
-                                <td style={colStyle}>{g.repairQty}</td>
+                                <td style={colStyle}>{g.lostQty}</td>
+                                <td style={colStyle}>{g.differenceQty}</td>
                                 <td style={{ ...colStyle, textAlign: 'left', fontSize: '8pt' }}>{g.department}</td>
                             </tr>
                         ))}
