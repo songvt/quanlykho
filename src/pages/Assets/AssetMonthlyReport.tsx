@@ -314,9 +314,11 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
         const lastDataRow = ws.rowCount;
         // Keep the last detail rows and signature block together. Without an
         // explicit break, Excel can move only the signatures to a nearly blank page.
-        const signatureRowsToKeep = 12;
+        const signatureRowsToKeep = 6;
         if (lastDataRow - firstDataRow + 1 > signatureRowsToKeep) {
-            ws.getRow(lastDataRow - signatureRowsToKeep + 1).addPageBreak();
+            // Row-level breaks happen after the specified row.  Start a fresh
+            // final page with six detail rows, leaving room for signatures.
+            ws.getRow(lastDataRow - signatureRowsToKeep).addPageBreak();
         }
 
         const fRow = lastDataRow + 1;
@@ -333,9 +335,9 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
             c.alignment = { horizontal:'center' };
         });
         ws.getRow(sRow).height = 18;
-        ws.mergeCells(sRow + 1, 5, sRow + 3, 9);
-        ws.mergeCells(sRow + 1, 10, sRow + 3, 13);
-        ws.getRow(sRow + 1).height = 42;
+        ws.mergeCells(sRow + 1, 5, sRow + 4, 9);
+        ws.mergeCells(sRow + 1, 10, sRow + 4, 13);
+        ws.getRow(sRow + 1).height = 72;
 
         const buf = await wb.xlsx.writeBuffer();
         const blob = new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
