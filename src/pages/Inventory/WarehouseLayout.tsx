@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Box, Button, Chip, CircularProgress, FormControl, IconButton, InputLabel, MenuItem, Paper, Select, Stack, TextField, Tooltip, Typography } from '@mui/material';
 import { CloudCheck, Download, LayoutGrid, MapPinned, PackageSearch, RefreshCw, Save, Search, Sparkles, Tag, Trash2, Upload } from 'lucide-react';
@@ -14,6 +14,7 @@ import { readExcelFile } from '../../utils/excelUtils';
 import { GoogleSheetService } from '../../services/GoogleSheetService';
 import type { AppDispatch, RootState } from '../../store';
 import { normalizeWarehouseType } from '../../utils/warehouse';
+import { shouldAutoRefreshWarehouse, WAREHOUSE_AUTO_REFRESH_MS } from './warehouseRefresh';
 
 type Shelf = { id: string; zone: string; label: string };
 
@@ -106,7 +107,6 @@ const WarehouseLayout: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
     const { success, error: notifyError } = useNotification();
     const products = useSelector((state: RootState) => state.products.items);
-    const productStatus = useSelector((state: RootState) => state.products.status);
     const transactions = useSelector((state: RootState) => state.transactions.items);
     const [search, setSearch] = useState('');
     const [selectedProductId, setSelectedProductId] = useState('');
@@ -121,6 +121,22 @@ const WarehouseLayout: React.FC = () => {
     const [isSyncing, setIsSyncing] = useState(false);
     const [isSheetSyncing, setIsSheetSyncing] = useState(false);
     const [cloudSynced, setCloudSynced] = useState(false);
+    const transactionRefreshInFlight = useRef(false);
+
+    const refreshTransactions = useCallback(async () => {
+        if (transactionRefreshInFlight.current) return false;
+
+        transactionRefreshInFlight.current = true;
+        try {
+            await dispatch(fetchTransactionsForce({ all: true })).unwrap();
+            return true;
+        } catch (error) {
+            console.warn('Không thể làm mới dữ liệu sơ đồ kho:', error);
+            return false;
+        } finally {
+            transactionRefreshInFlight.current = false;
+        }
+    }, [dispatch]);
 
     // Dùng ref để lưu trữ state mới nhất tránh stale closure khi auto-save
     const stateRef = useRef({ assignments, serialAssignments, shelfNames, zoneNames });
@@ -166,11 +182,11 @@ const WarehouseLayout: React.FC = () => {
 
     // Tải dữ liệu ban đầu từ LocalStorage và Supabase
     useEffect(() => {
-        if (productStatus === 'idle') dispatch(fetchProducts());
+        void dispatch(fetchProducts());
         // Sơ đồ phải thấy toàn bộ tồn kho đã đồng bộ, kể cả các lô có ngày nhập
         // cũ hơn cửa sổ 30 ngày mặc định của danh sách giao dịch.
-        dispatch(fetchTransactionsForce({ all: true }));
-        dispatch(fetchInventory());
+        void refreshTransactions();
+        void dispatch(fetchInventory());
 
         // 1. Khôi phục nhanh từ LocalStorage trước
         let localAssignments: Record<string, string> = {};
@@ -232,18 +248,22 @@ const WarehouseLayout: React.FC = () => {
         };
 
         loadFromCloud();
-    }, [dispatch, productStatus]);
+    }, [dispatch, refreshTransactions]);
 
     useEffect(() => {
         // Làm mới tồn kho đơn vị từ nguồn dữ liệu, kể cả khi thay đổi phát sinh ở máy khác.
-        const refreshId = window.setInterval(() => { dispatch(fetchTransactionsForce({ all: true })); }, 30_000);
-        const refreshWhenVisible = () => { if (document.visibilityState === 'visible') dispatch(fetchTransactionsForce({ all: true })); };
+        const refreshId = window.setInterval(() => {
+            if (shouldAutoRefreshWarehouse(document.visibilityState)) void refreshTransactions();
+        }, WAREHOUSE_AUTO_REFRESH_MS);
+        const refreshWhenVisible = () => {
+            if (shouldAutoRefreshWarehouse(document.visibilityState)) void refreshTransactions();
+        };
         document.addEventListener('visibilitychange', refreshWhenVisible);
         return () => {
             window.clearInterval(refreshId);
             document.removeEventListener('visibilitychange', refreshWhenVisible);
         };
-    }, [dispatch]);
+    }, [refreshTransactions]);
 
     const selectedShelf = shelves.find(shelf => shelf.id === selectedShelfId) || shelves[0];
     const selectedZone = zones.find(zone => zone.id === selectedZoneId) || zones[0];
@@ -611,8 +631,9 @@ const WarehouseLayout: React.FC = () => {
                     <Button
                         variant="contained"
                         onClick={() => {
-                            dispatch(fetchTransactionsForce({ all: true }));
-                            success('Đã làm mới dữ liệu tồn kho từ hệ thống');
+                            void refreshTransactions().then(refreshed => {
+                                if (refreshed) success('Đã làm mới dữ liệu tồn kho từ hệ thống');
+                            });
                         }}
                         startIcon={<RefreshCw size={16} />}
                         sx={{ bgcolor: 'rgba(255,255,255,.26)', border: '1px solid rgba(255,255,255,.35)', color: 'white' }}
