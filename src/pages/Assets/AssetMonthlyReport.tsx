@@ -226,14 +226,15 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
     const handleExportExcel = async () => {
         const wb = new ExcelJS.Workbook();
         const ws = wb.addWorksheet('BaoCao', {
-            views: [{ showGridLines: true }],
+            views: [{ showGridLines: false }],
             pageSetup: {
                 paperSize: 9, // A4
                 orientation: 'landscape',
                 fitToPage: true,
                 fitToWidth: 1,
                 fitToHeight: 0,
-                margins: { left: 0.79, right: 0.59, top: 0.79, bottom: 0.79, header: 0.3, footer: 0.3 }
+                horizontalCentered: true,
+                margins: { left: 0.25, right: 0.25, top: 0.35, bottom: 0.35, header: 0.15, footer: 0.15 }
             }
         });
         const border: Partial<ExcelJS.Borders> = { top:{style:'thin'}, bottom:{style:'thin'}, left:{style:'thin'}, right:{style:'thin'} };
@@ -241,23 +242,29 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
 
         ws.mergeCells('A1:G1');
         ws.getCell('A1').value = 'CÔNG TY CỔ PHẦN VIỄN THÔNG ACT\nTRUNG TÂM ACT BẮC SÀI GÒN';
-        ws.getCell('A1').font = { bold:true, size:11, name:'Times New Roman' };
+        ws.getCell('A1').font = { bold:true, size:10, name:'Times New Roman' };
+        ws.getCell('A1').alignment = { horizontal:'center', vertical:'middle', wrapText:true };
         ws.mergeCells('H1:M1');
-        ws.getCell('H1').value = `CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc`;
-        ws.getCell('H1').font = { bold:true, size:11, name:'Times New Roman' };
+        ws.getCell('H1').value = 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc';
+        ws.getCell('H1').font = { bold:true, size:10, name:'Times New Roman' };
         ws.getCell('H1').alignment = { horizontal:'center', vertical:'middle', wrapText:true };
+        ws.getRow(1).height = 31;
 
         ws.mergeCells('A2:M2');
         ws.getCell('A2').value = reportType === 'TBVP' ? 'TỔNG HỢP TBVP VÀ SỰ BIẾN ĐỘNG' : 'BÁO CÁO TỔNG HỢP TÀI SẢN CCDC-TSNT';
         ws.getCell('A2').font = { bold:true, size:14, name:'Times New Roman' };
-        ws.getCell('A2').alignment = { horizontal:'center' };
+        ws.getCell('A2').alignment = { horizontal:'center', vertical:'middle' };
+        ws.getRow(2).height = 23;
 
         ws.mergeCells('A3:M3');
         ws.getCell('A3').value = `Kỳ báo cáo tháng ${String(month).padStart(2,'0')} năm ${year}`;
         ws.getCell('A3').font = { italic:true, size:11, name:'Times New Roman' };
-        ws.getCell('A3').alignment = { horizontal:'center' };
+        ws.getCell('A3').alignment = { horizontal:'center', vertical:'middle' };
+        ws.getRow(3).height = 18;
 
-        [6, 35, 28, 10, 12, 9, 9, 12, 9, 9, 10, 10, 20].forEach((width, index) => { ws.getColumn(index + 1).width = width; });
+        // Keep the full table inside one A4 landscape page; long asset names
+        // wrap instead of being clipped or forcing an unreadably small scale.
+        [4.5, 23, 19, 6, 8, 6, 6, 8, 6, 6, 7, 7, 14].forEach((width, index) => { ws.getColumn(index + 1).width = width; });
         ws.mergeCells('A5:A6'); ws.mergeCells('B5:B6'); ws.mergeCells('C5:C6'); ws.mergeCells('D5:D6'); ws.mergeCells('E5:E6');
         ws.mergeCells('F5:G5'); ws.mergeCells('H5:H6'); ws.mergeCells('I5:K5'); ws.mergeCells('L5:L6'); ws.mergeCells('M5:M6');
         const setHeader = (address: string, value: string, fill = 'FFD0D0D0') => {
@@ -280,13 +287,28 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
             cell.alignment = { horizontal:'center', vertical:'middle' };
             cell.border = border;
         }
+        ws.getRow(5).height = 31;
+        ws.getRow(6).height = 25;
+        ws.getRow(7).height = 17;
+        ws.pageSetup.printTitlesRow = '5:7';
 
         const totRow = ws.addRow(['Tổng','','','',summary.opening,summary.increase,summary.decrease,summary.inspection,summary.using,summary.broken,summary.lost,summary.difference,'']);
         totRow.eachCell(c => { c.font = { bold:true }; c.fill = hFill('FFE8E8E8'); c.border = border; });
 
         groupedAssets.forEach((g, idx) => {
             const r = ws.addRow([idx+1, g.name, g.type, g.unit, g.openingQty, g.increaseQty || '-', g.decreaseQty || '-', g.inspectionQty, g.usingQty, g.brokenQty, g.lostQty, g.differenceQty, g.department]);
-            r.eachCell(c => { c.border = border; c.font = { size:10, name:'Times New Roman' }; });
+            r.eachCell((c, column) => {
+                c.border = border;
+                c.font = { size:9, name:'Times New Roman' };
+                c.alignment = { vertical:'middle', wrapText:true, horizontal: [1, 4, 5, 6, 7, 8, 9, 10, 11, 12].includes(column) ? 'center' : 'left' };
+            });
+            const wrappedLines = Math.max(
+                Math.ceil((g.name || '').length / 28),
+                Math.ceil((g.type || '').length / 24),
+                Math.ceil((g.department || '').length / 34),
+                1,
+            );
+            r.height = Math.max(18, wrappedLines * 12);
         });
 
         const fRow = ws.rowCount + 2;
