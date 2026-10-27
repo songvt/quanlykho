@@ -9,11 +9,12 @@ import type { AppDispatch, RootState } from '../../store';
 import { fetchHRProfiles } from '../../store/slices/hrProfilesSlice';
 import type { HRProfile } from '../../types';
 import { downloadAsDataUri } from '../../utils/excelUtils';
+import { resolveEmployeeDistrict } from '../../utils/employeeDistrict';
 import { GoogleSheetService } from '../../services/GoogleSheetService';
 
 const currentDate = () => new Date().toLocaleDateString('vi-VN');
 const currentTime = () => new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-interface EmployeeGroup { id: string; name: string; department: string; }
+interface EmployeeGroup { id: string; name: string; department: string; email?: string; }
 const DEFAULT_INSPECTION_TEAM = [
     'Trần Kim Hùng | Trưởng Ban',
     'Trần Việt Bắc | Phó Ban',
@@ -73,7 +74,7 @@ const AssetInspectionMinutes = () => {
     useEffect(() => { dispatch(fetchHRProfiles()); }, [dispatch]);
 
     const employeeGroups = useMemo(() => {
-        return employees.filter((employee: HRProfile) => employee.full_name?.trim()).map((employee: HRProfile) => ({ id: employee.id, name: employee.full_name.trim(), department: employee.department || '' })).sort((a, b) => a.name.localeCompare(b.name, 'vi'));
+        return employees.filter((employee: HRProfile) => employee.full_name?.trim()).map((employee: HRProfile) => ({ id: employee.id, name: employee.full_name.trim(), department: employee.department || '', email: employee.email })).sort((a, b) => a.name.localeCompare(b.name, 'vi'));
     }, [employees]);
     const filteredEmployees = useMemo(() => {
         const needle = keyword.trim().toLocaleLowerCase('vi');
@@ -155,6 +156,10 @@ const AssetInspectionMinutes = () => {
         });
         const reportLogs = [...latestLogByEmployeeDay.values()].sort((first, second) => new Date(second.created_at).getTime() - new Date(first.created_at).getTime());
         const checkedEmployeeNames = new Set(reportLogs.map(log => log.employee_name.trim().toLocaleLowerCase('vi')));
+        const employeeAccounts = await GoogleSheetService.fetchEmployees().catch(error => {
+            console.warn('Không thể tải Quận/Huyện của nhân viên để xuất Excel:', error);
+            return [];
+        });
         const formatLogTime = (value: string) => new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date(value)).replace(',', '');
         const workbook = new ExcelJS.Workbook();
         const performedBy = profile?.full_name || profile?.username || profile?.email || 'Hệ thống';
@@ -233,14 +238,14 @@ const AssetInspectionMinutes = () => {
         logSheet.eachRow((row, rowIndex) => row.eachCell(cell => { cell.font = { name: 'Times New Roman', size: 10, bold: rowIndex === 1 }; cell.border = tableBorder; cell.alignment = { vertical: 'middle', wrapText: true, horizontal: rowIndex === 1 ? 'center' : 'left' }; }));
         const uncheckedEmployees = employeeGroups.filter(group => !checkedEmployeeNames.has(group.name.toLocaleLowerCase('vi')));
         const uncheckedSheet = workbook.addWorksheet('Chưa kiểm tra');
-        uncheckedSheet.columns = [{ width: 8 }, { width: 24 }, { width: 32 }, { width: 28 }, { width: 25 }];
-        uncheckedSheet.mergeCells('A1:E1');
+        uncheckedSheet.columns = [{ width: 8 }, { width: 24 }, { width: 30 }, { width: 27 }, { width: 18 }, { width: 22 }];
+        uncheckedSheet.mergeCells('A1:F1');
         uncheckedSheet.getCell('A1').value = `DANH SÁCH NHÂN VIÊN CHƯA KIỂM TRA - NGÀY ${inspectionDate}`;
         uncheckedSheet.getCell('A1').font = { name: 'Times New Roman', size: 13, bold: true };
         uncheckedSheet.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
         uncheckedSheet.getRow(1).height = 24;
-        uncheckedSheet.getRow(3).values = ['STT', 'Kỳ kiểm tra tháng', 'Họ và tên', 'Đơn vị / bộ phận', 'Trạng thái'];
-        uncheckedEmployees.forEach((group, index) => uncheckedSheet.addRow([index + 1, inspectionPeriod, group.name, group.department || '-', 'Chưa kiểm tra']));
+        uncheckedSheet.getRow(3).values = ['STT', 'Kỳ kiểm tra tháng', 'Họ và tên', 'Đơn vị / bộ phận', 'Quận/Huyện', 'Trạng thái'];
+        uncheckedEmployees.forEach((group, index) => uncheckedSheet.addRow([index + 1, inspectionPeriod, group.name, group.department || '-', resolveEmployeeDistrict(group, Array.isArray(employeeAccounts) ? employeeAccounts : []), 'Chưa kiểm tra']));
         uncheckedSheet.eachRow((row, rowIndex) => row.eachCell((cell, column) => {
             if (rowIndex < 3) return;
             cell.font = { name: 'Times New Roman', size: 11, bold: rowIndex === 3 };
