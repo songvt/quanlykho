@@ -12,15 +12,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (authorizationError) return res.status(authorizationError.status).json({ error: authorizationError.error });
 
     try {
-        // Khôi phục các job bị kẹt ở trạng thái processing do serverless functions bị timeout
-        await supabase.from('gs_sync_queue').update({ status: 'pending' }).eq('status', 'processing');
-
         let totalResults = { successful: 0, failed: 0 };
         while (true) {
             const results: any = await runSyncQueue();
             if (results?.message === 'No pending items' || !results) {
                 break;
             }
+            if (results?.message === 'rate_limited') break;
             if (results.successful !== undefined) {
                 totalResults.successful += results.successful;
                 totalResults.failed += results.failed;

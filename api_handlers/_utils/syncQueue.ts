@@ -13,9 +13,17 @@ const formatLocalDate = (date: Date | string) => {
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
 /** Convert a database record to the shape accepted by the Google Sheet. */
-const toSheetRow = (payload: any, tableName: string) => {
+export const toSheetRow = (payload: any, tableName: string) => {
     const item = { ...payload };
     delete item.product;
+
+    // JSON/JSONB fields are valid in Supabase but the Sheets API only accepts
+    // scalar cell values. Preserve the value as JSON rather than dropping it.
+    for (const [key, value] of Object.entries(item)) {
+        if (value !== null && typeof value === 'object' && !(value instanceof Date)) {
+            item[key] = JSON.stringify(value);
+        }
+    }
 
     // Serial numbers are identifiers, never quantities or dates. Force text so
     // Google Sheets cannot coerce a 14-digit serial into a date/scientific value.
@@ -54,37 +62,42 @@ const addRowsInChunks = async (sheet: any, rows: any[]) => {
  * Supabase is the source of truth. A replace job is successful only after the
  * Google Sheets mirror contains exactly the same number of rows and keys.
  */
-const verifyReplacementMirror = async (sheet: any, items: any[], tableName: string) => {
+export const assertReplacementMirror = (mirroredRows: any[], items: any[], tableName: string) => {
     const primaryKey = tableName === 'district_storekeepers' ? 'district' : 'id';
     const expectedRows = items.map(item => toSheetRow(item, tableName));
-    const mirroredRows = await sheet.getRows();
     if (mirroredRows.length !== expectedRows.length) {
         throw new Error(`Đối soát Google Sheets thất bại: Supabase có ${expectedRows.length} dòng, Google Sheets có ${mirroredRows.length} dòng.`);
     }
+    const expectedKeys = new Set(expectedRows.map(row => String(row[primaryKey] || '')));
     const mirroredKeys = new Set(mirroredRows.map(row => String(row.get(primaryKey) || '')));
-    const missingKeys = expectedRows.filter(row => !mirroredKeys.has(String(row[primaryKey] || '')));
+    if (expectedKeys.size !== expectedRows.length) {
+        throw new Error(`Đối soát Google Sheets thất bại: Supabase có khóa ${primaryKey} trùng.`);
+    }
+    if (mirroredKeys.size !== mirroredRows.length || mirroredKeys.has('')) {
+        throw new Error(`Đối soát Google Sheets thất bại: Google Sheets có khóa ${primaryKey} trùng hoặc rỗng.`);
+    }
+    const missingKeys = [...expectedKeys].filter(key => !mirroredKeys.has(key));
     if (missingKeys.length) {
         throw new Error(`Đối soát Google Sheets thất bại: thiếu ${missingKeys.length} khóa ${primaryKey} từ Supabase.`);
     }
+    const staleKeys = [...mirroredKeys].filter(key => !expectedKeys.has(key));
+    if (staleKeys.length) {
+        throw new Error(`Đối soát Google Sheets thất bại: có ${staleKeys.length} khóa ${primaryKey} không còn tồn tại trong Supabase.`);
+    }
 };
 
-let isSyncing = false;
+const verifyReplacementMirror = async (sheet: any, items: any[], tableName: string) => {
+    assertReplacementMirror(await sheet.getRows(), items, tableName);
+};
 
 export async function runSyncQueue() {
-    if (isSyncing) {
-        console.log('[Background Sync] Một tiến trình đồng bộ khác đang chạy...');
-        return { message: 'Sync in progress' };
-    }
-    isSyncing = true;
     console.log('[Background Sync] Khởi động tiến trình xử lý hàng đợi đồng bộ ngầm...');
 
     try {
+        // The database claims jobs under a row lock. An in-memory flag is not safe in
+        // serverless because each invocation has its own process.
         const { data: queue, error: fetchError } = await supabase
-            .from('gs_sync_queue')
-            .select('*')
-            .eq('status', 'pending')
-            .order('created_at', { ascending: true })
-            .limit(10); // Batch size = 10: đủ để xử lý nhanh mà không bão hoà GG Sheets quota
+            .rpc('claim_gs_sync_jobs', { p_limit: 10 });
 
         if (fetchError) throw fetchError;
 
@@ -116,9 +129,6 @@ export async function runSyncQueue() {
                 continue;
             }
             
-            // Đánh dấu đang xử lý
-            await supabase.from('gs_sync_queue').update({ status: 'processing' }).eq('id', id);
-
             const sheet = doc.sheetsByTitle[table_name];
             if (!sheet) {
                 console.warn(`[Background Sync] Không tìm thấy Sheet có tên: ${table_name}`);
@@ -157,9 +167,9 @@ export async function runSyncQueue() {
                     await verifyReplacementMirror(sheet, items, table_name);
                 } else if (action === 'update') {
                     const rows = await sheet.getRows();
-                    const targetId = payload[pk] || payload.id;
+                    const targetId = String(payload[pk] || payload.id || '');
                     const updates = payload.updates || payload;
-                    const row = rows.find(r => r.get(pk) === targetId);
+                    const row = rows.find(r => String(r.get(pk) || '') === targetId);
                     if (row) {
                         Object.keys(updates).forEach(k => { 
                             if (updates[k] !== undefined && k !== 'product') row.set(k, updates[k]); 
@@ -173,10 +183,10 @@ export async function runSyncQueue() {
                     }
                 } else if (action === 'delete') {
                     const rows = await sheet.getRows();
-                    const targetIds = payload.ids || [payload[pk] || payload.id];
+                    const targetIds = new Set((payload.ids || [payload[pk] || payload.id]).map((value: unknown) => String(value)));
                     let deletedCount = 0;
                     for (let i = rows.length - 1; i >= 0; i--) {
-                        if (targetIds.includes(rows[i].get(pk))) {
+                        if (targetIds.has(String(rows[i].get(pk) || ''))) {
                             await rows[i].delete();
                             deletedCount++;
                             if (deletedCount % 5 === 0) await sleep(1000);
@@ -198,8 +208,10 @@ export async function runSyncQueue() {
                     }
                 }
 
-                // Xóa khỏi queue sau khi đồng bộ thành công
-                await supabase.from('gs_sync_queue').delete().eq('id', id);
+                // Xóa khỏi queue sau khi đồng bộ thành công.  Do not silently accept
+                // a failed acknowledgement: the operation is idempotent on retry.
+                const { error: deleteQueueError } = await supabase.from('gs_sync_queue').delete().eq('id', id);
+                if (deleteQueueError) throw deleteQueueError;
                 results.successful++;
                 console.log(`[Background Sync] Đồng bộ thành công job ${id} cho bảng ${table_name}`);
 
@@ -220,9 +232,8 @@ export async function runSyncQueue() {
                         error_message: `Rate limit 429 tại ${new Date().toISOString()}: ${errMsg}`
                     }).eq('id', id);
 
-                    isSyncing = false;
-                    // Chờ 60s để Google Sheets quota recover trước khi batch tiếp theo
-                    await sleep(60_000);
+                    // Let the next scheduled invocation retry. Sleeping in a serverless
+                    // request wastes the function budget and can strand other jobs.
                     return { message: 'rate_limited' };
                 }
 
@@ -243,11 +254,9 @@ export async function runSyncQueue() {
             }
         }
         
-        isSyncing = false;
         return results;
 
     } catch (e: any) {
-        isSyncing = false;
         console.error('[Background Sync] Lỗi tiến trình đồng bộ ngầm:', e.message);
         throw e;
     }
