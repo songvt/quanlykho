@@ -88,3 +88,8 @@ export const sumAssetDetailTotals = (rows: AssetDetailTotalValues[]) => rows.red
     bookQuantity: 0, purchased: 0, transferOut: 0, transferIn: 0, returnedDamaged: 0, returnedLost: 0, returnedUnused: 0,
     checkedQuantity: 0, good: 0, damaged: 0, lost: 0, difference: 0,
 });
+
+export const getFinalSignaturePageBreakRow = (firstDataRow: number, lastDataRow: number, rowsToKeep = 5) => {
+    const dataRowCount = lastDataRow - firstDataRow + 1;
+    return dataRowCount > rowsToKeep ? lastDataRow - rowsToKeep : undefined;
+};

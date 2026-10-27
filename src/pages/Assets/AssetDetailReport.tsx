@@ -11,7 +11,7 @@ import { fetchAssets, fetchAssetLogs } from '../../store/slices/assetsSlice';
 import type { AppDispatch, RootState } from '../../store';
 import type { Asset } from '../../types';
 import { sortAssetsByNameAndUser } from '../../utils/assetSorting';
-import { buildAssetDetailMonthlyMovement, buildAssetDetailMovementDates, getAssetConditionQuantities, sumAssetDetailTotals } from '../../utils/assetDetailReport';
+import { buildAssetDetailMonthlyMovement, buildAssetDetailMovementDates, getAssetConditionQuantities, getFinalSignaturePageBreakRow, sumAssetDetailTotals } from '../../utils/assetDetailReport';
 
 interface Props {
     reportType: 'CCDC' | 'TBVP';
@@ -112,7 +112,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
         return { ...movement, bookQuantity, checkedQuantity, ...condition, difference: bookQuantity - checkedQuantity };
     })), [assets, tbvpDetailMovement]);
 
-    const dateFooterStr = `TP.Hồ Chí Minh, ngày ${now.getDate().toString().padStart(2, '0')} tháng ${(now.getMonth() + 1).toString().padStart(2, '0')} năm ${now.getFullYear()}`;
+    const dateFooterStr = `TP. Hồ Chí Minh, ngày ${now.getDate().toString().padStart(2, '0')} tháng ${(now.getMonth() + 1).toString().padStart(2, '0')} năm ${now.getFullYear()}`;
 
     const handleExportExcel = async () => {
         if (reportType === 'TBVP') {
@@ -198,6 +198,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                 cell.alignment = { vertical: 'middle', horizontal: [1, 12, 13, 14, 15, 16, 17, 18, 21, 22, 23, 24, 25].includes(column) ? 'center' : 'left' };
             });
 
+            const firstDetailRow = ws.rowCount + 1;
             assets.forEach((asset, index) => {
                 const movement = tbvpDetailMovement[asset.asset_code] || { purchased: 0, transferOut: 0, transferIn: 0, returnedDamaged: 0, returnedLost: 0, returnedUnused: 0 };
                 const quantity = Number(asset.quantity) || 1;
@@ -216,6 +217,40 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                     cell.alignment = { vertical: 'middle', wrapText: true, horizontal: [1, 5, 6, 7, 9, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25].includes(column) ? 'center' : 'left' };
                 });
             });
+            const lastDetailRow = ws.rowCount;
+            const pageBreakAfterRow = getFinalSignaturePageBreakRow(firstDetailRow, lastDetailRow);
+            if (pageBreakAfterRow) ws.getRow(pageBreakAfterRow).addPageBreak();
+
+            const dateRow = ws.rowCount + 1;
+            ws.mergeCells(dateRow, 14, dateRow, 26);
+            const dateCell = ws.getCell(dateRow, 14);
+            dateCell.value = dateFooterStr;
+            dateCell.font = { name: 'Times New Roman', size: 9, italic: true };
+            dateCell.alignment = { horizontal: 'center', vertical: 'middle' };
+
+            const signatureRow = dateRow + 1;
+            ws.mergeCells(signatureRow, 1, signatureRow, 12);
+            ws.mergeCells(signatureRow, 14, signatureRow, 26);
+            const leaderCell = ws.getCell(signatureRow, 1);
+            const staffCell = ws.getCell(signatureRow, 14);
+            leaderCell.value = 'LÃNH ĐẠO ĐƠN VỊ';
+            staffCell.value = 'NHÂN VIÊN QLTS ĐƠN VỊ';
+            [leaderCell, staffCell].forEach((cell) => {
+                cell.font = { name: 'Times New Roman', size: 10, bold: true };
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            });
+            ws.getRow(signatureRow).height = 18;
+
+            ws.mergeCells(signatureRow + 1, 1, signatureRow + 1, 12);
+            ws.mergeCells(signatureRow + 1, 14, signatureRow + 1, 26);
+            [ws.getCell(signatureRow + 1, 1), ws.getCell(signatureRow + 1, 14)].forEach((cell) => {
+                cell.value = '(Ký, ghi rõ họ tên)';
+                cell.font = { name: 'Times New Roman', size: 9, italic: true };
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            });
+            ws.mergeCells(signatureRow + 2, 1, signatureRow + 5, 12);
+            ws.mergeCells(signatureRow + 2, 14, signatureRow + 5, 26);
+            ws.getRow(signatureRow + 2).height = 58;
             const buffer = await wb.xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             const link = document.createElement('a');
