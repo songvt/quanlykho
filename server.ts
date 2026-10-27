@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import compression from 'compression';
 import cron from 'node-cron';
+import { applySecurityHeaders, isCorsOriginAllowed, isProduction } from './api_handlers/_utils/httpSecurity.js';
 
 import productsHandler from './api_handlers/products.js';
 import employeesHandler from './api_handlers/employees.js';
@@ -30,10 +31,20 @@ import imageControlHandler from './api_handlers/image_control.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const corsOptions = {
+    origin: (origin: string | undefined, callback: (error: Error | null, allowed?: boolean) => void) => {
+        callback(null, isCorsOriginAllowed(origin));
+    }
+};
 
 // Middleware
+app.disable('x-powered-by');
 app.use(compression());
-app.use(cors());
+app.use((_, res, next) => {
+    applySecurityHeaders(res);
+    next();
+});
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -137,6 +148,7 @@ app.all('/api/district_storekeepers', (req, res) => {
 });
 
 app.get('/api/diagnose', (req, res) => {
+    if (isProduction()) return res.status(404).json({ error: 'Not Found' });
     const key = process.env.SUPABASE_ANON_KEY || '';
     return res.json({
         SUPABASE_URL: process.env.SUPABASE_URL,
@@ -154,7 +166,11 @@ app.get('/api/diagnose', (req, res) => {
 cron.schedule('0 20 * * *', async () => {
     console.log('[Cron] Đang tự động chạy đồng bộ hàng hóa...');
     try {
-        await fetch(`http://localhost:${PORT}/api/cron-sync-stock`, { method: 'POST' });
+        const secret = process.env.CRON_SECRET;
+        await fetch(`http://localhost:${PORT}/api/cron-sync-stock`, {
+            method: 'POST',
+            headers: secret ? { authorization: `Bearer ${secret}` } : undefined,
+        });
         console.log('[Cron] Đã gửi request đồng bộ hàng hóa');
     } catch (e) {
         console.error('[Cron] Lỗi tự động đồng bộ hàng hóa:', e);

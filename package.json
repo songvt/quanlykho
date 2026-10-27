@@ -8,6 +8,7 @@
     "dev:api": "tsx watch server.ts",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "test:security": "tsx --test tests/api-security.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {

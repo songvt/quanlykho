@@ -2,11 +2,14 @@ import 'dotenv/config';
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { runSyncQueue } from './_utils/syncQueue.js';
 import { supabase } from './_utils/supabase.js';
+import { getCronAuthorizationError } from './_utils/httpSecurity.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'POST' && req.method !== 'GET') {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
+    const authorizationError = getCronAuthorizationError(req);
+    if (authorizationError) return res.status(authorizationError.status).json({ error: authorizationError.error });
 
     try {
         // Khôi phục các job bị kẹt ở trạng thái processing do serverless functions bị timeout

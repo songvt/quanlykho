@@ -4,6 +4,7 @@ import { getGoogleSheet } from './_utils/googleSheets.js';
 import { supabase, fetchAll } from './_utils/supabase.js';
 import { randomUUID } from 'crypto';
 import { runSyncQueue } from './_utils/syncQueue.js';
+import { getCronAuthorizationError } from './_utils/httpSecurity.js';
 
 const formatLocalDate = (date: Date | string) => {
     const d = new Date(date);
@@ -17,6 +18,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method !== 'GET' && req.method !== 'POST') {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
+    const authorizationError = getCronAuthorizationError(req);
+    if (authorizationError) return res.status(authorizationError.status).json({ error: authorizationError.error });
 
     console.log('[Cron Sync Stock] Bắt đầu tự động đồng bộ từ kho tổng (in_stock)...');
 

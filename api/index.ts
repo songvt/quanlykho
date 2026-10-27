@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import { applySecurityHeaders, isCorsOriginAllowed, isProduction } from '../api_handlers/_utils/httpSecurity.js';
 
 import productsHandler from '../api_handlers/products.js';
 import employeesHandler from '../api_handlers/employees.js';
@@ -26,9 +27,19 @@ import syncWarehouseShelvesHandler from '../api_handlers/sync-warehouse-shelves.
 import imageControlHandler from '../api_handlers/image_control.js';
 
 const app = express();
+const corsOptions = {
+    origin: (origin: string | undefined, callback: (error: Error | null, allowed?: boolean) => void) => {
+        callback(null, isCorsOriginAllowed(origin));
+    }
+};
 
 // Middleware
-app.use(cors());
+app.disable('x-powered-by');
+app.use((_, res, next) => {
+    applySecurityHeaders(res);
+    next();
+});
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -131,6 +142,7 @@ app.all('/api/district_storekeepers', (req, res) => {
 });
 
 app.get('/api/diagnose', (req, res) => {
+    if (isProduction()) return res.status(404).json({ error: 'Not Found' });
     const key = process.env.SUPABASE_ANON_KEY || '';
     return res.json({
         SUPABASE_URL: process.env.SUPABASE_URL,
