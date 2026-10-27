@@ -1,7 +1,36 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import { randomUUID } from 'crypto';
 import { getGoogleSheet, getSheetByTitle } from './_utils/googleSheets.js';
 import { supabase } from './_utils/supabase.js';
 import { prepareHRProfileUpsert } from './_utils/hrProfiles.js';
+import { buildCDBREmployeeAccounts, CDBR_TECHNICAL_UNIT } from './_utils/hrEmployeeSync.js';
+
+async function syncCDBREmployeeAccounts(profiles: Record<string, unknown>[]) {
+    const candidateEmails = [...new Set(profiles
+        .filter(profile => String(profile.department ?? '').trim() === CDBR_TECHNICAL_UNIT)
+        .map(profile => String(profile.email ?? '').trim().toLowerCase())
+        .filter(Boolean))];
+    if (candidateEmails.length === 0) return 0;
+
+    const { data: employees, error: employeesError } = await supabase
+        .from('employees')
+        .select('email')
+        .in('email', candidateEmails);
+    if (employeesError) throw employeesError;
+
+    const accounts = buildCDBREmployeeAccounts(
+        profiles,
+        new Set((employees || []).map(employee => String(employee.email ?? '').trim().toLowerCase())),
+    );
+    if (accounts.length === 0) return 0;
+
+    const { error: upsertError } = await supabase
+        .from('employees')
+        .upsert(accounts.map(account => ({ ...account, id: randomUUID() })), { onConflict: 'email', ignoreDuplicates: true });
+    if (upsertError) throw upsertError;
+
+    return accounts.length;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const allowedMethods = ['GET', 'POST', 'PUT', 'DELETE'];
@@ -49,6 +78,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             case 'POST': {
                 const { action, payload } = req.body;
+                if (action === 'sync_cdbr_employees') {
+                    const { data: profiles, error: profilesError } = await supabase
+                        .from('hr_profiles')
+                        .select('id, full_name, email, phone_number, department')
+                        .eq('department', CDBR_TECHNICAL_UNIT);
+                    if (profilesError) throw profilesError;
+
+                    const synced = await syncCDBREmployeeAccounts(profiles || []);
+                    return res.status(200).json({ synced });
+                }
+
                 const items = action === 'bulk_insert' ? payload : [payload];
                 let formatted: Record<string, unknown>[];
                 try {
@@ -68,6 +108,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         error: 'Supabase HR Profiles Upsert Failed',
                         details: sbError.message,
                     });
+                }
+
+                try {
+                    await syncCDBREmployeeAccounts((sbData || formatted) as Record<string, unknown>[]);
+                } catch (employeeSyncError) {
+                    console.error('CDBR employee account sync failed:', employeeSyncError);
+                    return res.status(500).json({ error: 'HR profile saved but employee account sync failed' });
                 }
 
                 // Sync to Google Sheets
@@ -110,6 +157,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 if (sbError) {
                     console.error('SB HR Profiles Update Error:', sbError);
                     return res.status(500).json({ error: 'Supabase HR Profiles Update Failed' });
+                }
+
+                try {
+                    await syncCDBREmployeeAccounts((sbData || []) as Record<string, unknown>[]);
+                } catch (employeeSyncError) {
+                    console.error('CDBR employee account sync failed:', employeeSyncError);
+                    return res.status(500).json({ error: 'HR profile updated but employee account sync failed' });
                 }
 
                 try {
