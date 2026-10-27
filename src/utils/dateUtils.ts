@@ -48,6 +48,37 @@ export const parseDate = (dateStr: any): Date => {
     return isNaN(d.getTime()) ? new Date() : d;
 };
 
+/** Chuẩn hóa ngày từ Excel sang ISO date trước khi gửi đến cơ sở dữ liệu. */
+export const normalizeImportedDate = (value: unknown): string => {
+    if (value === null || value === undefined || value === '') return '';
+
+    if (value instanceof Date) {
+        return isNaN(value.getTime()) ? '' : value.toISOString().slice(0, 10);
+    }
+
+    const dateValue = String(value).trim();
+    if (/^\d+(\.\d+)?$/.test(dateValue)) {
+        const serial = Number(dateValue);
+        if (serial > 0 && serial < 100000) {
+            return new Date(Date.UTC(1899, 11, 30) + Math.floor(serial) * 86_400_000)
+                .toISOString()
+                .slice(0, 10);
+        }
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) return dateValue;
+
+    const parts = dateValue.split('/');
+    if (parts.length === 3 && /^\d{4}$/.test(parts[2])) {
+        const date = new Date(Date.UTC(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0])));
+        if (date.getUTCFullYear() === Number(parts[2]) && date.getUTCMonth() === Number(parts[1]) - 1 && date.getUTCDate() === Number(parts[0])) {
+            return date.toISOString().slice(0, 10);
+        }
+    }
+
+    return dateValue;
+};
+
 /**
  * Lấy thời gian hiện tại định dạng dd/mm/yyyy
  */

@@ -33,6 +33,7 @@ import PermissionDialog from '../../components/PermissionDialog';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import VoiceSearchButton from '../../components/VoiceSearchButton';
 import { AppButton } from '../../components/Common/AppButton';
+import { normalizeImportedDate } from '../../utils/dateUtils';
 
 // Dynamic Seniority (Thâm niên) Calculator
 const calculateSeniority = (startDateStr?: string) => {
@@ -72,26 +73,6 @@ const formatDate = (dateStr?: string) => {
     } catch {
         return dateStr;
     }
-};
-
-// Robust date parser for Excel imports (handles DD/MM/YYYY and Date objects)
-const parseImportedDate = (val: any) => {
-    if (!val) return '';
-    if (val instanceof Date) {
-        return val.toISOString().split('T')[0];
-    }
-    const str = String(val).trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-    const parts = str.split('/');
-    if (parts.length === 3) {
-        const day = parts[0].padStart(2, '0');
-        const month = parts[1].padStart(2, '0');
-        const year = parts[2];
-        if (year.length === 4) {
-            return `${year}-${month}-${day}`;
-        }
-    }
-    return str;
 };
 
 const timesTheme = createTheme({
@@ -684,13 +665,13 @@ const EmployeeList = () => {
                                                                     id: String(row['MA_NHAN_VIEN'] || row['Mã nhân viên'] || '').trim(),
                                                                     full_name: String(row['HO_TEN'] || row['Họ và tên'] || '').trim(),
                                                                     gender: String(row['GIOI_TINH'] || row['Giới tính'] || 'Nam').trim(),
-                                                                    date_of_birth: parseImportedDate(row['NGAY_SINH'] || row['Ngày sinh']),
+                                                                    date_of_birth: normalizeImportedDate(row['NGAY_SINH'] || row['Ngày sinh']),
                                                                     phone_number: row['SO_DIEN_THOAI'] || row['ĐT di động'] || row['SĐT'] ? String(row['SO_DIEN_THOAI'] || row['ĐT di động'] || row['SĐT']).trim() : '',
                                                                     email: String(row['EMAIL'] || row['Email cơ quan'] || row['Email'] || '').trim(),
                                                                     job_position: String(row['VI_TRI_CONG_VIEC'] || row['Vị trí công việc'] || '').trim(),
                                                                     department: String(row['DON_VI_CONG_TAC'] || row['Đơn vị công tác'] || '').trim(),
-                                                                    probation_date: parseImportedDate(row['NGAY_THU_VIEC'] || row['Ngày thử việc']),
-                                                                    official_date: parseImportedDate(row['NGAY_CHINH_THUC'] || row['Ngày chính thức']),
+                                                                    probation_date: normalizeImportedDate(row['NGAY_THU_VIEC'] || row['Ngày thử việc']),
+                                                                    official_date: normalizeImportedDate(row['NGAY_CHINH_THUC'] || row['Ngày chính thức']),
                                                                     contract_type: String(row['LOAI_HOP_DONG'] || row['Loại hợp đồng'] || 'HĐ lao động xác định thời hạn').trim(),
                                                                     labor_status: String(row['TRANG_THAI_LAO_DONG'] || row['Trạng thái lao động'] || 'Đang làm việc').trim(),
                                                                     insurance_participation: isInsured,

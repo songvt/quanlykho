@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "test:security": "tsx --test tests/api-security.test.ts",
     "test:sync": "tsx --test tests/sync-queue.test.ts",
-    "test": "npm run test:security && npm run test:sync && tsx --test tests/employee-district.test.ts && tsx --test tests/asset-monthly-report-math.test.ts && tsx --test tests/asset-detail-report.test.ts",
+    "test": "npm run test:security && npm run test:sync && tsx --test tests/api-error-message.test.ts && tsx --test tests/hr-profiles-import.test.ts && tsx --test tests/date-utils.test.ts && tsx --test tests/employee-district.test.ts && tsx --test tests/asset-monthly-report-math.test.ts && tsx --test tests/asset-detail-report.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {

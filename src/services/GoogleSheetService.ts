@@ -11,6 +11,9 @@ const inFlightGetRequests = new Map<string, Promise<any>>();
 /** Delay helper */
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+export const getApiErrorMessage = (errorData: { error?: string; details?: string }, status: number, statusText: string) =>
+    errorData.details || errorData.error || `Lỗi ${status}: ${statusText}`;
+
 /**
  * apiRequest với auto-retry + timeout
  * - Timeout: 15s (tránh treo vô hạn khi Google Sheets chậm)
@@ -40,7 +43,7 @@ const performApiRequest = async (endpoint: string, options?: RequestInit, retryC
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            const errMsg = errorData.error || errorData.details || `Lỗi ${response.status}: ${response.statusText}`;
+            const errMsg = getApiErrorMessage(errorData, response.status, response.statusText);
 
             // 4xx → lỗi client, không retry
             if (response.status >= 400 && response.status < 500) {

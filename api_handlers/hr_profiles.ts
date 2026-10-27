@@ -1,6 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getGoogleSheet, getSheetByTitle } from './_utils/googleSheets.js';
 import { supabase } from './_utils/supabase.js';
+import { prepareHRProfileUpsert } from './_utils/hrProfiles.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     const allowedMethods = ['GET', 'POST', 'PUT', 'DELETE'];
@@ -49,24 +50,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             case 'POST': {
                 const { action, payload } = req.body;
                 const items = action === 'bulk_insert' ? payload : [payload];
-                const formatted = items.map((p: any) => ({
-                    id: String(p.id).trim(),
-                    full_name: String(p.full_name).trim(),
-                    gender: p.gender || 'Nam',
-                    date_of_birth: p.date_of_birth || null,
-                    phone_number: p.phone_number || '',
-                    email: p.email || '',
-                    job_position: p.job_position || '',
-                    department: p.department || '',
-                    probation_date: p.probation_date || null,
-                    official_date: p.official_date || null,
-                    contract_type: p.contract_type || '',
-                    labor_status: p.labor_status || 'Đang làm việc',
-                    insurance_participation: p.insurance_participation || false,
-                    uniform_size: p.uniform_size || '',
-                    shoe_size: p.shoe_size || '',
-                    created_at: p.created_at || new Date().toISOString()
-                }));
+                let formatted: Record<string, unknown>[];
+                try {
+                    formatted = prepareHRProfileUpsert(items);
+                } catch (error: any) {
+                    return res.status(400).json({ error: error.message });
+                }
 
                 const { data: sbData, error: sbError } = await supabase
                     .from('hr_profiles')
@@ -75,7 +64,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 
                 if (sbError) {
                     console.error('SB HR Profiles Upsert Error:', sbError);
-                    return res.status(500).json({ error: 'Supabase HR Profiles Upsert Failed' });
+                    return res.status(500).json({
+                        error: 'Supabase HR Profiles Upsert Failed',
+                        details: sbError.message,
+                    });
                 }
 
                 // Sync to Google Sheets
