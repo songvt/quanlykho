@@ -4,6 +4,7 @@ type HeaderResponse = { setHeader(name: string, value: string): void };
 type CronRequest = { headers: IncomingHttpHeaders };
 
 const localOrigin = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i;
+const defaultProductionOrigins = ['https://quanlykhobsg.vercel.app'];
 
 export const isProduction = (environment: NodeJS.ProcessEnv = process.env) =>
     environment.VERCEL_ENV === 'production' || environment.NODE_ENV === 'production';
@@ -17,7 +18,7 @@ export const isCorsOriginAllowed = (origin: string | undefined, environment: Nod
         .map(value => value.trim())
         .filter(Boolean);
 
-    if (configuredOrigins.includes(origin)) return true;
+    if (configuredOrigins.includes(origin) || defaultProductionOrigins.includes(origin)) return true;
     return !isProduction(environment) && localOrigin.test(origin);
 };
 

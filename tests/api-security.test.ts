@@ -9,6 +9,11 @@ test('only allows configured origins in production', () => {
     assert.equal(isCorsOriginAllowed('https://localhost:5173', env), false);
 });
 
+test('allows the production application origin without extra configuration', () => {
+    const env = { NODE_ENV: 'production' } as NodeJS.ProcessEnv;
+    assert.equal(isCorsOriginAllowed('https://quanlykhobsg.vercel.app', env), true);
+});
+
 test('allows localhost origins only outside production', () => {
     const env = { NODE_ENV: 'development' } as NodeJS.ProcessEnv;
     assert.equal(isCorsOriginAllowed('https://localhost:5173', env), true);
