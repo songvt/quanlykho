@@ -264,7 +264,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
 
         // Keep the full table inside one A4 landscape page; long asset names
         // wrap instead of being clipped or forcing an unreadably small scale.
-        [4.5, 18, 19, 6, 8, 6, 6, 8, 6, 6, 7, 7, 14].forEach((width, index) => { ws.getColumn(index + 1).width = width; });
+        [4.5, 18, 19, 6, 8, 6, 6, 8, 8, 8, 9, 7, 9].forEach((width, index) => { ws.getColumn(index + 1).width = width; });
         ws.mergeCells('A5:A6'); ws.mergeCells('B5:B6'); ws.mergeCells('C5:C6'); ws.mergeCells('D5:D6'); ws.mergeCells('E5:E6');
         ws.mergeCells('F5:G5'); ws.mergeCells('H5:H6'); ws.mergeCells('I5:K5'); ws.mergeCells('L5:L6'); ws.mergeCells('M5:M6');
         const setHeader = (address: string, value: string, fill = 'FFD0D0D0') => {
@@ -431,7 +431,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                     <colgroup>
                         <col style={{ width: '3%' }} /><col style={{ width: '25%' }} /><col style={{ width: '15%' }} /><col style={{ width: '4%' }} />
                         <col style={{ width: '5%' }} /><col style={{ width: '4%' }} /><col style={{ width: '4%' }} /><col style={{ width: '6%' }} />
-                        <col style={{ width: '4%' }} /><col style={{ width: '4%' }} /><col style={{ width: '5%' }} /><col style={{ width: '5%' }} /><col style={{ width: '11%' }} />
+                        <col style={{ width: '5%' }} /><col style={{ width: '5%' }} /><col style={{ width: '6%' }} /><col style={{ width: '5%' }} /><col style={{ width: '8%' }} />
                     </colgroup>
                     <thead>
                         <tr>
