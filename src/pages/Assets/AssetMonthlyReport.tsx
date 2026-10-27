@@ -221,7 +221,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
     const currentDay   = now.getDate().toString().padStart(2, '0');
     const currentMonth = (now.getMonth() + 1).toString().padStart(2, '0');
     const currentYear  = now.getFullYear();
-    const dateFooterStr = `TP.Hồ Chí Minh, ngày ${currentDay} tháng ${currentMonth} năm ${currentYear}`;
+    const dateFooterStr = `TP. Hồ Chí Minh, ngày ${currentDay} tháng ${currentMonth} năm ${currentYear}`;
 
     const handleExportExcel = async () => {
         const wb = new ExcelJS.Workbook();
@@ -353,7 +353,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                     break-inside: avoid;
                     page-break-inside: avoid;
                 }
-                .sig-date { text-align: right; font-style: italic; margin-bottom: 5px; padding-right: 50px; font-size: 10pt; }
+                .sig-date { width: 45%; margin-left: auto; text-align: center; font-style: italic; margin-bottom: 5px; font-size: 10pt; }
                 .sig-grid { display: flex; justify-content: space-between; text-align: center; width: 100%; }
                 .sig-box { width: 32%; min-height: 34mm; display: inline-block; vertical-align: top; }
                 .sig-title { font-weight: bold; font-size: 10.5pt; }
@@ -486,7 +486,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
 
                 {/* Robust Printed Footer */}
                 <div className="footer-container" style={{ fontFamily: 'Times New Roman' }}>
-                    <div className="sig-date" style={{ textAlign: 'right', fontStyle: 'italic', marginBottom: '5px', paddingRight: '50px' }}>
+                    <div className="sig-date" style={{ width: '45%', marginLeft: 'auto', textAlign: 'center', fontStyle: 'italic', marginBottom: '5px' }}>
                         {dateFooterStr}
                     </div>
                     <div className="sig-grid" style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
