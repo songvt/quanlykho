@@ -11,6 +11,7 @@ import { fetchAssets, fetchAssetLogs } from '../../store/slices/assetsSlice';
 import type { AppDispatch, RootState } from '../../store';
 import type { Asset } from '../../types';
 import { sortAssetsByNameAndUser } from '../../utils/assetSorting';
+import { buildAssetDetailMonthlyMovement, buildAssetDetailMovementDates, getAssetConditionQuantities } from '../../utils/assetDetailReport';
 
 interface Props {
     reportType: 'CCDC' | 'TBVP';
@@ -92,9 +93,114 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
         return result;
     }, [allLogs, month, year]);
 
+    const tbvpMonthlyLogs = useMemo(() => (allLogs || []).filter((log) => {
+        const date = new Date(log.created_at);
+        return date.getMonth() + 1 === month && date.getFullYear() === year;
+    }), [allLogs, month, year]);
+
+    const tbvpDetailMovement = useMemo(() => {
+        return buildAssetDetailMonthlyMovement(tbvpMonthlyLogs);
+    }, [tbvpMonthlyLogs]);
+
+    const tbvpDetailMovementDates = useMemo(() => buildAssetDetailMovementDates(tbvpMonthlyLogs), [tbvpMonthlyLogs]);
+
     const dateFooterStr = `TP.Hồ Chí Minh, ngày ${now.getDate().toString().padStart(2, '0')} tháng ${(now.getMonth() + 1).toString().padStart(2, '0')} năm ${now.getFullYear()}`;
 
     const handleExportExcel = async () => {
+        if (reportType === 'TBVP') {
+            const wb = new ExcelJS.Workbook();
+            const ws = wb.addWorksheet('ChiTiet_TBVP', {
+                views: [{ showGridLines: false }],
+                pageSetup: {
+                    paperSize: 9,
+                    orientation: 'landscape',
+                    fitToPage: true,
+                    fitToWidth: 1,
+                    fitToHeight: 0,
+                    horizontalCentered: true,
+                    margins: { left: 0.2, right: 0.2, top: 0.35, bottom: 0.35, header: 0.15, footer: 0.15 },
+                },
+            });
+            const border: Partial<ExcelJS.Borders> = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+            const fill = (argb: string): ExcelJS.Fill => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+            const header = (address: string, value: string, color = 'FFD9D9D9') => {
+                const cell = ws.getCell(address);
+                cell.value = value;
+                cell.font = { name: 'Times New Roman', size: 8, bold: true };
+                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                cell.fill = fill(color);
+                cell.border = border;
+            };
+
+            ws.mergeCells('A1:M1'); ws.mergeCells('N1:Z1');
+            ws.getCell('A1').value = 'CÔNG TY CỔ PHẦN VIỄN THÔNG ACT\nTRUNG TÂM ACT BẮC SÀI GÒN';
+            ws.getCell('N1').value = 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc';
+            ['A1', 'N1'].forEach((address) => {
+                const cell = ws.getCell(address);
+                cell.font = { name: 'Times New Roman', size: 10, bold: true };
+                cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            });
+            ws.mergeCells('A2:Z2'); ws.getCell('A2').value = 'BÁO CÁO CHI TIẾT TBVP VÀ SỰ BIẾN ĐỘNG';
+            ws.getCell('A2').font = { name: 'Times New Roman', size: 13, bold: true };
+            ws.getCell('A2').alignment = { horizontal: 'center' };
+            ws.mergeCells('A3:Z3'); ws.getCell('A3').value = `Kỳ báo cáo tháng ${String(month).padStart(2, '0')} năm ${year}`;
+            ws.getCell('A3').font = { name: 'Times New Roman', size: 10, italic: true };
+            ws.getCell('A3').alignment = { horizontal: 'center' };
+            ws.getRow(1).height = 28; ws.getRow(2).height = 22; ws.getRow(3).height = 18;
+
+            const singleHeaders = ['STT', 'Mã tài sản', 'Tên tài sản', 'Loại tài sản', 'ĐVT', 'Tình trạng', 'Mã NQL', 'Người quản lý', 'Mã NV SD', 'Nhân viên sử dụng', 'Số serial', 'Số lượng\nsổ sách'];
+            singleHeaders.forEach((label, index) => {
+                const column = index + 1;
+                ws.mergeCells(5, column, 7, column);
+                header(`${String.fromCharCode(64 + column)}5`, label);
+            });
+            ws.mergeCells('M5:S5'); header('M5', `BIẾN ĐỘNG THÁNG:${String(month).padStart(2, '0')}`, 'FFFFFF00');
+            ws.mergeCells('M6:M7'); header('M6', 'Mua\nmới', 'FFFFFF00');
+            ws.mergeCells('N6:O6'); header('N6', 'Điều chuyển', 'FFFFFF00');
+            ws.mergeCells('P6:R6'); header('P6', 'Trả kho', 'FFFFFF00');
+            ws.mergeCells('S6:S7'); header('S6', 'Ngày\ntháng', 'FFFFFF00');
+            [['N7', 'Đi'], ['O7', 'Đến'], ['P7', 'Hỏng'], ['Q7', 'Thất\nthoát'], ['R7', 'Không\nsử dụng']].forEach(([address, label]) => header(address, label, 'FFFFFF00'));
+            ws.mergeCells('T5:T7'); header('T5', 'Lý do:\nTT, QĐ,\nKH, PXK,\nBBBG', 'FFFFC7CE');
+            ws.mergeCells('U5:U7'); header('U5', 'Số lượng\nkiểm\nthực tế');
+            ws.mergeCells('V5:X5'); header('V5', 'Tình trạng');
+            [['V6', 'Tốt'], ['W6', 'Hỏng'], ['X6', 'Thất\nthoát']].forEach(([address, label]) => {
+                ws.mergeCells(`${address}:${address[0]}7`); header(address, label);
+            });
+            ws.mergeCells('Y5:Y7'); header('Y5', 'Chênh\nlệch');
+            ws.mergeCells('Z5:Z7'); header('Z5', 'Ghi\nchú');
+            for (let row = 5; row <= 7; row += 1) {
+                ws.getRow(row).height = row === 5 ? 22 : 28;
+                for (let column = 1; column <= 26; column += 1) ws.getCell(row, column).border = border;
+            }
+            ws.pageSetup.printTitlesRow = '5:7';
+            [4, 10, 23, 10, 4, 9, 8, 13, 8, 13, 14, 8, 6, 5, 5, 5, 5, 5, 6, 12, 7, 5, 5, 6, 6, 10]
+                .forEach((width, index) => { ws.getColumn(index + 1).width = width; });
+
+            assets.forEach((asset, index) => {
+                const movement = tbvpDetailMovement[asset.asset_code] || { purchased: 0, transferOut: 0, transferIn: 0, returnedDamaged: 0, returnedLost: 0, returnedUnused: 0 };
+                const quantity = Number(asset.quantity) || 1;
+                const condition = getAssetConditionQuantities(asset.status, quantity);
+                const checkedQuantity = condition.good + condition.damaged + condition.lost;
+                const row = ws.addRow([
+                    index + 1, asset.asset_code || '-', asset.asset_name || '-', asset.asset_type || '-', asset.unit || '-', asset.status || '-',
+                    asset.manager_code || '-', asset.manager_name || '-', asset.user_employee_code || '-', asset.user_employee_name || '-', asset.serial_number || '-', quantity,
+                    movement.purchased || '-', movement.transferOut || '-', movement.transferIn || '-', movement.returnedDamaged || '-', movement.returnedLost || '-', movement.returnedUnused || '-', tbvpDetailMovementDates[asset.asset_code] || '-',
+                    asset.status_description || '-', checkedQuantity, condition.good, condition.damaged, condition.lost, quantity - checkedQuantity, asset.notes || '-',
+                ]);
+                row.height = Math.max(22, Math.ceil(Math.max((asset.asset_name || '').length / 28, (asset.manager_name || '').length / 16, (asset.user_employee_name || '').length / 16, (asset.serial_number || '').length / 20)) * 12 + 6);
+                row.eachCell((cell, column) => {
+                    cell.border = border;
+                    cell.font = { name: 'Times New Roman', size: 7 };
+                    cell.alignment = { vertical: 'middle', wrapText: true, horizontal: [1, 5, 6, 7, 9, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25].includes(column) ? 'center' : 'left' };
+                });
+            });
+            const buffer = await wb.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob); link.download = `BaoCao_ChiTiet_TBVP_T${month}.xlsx`; link.click();
+            URL.revokeObjectURL(link.href);
+            return;
+        }
         const wb = new ExcelJS.Workbook();
         const ws = wb.addWorksheet('ChiTiet', {
             views: [{ showGridLines: true }],
@@ -268,6 +374,47 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                     </div>
                 </div>
 
+                {reportType === 'TBVP' ? (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Times New Roman', tableLayout: 'fixed', fontSize: '5.8pt' }}>
+                    <colgroup>
+                        {[2, 4.9, 9.8, 4.3, 2.2, 4.5, 3.7, 5.7, 3.7, 5.7, 5.7, 3.6, 2.8, 2.3, 2.3, 2.3, 2.3, 2.3, 2.8, 6.2, 3.6, 2.8, 2.8, 3.1, 3.4, 5.7].map((width, index) => <col key={index} style={{ width: `${width}%` }} />)}
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            {['STT', 'Mã tài sản', 'Tên tài sản', 'Loại tài sản', 'ĐVT', 'Tình trạng', 'Mã NQL', 'Người quản lý', 'Mã NV SD', 'Nhân viên sử dụng', 'Số serial', 'Số lượng sổ sách'].map((label) => <th key={label} rowSpan={3} style={{ ...headerStyle, fontSize: '6pt' }}>{label}</th>)}
+                            <th colSpan={7} style={{ ...headerStyle, backgroundColor: '#ffff00', fontSize: '6pt' }}>BIẾN ĐỘNG THÁNG:{String(month).padStart(2, '0')}</th>
+                            <th rowSpan={3} style={{ ...headerStyle, color: '#c00000', fontSize: '6pt' }}>Lý do: TT, QĐ, KH, PXK, BBBG</th>
+                            <th rowSpan={3} style={{ ...headerStyle, fontSize: '6pt' }}>Số lượng kiểm thực tế</th>
+                            <th colSpan={3} style={{ ...headerStyle, fontSize: '6pt' }}>Tình trạng</th>
+                            <th rowSpan={3} style={{ ...headerStyle, fontSize: '6pt' }}>Chênh lệch</th>
+                            <th rowSpan={3} style={{ ...headerStyle, fontSize: '6pt' }}>Ghi chú</th>
+                        </tr>
+                        <tr>
+                            <th rowSpan={2} style={{ ...headerStyle, backgroundColor: '#ffff00', fontSize: '6pt' }}>Mua mới</th>
+                            <th colSpan={2} style={{ ...headerStyle, backgroundColor: '#ffff00', fontSize: '6pt' }}>Điều chuyển</th>
+                            <th colSpan={3} style={{ ...headerStyle, backgroundColor: '#ffff00', fontSize: '6pt' }}>Trả kho</th>
+                            <th rowSpan={2} style={{ ...headerStyle, backgroundColor: '#ffff00', fontSize: '6pt' }}>Ngày tháng</th>
+                            {['Tốt', 'Hỏng', 'Thất thoát'].map((label) => <th key={label} rowSpan={2} style={{ ...headerStyle, fontSize: '6pt' }}>{label}</th>)}
+                        </tr>
+                        <tr>
+                            {['Đi', 'Đến', 'Hỏng', 'Thất thoát', 'Không sử dụng'].map((label) => <th key={label} style={{ ...headerStyle, backgroundColor: '#ffff00', fontSize: '6pt' }}>{label}</th>)}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {assets.map((asset, index) => {
+                            const movement = tbvpDetailMovement[asset.asset_code] || { purchased: 0, transferOut: 0, transferIn: 0, returnedDamaged: 0, returnedLost: 0, returnedUnused: 0 };
+                            const quantity = Number(asset.quantity) || 1;
+                            const condition = getAssetConditionQuantities(asset.status, quantity);
+                            const checkedQuantity = condition.good + condition.damaged + condition.lost;
+                            const detailStyle = { ...colStyle, fontSize: '5.8pt', padding: '2px 1px', overflowWrap: 'anywhere' as const };
+                            return <tr key={asset.id}>
+                                <td style={detailStyle}>{index + 1}</td><td style={detailStyle}>{asset.asset_code || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.asset_name || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.asset_type || '-'}</td><td style={detailStyle}>{asset.unit || '-'}</td><td style={detailStyle}>{asset.status || '-'}</td><td style={detailStyle}>{asset.manager_code || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.manager_name || '-'}</td><td style={detailStyle}>{asset.user_employee_code || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.user_employee_name || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.serial_number || '-'}</td><td style={detailStyle}>{quantity}</td>
+                                <td style={detailStyle}>{movement.purchased || '-'}</td><td style={detailStyle}>{movement.transferOut || '-'}</td><td style={detailStyle}>{movement.transferIn || '-'}</td><td style={detailStyle}>{movement.returnedDamaged || '-'}</td><td style={detailStyle}>{movement.returnedLost || '-'}</td><td style={detailStyle}>{movement.returnedUnused || '-'}</td><td style={detailStyle}>{tbvpDetailMovementDates[asset.asset_code] || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.status_description || '-'}</td><td style={detailStyle}>{checkedQuantity}</td><td style={detailStyle}>{condition.good}</td><td style={detailStyle}>{condition.damaged}</td><td style={detailStyle}>{condition.lost}</td><td style={detailStyle}>{quantity - checkedQuantity}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.notes || '-'}</td>
+                            </tr>;
+                        })}
+                    </tbody>
+                </table>
+                ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Times New Roman', tableLayout: 'fixed' }}>
                     <thead>
                         <tr>
@@ -314,6 +461,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                         })}
                     </tbody>
                 </table>
+                )}
 
                 <div className="footer-container" style={{ marginTop: '30px', fontFamily: 'Times New Roman' }}>
                     <div className="sig-date" style={{ textAlign: 'right', fontStyle: 'italic', marginBottom: '5px', paddingRight: '50px' }}>
