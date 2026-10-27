@@ -264,7 +264,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
 
         // Keep the full table inside one A4 landscape page; long asset names
         // wrap instead of being clipped or forcing an unreadably small scale.
-        [4.5, 18, 13, 6, 8, 6, 6, 8, 9.5, 9.5, 10.5, 7, 9].forEach((width, index) => { ws.getColumn(index + 1).width = width; });
+        [4.5, 22, 13, 6, 8, 6, 6, 8, 8, 8, 9, 7, 8].forEach((width, index) => { ws.getColumn(index + 1).width = width; });
         ws.mergeCells('A5:A6'); ws.mergeCells('B5:B6'); ws.mergeCells('C5:C6'); ws.mergeCells('D5:D6'); ws.mergeCells('E5:E6');
         ws.mergeCells('F5:G5'); ws.mergeCells('H5:H6'); ws.mergeCells('I5:K5'); ws.mergeCells('L5:L6'); ws.mergeCells('M5:M6');
         const setHeader = (address: string, value: string, fill = 'FFD0D0D0') => {
@@ -297,7 +297,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
 
         const firstDataRow = ws.rowCount + 1;
         groupedAssets.forEach((g, idx) => {
-            const r = ws.addRow([idx+1, g.name, g.type, g.unit, g.openingQty, g.increaseQty || '-', g.decreaseQty || '-', g.inspectionQty, g.usingQty, g.brokenQty, g.lostQty, g.differenceQty, g.department]);
+            const r = ws.addRow([idx+1, g.name, g.type, g.unit, g.openingQty, g.increaseQty || '-', g.decreaseQty || '-', g.inspectionQty, g.usingQty, g.brokenQty, g.lostQty, g.differenceQty, '']);
             r.eachCell((c, column) => {
                 c.border = border;
                 c.font = { size:9, name:'Times New Roman' };
@@ -306,7 +306,6 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
             const wrappedLines = Math.max(
                 Math.ceil((g.name || '').length / 21),
                 Math.ceil((g.type || '').length / 17),
-                Math.ceil((g.department || '').length / 34),
                 1,
             );
             r.height = Math.max(18, wrappedLines * 12);
@@ -442,7 +441,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
 
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Times New Roman' }}>
                     <colgroup>
-                        <col style={{ width: '3%' }} /><col style={{ width: '25%' }} /><col style={{ width: '10.5%' }} /><col style={{ width: '4%' }} />
+                        <col style={{ width: '3%' }} /><col style={{ width: '29%' }} /><col style={{ width: '10.5%' }} /><col style={{ width: '4%' }} />
                         <col style={{ width: '5%' }} /><col style={{ width: '4%' }} /><col style={{ width: '4%' }} /><col style={{ width: '6%' }} />
                         <col style={{ width: '6.5%' }} /><col style={{ width: '6.5%' }} /><col style={{ width: '7.5%' }} /><col style={{ width: '5%' }} /><col style={{ width: '8%' }} />
                     </colgroup>
@@ -491,7 +490,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                                 <td style={colStyle}>{g.brokenQty}</td>
                                 <td style={colStyle}>{g.lostQty}</td>
                                 <td style={colStyle}>{g.differenceQty}</td>
-                                <td style={{ ...colStyle, textAlign: 'left', fontSize: '8pt' }}>{g.department}</td>
+                                <td style={{ ...colStyle, textAlign: 'left', fontSize: '8pt' }}></td>
                             </tr>
                         ))}
                     </tbody>
