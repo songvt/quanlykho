@@ -148,10 +148,10 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                 cell.font = { name: 'Times New Roman', size: 10, bold: true };
                 cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
             });
-            ws.mergeCells('A2:Z2'); ws.getCell('A2').value = 'BÁO CÁO CHI TIẾT TBVP VÀ SỰ BIẾN ĐỘNG';
+            ws.mergeCells('A2:Z2'); ws.getCell('A2').value = 'DANH SÁCH TÀI SẢN TBVP TTKV BẮC SÀI GÒN';
             ws.getCell('A2').font = { name: 'Times New Roman', size: 13, bold: true };
             ws.getCell('A2').alignment = { horizontal: 'center' };
-            ws.mergeCells('A3:Z3'); ws.getCell('A3').value = `Kỳ báo cáo tháng ${String(month).padStart(2, '0')} năm ${year}`;
+            ws.mergeCells('A3:Z3'); ws.getCell('A3').value = `Báo cáo biến động tháng: ${String(month).padStart(2, '0')}/${year}`;
             ws.getCell('A3').font = { name: 'Times New Roman', size: 10, italic: true };
             ws.getCell('A3').alignment = { horizontal: 'center' };
             ws.getRow(1).height = 28; ws.getRow(2).height = 22; ws.getRow(3).height = 18;
@@ -389,10 +389,10 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
 
                 <div style={{ textAlign: 'center', margin: '24px 0', fontFamily: 'Times New Roman' }}>
                     <div style={{ fontWeight: '800', textTransform: 'uppercase', fontSize: '13pt' }}>
-                        BÁO CÁO CHI TIẾT TÀI SẢN {reportType === 'CCDC' ? 'CCDC-TSNT' : 'TBVP'}
+                        {reportType === 'TBVP' ? 'DANH SÁCH TÀI SẢN TBVP TTKV BẮC SÀI GÒN' : 'BÁO CÁO CHI TIẾT TÀI SẢN CCDC-TSNT'}
                     </div>
                     <div style={{ fontStyle: 'italic', fontSize: '11pt' }}>
-                        Kỳ báo cáo tháng {String(month).padStart(2,'0')} năm {year}
+                        {reportType === 'TBVP' ? `Báo cáo biến động tháng: ${String(month).padStart(2, '0')}/${year}` : `Kỳ báo cáo tháng ${String(month).padStart(2,'0')} năm ${year}`}
                     </div>
                 </div>
 
