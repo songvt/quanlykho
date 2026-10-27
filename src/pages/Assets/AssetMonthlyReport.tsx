@@ -248,7 +248,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
         ws.getCell('H1').alignment = { horizontal:'center', vertical:'middle', wrapText:true };
 
         ws.mergeCells('A2:M2');
-        ws.getCell('A2').value = `BÁO CÁO TỔNG HỢP TÀI SẢN ${reportType === 'CCDC' ? 'CCDC-TSNT' : 'TBVP'}`;
+        ws.getCell('A2').value = reportType === 'TBVP' ? 'TỔNG HỢP TBVP VÀ SỰ BIẾN ĐỘNG' : 'BÁO CÁO TỔNG HỢP TÀI SẢN CCDC-TSNT';
         ws.getCell('A2').font = { bold:true, size:14, name:'Times New Roman' };
         ws.getCell('A2').alignment = { horizontal:'center' };
 
@@ -398,7 +398,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
 
                 <div style={{ textAlign: 'center', margin: '32px 0', fontFamily: 'Times New Roman' }}>
                     <div style={{ fontWeight: '800', textTransform: 'uppercase', fontSize: '14pt' }}>
-                        BÁO CÁO TỔNG HỢP TÀI SẢN {reportType === 'CCDC' ? 'CCDC-TSNT' : 'TBVP'}
+                        {reportType === 'TBVP' ? 'TỔNG HỢP TBVP VÀ SỰ BIẾN ĐỘNG' : 'BÁO CÁO TỔNG HỢP TÀI SẢN CCDC-TSNT'}
                     </div>
                     <div style={{ fontStyle: 'italic', fontSize: '11pt' }}>
                         Kỳ báo cáo tháng {String(month).padStart(2,'0')} năm {year}
