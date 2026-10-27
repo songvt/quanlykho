@@ -8,14 +8,14 @@ test('classifies the current TBVP condition into the three report columns', () =
     assert.deepEqual(getAssetConditionQuantities('Thất thoát', 1), { good: 0, damaged: 0, lost: 1 });
 });
 
-test('uses the latest monthly log date in the movement date column', () => {
+test('uses the new-asset date and ignores later internal transfer dates', () => {
     assert.deepEqual(buildAssetDetailMovementDates([
-        { asset_code: 'TBVP-01', created_at: '2026-10-02T08:00:00+07:00' },
-        { asset_code: 'TBVP-01', created_at: '2026-10-15T08:00:00+07:00' },
-    ]), { 'TBVP-01': '15/10/2026' });
+        { asset_code: 'TBVP-01', action: 'Tăng', created_at: '2026-10-02T08:00:00+07:00' },
+        { asset_code: 'TBVP-01', action: 'Điều chuyển', created_at: '2026-10-15T08:00:00+07:00' },
+    ]), { 'TBVP-01': '02/10/2026' });
 });
 
-test('maps monthly asset logs to the detailed TBVP movement columns', () => {
+test('counts only newly added asset codes and ignores internal transfers of existing codes', () => {
     const movement = buildAssetDetailMonthlyMovement([
         { asset_code: 'TBVP-01', action: 'Tăng' },
         { asset_code: 'TBVP-01', action: 'Điều chuyển', details: 'Điều chuyển từ [Kho] sang [A]' },
@@ -26,11 +26,18 @@ test('maps monthly asset logs to the detailed TBVP movement columns', () => {
 
     assert.deepEqual(movement['TBVP-01'], {
         purchased: 1,
-        transferOut: 1,
+        transferOut: 0,
         transferIn: 0,
-        returnedDamaged: 1,
+        returnedDamaged: 0,
         returnedLost: 0,
-        returnedUnused: 1,
+        returnedUnused: 0,
     });
-    assert.equal(movement['TBVP-02'].returnedLost, 1);
+    assert.deepEqual(movement['TBVP-02'], {
+        purchased: 0,
+        transferOut: 0,
+        transferIn: 0,
+        returnedDamaged: 0,
+        returnedLost: 0,
+        returnedUnused: 0,
+    });
 });

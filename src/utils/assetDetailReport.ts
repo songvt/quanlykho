@@ -18,6 +18,8 @@ const emptyMovement = (): AssetDetailMonthlyMovement => ({
     returnedUnused: 0,
 });
 
+const isNewAssetLog = (log: AssetLogLike) => /tăng|thêm mới|tạo mới|insert|create|add/.test(`${log.action || ''} ${log.details || ''}`.toLocaleLowerCase('vi-VN'));
+
 export const buildAssetDetailMonthlyMovement = (logs: AssetLogLike[]) => {
     const result: Record<string, AssetDetailMonthlyMovement> = {};
 
@@ -26,16 +28,10 @@ export const buildAssetDetailMonthlyMovement = (logs: AssetLogLike[]) => {
         if (!code) return;
 
         const movement = result[code] || (result[code] = emptyMovement());
-        const action = `${log.action || ''} ${log.details || ''}`.toLocaleLowerCase('vi-VN');
 
-        if (/(tăng|thêm mới|tạo mới|insert|create|add)/.test(action)) movement.purchased += 1;
-        else if (action.includes('điều chuyển')) {
-            if (/(về kho|đến kho|nhập kho)/.test(action)) movement.transferIn += 1;
-            else movement.transferOut += 1;
-        }
-        else if (/(thu hồi|không sử dụng)/.test(action)) movement.returnedUnused += 1;
-        else if (/(hỏng|sửa chữa)/.test(action)) movement.returnedDamaged += 1;
-        else if (/(giảm|xóa|delete|remove|thất thoát|mất)/.test(action)) movement.returnedLost += 1;
+        // The detailed TBVP form treats movement as a newly issued asset code only.
+        // Changes to an existing code, including internal transfers, remain outside this block.
+        if (isNewAssetLog(log)) movement.purchased += 1;
     });
 
     return result;
@@ -56,7 +52,7 @@ export const buildAssetDetailMovementDates = (logs: AssetLogLike[]) => {
     logs.forEach((log) => {
         const code = log.asset_code?.trim();
         const date = log.created_at ? new Date(log.created_at) : undefined;
-        if (!code || !date || Number.isNaN(date.getTime())) return;
+        if (!code || !date || Number.isNaN(date.getTime()) || !isNewAssetLog(log)) return;
         if (!latestDates[code] || date > latestDates[code]) latestDates[code] = date;
     });
 
