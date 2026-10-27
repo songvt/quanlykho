@@ -264,7 +264,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
 
         // Keep the full table inside one A4 landscape page; long asset names
         // wrap instead of being clipped or forcing an unreadably small scale.
-        [4.5, 23, 19, 6, 8, 6, 6, 8, 6, 6, 7, 7, 14].forEach((width, index) => { ws.getColumn(index + 1).width = width; });
+        [4.5, 18, 19, 6, 8, 6, 6, 8, 6, 6, 7, 7, 14].forEach((width, index) => { ws.getColumn(index + 1).width = width; });
         ws.mergeCells('A5:A6'); ws.mergeCells('B5:B6'); ws.mergeCells('C5:C6'); ws.mergeCells('D5:D6'); ws.mergeCells('E5:E6');
         ws.mergeCells('F5:G5'); ws.mergeCells('H5:H6'); ws.mergeCells('I5:K5'); ws.mergeCells('L5:L6'); ws.mergeCells('M5:M6');
         const setHeader = (address: string, value: string, fill = 'FFD0D0D0') => {
@@ -303,7 +303,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                 c.alignment = { vertical:'middle', wrapText:true, horizontal: [1, 4, 5, 6, 7, 8, 9, 10, 11, 12].includes(column) ? 'center' : 'left' };
             });
             const wrappedLines = Math.max(
-                Math.ceil((g.name || '').length / 28),
+                Math.ceil((g.name || '').length / 21),
                 Math.ceil((g.type || '').length / 24),
                 Math.ceil((g.department || '').length / 34),
                 1,
@@ -344,7 +344,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                 /* Reserve a stable bottom area for handwritten signatures. */
                 @page { size: A4 landscape; margin: 20mm 15mm 22mm 20mm; }
                 body { font-family: 'Times New Roman', serif; font-size: 10.5pt; margin: 0; padding: 0; }
-                table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: auto; }
+                table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: fixed; }
                 th, td { border: 1px solid #000; padding: 4px 3px; text-align: center; vertical-align: middle; word-wrap: break-word; font-size: 8.5pt; }
                 th { background: #e0e0e0; font-weight: bold; }
                 .footer-container {
@@ -428,6 +428,11 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                 </div>
 
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Times New Roman' }}>
+                    <colgroup>
+                        <col style={{ width: '3%' }} /><col style={{ width: '25%' }} /><col style={{ width: '15%' }} /><col style={{ width: '4%' }} />
+                        <col style={{ width: '5%' }} /><col style={{ width: '4%' }} /><col style={{ width: '4%' }} /><col style={{ width: '6%' }} />
+                        <col style={{ width: '4%' }} /><col style={{ width: '4%' }} /><col style={{ width: '5%' }} /><col style={{ width: '5%' }} /><col style={{ width: '11%' }} />
+                    </colgroup>
                     <thead>
                         <tr>
                             <th style={headerStyle} rowSpan={2}>STT</th>
