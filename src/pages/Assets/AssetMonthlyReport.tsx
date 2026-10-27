@@ -318,8 +318,8 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
         ws.getCell(fRow, 10).alignment = { horizontal:'center' };
 
         const sRow = fRow + 1;
-        ws.mergeCells(sRow, 5, sRow, 9); ws.getCell(sRow,5).value = 'LÃNH ĐẠO ĐƠN VỊ';
-        ws.mergeCells(sRow, 10, sRow, 13); ws.getCell(sRow,10).value = 'NHÂN VIÊN QLTS ĐƠN VỊ';
+        ws.mergeCells(sRow, 5, sRow, 9); ws.getCell(sRow,5).value = 'NHÂN VIÊN QLTS ĐƠN VỊ';
+        ws.mergeCells(sRow, 10, sRow, 13); ws.getCell(sRow,10).value = 'LÃNH ĐẠO ĐƠN VỊ';
         [ws.getCell(sRow,5), ws.getCell(sRow,10)].forEach(c => {
             c.font = { bold:true, size:10, name:'Times New Roman' };
             c.alignment = { horizontal:'center' };
@@ -486,11 +486,11 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                     </div>
                     <div className="sig-grid" style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
                         <div className="sig-box" style={{ width: '45%' }}>
-                            <div className="sig-title" style={{ fontWeight: 'bold' }}>LÃNH ĐẠO ĐƠN VỊ</div>
+                            <div className="sig-title" style={{ fontWeight: 'bold' }}>NHÂN VIÊN QLTS ĐƠN VỊ</div>
                             <div className="sig-note" style={{ fontStyle: 'italic', fontSize: '9pt' }}>(Ký, ghi rõ họ tên)</div>
                         </div>
                         <div className="sig-box" style={{ width: '45%' }}>
-                            <div className="sig-title" style={{ fontWeight: 'bold' }}>NHÂN VIÊN QLTS ĐƠN VỊ</div>
+                            <div className="sig-title" style={{ fontWeight: 'bold' }}>LÃNH ĐẠO ĐƠN VỊ</div>
                             <div className="sig-note" style={{ fontStyle: 'italic', fontSize: '9pt' }}>(Ký, ghi rõ họ tên)</div>
                         </div>
                     </div>
