@@ -7,6 +7,15 @@ export interface AssetDetailMonthlyMovement {
     returnedUnused: number;
 }
 
+export interface AssetDetailTotalValues extends AssetDetailMonthlyMovement {
+    bookQuantity: number;
+    checkedQuantity: number;
+    good: number;
+    damaged: number;
+    lost: number;
+    difference: number;
+}
+
 type AssetLogLike = { asset_code?: string; action?: string; details?: string; created_at?: string };
 
 const emptyMovement = (): AssetDetailMonthlyMovement => ({
@@ -61,3 +70,21 @@ export const buildAssetDetailMovementDates = (logs: AssetLogLike[]) => {
         `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`,
     ]));
 };
+
+export const sumAssetDetailTotals = (rows: AssetDetailTotalValues[]) => rows.reduce<AssetDetailTotalValues>((totals, row) => ({
+    bookQuantity: totals.bookQuantity + row.bookQuantity,
+    purchased: totals.purchased + row.purchased,
+    transferOut: totals.transferOut + row.transferOut,
+    transferIn: totals.transferIn + row.transferIn,
+    returnedDamaged: totals.returnedDamaged + row.returnedDamaged,
+    returnedLost: totals.returnedLost + row.returnedLost,
+    returnedUnused: totals.returnedUnused + row.returnedUnused,
+    checkedQuantity: totals.checkedQuantity + row.checkedQuantity,
+    good: totals.good + row.good,
+    damaged: totals.damaged + row.damaged,
+    lost: totals.lost + row.lost,
+    difference: totals.difference + row.difference,
+}), {
+    bookQuantity: 0, purchased: 0, transferOut: 0, transferIn: 0, returnedDamaged: 0, returnedLost: 0, returnedUnused: 0,
+    checkedQuantity: 0, good: 0, damaged: 0, lost: 0, difference: 0,
+});

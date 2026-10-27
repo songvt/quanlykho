@@ -11,7 +11,7 @@ import { fetchAssets, fetchAssetLogs } from '../../store/slices/assetsSlice';
 import type { AppDispatch, RootState } from '../../store';
 import type { Asset } from '../../types';
 import { sortAssetsByNameAndUser } from '../../utils/assetSorting';
-import { buildAssetDetailMonthlyMovement, buildAssetDetailMovementDates, getAssetConditionQuantities } from '../../utils/assetDetailReport';
+import { buildAssetDetailMonthlyMovement, buildAssetDetailMovementDates, getAssetConditionQuantities, sumAssetDetailTotals } from '../../utils/assetDetailReport';
 
 interface Props {
     reportType: 'CCDC' | 'TBVP';
@@ -104,6 +104,14 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
 
     const tbvpDetailMovementDates = useMemo(() => buildAssetDetailMovementDates(tbvpMonthlyLogs), [tbvpMonthlyLogs]);
 
+    const tbvpTotals = useMemo(() => sumAssetDetailTotals(assets.map((asset) => {
+        const movement = tbvpDetailMovement[asset.asset_code] || { purchased: 0, transferOut: 0, transferIn: 0, returnedDamaged: 0, returnedLost: 0, returnedUnused: 0 };
+        const bookQuantity = Number(asset.quantity) || 1;
+        const condition = getAssetConditionQuantities(asset.status, bookQuantity);
+        const checkedQuantity = condition.good + condition.damaged + condition.lost;
+        return { ...movement, bookQuantity, checkedQuantity, ...condition, difference: bookQuantity - checkedQuantity };
+    })), [assets, tbvpDetailMovement]);
+
     const dateFooterStr = `TP.Hồ Chí Minh, ngày ${now.getDate().toString().padStart(2, '0')} tháng ${(now.getMonth() + 1).toString().padStart(2, '0')} năm ${now.getFullYear()}`;
 
     const handleExportExcel = async () => {
@@ -175,6 +183,20 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
             ws.pageSetup.printTitlesRow = '5:7';
             [4, 10, 23, 10, 4, 9, 8, 13, 8, 13, 14, 8, 6, 5, 5, 5, 5, 5, 6, 12, 7, 5, 5, 6, 6, 10]
                 .forEach((width, index) => { ws.getColumn(index + 1).width = width; });
+
+            const totalRow = ws.addRow([
+                'Tổng', '', '', '', '', '', '', '', '', '', '', tbvpTotals.bookQuantity,
+                tbvpTotals.purchased, tbvpTotals.transferOut, tbvpTotals.transferIn, tbvpTotals.returnedDamaged, tbvpTotals.returnedLost, tbvpTotals.returnedUnused, '', '',
+                tbvpTotals.checkedQuantity, tbvpTotals.good, tbvpTotals.damaged, tbvpTotals.lost, tbvpTotals.difference, '',
+            ]);
+            ws.mergeCells(totalRow.number, 1, totalRow.number, 2);
+            totalRow.height = 20;
+            totalRow.eachCell((cell, column) => {
+                cell.border = border;
+                cell.fill = fill('FFF2F2F2');
+                cell.font = { name: 'Times New Roman', size: 8, bold: true };
+                cell.alignment = { vertical: 'middle', horizontal: [1, 12, 13, 14, 15, 16, 17, 18, 21, 22, 23, 24, 25].includes(column) ? 'center' : 'left' };
+            });
 
             assets.forEach((asset, index) => {
                 const movement = tbvpDetailMovement[asset.asset_code] || { purchased: 0, transferOut: 0, transferIn: 0, returnedDamaged: 0, returnedLost: 0, returnedUnused: 0 };
@@ -401,6 +423,11 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                         </tr>
                     </thead>
                     <tbody>
+                        <tr>
+                            <td colSpan={2} style={{ ...headerStyle, fontSize: '5.8pt' }}>Tổng</td><td colSpan={9} style={{ ...headerStyle, fontSize: '5.8pt' }}></td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.bookQuantity}</td>
+                            <td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.purchased}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.transferOut}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.transferIn}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.returnedDamaged}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.returnedLost}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.returnedUnused}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}></td><td style={{ ...headerStyle, fontSize: '5.8pt' }}></td>
+                            <td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.checkedQuantity}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.good}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.damaged}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.lost}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.difference}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}></td>
+                        </tr>
                         {assets.map((asset, index) => {
                             const movement = tbvpDetailMovement[asset.asset_code] || { purchased: 0, transferOut: 0, transferIn: 0, returnedDamaged: 0, returnedLost: 0, returnedUnused: 0 };
                             const quantity = Number(asset.quantity) || 1;

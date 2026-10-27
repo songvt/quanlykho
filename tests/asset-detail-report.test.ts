@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildAssetDetailMonthlyMovement, buildAssetDetailMovementDates, getAssetConditionQuantities } from '../src/utils/assetDetailReport.ts';
+import { buildAssetDetailMonthlyMovement, buildAssetDetailMovementDates, getAssetConditionQuantities, sumAssetDetailTotals } from '../src/utils/assetDetailReport.ts';
 
 test('classifies the current TBVP condition into the three report columns', () => {
     assert.deepEqual(getAssetConditionQuantities('Đang sử dụng', 1), { good: 1, damaged: 0, lost: 0 });
@@ -39,5 +39,14 @@ test('counts only newly added asset codes and ignores internal transfers of exis
         returnedDamaged: 0,
         returnedLost: 0,
         returnedUnused: 0,
+    });
+});
+
+test('sums the detailed TBVP quantities for the row directly below the header', () => {
+    assert.deepEqual(sumAssetDetailTotals([
+        { bookQuantity: 2, purchased: 1, transferOut: 0, transferIn: 0, returnedDamaged: 0, returnedLost: 0, returnedUnused: 0, checkedQuantity: 2, good: 2, damaged: 0, lost: 0, difference: 0 },
+        { bookQuantity: 1, purchased: 0, transferOut: 0, transferIn: 0, returnedDamaged: 0, returnedLost: 0, returnedUnused: 0, checkedQuantity: 1, good: 0, damaged: 1, lost: 0, difference: 0 },
+    ]), {
+        bookQuantity: 3, purchased: 1, transferOut: 0, transferIn: 0, returnedDamaged: 0, returnedLost: 0, returnedUnused: 0, checkedQuantity: 3, good: 2, damaged: 1, lost: 0, difference: 0,
     });
 });
