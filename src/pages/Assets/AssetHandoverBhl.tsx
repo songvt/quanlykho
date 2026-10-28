@@ -24,6 +24,7 @@ import type { RootState, AppDispatch } from '../../store';
 import type { Asset, HRProfile } from '../../types';
 import { formatPhone } from '../../utils/format';
 import { exportHandoverHistory } from '../../utils/excelUtils';
+import { saveAssetHandoverHistory } from '../../services/assetHandoverHistory';
 
 interface BhlItem {
     stt: number;
@@ -172,9 +173,6 @@ const AssetHandoverBhl: React.FC = () => {
             return;
         }
 
-        // Trigger print immediately
-        handlePrint();
-
         try {
             const payload = {
                 employee_id: selectedEmployee?.id || null,
@@ -189,19 +187,12 @@ const AssetHandoverBhl: React.FC = () => {
                 created_by: giverInfo.giverName2 || 'Hệ thống'
             };
             
-            const res = await fetch('/api/asset_handovers', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            if (res.ok) {
-                const result = await res.json();
-                if (result.success && result.data) {
-                    setHistory(prev => [result.data, ...prev]);
-                }
-            }
+            const savedHandover = await saveAssetHandoverHistory(payload);
+            setHistory(prev => [savedHandover, ...prev]);
+            handlePrint();
         } catch (err) {
             console.error('Lỗi khi tự động lưu lịch sử:', err);
+            error(err instanceof Error ? err.message : 'Không thể lưu lịch sử bàn giao. Vui lòng thử lại.');
         }
     };
 
