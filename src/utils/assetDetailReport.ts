@@ -93,3 +93,10 @@ export const getFinalSignaturePageBreakRow = (firstDataRow: number, lastDataRow:
     const dataRowCount = lastDataRow - firstDataRow + 1;
     return dataRowCount > rowsToKeep ? lastDataRow - rowsToKeep : undefined;
 };
+
+export const getSerialColumnWidths = (serials: Array<string | undefined>) => {
+    const longestSerialLength = Math.max(0, ...serials.map((serial) => serial?.trim().length || 0));
+    const excel = Math.min(18, Math.max(14, longestSerialLength + 1));
+    const printPercent = Math.min(8.5, Math.max(6.5, Math.round(longestSerialLength * 0.45 * 10) / 10));
+    return { excel, printPercent, notesPercent: Math.round((11.4 - printPercent) * 10) / 10 };
+};

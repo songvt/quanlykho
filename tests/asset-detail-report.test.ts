@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildAssetDetailMonthlyMovement, buildAssetDetailMovementDates, getAssetConditionQuantities, getFinalSignaturePageBreakRow, sumAssetDetailTotals } from '../src/utils/assetDetailReport.ts';
+import { buildAssetDetailMonthlyMovement, buildAssetDetailMovementDates, getAssetConditionQuantities, getFinalSignaturePageBreakRow, getSerialColumnWidths, sumAssetDetailTotals } from '../src/utils/assetDetailReport.ts';
 
 test('classifies the current TBVP condition into the three report columns', () => {
     assert.deepEqual(getAssetConditionQuantities('Đang sử dụng', 1), { good: 1, damaged: 0, lost: 0 });
@@ -54,4 +54,8 @@ test('sums the detailed TBVP quantities for the row directly below the header', 
 test('keeps the last detail rows with the TBVP signature block', () => {
     assert.equal(getFinalSignaturePageBreakRow(9, 70, 5), 65);
     assert.equal(getFinalSignaturePageBreakRow(9, 13, 5), undefined);
+});
+
+test('sizes the serial column to the longest serial instead of a fixed oversized width', () => {
+    assert.deepEqual(getSerialColumnWidths(['ABC123', '5D01120PAG24C18']), { excel: 16, printPercent: 6.8, notesPercent: 4.6 });
 });

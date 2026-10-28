@@ -11,7 +11,7 @@ import { fetchAssets, fetchAssetLogs } from '../../store/slices/assetsSlice';
 import type { AppDispatch, RootState } from '../../store';
 import type { Asset } from '../../types';
 import { sortAssetsByNameAndUser } from '../../utils/assetSorting';
-import { buildAssetDetailMonthlyMovement, buildAssetDetailMovementDates, getAssetConditionQuantities, getFinalSignaturePageBreakRow, sumAssetDetailTotals } from '../../utils/assetDetailReport';
+import { buildAssetDetailMonthlyMovement, buildAssetDetailMovementDates, getAssetConditionQuantities, getFinalSignaturePageBreakRow, getSerialColumnWidths, sumAssetDetailTotals } from '../../utils/assetDetailReport';
 
 interface Props {
     reportType: 'CCDC' | 'TBVP';
@@ -112,6 +112,11 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
         return { ...movement, bookQuantity, checkedQuantity, ...condition, difference: bookQuantity - checkedQuantity };
     })), [assets, tbvpDetailMovement]);
 
+    const serialColumnWidths = useMemo(
+        () => getSerialColumnWidths(assets.map((asset) => asset.serial_number)),
+        [assets],
+    );
+
     const dateFooterStr = `TP. Hồ Chí Minh, ngày ${now.getDate().toString().padStart(2, '0')} tháng ${(now.getMonth() + 1).toString().padStart(2, '0')} năm ${now.getFullYear()}`;
 
     const handleExportExcel = async () => {
@@ -181,7 +186,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                 for (let column = 1; column <= 26; column += 1) ws.getCell(row, column).border = border;
             }
             ws.pageSetup.printTitlesRow = '5:7';
-            [4, 10, 21, 10, 4, 9, 8, 13, 8, 13, 19, 8, 6, 5, 5, 5, 5, 5, 6, 12, 7, 5, 5, 6, 6, 7]
+            [4, 10, 21, 10, 4, 9, 8, 13, 8, 13, serialColumnWidths.excel, 8, 6, 5, 5, 5, 5, 5, 6, 12, 7, 5, 5, 6, 6, 7]
                 .forEach((width, index) => { ws.getColumn(index + 1).width = width; });
 
             const totalRow = ws.addRow([
@@ -434,7 +439,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                 {reportType === 'TBVP' ? (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Times New Roman', tableLayout: 'fixed', fontSize: '5.8pt' }}>
                     <colgroup>
-                        {[2, 4.9, 8, 4.3, 2.2, 4.5, 3.7, 4.7, 3.7, 4.7, 10.5, 3.6, 2.8, 2.3, 2.3, 2.3, 2.3, 2.3, 2.8, 6.2, 3.6, 2.8, 2.8, 3.1, 3.4, 4.7].map((width, index) => <col key={index} style={{ width: `${width}%` }} />)}
+                        {[2, 4.9, 8, 4.3, 2.2, 4.5, 3.7, 4.7, 3.7, 4.7, serialColumnWidths.printPercent, 3.6, 2.8, 2.3, 2.3, 2.3, 2.3, 2.3, 2.8, 6.2, 3.6, 2.8, 2.8, 3.1, 3.4, serialColumnWidths.notesPercent].map((width, index) => <col key={index} style={{ width: `${width}%` }} />)}
                     </colgroup>
                     <thead>
                         <tr>
