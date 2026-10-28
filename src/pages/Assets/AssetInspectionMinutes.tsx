@@ -10,6 +10,7 @@ import { fetchHRProfiles } from '../../store/slices/hrProfilesSlice';
 import type { HRProfile } from '../../types';
 import { downloadAsDataUri } from '../../utils/excelUtils';
 import { resolveEmployeeDistrict } from '../../utils/employeeDistrict';
+import { fixedProtectiveItems } from '../../utils/assetInspectionItems';
 import { GoogleSheetService } from '../../services/GoogleSheetService';
 
 const currentDate = () => new Date().toLocaleDateString('vi-VN');
@@ -38,17 +39,6 @@ const FIXED_INSPECTION_ITEMS = [
     { name: 'Túi đựng dụng cụ', quota: '1 Chiếc/1NV' },
     { name: 'Sào luồn cáp vào gông', quota: '1 Chiếc/1NV', specification: 'Sào luồn cáp vào gông (Phải có cách điện)' },
     { name: 'Máy đo công suất quang', quota: '1 Cái/1NV' },
-];
-
-const FIXED_PROTECTIVE_ITEMS = [
-    { name: 'Dây đai bảo hiểm', unit: 'Chiếc' },
-    { name: 'Mũ cứng bảo hộ', unit: 'Chiếc' },
-    { name: 'Quần áo bảo hộ lao động', unit: 'Bộ' },
-    { name: 'Áo gió', unit: 'Chiếc' },
-    { name: 'Áo thun ACT', unit: 'Chiếc' },
-    { name: 'Áo sơ mi', unit: 'Chiếc' },
-    { name: 'Giày Bảo Hộ Lao Động', unit: 'Đôi' },
-    { name: 'Bảng tên nhân viên', unit: 'Cái' },
 ];
 
 const AssetInspectionMinutes = () => {
@@ -208,7 +198,7 @@ const AssetInspectionMinutes = () => {
             writeMerged(`A${rowNumber}:F${rowNumber}`, 'II. TRANG BỊ BẢO HỘ LAO ĐỘNG', { bold: true }); rowNumber += 1;
             const protectiveHeaderRow = rowNumber;
             sheet.getRow(rowNumber).values = ['STT', 'Nội dung yêu cầu', 'Đơn vị tính', 'Số lượng', 'Ghi chú', '']; rowNumber += 1;
-            FIXED_PROTECTIVE_ITEMS.forEach((item, itemIndex) => { sheet.getRow(rowNumber).values = [itemIndex + 1, item.name, item.unit, '', '', '']; rowNumber += 1; });
+            fixedProtectiveItems.forEach((item, itemIndex) => { sheet.getRow(rowNumber).values = [itemIndex + 1, item.name, item.unit, '', '', '']; rowNumber += 1; });
             writeMerged(`A${rowNumber}:F${rowNumber}`, 'Đề xuất, đánh giá: ........................................................................................................................................................................', { bold: true }); rowNumber += 1;
             writeMerged(`A${rowNumber}:F${rowNumber}`, '......................................................................................................................................................................................................'); rowNumber += 1;
             writeMerged(`A${rowNumber}:F${rowNumber}`, 'Biên bản lập thành 02 bản có giá trị như nhau và có hiệu lực từ ngày ký.', { italic: true }); rowNumber += 1;
@@ -291,7 +281,7 @@ const AssetInspectionMinutes = () => {
             <div className="line">{inspectionOpening}</div><div className="section">A. ĐOÀN KIỂM TRA</div>{teamMembers.length ? teamMembers.map(member => <div className="team-row" key={member.name}><div>Họ và tên: {member.name}</div><div>Chức vụ: {member.title || '................................'}</div></div>) : <div className="line">Họ và tên: ................................................................................................</div>}
             <div className="subject-heading"><div className="section">B. ĐỐI TƯỢNG KIỂM TRA</div><div>{group.department ? `Nhóm/đơn vị: ${group.department}` : ''}</div></div><div className="line">1. Họ và tên: {group.name}</div><div className="line"><b>1. Nội dung kiểm tra:</b> {content}</div><div className="line"><b>2. Kết quả kiểm tra như sau:</b></div>
             <div className="section">I. CÔNG CỤ DỤNG CỤ (CCDC)</div><table><thead><tr><th>STT</th><th>Nội dung yêu cầu</th><th>Số lượng</th><th>Số lượng định mức</th><th>Quy cách, TCKT</th><th>Ghi chú</th></tr></thead><tbody>{FIXED_INSPECTION_ITEMS.map((item, index) => <tr key={item.name}><td className="center">{index + 1}</td><td>{item.name}</td><td className="center"></td><td className="center">{item.quota}</td><td>{item.specification || item.name}</td><td></td></tr>)}</tbody></table>
-            <div className="section section-two">II. TRANG BỊ BẢO HỘ LAO ĐỘNG</div><table><thead><tr><th>STT</th><th>Nội dung yêu cầu</th><th>Đơn vị tính</th><th>Số lượng</th><th>Ghi chú</th></tr></thead><tbody>{FIXED_PROTECTIVE_ITEMS.map((item, index) => <tr key={item.name}><td className="center">{index + 1}</td><td>{item.name}</td><td className="center">{item.unit}</td><td className="center"></td><td></td></tr>)}</tbody></table>
+            <div className="section section-two">II. TRANG BỊ BẢO HỘ LAO ĐỘNG</div><table><thead><tr><th>STT</th><th>Nội dung yêu cầu</th><th>Đơn vị tính</th><th>Số lượng</th><th>Ghi chú</th></tr></thead><tbody>{fixedProtectiveItems.map((item, index) => <tr key={item.name}><td className="center">{index + 1}</td><td>{item.name}</td><td className="center">{item.unit}</td><td className="center"></td><td></td></tr>)}</tbody></table>
             {notes && <div className="line"><b>Ghi chú:</b> {notes}</div>}<div className="line proposal-line" style={{ marginTop: 12 }}><b>Đề xuất, đánh giá:</b><span className="proposal-leader">................................................................................................................................................................................................................................................................</span></div><div className="line proposal-line"><span className="proposal-leader">................................................................................................................................................................................................................................................................</span></div><div className="line" style={{ fontStyle: 'italic' }}>Biên bản lập thành 02 bản có giá trị như nhau và có hiệu lực từ ngày ký.</div><div className="signatures"><div>NHÂN VIÊN KIỂM TRA<div className="sign-space"></div></div><div>NHÂN VIÊN ĐƯỢC KIỂM TRA<div className="sign-space"></div>{group.name}</div><div>P. GIÁM ĐỐC TRUNG TÂM<div className="sign-space"></div></div></div>
         </div>)}</Box>
         <Box ref={blankPrintRef} sx={{ display: 'none' }}><div className="inspection-page">
@@ -299,7 +289,7 @@ const AssetInspectionMinutes = () => {
             <div className="line">Hôm nay, vào lúc ........ giờ ........ phút, ngày ........ tháng ........ năm ........, tại ................................................................, chúng tôi gồm:</div><div className="section">A. ĐOÀN KIỂM TRA</div>{teamMembers.map(member => <div className="team-row" key={`blank-${member.name}`}><div>Họ và tên: {member.name}</div><div>Chức vụ: {member.title || '................................'}</div></div>)}
             <div className="subject-heading"><div className="section">B. ĐỐI TƯỢNG KIỂM TRA</div><div>Nhóm/đơn vị: ................................</div></div><div className="line">1. Họ và tên: ........................................................................................................................</div><div className="line"><b>1. Nội dung kiểm tra:</b> {content}</div><div className="line"><b>2. Kết quả kiểm tra như sau:</b></div>
             <div className="section">I. CÔNG CỤ DỤNG CỤ (CCDC)</div><table><thead><tr><th>STT</th><th>Nội dung yêu cầu</th><th>Số lượng</th><th>Số lượng định mức</th><th>Quy cách, TCKT</th><th>Ghi chú</th></tr></thead><tbody>{FIXED_INSPECTION_ITEMS.map((item, index) => <tr key={`blank-${item.name}`}><td className="center">{index + 1}</td><td>{item.name}</td><td className="center"></td><td className="center">{item.quota}</td><td>{item.specification || item.name}</td><td></td></tr>)}</tbody></table>
-            <div className="section section-two">II. TRANG BỊ BẢO HỘ LAO ĐỘNG</div><table><thead><tr><th>STT</th><th>Nội dung yêu cầu</th><th>Đơn vị tính</th><th>Số lượng</th><th>Ghi chú</th></tr></thead><tbody>{FIXED_PROTECTIVE_ITEMS.map((item, index) => <tr key={`blank-protective-${item.name}`}><td className="center">{index + 1}</td><td>{item.name}</td><td className="center">{item.unit}</td><td className="center"></td><td></td></tr>)}</tbody></table>
+            <div className="section section-two">II. TRANG BỊ BẢO HỘ LAO ĐỘNG</div><table><thead><tr><th>STT</th><th>Nội dung yêu cầu</th><th>Đơn vị tính</th><th>Số lượng</th><th>Ghi chú</th></tr></thead><tbody>{fixedProtectiveItems.map((item, index) => <tr key={`blank-protective-${item.name}`}><td className="center">{index + 1}</td><td>{item.name}</td><td className="center">{item.unit}</td><td className="center"></td><td></td></tr>)}</tbody></table>
             <div className="line proposal-line" style={{ marginTop: 12 }}><b>Đề xuất, đánh giá:</b><span className="proposal-leader">................................................................................................................................................................................................................................................................</span></div><div className="line proposal-line"><span className="proposal-leader">................................................................................................................................................................................................................................................................</span></div><div className="line" style={{ fontStyle: 'italic' }}>Biên bản lập thành 02 bản có giá trị như nhau và có hiệu lực từ ngày ký.</div><div className="signatures"><div>NHÂN VIÊN KIỂM TRA<div className="sign-space"></div></div><div>NHÂN VIÊN ĐƯỢC KIỂM TRA<div className="sign-space"></div></div><div>P. GIÁM ĐỐC TRUNG TÂM<div className="sign-space"></div></div></div>
         </div></Box>
     </Box>;
