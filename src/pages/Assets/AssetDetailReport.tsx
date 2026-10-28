@@ -11,7 +11,7 @@ import { fetchAssets, fetchAssetLogs } from '../../store/slices/assetsSlice';
 import type { AppDispatch, RootState } from '../../store';
 import type { Asset } from '../../types';
 import { sortAssetsByNameAndUser } from '../../utils/assetSorting';
-import { buildAssetDetailMonthlyMovement, buildAssetDetailMovementDates, getAssetConditionQuantities, getAssetDetailRowHeight, getFinalSignaturePageBreakRow, getSerialColumnWidths, sumAssetDetailTotals } from '../../utils/assetDetailReport';
+import { administrativePageMargins, buildAssetDetailMonthlyMovement, buildAssetDetailMovementDates, getAssetConditionQuantities, getAssetDetailRowHeight, getFinalSignaturePageBreakRow, getSerialColumnWidths, sumAssetDetailTotals } from '../../utils/assetDetailReport';
 
 interface Props {
     reportType: 'CCDC' | 'TBVP';
@@ -130,8 +130,8 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                     fitToPage: true,
                     fitToWidth: 1,
                     fitToHeight: 0,
-                    horizontalCentered: true,
-                    margins: { left: 0.2, right: 0.2, top: 0.35, bottom: 0.35, header: 0.15, footer: 0.15 },
+                    horizontalCentered: false,
+                    margins: administrativePageMargins,
                 },
             });
             const border: Partial<ExcelJS.Borders> = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };

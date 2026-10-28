@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildAssetDetailMonthlyMovement, buildAssetDetailMovementDates, getAssetConditionQuantities, getAssetDetailRowHeight, getFinalSignaturePageBreakRow, getSerialColumnWidths, sumAssetDetailTotals } from '../src/utils/assetDetailReport.ts';
+import { administrativePageMargins, buildAssetDetailMonthlyMovement, buildAssetDetailMovementDates, getAssetConditionQuantities, getAssetDetailRowHeight, getFinalSignaturePageBreakRow, getSerialColumnWidths, sumAssetDetailTotals } from '../src/utils/assetDetailReport.ts';
 
 test('classifies the current TBVP condition into the three report columns', () => {
     assert.deepEqual(getAssetConditionQuantities('Đang sử dụng', 1), { good: 1, damaged: 0, lost: 0 });
@@ -62,4 +62,8 @@ test('sizes the serial column to the longest serial instead of a fixed oversized
 
 test('keeps enough height for a wrapped TBVP asset type', () => {
     assert.equal(getAssetDetailRowHeight({ assetType: 'TBVP_Bàn, ghế, tủ, kệ, kết sắt' }), 54);
+});
+
+test('uses administrative document margins for TBVP exports', () => {
+    assert.deepEqual(administrativePageMargins, { top: 0.79, bottom: 0.79, left: 1.18, right: 0.79, header: 0.3, footer: 0.3 });
 });
