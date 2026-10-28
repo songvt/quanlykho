@@ -50,11 +50,13 @@ export const toSheetRow = (payload: any, tableName: string) => {
     return item;
 };
 
+export const SHEET_WRITE_CHUNK_SIZE = 250;
+export const SHEET_WRITE_DELAY_MS = 1500;
+
 const addRowsInChunks = async (sheet: any, rows: any[]) => {
-    const chunkSize = 100;
-    for (let i = 0; i < rows.length; i += chunkSize) {
-        if (i > 0) await sleep(1000);
-        await sheet.addRows(rows.slice(i, i + chunkSize));
+    for (let i = 0; i < rows.length; i += SHEET_WRITE_CHUNK_SIZE) {
+        if (i > 0) await sleep(SHEET_WRITE_DELAY_MS);
+        await sheet.addRows(rows.slice(i, i + SHEET_WRITE_CHUNK_SIZE));
     }
 };
 
