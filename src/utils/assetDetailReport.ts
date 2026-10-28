@@ -100,3 +100,23 @@ export const getSerialColumnWidths = (serials: Array<string | undefined>) => {
     const printPercent = Math.min(8.5, Math.max(6.5, Math.round(longestSerialLength * 0.45 * 10) / 10));
     return { excel, printPercent, notesPercent: Math.round((11.4 - printPercent) * 10) / 10 };
 };
+
+export const getAssetDetailRowHeight = ({
+    assetName = '',
+    assetType = '',
+    managerName = '',
+    userEmployeeName = '',
+    serialNumber = '',
+}: {
+    assetName?: string;
+    assetType?: string;
+    managerName?: string;
+    userEmployeeName?: string;
+    serialNumber?: string;
+}) => Math.max(22, Math.ceil(Math.max(
+    assetName.length / 28,
+    assetType.length / 8,
+    managerName.length / 16,
+    userEmployeeName.length / 16,
+    serialNumber.length / 20,
+)) * 12 + 6);

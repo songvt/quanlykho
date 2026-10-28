@@ -11,7 +11,7 @@ import { fetchAssets, fetchAssetLogs } from '../../store/slices/assetsSlice';
 import type { AppDispatch, RootState } from '../../store';
 import type { Asset } from '../../types';
 import { sortAssetsByNameAndUser } from '../../utils/assetSorting';
-import { buildAssetDetailMonthlyMovement, buildAssetDetailMovementDates, getAssetConditionQuantities, getFinalSignaturePageBreakRow, getSerialColumnWidths, sumAssetDetailTotals } from '../../utils/assetDetailReport';
+import { buildAssetDetailMonthlyMovement, buildAssetDetailMovementDates, getAssetConditionQuantities, getAssetDetailRowHeight, getFinalSignaturePageBreakRow, getSerialColumnWidths, sumAssetDetailTotals } from '../../utils/assetDetailReport';
 
 interface Props {
     reportType: 'CCDC' | 'TBVP';
@@ -186,7 +186,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                 for (let column = 1; column <= 26; column += 1) ws.getCell(row, column).border = border;
             }
             ws.pageSetup.printTitlesRow = '5:7';
-            [4, 10, 21, 10, 4, 9, 8, 13, 8, 13, serialColumnWidths.excel, 8, 6, 5, 5, 5, 5, 5, 6, 12, 7, 5, 5, 6, 6, 7]
+            [4, 10, 21, 12, 4, 9, 8, 13, 8, 13, serialColumnWidths.excel, 8, 6, 5, 5, 5, 5, 5, 6, 12, 7, 5, 5, 6, 6, 7]
                 .forEach((width, index) => { ws.getColumn(index + 1).width = width; });
 
             const totalRow = ws.addRow([
@@ -215,7 +215,13 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                     movement.purchased || '-', movement.transferOut || '-', movement.transferIn || '-', movement.returnedDamaged || '-', movement.returnedLost || '-', movement.returnedUnused || '-', tbvpDetailMovementDates[asset.asset_code] || '-',
                     '', checkedQuantity, condition.good, condition.damaged, condition.lost, quantity - checkedQuantity, asset.notes || '-',
                 ]);
-                row.height = Math.max(22, Math.ceil(Math.max((asset.asset_name || '').length / 28, (asset.manager_name || '').length / 16, (asset.user_employee_name || '').length / 16, (asset.serial_number || '').length / 20)) * 12 + 6);
+                row.height = getAssetDetailRowHeight({
+                    assetName: asset.asset_name || '',
+                    assetType: asset.asset_type || '',
+                    managerName: asset.manager_name || '',
+                    userEmployeeName: asset.user_employee_name || '',
+                    serialNumber: asset.serial_number || '',
+                });
                 row.eachCell((cell, column) => {
                     cell.border = border;
                     cell.font = { name: 'Times New Roman', size: 7 };
