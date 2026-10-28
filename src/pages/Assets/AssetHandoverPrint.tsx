@@ -51,7 +51,7 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
     const [templateType, setTemplateType] = useState<'default' | 'bhl'>('default');
     const sortedAssets = sortAssetsByNameAndUser(assets);
 
-    // State for the 7 protective equipment items
+    // State for the 10 protective equipment items
     const [bhlItems, setBhlItems] = useState<BhlItem[]>([
         { stt: 1, name: 'Dây đai bảo hiểm', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 1, spec: 'Dây đai 1 móc', serial: '', note: '' },
         { stt: 2, name: 'Dây đai bảo hiểm (2 móc)', unit: 'Chiếc', contract: '0', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Bổ sung cho lực lượng trạm viễn thông thực hiện công việc trên cao.', serial: '', note: '' },
@@ -60,6 +60,9 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
         { stt: 5, name: 'Áo bảo hộ mùa đông', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo gió', serial: '', note: '' },
         { stt: 6, name: 'Giày Bảo Hộ Lao Động', unit: 'Đôi', contract: '≥ 1', quota: '1 Đôi/1 NV', quantity: 1, spec: 'Giày bảo hộ chống đinh, chống va đập', serial: '', note: '' },
         { stt: 7, name: 'Bảng tên nhân viên', unit: 'Cái', contract: '≥ 1', quota: '1 Cái/1 NV', quantity: 1, spec: 'Bảng tên nhân viên', serial: '', note: '' },
+        { stt: 8, name: 'Áo gió', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo gió', serial: '', note: '' },
+        { stt: 9, name: 'Áo thun ACT', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo thun đồng phục ACT', serial: '', note: '' },
+        { stt: 10, name: 'Áo sơ mi', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo sơ mi đồng phục', serial: '', note: '' },
     ]);
 
     const now = new Date();

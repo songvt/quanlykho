@@ -68,7 +68,7 @@ const AssetHandoverBhl: React.FC = () => {
         giverPhone2: '0988229082',
     });
 
-    // 7 Safety Protective Equipment (CCDC-BHLĐ) Items State
+    // 10 Safety Protective Equipment (CCDC-BHLĐ) Items State
     const [bhlItems, setBhlItems] = useState<BhlItem[]>([
         { stt: 1, name: 'Dây đai bảo hiểm', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 1, spec: 'Dây đai 1 móc', serial: '', note: '' },
         { stt: 2, name: 'Dây đai bảo hiểm (2 móc)', unit: 'Chiếc', contract: '0', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Bổ sung cho lực lượng trạm viễn thông thực hiện công việc trên cao.', serial: '', note: '' },
@@ -77,6 +77,9 @@ const AssetHandoverBhl: React.FC = () => {
         { stt: 5, name: 'Áo bảo hộ mùa đông', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo gió', serial: '', note: '' },
         { stt: 6, name: 'Giày Bảo Hộ Lao Động', unit: 'Đôi', contract: '≥ 1', quota: '1 Đôi/1 NV', quantity: 1, spec: 'Giày bảo hộ chống đinh, chống va đập', serial: '', note: '' },
         { stt: 7, name: 'Bảng tên nhân viên', unit: 'Cái', contract: '≥ 1', quota: '1 Cái/1 NV', quantity: 1, spec: 'Bảng tên nhân viên', serial: '', note: '' },
+        { stt: 8, name: 'Áo gió', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo gió', serial: '', note: '' },
+        { stt: 9, name: 'Áo thun ACT', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo thun đồng phục ACT', serial: '', note: '' },
+        { stt: 10, name: 'Áo sơ mi', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo sơ mi đồng phục', serial: '', note: '' },
     ]);
 
     // History logs State
@@ -147,6 +150,9 @@ const AssetHandoverBhl: React.FC = () => {
                 { stt: 5, name: 'Áo bảo hộ mùa đông', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo gió', serial: '', note: '' },
                 { stt: 6, name: 'Giày Bảo Hộ Lao Động', unit: 'Đôi', contract: '≥ 1', quota: '1 Đôi/1 NV', quantity: 0, spec: 'Giày bảo hộ chống đinh, chống va đập', serial: '', note: '' },
                 { stt: 7, name: 'Bảng tên nhân viên', unit: 'Cái', contract: '≥ 1', quota: '1 Cái/1 NV', quantity: 0, spec: 'Bảng tên nhân viên', serial: '', note: '' },
+                { stt: 8, name: 'Áo gió', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo gió', serial: '', note: '' },
+                { stt: 9, name: 'Áo thun ACT', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo thun đồng phục ACT', serial: '', note: '' },
+                { stt: 10, name: 'Áo sơ mi', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo sơ mi đồng phục', serial: '', note: '' },
             ];
             const restored = defaultBhl.map(def => {
                 const found = h.items.find((item: any) => item.name === def.name);
@@ -273,6 +279,9 @@ const AssetHandoverBhl: React.FC = () => {
             { stt: 5, name: 'Áo bảo hộ mùa đông', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo gió', serial: '', note: '' },
             { stt: 6, name: 'Giày Bảo Hộ Lao Động', unit: 'Đôi', contract: '≥ 1', quota: '1 Đôi/1 NV', quantity: 1, spec: 'Giày bảo hộ chống đinh, chống va đập', serial: '', note: '' },
             { stt: 7, name: 'Bảng tên nhân viên', unit: 'Cái', contract: '≥ 1', quota: '1 Cái/1 NV', quantity: 1, spec: 'Bảng tên nhân viên', serial: '', note: '' },
+            { stt: 8, name: 'Áo gió', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo gió', serial: '', note: '' },
+            { stt: 9, name: 'Áo thun ACT', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo thun đồng phục ACT', serial: '', note: '' },
+            { stt: 10, name: 'Áo sơ mi', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo sơ mi đồng phục', serial: '', note: '' },
         ]);
         success('Đã đặt lại cấu hình mặc định.');
     };
