@@ -1,11 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { administrativePageMargins, buildAssetDetailMonthlyMovement, buildAssetDetailMovementDates, getAssetConditionQuantities, getAssetDetailRowHeight, getFinalSignaturePageBreakRow, getSerialColumnWidths, sumAssetDetailTotals } from '../src/utils/assetDetailReport.ts';
+import { administrativeLandscapePrintPageMargin, administrativePageMargins, buildAssetDetailMonthlyMovement, buildAssetDetailMovementDates, getAssetConditionQuantities, getAssetDetailRowHeight, getAssetOperationalConditionQuantities, getFinalSignaturePageBreakRow, getSerialColumnWidths, signatureBlockKeepTogetherCss, sumAssetDetailTotals } from '../src/utils/assetDetailReport.ts';
 
 test('classifies the current TBVP condition into the three report columns', () => {
     assert.deepEqual(getAssetConditionQuantities('Đang sử dụng', 1), { good: 1, damaged: 0, lost: 0 });
     assert.deepEqual(getAssetConditionQuantities('Hỏng', 1), { good: 0, damaged: 1, lost: 0 });
     assert.deepEqual(getAssetConditionQuantities('Thất thoát', 1), { good: 0, damaged: 0, lost: 1 });
+});
+
+test('uses the four operational condition columns in detailed TBVP reports', () => {
+    assert.deepEqual(getAssetOperationalConditionQuantities('Đang sử dụng', 2), { using: 2, broken: 0, unused: 0, repair: 0 });
+    assert.deepEqual(getAssetOperationalConditionQuantities('Chưa sử dụng', 1), { using: 0, broken: 0, unused: 1, repair: 0 });
+    assert.deepEqual(getAssetOperationalConditionQuantities('Sửa chữa', 3), { using: 0, broken: 0, unused: 0, repair: 3 });
 });
 
 test('uses the new-asset date and ignores later internal transfer dates', () => {
@@ -66,4 +72,12 @@ test('keeps enough height for a wrapped TBVP asset type', () => {
 
 test('uses administrative document margins for TBVP exports', () => {
     assert.deepEqual(administrativePageMargins, { top: 0.79, bottom: 0.79, left: 1.18, right: 0.79, header: 0.3, footer: 0.3 });
+});
+
+test('uses administrative A4 landscape margins for printed TBVP reports', () => {
+    assert.equal(administrativeLandscapePrintPageMargin, '20mm 15mm 20mm 30mm');
+});
+
+test('keeps each printed TBVP date and signature block on the same page', () => {
+    assert.equal(signatureBlockKeepTogetherCss, 'break-before: avoid; page-break-before: avoid; break-inside: avoid !important; page-break-inside: avoid !important;');
 });

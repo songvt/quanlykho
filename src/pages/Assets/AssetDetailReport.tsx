@@ -11,7 +11,8 @@ import { fetchAssets, fetchAssetLogs } from '../../store/slices/assetsSlice';
 import type { AppDispatch, RootState } from '../../store';
 import type { Asset } from '../../types';
 import { sortAssetsByNameAndUser } from '../../utils/assetSorting';
-import { administrativePageMargins, buildAssetDetailMonthlyMovement, buildAssetDetailMovementDates, getAssetConditionQuantities, getAssetDetailRowHeight, getFinalSignaturePageBreakRow, getSerialColumnWidths, sumAssetDetailTotals } from '../../utils/assetDetailReport';
+import { administrativeLandscapePrintPageMargin, administrativePageMargins, buildAssetDetailMonthlyMovement, buildAssetDetailMovementDates, getAssetDetailRowHeight, getAssetOperationalConditionQuantities, getFinalSignaturePageBreakRow, getSerialColumnWidths, signatureBlockKeepTogetherCss } from '../../utils/assetDetailReport';
+import { getPreviousReportMonth } from '../../utils/assetMonthlyReportMath';
 
 interface Props {
     reportType: 'CCDC' | 'TBVP';
@@ -104,13 +105,23 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
 
     const tbvpDetailMovementDates = useMemo(() => buildAssetDetailMovementDates(tbvpMonthlyLogs), [tbvpMonthlyLogs]);
 
-    const tbvpTotals = useMemo(() => sumAssetDetailTotals(assets.map((asset) => {
-        const movement = tbvpDetailMovement[asset.asset_code] || { purchased: 0, transferOut: 0, transferIn: 0, returnedDamaged: 0, returnedLost: 0, returnedUnused: 0 };
+    const tbvpTotals = useMemo(() => assets.reduce((totals, asset) => {
+        const movement = tbvpDetailMovement[asset.asset_code] || { purchased: 0 };
         const bookQuantity = Number(asset.quantity) || 1;
-        const condition = getAssetConditionQuantities(asset.status, bookQuantity);
-        const checkedQuantity = condition.good + condition.damaged + condition.lost;
-        return { ...movement, bookQuantity, checkedQuantity, ...condition, difference: bookQuantity - checkedQuantity };
-    })), [assets, tbvpDetailMovement]);
+        const condition = getAssetOperationalConditionQuantities(asset.status, bookQuantity);
+        const checkedQuantity = condition.using + condition.broken + condition.unused + condition.repair;
+        return {
+            bookQuantity: totals.bookQuantity + bookQuantity,
+            increase: totals.increase + movement.purchased,
+            decrease: totals.decrease,
+            checkedQuantity: totals.checkedQuantity + checkedQuantity,
+            using: totals.using + condition.using,
+            broken: totals.broken + condition.broken,
+            unused: totals.unused + condition.unused,
+            repair: totals.repair + condition.repair,
+            difference: totals.difference + bookQuantity - checkedQuantity,
+        };
+    }, { bookQuantity: 0, increase: 0, decrease: 0, checkedQuantity: 0, using: 0, broken: 0, unused: 0, repair: 0, difference: 0 }), [assets, tbvpDetailMovement]);
 
     const serialColumnWidths = useMemo(
         () => getSerialColumnWidths(assets.map((asset) => asset.serial_number)),
@@ -118,6 +129,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
     );
 
     const dateFooterStr = `TP. Hồ Chí Minh, ngày ${now.getDate().toString().padStart(2, '0')} tháng ${(now.getMonth() + 1).toString().padStart(2, '0')} năm ${now.getFullYear()}`;
+    const movementMonth = getPreviousReportMonth(month, year);
 
     const handleExportExcel = async () => {
         if (reportType === 'TBVP') {
@@ -145,18 +157,18 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                 cell.border = border;
             };
 
-            ws.mergeCells('A1:M1'); ws.mergeCells('N1:Z1');
+            ws.mergeCells('A1:L1'); ws.mergeCells('M1:W1');
             ws.getCell('A1').value = 'CÔNG TY CỔ PHẦN VIỄN THÔNG ACT\nTRUNG TÂM ACT BẮC SÀI GÒN';
-            ws.getCell('N1').value = 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc';
-            ['A1', 'N1'].forEach((address) => {
+            ws.getCell('M1').value = 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc';
+            ['A1', 'M1'].forEach((address) => {
                 const cell = ws.getCell(address);
                 cell.font = { name: 'Times New Roman', size: 10, bold: true };
                 cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
             });
-            ws.mergeCells('A2:Z2'); ws.getCell('A2').value = 'DANH SÁCH TÀI SẢN TBVP TTKV BẮC SÀI GÒN';
+            ws.mergeCells('A2:W2'); ws.getCell('A2').value = 'DANH SÁCH TÀI SẢN TBVP TTKV BẮC SÀI GÒN';
             ws.getCell('A2').font = { name: 'Times New Roman', size: 13, bold: true };
             ws.getCell('A2').alignment = { horizontal: 'center' };
-            ws.mergeCells('A3:Z3'); ws.getCell('A3').value = `Báo cáo biến động tháng: ${String(month).padStart(2, '0')}/${year}`;
+            ws.mergeCells('A3:W3'); ws.getCell('A3').value = `Báo cáo biến động tháng: ${movementMonth.label}/${movementMonth.year}`;
             ws.getCell('A3').font = { name: 'Times New Roman', size: 10, italic: true };
             ws.getCell('A3').alignment = { horizontal: 'center' };
             ws.getRow(1).height = 28; ws.getRow(2).height = 22; ws.getRow(3).height = 18;
@@ -167,32 +179,30 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                 ws.mergeCells(5, column, 7, column);
                 header(`${String.fromCharCode(64 + column)}5`, label);
             });
-            ws.mergeCells('M5:S5'); header('M5', `BIẾN ĐỘNG THÁNG:${String(month).padStart(2, '0')}`, 'FFFFFF00');
-            ws.mergeCells('M6:M7'); header('M6', 'Mua\nmới', 'FFFFFF00');
-            ws.mergeCells('N6:O6'); header('N6', 'Điều chuyển', 'FFFFFF00');
-            ws.mergeCells('P6:R6'); header('P6', 'Trả kho', 'FFFFFF00');
-            ws.mergeCells('S6:S7'); header('S6', 'Ngày\ntháng', 'FFFFFF00');
-            [['N7', 'Đi'], ['O7', 'Đến'], ['P7', 'Hỏng'], ['Q7', 'Thất\nthoát'], ['R7', 'Không\nsử dụng']].forEach(([address, label]) => header(address, label, 'FFFFFF00'));
-            ws.mergeCells('T5:T7'); header('T5', 'Lý do:\nTT, QĐ,\nKH, PXK,\nBBBG', 'FFFFC7CE');
-            ws.mergeCells('U5:U7'); header('U5', 'Số lượng\nkiểm\nthực tế');
-            ws.mergeCells('V5:X5'); header('V5', 'Tình trạng');
-            [['V6', 'Tốt'], ['W6', 'Hỏng'], ['X6', 'Thất\nthoát']].forEach(([address, label]) => {
+            ws.mergeCells('M5:O5'); header('M5', `BIẾN ĐỘNG THÁNG:${movementMonth.label}`, 'FFFFFF00');
+            [['M6', 'Tăng'], ['N6', 'Giảm'], ['O6', 'Ngày\ntháng']].forEach(([address, label]) => {
+                ws.mergeCells(`${address}:${address[0]}7`); header(address, label, 'FFFFFF00');
+            });
+            ws.mergeCells('P5:P7'); header('P5', 'Lý do:\nTT, QĐ,\nKH, PXK,\nBBBG', 'FFFFC7CE');
+            ws.mergeCells('Q5:Q7'); header('Q5', 'Số lượng\nkiểm\nthực tế');
+            ws.mergeCells('R5:U5'); header('R5', 'Tình trạng');
+            [['R6', 'Số lượng\nđang sử\ndụng'], ['S6', 'Số lượng\nhỏng'], ['T6', 'Số lượng\nchưa sử\ndụng'], ['U6', 'Sửa chữa/\nbảo dưỡng']].forEach(([address, label]) => {
                 ws.mergeCells(`${address}:${address[0]}7`); header(address, label);
             });
-            ws.mergeCells('Y5:Y7'); header('Y5', 'Chênh\nlệch');
-            ws.mergeCells('Z5:Z7'); header('Z5', 'Ghi\nchú');
+            ws.mergeCells('V5:V7'); header('V5', 'Chênh\nlệch');
+            ws.mergeCells('W5:W7'); header('W5', 'Ghi\nchú');
             for (let row = 5; row <= 7; row += 1) {
                 ws.getRow(row).height = row === 5 ? 22 : 28;
-                for (let column = 1; column <= 26; column += 1) ws.getCell(row, column).border = border;
+                for (let column = 1; column <= 23; column += 1) ws.getCell(row, column).border = border;
             }
             ws.pageSetup.printTitlesRow = '5:7';
-            [4, 10, 21, 12, 4, 9, 8, 13, 8, 13, serialColumnWidths.excel, 8, 6, 5, 5, 5, 5, 5, 6, 12, 7, 5, 5, 6, 6, 7]
+            [4, 10, 21, 12, 4, 9, 8, 13, 8, 13, serialColumnWidths.excel, 8, 6, 6, 8, 12, 7, 7, 6, 7, 7, 6, 7]
                 .forEach((width, index) => { ws.getColumn(index + 1).width = width; });
 
             const totalRow = ws.addRow([
                 'Tổng', '', '', '', '', '', '', '', '', '', '', tbvpTotals.bookQuantity,
-                tbvpTotals.purchased, tbvpTotals.transferOut, tbvpTotals.transferIn, tbvpTotals.returnedDamaged, tbvpTotals.returnedLost, tbvpTotals.returnedUnused, '', '',
-                tbvpTotals.checkedQuantity, tbvpTotals.good, tbvpTotals.damaged, tbvpTotals.lost, tbvpTotals.difference, '',
+                tbvpTotals.increase, tbvpTotals.decrease, '', '', tbvpTotals.checkedQuantity,
+                tbvpTotals.using, tbvpTotals.broken, tbvpTotals.unused, tbvpTotals.repair, tbvpTotals.difference, '',
             ]);
             ws.mergeCells(totalRow.number, 1, totalRow.number, 2);
             totalRow.height = 20;
@@ -207,13 +217,13 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
             assets.forEach((asset, index) => {
                 const movement = tbvpDetailMovement[asset.asset_code] || { purchased: 0, transferOut: 0, transferIn: 0, returnedDamaged: 0, returnedLost: 0, returnedUnused: 0 };
                 const quantity = Number(asset.quantity) || 1;
-                const condition = getAssetConditionQuantities(asset.status, quantity);
-                const checkedQuantity = condition.good + condition.damaged + condition.lost;
+                const condition = getAssetOperationalConditionQuantities(asset.status, quantity);
+                const checkedQuantity = condition.using + condition.broken + condition.unused + condition.repair;
                 const row = ws.addRow([
                     index + 1, asset.asset_code || '-', asset.asset_name || '-', asset.asset_type || '-', asset.unit || '-', asset.status || '-',
                     asset.manager_code || '-', asset.manager_name || '-', asset.user_employee_code || '-', asset.user_employee_name || '-', asset.serial_number || '-', quantity,
-                    movement.purchased || '-', movement.transferOut || '-', movement.transferIn || '-', movement.returnedDamaged || '-', movement.returnedLost || '-', movement.returnedUnused || '-', tbvpDetailMovementDates[asset.asset_code] || '-',
-                    '', checkedQuantity, condition.good, condition.damaged, condition.lost, quantity - checkedQuantity, asset.notes || '-',
+                    movement.purchased || '-', '-', tbvpDetailMovementDates[asset.asset_code] || '-', '', checkedQuantity,
+                    condition.using, condition.broken, condition.unused, condition.repair, quantity - checkedQuantity, asset.notes || '-',
                 ]);
                 row.height = getAssetDetailRowHeight({
                     assetName: asset.asset_name || '',
@@ -233,17 +243,17 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
             if (pageBreakAfterRow) ws.getRow(pageBreakAfterRow).addPageBreak();
 
             const dateRow = ws.rowCount + 1;
-            ws.mergeCells(dateRow, 14, dateRow, 26);
-            const dateCell = ws.getCell(dateRow, 14);
+            ws.mergeCells(dateRow, 13, dateRow, 23);
+            const dateCell = ws.getCell(dateRow, 13);
             dateCell.value = dateFooterStr;
             dateCell.font = { name: 'Times New Roman', size: 9, italic: true };
             dateCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
             const signatureRow = dateRow + 1;
             ws.mergeCells(signatureRow, 1, signatureRow, 12);
-            ws.mergeCells(signatureRow, 14, signatureRow, 26);
+            ws.mergeCells(signatureRow, 13, signatureRow, 23);
             const leaderCell = ws.getCell(signatureRow, 1);
-            const staffCell = ws.getCell(signatureRow, 14);
+            const staffCell = ws.getCell(signatureRow, 13);
             leaderCell.value = 'LÃNH ĐẠO ĐƠN VỊ';
             staffCell.value = 'NHÂN VIÊN QLTS ĐƠN VỊ';
             [leaderCell, staffCell].forEach((cell) => {
@@ -253,14 +263,14 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
             ws.getRow(signatureRow).height = 18;
 
             ws.mergeCells(signatureRow + 1, 1, signatureRow + 1, 12);
-            ws.mergeCells(signatureRow + 1, 14, signatureRow + 1, 26);
-            [ws.getCell(signatureRow + 1, 1), ws.getCell(signatureRow + 1, 14)].forEach((cell) => {
+            ws.mergeCells(signatureRow + 1, 13, signatureRow + 1, 23);
+            [ws.getCell(signatureRow + 1, 1), ws.getCell(signatureRow + 1, 13)].forEach((cell) => {
                 cell.value = '(Ký, ghi rõ họ tên)';
                 cell.font = { name: 'Times New Roman', size: 9, italic: true };
                 cell.alignment = { horizontal: 'center', vertical: 'middle' };
             });
             ws.mergeCells(signatureRow + 2, 1, signatureRow + 5, 12);
-            ws.mergeCells(signatureRow + 2, 14, signatureRow + 5, 26);
+            ws.mergeCells(signatureRow + 2, 13, signatureRow + 5, 23);
             ws.getRow(signatureRow + 2).height = 58;
             const buffer = await wb.xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -362,13 +372,16 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
         w.document.write(`
             <html><head><meta charset="utf-8"/><title>In Báo Cáo Chi Tiết</title>
             <style>
-                @page { size: A4 landscape; margin: 20mm 15mm 20mm 20mm; }
+                @page { size: A4 landscape; margin: ${administrativeLandscapePrintPageMargin}; }
                 body { font-family: 'Times New Roman', serif; font-size: 10pt; margin: 0; padding: 0; }
                 table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
                 th, td { border: 1px solid #000; padding: 3px 2px; text-align: center; vertical-align: middle; word-wrap: break-word; font-size: 7.2pt; }
                 th { background: #e0e0e0; font-weight: bold; }
-                .footer-container { margin-top: 30px; }
-                .sig-date { text-align: right; font-style: italic; margin-bottom: 5px; padding-right: 50px; font-size: 10pt; }
+                .footer-container { display: block; width: 100%; margin-top: 10mm; ${signatureBlockKeepTogetherCss} }
+                .footer-container > *, .footer-container .sig-grid, .footer-container .sig-box { ${signatureBlockKeepTogetherCss} }
+                tbody.signature-tail-rows, tr.signature-row { ${signatureBlockKeepTogetherCss} }
+                tr.signature-row > td { border: 0 !important; padding: 0 !important; }
+                .sig-date { width: 45%; margin-left: auto; text-align: center; font-style: italic; margin-bottom: 5px; font-size: 10pt; }
                 .sig-grid { display: flex; justify-content: space-between; text-align: center; width: 100%; }
                 .sig-box { width: 32%; display: inline-block; vertical-align: top; }
                 .sig-title { font-weight: bold; font-size: 10.5pt; }
@@ -386,6 +399,21 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
 
     const colStyle: React.CSSProperties = { border: '1px solid #000', padding: '3px 2px', textAlign: 'center', fontSize: '7.2pt', fontFamily: 'Times New Roman' };
     const headerStyle: React.CSSProperties = { ...colStyle, backgroundColor: '#e0e0e0', fontWeight: 'bold' };
+    // Keep a small, useful part of the inventory with the sign-off block. This
+    // prevents Chrome from creating a last page containing only signatures.
+    const signatureTailRowCount = 6;
+    const signatureTailStart = Math.max(0, assets.length - signatureTailRowCount);
+    const renderTbvpRow = (asset: Asset, index: number) => {
+        const movement = tbvpDetailMovement[asset.asset_code] || { purchased: 0, transferOut: 0, transferIn: 0, returnedDamaged: 0, returnedLost: 0, returnedUnused: 0 };
+        const quantity = Number(asset.quantity) || 1;
+        const condition = getAssetOperationalConditionQuantities(asset.status, quantity);
+        const checkedQuantity = condition.using + condition.broken + condition.unused + condition.repair;
+        const detailStyle = { ...colStyle, fontSize: '5.8pt', padding: '2px 1px', overflowWrap: 'anywhere' as const };
+        return <tr key={asset.id}>
+            <td style={detailStyle}>{index + 1}</td><td style={detailStyle}>{asset.asset_code || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.asset_name || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.asset_type || '-'}</td><td style={detailStyle}>{asset.unit || '-'}</td><td style={detailStyle}>{asset.status || '-'}</td><td style={detailStyle}>{asset.manager_code || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.manager_name || '-'}</td><td style={detailStyle}>{asset.user_employee_code || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.user_employee_name || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.serial_number || '-'}</td><td style={detailStyle}>{quantity}</td>
+            <td style={detailStyle}>{movement.purchased || '-'}</td><td style={detailStyle}>-</td><td style={detailStyle}>{tbvpDetailMovementDates[asset.asset_code] || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}></td><td style={detailStyle}>{checkedQuantity}</td><td style={detailStyle}>{condition.using}</td><td style={detailStyle}>{condition.broken}</td><td style={detailStyle}>{condition.unused}</td><td style={detailStyle}>{condition.repair}</td><td style={detailStyle}>{quantity - checkedQuantity}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.notes || '-'}</td>
+        </tr>;
+    };
 
     return (
         <Box sx={{ p: { xs: 1, sm: 3 } }}>
@@ -438,53 +466,51 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                         {reportType === 'TBVP' ? 'DANH SÁCH TÀI SẢN TBVP TTKV BẮC SÀI GÒN' : 'BÁO CÁO CHI TIẾT TÀI SẢN CCDC-TSNT'}
                     </div>
                     <div style={{ fontStyle: 'italic', fontSize: '11pt' }}>
-                        {reportType === 'TBVP' ? `Báo cáo biến động tháng: ${String(month).padStart(2, '0')}/${year}` : `Kỳ báo cáo tháng ${String(month).padStart(2,'0')} năm ${year}`}
+                        {reportType === 'TBVP' ? `Báo cáo biến động tháng: ${movementMonth.label}/${movementMonth.year}` : `Kỳ báo cáo tháng ${String(month).padStart(2,'0')} năm ${year}`}
                     </div>
                 </div>
 
                 {reportType === 'TBVP' ? (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Times New Roman', tableLayout: 'fixed', fontSize: '5.8pt' }}>
                     <colgroup>
-                        {[2, 4.9, 8, 4.3, 2.2, 4.5, 3.7, 4.7, 3.7, 4.7, serialColumnWidths.printPercent, 3.6, 2.8, 2.3, 2.3, 2.3, 2.3, 2.3, 2.8, 6.2, 3.6, 2.8, 2.8, 3.1, 3.4, serialColumnWidths.notesPercent].map((width, index) => <col key={index} style={{ width: `${width}%` }} />)}
+                        {[2, 4.9, 8, 4.3, 2.2, 4.5, 3.7, 4.7, 3.7, 4.7, serialColumnWidths.printPercent, 3.6, 2.8, 2.8, 3.8, 6.2, 3.6, 4, 4, 4, 4, 3.4, 9.3].map((width, index) => <col key={index} style={{ width: `${width}%` }} />)}
                     </colgroup>
                     <thead>
                         <tr>
-                            {['STT', 'Mã tài sản', 'Tên tài sản', 'Loại tài sản', 'ĐVT', 'Tình trạng', 'Mã NQL', 'Người quản lý', 'Mã NV SD', 'Nhân viên sử dụng', 'Số serial', 'Số lượng sổ sách'].map((label) => <th key={label} rowSpan={3} style={{ ...headerStyle, fontSize: '6pt' }}>{label}</th>)}
-                            <th colSpan={7} style={{ ...headerStyle, backgroundColor: '#ffff00', fontSize: '6pt' }}>BIẾN ĐỘNG THÁNG:{String(month).padStart(2, '0')}</th>
-                            <th rowSpan={3} style={{ ...headerStyle, color: '#c00000', fontSize: '6pt' }}>Lý do: TT, QĐ, KH, PXK, BBBG</th>
-                            <th rowSpan={3} style={{ ...headerStyle, fontSize: '6pt' }}>Số lượng kiểm thực tế</th>
-                            <th colSpan={3} style={{ ...headerStyle, fontSize: '6pt' }}>Tình trạng</th>
-                            <th rowSpan={3} style={{ ...headerStyle, fontSize: '6pt' }}>Chênh lệch</th>
-                            <th rowSpan={3} style={{ ...headerStyle, fontSize: '6pt' }}>Ghi chú</th>
+                            {['STT', 'Mã tài sản', 'Tên tài sản', 'Loại tài sản', 'ĐVT', 'Tình trạng', 'Mã NQL', 'Người quản lý', 'Mã NV SD', 'Nhân viên sử dụng', 'Số serial', 'Số lượng sổ sách'].map((label) => <th key={label} rowSpan={2} style={{ ...headerStyle, fontSize: '6pt' }}>{label}</th>)}
+                            <th colSpan={3} style={{ ...headerStyle, backgroundColor: '#ffff00', fontSize: '6pt' }}>BIẾN ĐỘNG THÁNG:{movementMonth.label}</th>
+                            <th rowSpan={2} style={{ ...headerStyle, color: '#c00000', fontSize: '6pt' }}>Lý do: TT, QĐ, KH, PXK, BBBG</th>
+                            <th rowSpan={2} style={{ ...headerStyle, fontSize: '6pt' }}>Số lượng kiểm thực tế</th>
+                            <th colSpan={4} style={{ ...headerStyle, fontSize: '6pt' }}>Tình trạng</th>
+                            <th rowSpan={2} style={{ ...headerStyle, fontSize: '6pt' }}>Chênh lệch</th>
+                            <th rowSpan={2} style={{ ...headerStyle, fontSize: '6pt' }}>Ghi chú</th>
                         </tr>
                         <tr>
-                            <th rowSpan={2} style={{ ...headerStyle, backgroundColor: '#ffff00', fontSize: '6pt' }}>Mua mới</th>
-                            <th colSpan={2} style={{ ...headerStyle, backgroundColor: '#ffff00', fontSize: '6pt' }}>Điều chuyển</th>
-                            <th colSpan={3} style={{ ...headerStyle, backgroundColor: '#ffff00', fontSize: '6pt' }}>Trả kho</th>
-                            <th rowSpan={2} style={{ ...headerStyle, backgroundColor: '#ffff00', fontSize: '6pt' }}>Ngày tháng</th>
-                            {['Tốt', 'Hỏng', 'Thất thoát'].map((label) => <th key={label} rowSpan={2} style={{ ...headerStyle, fontSize: '6pt' }}>{label}</th>)}
-                        </tr>
-                        <tr>
-                            {['Đi', 'Đến', 'Hỏng', 'Thất thoát', 'Không sử dụng'].map((label) => <th key={label} style={{ ...headerStyle, backgroundColor: '#ffff00', fontSize: '6pt' }}>{label}</th>)}
+                            {['Tăng', 'Giảm', 'Ngày/tháng'].map((label) => <th key={label} style={{ ...headerStyle, backgroundColor: '#ffff00', fontSize: '6pt' }}>{label}</th>)}
+                            {['Số lượng đang sử dụng', 'Số lượng hỏng', 'Số lượng chưa sử dụng', 'Sửa chữa/bảo dưỡng'].map((label) => <th key={label} style={{ ...headerStyle, fontSize: '6pt' }}>{label}</th>)}
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
                             <td colSpan={2} style={{ ...headerStyle, fontSize: '5.8pt' }}>Tổng</td><td colSpan={9} style={{ ...headerStyle, fontSize: '5.8pt' }}></td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.bookQuantity}</td>
-                            <td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.purchased}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.transferOut}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.transferIn}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.returnedDamaged}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.returnedLost}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.returnedUnused}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}></td><td style={{ ...headerStyle, fontSize: '5.8pt' }}></td>
-                            <td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.checkedQuantity}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.good}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.damaged}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.lost}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.difference}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}></td>
+                            <td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.increase}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.decrease}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}></td><td style={{ ...headerStyle, fontSize: '5.8pt' }}></td>
+                            <td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.checkedQuantity}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.using}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.broken}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.unused}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.repair}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}>{tbvpTotals.difference}</td><td style={{ ...headerStyle, fontSize: '5.8pt' }}></td>
                         </tr>
-                        {assets.map((asset, index) => {
-                            const movement = tbvpDetailMovement[asset.asset_code] || { purchased: 0, transferOut: 0, transferIn: 0, returnedDamaged: 0, returnedLost: 0, returnedUnused: 0 };
-                            const quantity = Number(asset.quantity) || 1;
-                            const condition = getAssetConditionQuantities(asset.status, quantity);
-                            const checkedQuantity = condition.good + condition.damaged + condition.lost;
-                            const detailStyle = { ...colStyle, fontSize: '5.8pt', padding: '2px 1px', overflowWrap: 'anywhere' as const };
-                            return <tr key={asset.id}>
-                                <td style={detailStyle}>{index + 1}</td><td style={detailStyle}>{asset.asset_code || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.asset_name || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.asset_type || '-'}</td><td style={detailStyle}>{asset.unit || '-'}</td><td style={detailStyle}>{asset.status || '-'}</td><td style={detailStyle}>{asset.manager_code || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.manager_name || '-'}</td><td style={detailStyle}>{asset.user_employee_code || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.user_employee_name || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.serial_number || '-'}</td><td style={detailStyle}>{quantity}</td>
-                                <td style={detailStyle}>{movement.purchased || '-'}</td><td style={detailStyle}>{movement.transferOut || '-'}</td><td style={detailStyle}>{movement.transferIn || '-'}</td><td style={detailStyle}>{movement.returnedDamaged || '-'}</td><td style={detailStyle}>{movement.returnedLost || '-'}</td><td style={detailStyle}>{movement.returnedUnused || '-'}</td><td style={detailStyle}>{tbvpDetailMovementDates[asset.asset_code] || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}></td><td style={detailStyle}>{checkedQuantity}</td><td style={detailStyle}>{condition.good}</td><td style={detailStyle}>{condition.damaged}</td><td style={detailStyle}>{condition.lost}</td><td style={detailStyle}>{quantity - checkedQuantity}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.notes || '-'}</td>
-                            </tr>;
-                        })}
+                    </tbody>
+                    <tbody>
+                        {assets.slice(0, signatureTailStart).map(renderTbvpRow)}
+                    </tbody>
+                    <tbody className="signature-tail-rows">
+                        {assets.slice(signatureTailStart).map((asset, index) => renderTbvpRow(asset, signatureTailStart + index))}
+                        <tr className="signature-row"><td colSpan={26} style={{ border: 0, padding: 0 }}>
+                            <div className="footer-container" style={{ marginTop: '10mm', fontFamily: 'Times New Roman' }}>
+                                <div className="sig-date" style={{ width: '45%', marginLeft: 'auto', textAlign: 'center', fontStyle: 'italic', marginBottom: '5px' }}>{dateFooterStr}</div>
+                                <div className="sig-grid" style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
+                                    <div className="sig-box" style={{ width: '45%' }}><div className="sig-title" style={{ fontWeight: 'bold' }}>LÃNH ĐẠO ĐƠN VỊ</div><div className="sig-note" style={{ fontStyle: 'italic', fontSize: '9pt' }}>(Ký, ghi rõ họ tên)</div></div>
+                                    <div className="sig-box" style={{ width: '45%' }}><div className="sig-title" style={{ fontWeight: 'bold' }}>NHÂN VIÊN QLTS ĐƠN VỊ</div><div className="sig-note" style={{ fontStyle: 'italic', fontSize: '9pt' }}>(Ký, ghi rõ họ tên)</div></div>
+                                </div>
+                            </div>
+                        </td></tr>
                     </tbody>
                 </table>
                 ) : (
@@ -536,8 +562,8 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                 </table>
                 )}
 
-                <div className="footer-container" style={{ marginTop: '30px', fontFamily: 'Times New Roman' }}>
-                    <div className="sig-date" style={{ textAlign: 'right', fontStyle: 'italic', marginBottom: '5px', paddingRight: '50px' }}>
+                {reportType !== 'TBVP' && <div className="footer-container" style={{ marginTop: '10mm', fontFamily: 'Times New Roman' }}>
+                    <div className="sig-date" style={{ width: '45%', marginLeft: 'auto', textAlign: 'center', fontStyle: 'italic', marginBottom: '5px' }}>
                         {dateFooterStr}
                     </div>
                     <div className="sig-grid" style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
@@ -550,7 +576,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                             <div className="sig-note" style={{ fontStyle: 'italic', fontSize: '9pt' }}>(Ký, ghi rõ họ tên)</div>
                         </div>
                     </div>
-                </div>
+                </div>}
             </Paper>
             </Box>
         </Box>

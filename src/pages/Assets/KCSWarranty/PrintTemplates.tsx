@@ -69,12 +69,12 @@ export const PrintTemplates: React.FC<PrintTemplatesProps> = ({ data }) => {
             <Box className="print-page" sx={{ p: 0, bgcolor: 'white', color: 'black', fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt', lineHeight: 1.5 }}>
                 <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', mb: 2 }}>
                     <Box sx={{ textAlign: 'center' }}>
-                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt' }}>KHỐI DỊCH VỤ KỸ THUẬT</Typography>
-                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt', textDecoration: 'underline' }}>TRUNG TÂM BẮC SÀI GÒN</Typography>
+                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt', fontWeight: 'bold' }}>KHỐI DỊCH VỤ KỸ THUẬT</Typography>
+                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt', fontWeight: 'bold', textDecoration: 'underline' }}>TRUNG TÂM BẮC SÀI GÒN</Typography>
                     </Box>
                     <Box sx={{ textAlign: 'center' }}>
-                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt' }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</Typography>
-                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt', textDecoration: 'underline' }}>Độc lập - Tự do - Hạnh phúc</Typography>
+                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt', fontWeight: 'bold' }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</Typography>
+                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt', fontWeight: 'bold', textDecoration: 'underline' }}>Độc lập - Tự do - Hạnh phúc</Typography>
                     </Box>
                 </Box>
                 
@@ -170,13 +170,13 @@ export const PrintTemplates: React.FC<PrintTemplatesProps> = ({ data }) => {
         return (
             <Box className="print-page" sx={{ p: 0, bgcolor: 'white', color: 'black', fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt', lineHeight: 1.5 }}>
                 <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', mb: 2 }}>
-                    <Box sx={{ textAlign: 'center' }}>
-                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt' }}>CÔNG TY CỔ PHẦN VIỄN THÔNG ACT</Typography>
-                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt', textDecoration: 'underline' }}>KHỐI DỊCH VỤ KỸ THUẬT</Typography>
+                    <Box sx={{ flex: '0 0 48%', textAlign: 'center' }}>
+                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '11pt', fontWeight: 'bold', whiteSpace: 'nowrap' }}>CÔNG TY CỔ PHẦN VIỄN THÔNG ACT</Typography>
+                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt', fontWeight: 'bold', textDecoration: 'underline' }}>KHỐI DỊCH VỤ KỸ THUẬT</Typography>
                     </Box>
-                    <Box sx={{ textAlign: 'center' }}>
-                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt' }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</Typography>
-                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt', textDecoration: 'underline' }}>Độc lập - Tự do - Hạnh phúc</Typography>
+                    <Box sx={{ flex: '0 0 48%', textAlign: 'center' }}>
+                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '11pt', fontWeight: 'bold', whiteSpace: 'nowrap' }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</Typography>
+                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt', fontWeight: 'bold', textDecoration: 'underline' }}>Độc lập - Tự do - Hạnh phúc</Typography>
                     </Box>
                 </Box>
                 
@@ -319,12 +319,12 @@ export const PrintTemplates: React.FC<PrintTemplatesProps> = ({ data }) => {
             <Box className="print-page" sx={{ p: 0, bgcolor: 'white', color: 'black', fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt', lineHeight: 1.5 }}>
                 <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', mb: 2 }}>
                     <Box sx={{ textAlign: 'center' }}>
-                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt' }}>CÔNG TY CỔ PHẦN VIỄN THÔNG ACT</Typography>
-                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt' }}>TRUNG TÂM ACT BẮC SÀI GÒN</Typography>
+                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt', fontWeight: 'bold' }}>CÔNG TY CỔ PHẦN VIỄN THÔNG ACT</Typography>
+                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt', fontWeight: 'bold' }}>TRUNG TÂM ACT BẮC SÀI GÒN</Typography>
                         <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt', letterSpacing: '2px' }}>----------------------</Typography>
                     </Box>
                     <Box sx={{ textAlign: 'center' }}>
-                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt' }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</Typography>
+                        <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt', fontWeight: 'bold' }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</Typography>
                         <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt', fontWeight: 'bold' }}>Độc lập - Tự do - Hạnh phúc</Typography>
                         <Typography sx={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt', letterSpacing: '2px' }}>----------------------</Typography>
                     </Box>

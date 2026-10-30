@@ -21,6 +21,13 @@ type AssetLogLike = { asset_code?: string; action?: string; details?: string; cr
 // Nghị định 30/2020/NĐ-CP: top/bottom 20 mm, left 30 mm, right 20 mm.
 // ExcelJS stores page margins in inches.
 export const administrativePageMargins = { top: 0.79, bottom: 0.79, left: 1.18, right: 0.79, header: 0.3, footer: 0.3 };
+export const administrativeLandscapePrintPageMargin = '20mm 15mm 20mm 30mm';
+
+// A sign-off must not be split between pages: browsers either keep the date
+// and signature headings together or move the whole block to the next page.
+// `!important` is required because popup markup also carries inline layout
+// styles inherited from the on-screen preview.
+export const signatureBlockKeepTogetherCss = 'break-before: avoid; page-break-before: avoid; break-inside: avoid !important; page-break-inside: avoid !important;';
 
 const emptyMovement = (): AssetDetailMonthlyMovement => ({
     purchased: 0,
@@ -57,6 +64,17 @@ export const getAssetConditionQuantities = (status: string | undefined, quantity
     if (/(thất thoát|mất)/.test(normalized)) return { good: 0, damaged: 0, lost: value };
     if (/(hỏng|sửa chữa)/.test(normalized)) return { good: 0, damaged: value, lost: 0 };
     return { good: value, damaged: 0, lost: 0 };
+};
+
+export const getAssetOperationalConditionQuantities = (status: string | undefined, quantity = 1) => {
+    const normalized = (status || '').toLocaleLowerCase('vi-VN');
+    const value = Math.max(0, Number(quantity) || 0);
+
+    if (/(thất thoát|mất)/.test(normalized)) return { using: 0, broken: 0, unused: 0, repair: 0 };
+    if (/(sửa chữa|bảo dưỡng|maintenance)/.test(normalized)) return { using: 0, broken: 0, unused: 0, repair: value };
+    if (/(hỏng|broken)/.test(normalized)) return { using: 0, broken: value, unused: 0, repair: 0 };
+    if (/(chưa sử dụng|tồn kho|mới|new)/.test(normalized)) return { using: 0, broken: 0, unused: value, repair: 0 };
+    return { using: value, broken: 0, unused: 0, repair: 0 };
 };
 
 export const buildAssetDetailMovementDates = (logs: AssetLogLike[]) => {

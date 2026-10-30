@@ -67,7 +67,7 @@ const AssetBrokenPrint: React.FC<Props> = ({ open, onClose, assets }) => {
                     
                     .footer-note { margin-top: 25px; font-style: italic; font-size: 13pt; text-align: justify; }
                     
-                    .signature-table { width: 100%; margin-top: 20px; border: none; }
+                    .signature-table { width: 100%; margin-top: 20px; border: none; break-inside: avoid; page-break-inside: avoid; }
                     .signature-table td { border: none; text-align: center; padding: 10px 5px; vertical-align: top; width: 25%; }
                     .sig-title, .sig-note { font-size: 13pt; }
                     .sig-title { font-weight: bold; text-transform: uppercase; }

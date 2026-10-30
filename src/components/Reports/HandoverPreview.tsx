@@ -207,8 +207,8 @@ const HandoverPreview = (props: HandoverPreviewProps) => {
                             border: 1.5px solid #000000 !important;
                         }
                         .handover-signatures {
-                            break-inside: auto !important;
-                            page-break-inside: auto !important;
+                            break-inside: avoid !important;
+                            page-break-inside: avoid !important;
                         }
                         .handover-signatures .signature-note {
                             margin-bottom: 14mm !important;

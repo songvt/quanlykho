@@ -17,8 +17,8 @@ export const toSheetRow = (payload: any, tableName: string) => {
     const item = { ...payload };
     delete item.product;
 
-    // JSON/JSONB fields are valid in Supabase but the Sheets API only accepts
-    // scalar cell values. Preserve the value as JSON rather than dropping it.
+    // Google Sheets only accepts scalar values. Keep JSON/JSONB fields intact
+    // by serializing them instead of silently dropping their contents.
     for (const [key, value] of Object.entries(item)) {
         if (value !== null && typeof value === 'object' && !(value instanceof Date)) {
             item[key] = JSON.stringify(value);
@@ -73,7 +73,7 @@ export const assertReplacementMirror = (mirroredRows: any[], items: any[], table
     const expectedKeys = new Set(expectedRows.map(row => String(row[primaryKey] || '')));
     const mirroredKeys = new Set(mirroredRows.map(row => String(row.get(primaryKey) || '')));
     if (expectedKeys.size !== expectedRows.length) {
-        throw new Error(`Đối soát Google Sheets thất bại: Supabase có khóa ${primaryKey} trùng.`);
+        throw new Error(`Đối soát Google Sheets thất bại: Supabase có khóa ${primaryKey} trùng hoặc rỗng.`);
     }
     if (mirroredKeys.size !== mirroredRows.length || mirroredKeys.has('')) {
         throw new Error(`Đối soát Google Sheets thất bại: Google Sheets có khóa ${primaryKey} trùng hoặc rỗng.`);
@@ -96,8 +96,8 @@ export async function runSyncQueue() {
     console.log('[Background Sync] Khởi động tiến trình xử lý hàng đợi đồng bộ ngầm...');
 
     try {
-        // The database claims jobs under a row lock. An in-memory flag is not safe in
-        // serverless because each invocation has its own process.
+        // Claim rows atomically in the database. An in-memory guard is not
+        // reliable when several serverless instances run concurrently.
         const { data: queue, error: fetchError } = await supabase
             .rpc('claim_gs_sync_jobs', { p_limit: 10 });
 
@@ -210,8 +210,7 @@ export async function runSyncQueue() {
                     }
                 }
 
-                // Xóa khỏi queue sau khi đồng bộ thành công.  Do not silently accept
-                // a failed acknowledgement: the operation is idempotent on retry.
+                // Never silently accept a failed acknowledgement: retries are idempotent.
                 const { error: deleteQueueError } = await supabase.from('gs_sync_queue').delete().eq('id', id);
                 if (deleteQueueError) throw deleteQueueError;
                 results.successful++;
@@ -234,8 +233,8 @@ export async function runSyncQueue() {
                         error_message: `Rate limit 429 tại ${new Date().toISOString()}: ${errMsg}`
                     }).eq('id', id);
 
-                    // Let the next scheduled invocation retry. Sleeping in a serverless
-                    // request wastes the function budget and can strand other jobs.
+                    // A serverless request must not sleep for a minute. The next scheduled
+                    // invocation will retry after the provider quota recovers.
                     return { message: 'rate_limited' };
                 }
 

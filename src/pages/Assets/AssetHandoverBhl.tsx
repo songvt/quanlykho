@@ -25,6 +25,7 @@ import type { Asset, HRProfile } from '../../types';
 import { formatPhone } from '../../utils/format';
 import { exportHandoverHistory } from '../../utils/excelUtils';
 import { saveAssetHandoverHistory } from '../../services/assetHandoverHistory';
+import { getDefaultSecondGiver } from '../../utils/assetHandoverGiver';
 
 interface BhlItem {
     stt: number;
@@ -44,6 +45,7 @@ const AssetHandoverBhl: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
     const { success, error } = useNotification();
     const printRef = useRef<HTMLDivElement>(null);
+    const hasInitializedSecondGiver = useRef(false);
 
     // Redux State
     const { items: assets, status: assetStatus } = useSelector((state: RootState) => state.assets);
@@ -64,9 +66,7 @@ const AssetHandoverBhl: React.FC = () => {
         giverName: 'NGUYỄN HẢI SƠN',
         giverTitle: 'GĐ TTKV BSG',
         giverPhone: '0988855186',
-        giverName2: 'VÕ THANH SONG',
-        giverTitle2: 'NV QLTS-KHO',
-        giverPhone2: '0988229082',
+        ...getDefaultSecondGiver([]),
     });
 
     // 10 Safety Protective Equipment (CCDC-BHLĐ) Items State
@@ -206,6 +206,13 @@ const AssetHandoverBhl: React.FC = () => {
         }
     }, [dispatch, assetStatus, hrProfilesStatus]);
 
+    useEffect(() => {
+        if (hasInitializedSecondGiver.current || hrProfilesStatus !== 'succeeded') return;
+
+        setGiverInfo((previous) => ({ ...previous, ...getDefaultSecondGiver(hrProfiles) }));
+        hasInitializedSecondGiver.current = true;
+    }, [hrProfiles, hrProfilesStatus]);
+
     // Handle Employee selection changes
     const handleEmployeeChange = (employee: HRProfile | null) => {
         setSelectedEmployee(employee);
@@ -313,7 +320,7 @@ const AssetHandoverBhl: React.FC = () => {
                     th { background: #fff; border: 1px solid #000; padding: 5px 4px; text-align: center; font-weight: bold; }
                     td { border: 1px solid #000; padding: 4px; vertical-align: middle; }
                     .footer-note { font-style: italic; font-size: 13pt; margin-top: 8px; border-top: 1px solid #000; padding-top: 6px; text-align: justify; }
-                    .signatures { display: flex; justify-content: space-between; margin-top: 30px; text-align: center; }
+                    .signatures { display: flex; justify-content: space-between; margin-top: 30px; text-align: center; break-inside: avoid; page-break-inside: avoid; }
                     .sig-block { width: 30%; }
                     .sig-title, .sig-sub { font-size: 13pt; }
                     .sig-title { font-weight: bold; }

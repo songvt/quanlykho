@@ -17,6 +17,11 @@ interface WarrantyRecord {
     department: string;
     form_type: string;
     requester_id?: string;
+    equipment_list?: Array<{
+        product_name?: string;
+        item_code?: string;
+        serial?: string;
+    }> | null;
 }
 
 const KCSWarrantyList: React.FC = () => {
@@ -40,7 +45,7 @@ const KCSWarrantyList: React.FC = () => {
 
             const { data, error } = await supabase
                 .from('warranty_history')
-                .select('id, form_code, created_at, department, form_type, requester_id')
+                .select('id, form_code, created_at, department, form_type, requester_id, equipment_list')
                 .order('created_at', { ascending: false });
 
             if (error) {
@@ -84,6 +89,14 @@ const KCSWarrantyList: React.FC = () => {
         }
     };
 
+    const getEquipmentField = (record: WarrantyRecord, field: 'product_name' | 'item_code' | 'serial') => {
+        const values = (record.equipment_list || [])
+            .map((item) => item[field]?.trim())
+            .filter((value): value is string => Boolean(value));
+
+        return values.length ? values.join(', ') : '—';
+    };
+
     const handleExportExcel = async () => {
         if (records.length === 0) {
             alert('Không có dữ liệu để xuất!');
@@ -95,6 +108,9 @@ const KCSWarrantyList: React.FC = () => {
             { header: 'Mã phiếu', key: 'form_code', width: 25 },
             { header: 'Ngày yêu cầu', key: 'created_at', width: 20 },
             { header: 'Bộ phận', key: 'department', width: 30 },
+            { header: 'Tên tài sản', key: 'asset_names', width: 35 },
+            { header: 'Mã tài sản', key: 'asset_codes', width: 22 },
+            { header: 'Serial', key: 'serials', width: 25 },
             { header: 'Người yêu cầu', key: 'requester_name', width: 25 },
             { header: 'Loại phiếu', key: 'form_type_label', width: 25 }
         ];
@@ -104,6 +120,9 @@ const KCSWarrantyList: React.FC = () => {
             form_code: r.form_code,
             created_at: dayjs(r.created_at).format('DD/MM/YYYY HH:mm'),
             department: r.department,
+            asset_names: getEquipmentField(r, 'product_name'),
+            asset_codes: getEquipmentField(r, 'item_code'),
+            serials: getEquipmentField(r, 'serial'),
             requester_name: r.requester_id ? employeesMap[r.requester_id] || '' : '',
             form_type_label: getTypeLabel(r.form_type)
         }));
@@ -149,12 +168,15 @@ const KCSWarrantyList: React.FC = () => {
             </Toolbar>
 
             <TableContainer component={Paper} elevation={0} sx={{ borderRadius: '12px', border: '1px solid rgba(0,0,0,0.1)' }}>
-                <Table sx={{ minWidth: 650 }}>
+                <Table sx={{ minWidth: 1050 }}>
                     <TableHead sx={{ bgcolor: 'rgba(0,0,0,0.02)' }}>
                         <TableRow>
                             <TableCell><b>Mã phiếu</b></TableCell>
                             <TableCell><b>Ngày yêu cầu</b></TableCell>
                             <TableCell><b>Bộ phận</b></TableCell>
+                            <TableCell><b>Tên tài sản</b></TableCell>
+                            <TableCell><b>Mã tài sản</b></TableCell>
+                            <TableCell><b>Serial</b></TableCell>
                             <TableCell><b>Người yêu cầu</b></TableCell>
                             <TableCell><b>Loại phiếu</b></TableCell>
                             <TableCell align="center"><b>Thao tác</b></TableCell>
@@ -163,11 +185,11 @@ const KCSWarrantyList: React.FC = () => {
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={6} align="center" sx={{ py: 3 }}>Đang tải dữ liệu...</TableCell>
+                                <TableCell colSpan={9} align="center" sx={{ py: 3 }}>Đang tải dữ liệu...</TableCell>
                             </TableRow>
                         ) : records.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} align="center" sx={{ py: 3 }}>Chưa có dữ liệu</TableCell>
+                                <TableCell colSpan={9} align="center" sx={{ py: 3 }}>Chưa có dữ liệu</TableCell>
                             </TableRow>
                         ) : (
                             records.map((row) => (
@@ -175,6 +197,9 @@ const KCSWarrantyList: React.FC = () => {
                                     <TableCell>{row.form_code}</TableCell>
                                     <TableCell>{dayjs(row.created_at).format('DD/MM/YYYY')}</TableCell>
                                     <TableCell>{row.department}</TableCell>
+                                    <TableCell>{getEquipmentField(row, 'product_name')}</TableCell>
+                                    <TableCell>{getEquipmentField(row, 'item_code')}</TableCell>
+                                    <TableCell>{getEquipmentField(row, 'serial')}</TableCell>
                                     <TableCell>{row.requester_id ? employeesMap[row.requester_id] || '' : ''}</TableCell>
                                     <TableCell>
                                         <Chip label={getTypeLabel(row.form_type)} size="small" color="primary" variant="outlined" />

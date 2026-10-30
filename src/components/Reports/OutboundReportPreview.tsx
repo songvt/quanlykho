@@ -205,8 +205,8 @@ const OutboundReportPreview = (props: OutboundReportPreviewProps) => {
                             border: 1.5px solid #000000 !important;
                         }
                         .outbound-signatures {
-                            break-inside: auto !important;
-                            page-break-inside: auto !important;
+                            break-inside: avoid !important;
+                            page-break-inside: avoid !important;
                         }
                         .outbound-signatures .signature-note {
                             margin-bottom: 14mm !important;

@@ -677,7 +677,7 @@ const GoodsSettlementReport: React.FC = () => {
 
         sheet.mergeCells('K2:P2');
         sheet.getCell('K2').value = 'Độc lập - Tự do - Hạnh phúc';
-        sheet.getCell('K2').font = { italic: true, size: 10 };
+        sheet.getCell('K2').font = { bold: true, italic: true, size: 10 };
         sheet.getCell('K2').alignment = { horizontal: 'center' };
 
         // 2. MAIN TITLE
@@ -1040,7 +1040,7 @@ const GoodsSettlementReport: React.FC = () => {
                                 </td>
                                 <td style={{ width: '50%', textAlign: 'center', border: 'none', verticalAlign: 'top' }}>
                                     <Typography variant="subtitle2" sx={{ fontWeight: 700, textTransform: 'uppercase' }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</Typography>
-                                    <Typography variant="caption" sx={{ fontStyle: 'italic', display: 'block', mt: 0.5 }}>Độc lập - Tự do - Hạnh phúc</Typography>
+                                    <Typography variant="caption" sx={{ fontWeight: 700, fontStyle: 'italic', display: 'block', mt: 0.5 }}>Độc lập - Tự do - Hạnh phúc</Typography>
                                 </td>
                             </tr>
                         </tbody>

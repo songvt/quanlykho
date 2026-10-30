@@ -11,7 +11,8 @@ import ExcelJS from 'exceljs';
 import { fetchAssets, fetchAssetLogs } from '../../store/slices/assetsSlice';
 import type { AppDispatch, RootState } from '../../store';
 import type { Asset } from '../../types';
-import { calculateInspectionQuantity, calculateQuantityDifference } from '../../utils/assetMonthlyReportMath';
+import { administrativeLandscapePrintPageMargin, administrativePageMargins, signatureBlockKeepTogetherCss } from '../../utils/assetDetailReport';
+import { assetMonthlyStatusColumns, calculateInspectionQuantity, calculateQuantityDifference, getPreviousReportMonth } from '../../utils/assetMonthlyReportMath';
 
 interface Props {
     reportType: 'CCDC' | 'TBVP';
@@ -222,6 +223,10 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
     const currentMonth = (now.getMonth() + 1).toString().padStart(2, '0');
     const currentYear  = now.getFullYear();
     const dateFooterStr = `TP. Hồ Chí Minh, ngày ${currentDay} tháng ${currentMonth} năm ${currentYear}`;
+    const movementMonth = getPreviousReportMonth(month, year);
+    const reportPeriod = reportType === 'TBVP'
+        ? { month: movementMonth.month, year: movementMonth.year, label: movementMonth.label }
+        : { month, year, label: String(month).padStart(2, '0') };
 
     const handleExportExcel = async () => {
         const wb = new ExcelJS.Workbook();
@@ -233,8 +238,8 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                 fitToPage: true,
                 fitToWidth: 1,
                 fitToHeight: 0,
-                horizontalCentered: true,
-                margins: { left: 0.25, right: 0.25, top: 0.35, bottom: 0.35, header: 0.15, footer: 0.15 }
+                horizontalCentered: false,
+                margins: administrativePageMargins,
             }
         });
         const border: Partial<ExcelJS.Borders> = { top:{style:'thin'}, bottom:{style:'thin'}, left:{style:'thin'}, right:{style:'thin'} };
@@ -244,29 +249,29 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
         ws.getCell('A1').value = 'CÔNG TY CỔ PHẦN VIỄN THÔNG ACT\nTRUNG TÂM ACT BẮC SÀI GÒN';
         ws.getCell('A1').font = { bold:true, size:10, name:'Times New Roman' };
         ws.getCell('A1').alignment = { horizontal:'center', vertical:'middle', wrapText:true };
-        ws.mergeCells('H1:M1');
+        ws.mergeCells('H1:N1');
         ws.getCell('H1').value = 'CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc';
         ws.getCell('H1').font = { bold:true, size:10, name:'Times New Roman' };
         ws.getCell('H1').alignment = { horizontal:'center', vertical:'middle', wrapText:true };
         ws.getRow(1).height = 31;
 
-        ws.mergeCells('A2:M2');
+        ws.mergeCells('A2:N2');
         ws.getCell('A2').value = reportType === 'TBVP' ? 'TỔNG HỢP TBVP VÀ SỰ BIẾN ĐỘNG' : 'BÁO CÁO TỔNG HỢP TÀI SẢN CCDC-TSNT';
         ws.getCell('A2').font = { bold:true, size:14, name:'Times New Roman' };
         ws.getCell('A2').alignment = { horizontal:'center', vertical:'middle' };
         ws.getRow(2).height = 23;
 
-        ws.mergeCells('A3:M3');
-        ws.getCell('A3').value = `Kỳ báo cáo tháng ${String(month).padStart(2,'0')} năm ${year}`;
+        ws.mergeCells('A3:N3');
+        ws.getCell('A3').value = `Kỳ báo cáo tháng ${reportPeriod.label} năm ${reportPeriod.year}`;
         ws.getCell('A3').font = { italic:true, size:11, name:'Times New Roman' };
         ws.getCell('A3').alignment = { horizontal:'center', vertical:'middle' };
         ws.getRow(3).height = 18;
 
         // Keep the full table inside one A4 landscape page; long asset names
         // wrap instead of being clipped or forcing an unreadably small scale.
-        [4.5, 22, 13, 6, 8, 6, 6, 8, 8, 8, 9, 7, 8].forEach((width, index) => { ws.getColumn(index + 1).width = width; });
+        [4.5, 21, 12, 5, 7, 5.5, 5.5, 6, 7, 6.5, 7, 7, 6, 7].forEach((width, index) => { ws.getColumn(index + 1).width = width; });
         ws.mergeCells('A5:A6'); ws.mergeCells('B5:B6'); ws.mergeCells('C5:C6'); ws.mergeCells('D5:D6'); ws.mergeCells('E5:E6');
-        ws.mergeCells('F5:G5'); ws.mergeCells('H5:H6'); ws.mergeCells('I5:K5'); ws.mergeCells('L5:L6'); ws.mergeCells('M5:M6');
+        ws.mergeCells('F5:G5'); ws.mergeCells('H5:H6'); ws.mergeCells('I5:L5'); ws.mergeCells('M5:M6'); ws.mergeCells('N5:N6');
         const setHeader = (address: string, value: string, fill = 'FFD0D0D0') => {
             const cell = ws.getCell(address);
             cell.value = value;
@@ -277,10 +282,10 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
         };
         [
             ['A5', 'TT'], ['B5', 'Tên tài sản'], ['C5', 'Loại tài sản'], ['D5', 'ĐVT'], ['E5', 'Số lượng\nsổ sách'],
-            ['F5', `BIẾN ĐỘNG\nTHÁNG: ${month}`], ['H5', 'Số lượng\nkiểm'], ['I5', 'Tình trạng'], ['L5', 'Chênh\nlệch'], ['M5', 'Ghi chú'],
-            ['F6', 'Tăng', 'FFFFFF00'], ['G6', 'Giảm', 'FFFFFF00'], ['I6', 'Tốt'], ['J6', 'Hỏng'], ['K6', 'Thất\nthoát'],
+            ['F5', `BIẾN ĐỘNG\nTHÁNG: ${movementMonth.label}`], ['H5', 'Số lượng\nkiểm'], ['I5', 'Tình trạng'], ['M5', 'Chênh\nlệch'], ['N5', 'Ghi chú'],
+            ['F6', 'Tăng', 'FFFFFF00'], ['G6', 'Giảm', 'FFFFFF00'], ...assetMonthlyStatusColumns.map((label, index) => [`${String.fromCharCode(73 + index)}6`, label]),
         ].forEach(([address, value, fill]) => setHeader(address, value, fill));
-        for (let column = 1; column <= 13; column += 1) {
+        for (let column = 1; column <= 14; column += 1) {
             const cell = ws.getCell(7, column);
             cell.value = `(${column})`;
             cell.font = { bold:true, size:9, name:'Times New Roman' };
@@ -292,12 +297,12 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
         ws.getRow(7).height = 17;
         ws.pageSetup.printTitlesRow = '5:7';
 
-        const totRow = ws.addRow(['Tổng','','','',summary.opening,summary.increase,summary.decrease,summary.inspection,summary.using,summary.broken,summary.lost,summary.difference,'']);
+        const totRow = ws.addRow(['Tổng','','','',summary.opening,summary.increase,summary.decrease,summary.inspection,summary.using,summary.broken,summary.unused,summary.repair,summary.difference,'']);
         totRow.eachCell(c => { c.font = { bold:true }; c.fill = hFill('FFE8E8E8'); c.border = border; });
 
         const firstDataRow = ws.rowCount + 1;
         groupedAssets.forEach((g, idx) => {
-            const r = ws.addRow([idx+1, g.name, g.type, g.unit, g.openingQty, g.increaseQty || '-', g.decreaseQty || '-', g.inspectionQty, g.usingQty, g.brokenQty, g.lostQty, g.differenceQty, '']);
+            const r = ws.addRow([idx+1, g.name, g.type, g.unit, g.openingQty, g.increaseQty || '-', g.decreaseQty || '-', g.inspectionQty, g.usingQty, g.brokenQty, g.unusedQty, g.repairQty, g.differenceQty, '']);
             r.eachCell((c, column) => {
                 c.border = border;
                 c.font = { size:9, name:'Times New Roman' };
@@ -305,7 +310,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                     vertical: 'middle',
                     wrapText: true,
                     shrinkToFit: false,
-                    horizontal: [1, 4, 5, 6, 7, 8, 9, 10, 11, 12].includes(column) ? 'center' : 'left',
+                    horizontal: [1, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].includes(column) ? 'center' : 'left',
                 };
             });
             const wrappedLines = Math.max(
@@ -327,21 +332,21 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
         }
 
         const fRow = lastDataRow + 1;
-        ws.mergeCells(fRow, 10, fRow, 13);
+        ws.mergeCells(fRow, 10, fRow, 14);
         ws.getCell(fRow, 10).value = dateFooterStr;
         ws.getCell(fRow, 10).font = { italic:true, size:10, name:'Times New Roman' };
         ws.getCell(fRow, 10).alignment = { horizontal:'center' };
 
         const sRow = fRow + 1;
         ws.mergeCells(sRow, 5, sRow, 9); ws.getCell(sRow,5).value = 'NHÂN VIÊN QLTS ĐƠN VỊ';
-        ws.mergeCells(sRow, 10, sRow, 13); ws.getCell(sRow,10).value = 'LÃNH ĐẠO ĐƠN VỊ';
+        ws.mergeCells(sRow, 10, sRow, 14); ws.getCell(sRow,10).value = 'LÃNH ĐẠO ĐƠN VỊ';
         [ws.getCell(sRow,5), ws.getCell(sRow,10)].forEach(c => {
             c.font = { bold:true, size:10, name:'Times New Roman' };
             c.alignment = { horizontal:'center' };
         });
         ws.getRow(sRow).height = 18;
         ws.mergeCells(sRow + 1, 5, sRow + 4, 9);
-        ws.mergeCells(sRow + 1, 10, sRow + 4, 13);
+        ws.mergeCells(sRow + 1, 10, sRow + 4, 14);
         ws.getRow(sRow + 1).height = 72;
 
         const buf = await wb.xlsx.writeBuffer();
@@ -361,7 +366,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
             <html><head><meta charset="utf-8"/><title>In Báo Cáo Tổng Hợp</title>
             <style>
                 /* Reserve a stable bottom area for handwritten signatures. */
-                @page { size: A4 landscape; margin: 20mm 15mm 22mm 20mm; }
+                @page { size: A4 landscape; margin: ${administrativeLandscapePrintPageMargin}; }
                 body { font-family: 'Times New Roman', serif; font-size: 10.5pt; margin: 0; padding: 0; }
                 table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: fixed; }
                 th, td { border: 1px solid #000; padding: 4px 3px; text-align: center; vertical-align: middle; word-wrap: break-word; font-size: 8.5pt; }
@@ -369,8 +374,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                 .footer-container {
                     margin-top: 12mm;
                     min-height: 46mm;
-                    break-inside: avoid;
-                    page-break-inside: avoid;
+                    ${signatureBlockKeepTogetherCss}
                 }
                 .sig-date { width: 45%; margin-left: auto; text-align: center; font-style: italic; margin-bottom: 5px; font-size: 10pt; }
                 .sig-grid { display: flex; justify-content: space-between; text-align: center; width: 100%; }
@@ -442,15 +446,15 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                         {reportType === 'TBVP' ? 'TỔNG HỢP TBVP VÀ SỰ BIẾN ĐỘNG' : 'BÁO CÁO TỔNG HỢP TÀI SẢN CCDC-TSNT'}
                     </div>
                     <div style={{ fontStyle: 'italic', fontSize: '11pt' }}>
-                        Kỳ báo cáo tháng {String(month).padStart(2,'0')} năm {year}
+                        Kỳ báo cáo tháng {reportPeriod.label} năm {reportPeriod.year}
                     </div>
                 </div>
 
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Times New Roman' }}>
                     <colgroup>
-                        <col style={{ width: '3%' }} /><col style={{ width: '29%' }} /><col style={{ width: '10.5%' }} /><col style={{ width: '4%' }} />
-                        <col style={{ width: '5%' }} /><col style={{ width: '4%' }} /><col style={{ width: '4%' }} /><col style={{ width: '6%' }} />
-                        <col style={{ width: '6.5%' }} /><col style={{ width: '6.5%' }} /><col style={{ width: '7.5%' }} /><col style={{ width: '5%' }} /><col style={{ width: '8%' }} />
+                        <col style={{ width: '3%' }} /><col style={{ width: '25%' }} /><col style={{ width: '15%' }} /><col style={{ width: '5%' }} />
+                        <col style={{ width: '5%' }} /><col style={{ width: '6%' }} /><col style={{ width: '6%' }} /><col style={{ width: '5%' }} />
+                        <col style={{ width: '5%' }} /><col style={{ width: '5%' }} /><col style={{ width: '5%' }} /><col style={{ width: '5%' }} /><col style={{ width: '5%' }} /><col style={{ width: '5%' }} />
                     </colgroup>
                     <thead>
                         <tr>
@@ -459,18 +463,16 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                             <th style={headerStyle} rowSpan={2}>Loại tài sản</th>
                             <th style={headerStyle} rowSpan={2}>ĐVT</th>
                             <th style={headerStyle} rowSpan={2}>Số lượng sổ sách</th>
-                            <th style={headerStyle} colSpan={2}>BIẾN ĐỘNG THÁNG: {month}</th>
+                            <th style={headerStyle} colSpan={2}>BIẾN ĐỘNG THÁNG: {movementMonth.label}</th>
                             <th style={headerStyle} rowSpan={2}>Số lượng kiểm</th>
-                            <th style={headerStyle} colSpan={3}>Tình trạng</th>
+                            <th style={headerStyle} colSpan={4}>Tình trạng</th>
                             <th style={headerStyle} rowSpan={2}>Chênh lệch</th>
                             <th style={headerStyle} rowSpan={2}>Ghi chú</th>
                         </tr>
                         <tr>
                             <th style={headerStyle}>Tăng</th>
                             <th style={headerStyle}>Giảm</th>
-                            <th style={headerStyle}>Tốt</th>
-                            <th style={headerStyle}>Hỏng</th>
-                            <th style={headerStyle}>Thất thoát</th>
+                            {assetMonthlyStatusColumns.map(label => <th key={label} style={headerStyle}>{label}</th>)}
                         </tr>
                     </thead>
                     <tbody>
@@ -480,7 +482,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                             <td style={colStyle}>{summary.increase}</td>
                             <td style={colStyle}>{summary.decrease}</td>
                             <td style={colStyle}>{summary.inspection}</td><td style={colStyle}>{summary.using}</td>
-                            <td style={colStyle}>{summary.broken}</td><td style={colStyle}>{summary.lost}</td><td style={colStyle}>{summary.difference}</td>
+                            <td style={colStyle}>{summary.broken}</td><td style={colStyle}>{summary.unused}</td><td style={colStyle}>{summary.repair}</td><td style={colStyle}>{summary.difference}</td>
                             <td style={colStyle}></td>
                         </tr>
                         {groupedAssets.map((g, i) => (
@@ -495,7 +497,8 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                                 <td style={colStyle}>{g.inspectionQty}</td>
                                 <td style={colStyle}>{g.usingQty}</td>
                                 <td style={colStyle}>{g.brokenQty}</td>
-                                <td style={colStyle}>{g.lostQty}</td>
+                                <td style={colStyle}>{g.unusedQty}</td>
+                                <td style={colStyle}>{g.repairQty}</td>
                                 <td style={colStyle}>{g.differenceQty}</td>
                                 <td style={{ ...colStyle, textAlign: 'left', fontSize: '8pt' }}></td>
                             </tr>
