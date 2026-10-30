@@ -298,7 +298,9 @@ const AssetHandoverBhl: React.FC = () => {
                     @page { size: A4 portrait; margin: 20mm 15mm 20mm 30mm; }
                     * { box-sizing: border-box; }
                     body { font-family: 'Times New Roman', Times, serif; font-size: 13pt; color: #000; margin: 0; padding: 0; line-height: 1.35; }
-                    body * { color: #000 !important; font-size: 13pt !important; }
+                    /* Preserve the compact inline sizes in the document so the BHLĐ
+                       handover record, including signatures, remains on one A4 page. */
+                    body * { color: #000 !important; }
                     body .document-title { font-size: 16pt !important; }
                     .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
                     .header-left { width: 55%; display: flex; align-items: center; gap: 10px; }
@@ -759,7 +761,7 @@ const AssetHandoverBhl: React.FC = () => {
                                 <div style={{ fontWeight: 'bold', fontSize: '10.5pt', color: '#003087', margin: '8px 0 2px' }}>BÊN NHẬN :</div>
                                 <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}>
                                     <span style={{ fontWeight: 'bold', width: 120 }}>Họ và tên:</span>
-                                    <span style={{ flex: 1, fontWeight: 'bold', textTransform: 'uppercase' }}>{receiverName || '........................................................'}</span>
+                                    <span style={{ flex: '0 0 150px', minWidth: 0, fontWeight: 'bold', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{receiverName || '........................................................'}</span>
                                     <span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span>
                                     <span style={{ flex: 1 }}>{receiverTitle || '......................................'}</span>
                                     <span style={{ width: 110, textAlign: 'right' }}></span>
@@ -864,21 +866,21 @@ const AssetHandoverBhl: React.FC = () => {
                                 </div>
 
                                 {/* Double / Triple Signature Blocks */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 30, textAlign: 'center' }}>
+                                <div className="signatures" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16, textAlign: 'center' }}>
                                     <div style={{ width: '30%' }}>
                                         <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>BÊN GIAO</div>
                                         <div style={{ fontStyle: 'italic', fontSize: '9.5pt', marginTop: 2 }}>(Ký, ghi rõ họ tên)</div>
-                                        <div style={{ height: 55 }}></div>
+                                        <div className="sig-space" style={{ height: 45 }}></div>
                                     </div>
                                     <div style={{ width: '30%' }}>
                                         <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>BÊN NHẬN</div>
                                         <div style={{ fontStyle: 'italic', fontSize: '9.5pt', marginTop: 2 }}>(Ký, ghi rõ họ tên)</div>
-                                        <div style={{ height: 55 }}></div>
+                                        <div className="sig-space" style={{ height: 45 }}></div>
                                     </div>
                                     <div style={{ width: '30%' }}>
                                         <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>GIÁM ĐỐC TRUNG TÂM</div>
                                         <div style={{ fontStyle: 'italic', fontSize: '9.5pt', marginTop: 2 }}>(Ký, ghi rõ họ tên)</div>
-                                        <div style={{ height: 55 }}></div>
+                                        <div className="sig-space" style={{ height: 45 }}></div>
                                     </div>
                                 </div>
                             </Box>
