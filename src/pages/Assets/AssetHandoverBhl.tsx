@@ -789,13 +789,12 @@ const AssetHandoverBhl: React.FC = () => {
                                             <tr>
                                                 {[
                                                     { label: 'STT', w: '5%' },
-                                                    { label: 'Nội dung yêu cầu', w: '25%' },
+                                                    { label: 'Nội dung yêu cầu', w: '28%' },
                                                     { label: 'Đơn vị', w: '8%' },
-                                                    { label: 'Theo HĐ', w: '10%' },
-                                                    { label: 'Số lượng định mức', w: '12%' },
+                                                    { label: 'Số lượng định mức', w: '14%' },
                                                     { label: qtyLabel, w: '10%' },
-                                                    { label: 'Quy cách, TCKT', w: '20%' },
-                                                    { label: 'Ghi chú', w: '10%' },
+                                                    { label: 'Quy cách, TCKT', w: '23%' },
+                                                    { label: 'Ghi chú', w: '12%' },
                                                 ].map((h, i) => (
                                                     <th key={i} style={{ width: h.w, background: '#f2f2f2', color: '#000', border: '1px solid #000', padding: '5px 4px', textAlign: 'center', fontWeight: 'bold' }}>{h.label}</th>
                                                 ))}
@@ -829,7 +828,6 @@ const AssetHandoverBhl: React.FC = () => {
                                                         <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center', verticalAlign: 'middle' }}>{i + 1}</td>
                                                         <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center', verticalAlign: 'middle' }}>{item.name}</td>
                                                         <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center', verticalAlign: 'middle' }}>{item.unit}</td>
-                                                        <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center', verticalAlign: 'middle' }}>{item.contract}</td>
                                                         <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center', verticalAlign: 'middle' }}>{item.quota}</td>
                                                         <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold' }}>{item.quantity}</td>
                                                         <td style={{ border: '1px solid #888', padding: '4px', verticalAlign: 'middle', fontSize: '9pt', lineHeight: 1.2 }}>
@@ -846,14 +844,14 @@ const AssetHandoverBhl: React.FC = () => {
                                                 ))
                                             ) : (
                                                 <tr>
-                                                    <td colSpan={8} style={{ border: '1px solid #888', padding: '8px', textAlign: 'center', fontStyle: 'italic', color: '#666' }}>
+                                                <td colSpan={7} style={{ border: '1px solid #888', padding: '8px', textAlign: 'center', fontStyle: 'italic', color: '#666' }}>
                                                         Không có trang bị bảo hộ nào được chọn (Số lượng &gt; 0).
                                                     </td>
                                                 </tr>
                                             )
                                         )}
                                         <tr style={{ fontWeight: 'bold', background: '#f0f0f0' }}>
-                                            <td colSpan={templateType === 'default' ? 2 : 5} style={{ border: '1px solid #888', padding: '4px', textAlign: 'center' }}>TỔNG</td>
+                                            <td colSpan={templateType === 'default' ? 2 : 4} style={{ border: '1px solid #888', padding: '4px', textAlign: 'center' }}>TỔNG</td>
                                             <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center' }}>{totalQty}</td>
                                             <td colSpan={templateType === 'default' ? 3 : 2} style={{ border: '1px solid #888', padding: '4px' }}></td>
                                         </tr>
@@ -871,19 +869,16 @@ const AssetHandoverBhl: React.FC = () => {
                                         <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>BÊN GIAO</div>
                                         <div style={{ fontStyle: 'italic', fontSize: '9.5pt', marginTop: 2 }}>(Ký, ghi rõ họ tên)</div>
                                         <div style={{ height: 55 }}></div>
-                                        <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>{giverInfo.giverName2 || ''}</div>
                                     </div>
                                     <div style={{ width: '30%' }}>
                                         <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>BÊN NHẬN</div>
                                         <div style={{ fontStyle: 'italic', fontSize: '9.5pt', marginTop: 2 }}>(Ký, ghi rõ họ tên)</div>
                                         <div style={{ height: 55 }}></div>
-                                        <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>{receiverName || ''}</div>
                                     </div>
                                     <div style={{ width: '30%' }}>
                                         <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>GIÁM ĐỐC TRUNG TÂM</div>
                                         <div style={{ fontStyle: 'italic', fontSize: '9.5pt', marginTop: 2 }}>(Ký, ghi rõ họ tên)</div>
                                         <div style={{ height: 55 }}></div>
-                                        <div style={{ fontWeight: 'bold', fontSize: '11pt' }}>{giverInfo.giverName || ''}</div>
                                     </div>
                                 </div>
                             </Box>
