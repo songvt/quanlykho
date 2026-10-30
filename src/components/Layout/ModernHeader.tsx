@@ -90,7 +90,6 @@ const ModernHeader: React.FC<ModernHeaderProps> = ({ DRAWER_WIDTH, handleDrawerT
     useEffect(() => {
         void loadRecentActivities();
         // Refresh when the signed-in account changes, so the bell count is current on first display.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [profile?.id]);
 
     const handleNotificationsOpen = (event: React.MouseEvent<HTMLElement>) => {
