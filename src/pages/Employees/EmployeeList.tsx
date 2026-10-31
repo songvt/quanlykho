@@ -237,7 +237,7 @@ const EmployeeList = () => {
                     role: 'staff',
                     username: '',
                     phone_number: profileItem.phone_number || '',
-                    district: '',
+                    district: profileItem.district || '',
                     password: '',
                     gender: profileItem.gender || 'Nam',
                     date_of_birth: profileItem.date_of_birth || '',
@@ -331,6 +331,7 @@ const EmployeeList = () => {
                     email: formData.email,
                     job_position: formData.job_position,
                     department: formData.department,
+                    district: formData.district,
                     probation_date: formData.probation_date || undefined,
                     official_date: formData.official_date || undefined,
                     contract_type: formData.contract_type,
@@ -464,6 +465,7 @@ const EmployeeList = () => {
             { header: 'Email cơ quan', key: 'email', width: 25 },
             { header: 'Vị trí công việc', key: 'job_position', width: 20 },
             { header: 'Đơn vị công tác', key: 'department', width: 25 },
+            { header: 'Khu vực (Quận/Huyện)', key: 'district', width: 20 },
             { header: 'Ngày thử việc', key: 'probation_date', width: 15, align: 'center' as const },
             { header: 'Ngày chính thức', key: 'official_date', width: 15, align: 'center' as const },
             { header: 'Loại hợp đồng', key: 'contract_type', width: 30 },
@@ -484,6 +486,7 @@ const EmployeeList = () => {
             email: emp.email || '-',
             job_position: emp.job_position || '-',
             department: emp.department || '-',
+            district: emp.district || '-',
             probation_date: formatDate(emp.probation_date),
             official_date: formatDate(emp.official_date),
             contract_type: emp.contract_type || '-',
@@ -534,7 +537,8 @@ const EmployeeList = () => {
             (emp.phone_number?.toLowerCase() || '').includes(term) ||
             (emp.id?.toLowerCase() || '').includes(term) ||
             (emp.job_position?.toLowerCase() || '').includes(term) ||
-            (emp.department?.toLowerCase() || '').includes(term)
+            (emp.department?.toLowerCase() || '').includes(term) ||
+            (emp.district?.toLowerCase() || '').includes(term)
         );
     }, [hrProfiles, debouncedSearchTerm]);
 
@@ -656,35 +660,62 @@ const EmployeeList = () => {
                                                         try {
                                                             const originalData = await readExcelFile(e.target.files[0]);
                                                             const mappedData = originalData.map((row: any) => {
-                                                                const rawIns = row['THAM_GIA_BAO_HIEM'] || row['Tham gia bảo hiểm'] || '';
-                                                                const isInsured = rawIns.toString().toLowerCase().includes('có') ||
-                                                                                rawIns.toString().toLowerCase() === 'true' ||
-                                                                                rawIns === 1 || rawIns === '1';
+                                                                const rawIns = row['Tham gia bảo hiểm'] || row['THAM_GIA_BAO_HIEM'] || row['insurance_participation'] || '';
+                                                                const isInsured = ['có', 'true', '1', 'x', 'yes'].includes(String(rawIns).trim().toLowerCase()) || rawIns === 1;
+
+                                                                const id = String(row['Mã NV'] || row['MA_NHAN_VIEN'] || row['MA_NV'] || row['Mã nhân viên'] || row['id'] || '').trim();
+                                                                const fullName = String(row['Họ và tên'] || row['HO_TEN'] || row['full_name'] || '').trim();
+                                                                const gender = String(row['Giới tính'] || row['GIOI_TINH'] || row['gender'] || 'Nam').trim();
+                                                                const dateOfBirth = normalizeImportedDate(row['Ngày sinh'] || row['NGAY_SINH'] || row['date_of_birth']);
+                                                                const phoneNumber = String(row['ĐT di động'] || row['SO_DIEN_THOAI'] || row['SĐT'] || row['Số điện thoại'] || row['phone_number'] || '').trim();
+                                                                const email = String(row['Email cơ quan'] || row['EMAIL'] || row['Email'] || row['email'] || '').trim();
+                                                                const jobPosition = String(row['Vị trí công việc'] || row['VI_TRI_CONG_VIEC'] || row['job_position'] || '').trim();
+                                                                const department = String(row['Đơn vị công tác'] || row['DON_VI_CONG_TAC'] || row['department'] || '').trim();
+                                                                const district = String(row['Khu vực (Quận/Huyện)'] || row['KHU_VUC'] || row['QUAN_HUYEN'] || row['Khu vực'] || row['Quận/Huyện'] || row['district'] || '').trim();
+                                                                const probationDate = normalizeImportedDate(row['Ngày thử việc'] || row['NGAY_THU_VIEC'] || row['probation_date']);
+                                                                const officialDate = normalizeImportedDate(row['Ngày chính thức'] || row['NGAY_CHINH_THUC'] || row['official_date']);
+                                                                const contractType = String(row['Loại hợp đồng'] || row['LOAI_HOP_DONG'] || row['contract_type'] || 'HĐ lao động xác định thời hạn').trim();
+                                                                const laborStatus = String(row['Trạng thái lao động'] || row['TRANG_THAI_LAO_DONG'] || row['labor_status'] || 'Đang làm việc').trim();
+                                                                const uniformSize = String(row['Size quần áo BHLĐ'] || row['SIZE_QUAN_AO_BHLD'] || row['SIZE_QUAN_AO'] || row['Size quần áo'] || row['uniform_size'] || '').trim();
+                                                                const shoeSize = String(row['Size giày dép'] || row['SIZE_GIAY_DEP'] || row['SIZE_GIAY'] || row['Size giày'] || row['shoe_size'] || '').trim();
 
                                                                 return {
-                                                                    id: String(row['MA_NHAN_VIEN'] || row['Mã nhân viên'] || '').trim(),
-                                                                    full_name: String(row['HO_TEN'] || row['Họ và tên'] || '').trim(),
-                                                                    gender: String(row['GIOI_TINH'] || row['Giới tính'] || 'Nam').trim(),
-                                                                    date_of_birth: normalizeImportedDate(row['NGAY_SINH'] || row['Ngày sinh']),
-                                                                    phone_number: row['SO_DIEN_THOAI'] || row['ĐT di động'] || row['SĐT'] ? String(row['SO_DIEN_THOAI'] || row['ĐT di động'] || row['SĐT']).trim() : '',
-                                                                    email: String(row['EMAIL'] || row['Email cơ quan'] || row['Email'] || '').trim(),
-                                                                    job_position: String(row['VI_TRI_CONG_VIEC'] || row['Vị trí công việc'] || '').trim(),
-                                                                    department: String(row['DON_VI_CONG_TAC'] || row['Đơn vị công tác'] || '').trim(),
-                                                                    probation_date: normalizeImportedDate(row['NGAY_THU_VIEC'] || row['Ngày thử việc']),
-                                                                    official_date: normalizeImportedDate(row['NGAY_CHINH_THUC'] || row['Ngày chính thức']),
-                                                                    contract_type: String(row['LOAI_HOP_DONG'] || row['Loại hợp đồng'] || 'HĐ lao động xác định thời hạn').trim(),
-                                                                    labor_status: String(row['TRANG_THAI_LAO_DONG'] || row['Trạng thái lao động'] || 'Đang làm việc').trim(),
+                                                                    id,
+                                                                    full_name: fullName,
+                                                                    gender,
+                                                                    date_of_birth: dateOfBirth,
+                                                                    phone_number: phoneNumber,
+                                                                    email,
+                                                                    job_position: jobPosition,
+                                                                    department,
+                                                                    district,
+                                                                    probation_date: probationDate,
+                                                                    official_date: officialDate,
+                                                                    contract_type: contractType,
+                                                                    labor_status: laborStatus,
                                                                     insurance_participation: isInsured,
-                                                                    uniform_size: row['SIZE_QUAN_AO_BHLD'] || row['Size quần áo BHLĐ'] || row['SIZE_QUAN_AO'] || row['Size quần áo'] ? String(row['SIZE_QUAN_AO_BHLD'] || row['Size quần áo BHLĐ'] || row['SIZE_QUAN_AO'] || row['Size quần áo']).trim() : '',
-                                                                    shoe_size: row['SIZE_GIAY_DEP'] || row['Size giày dép'] || row['SIZE_GIAY'] || row['Size giày'] ? String(row['SIZE_GIAY_DEP'] || row['Size giày dép'] || row['SIZE_GIAY'] || row['Size giày']).trim() : ''
+                                                                    uniform_size: uniformSize,
+                                                                    shoe_size: shoeSize
                                                                 };
                                                             }).filter(emp => emp.id && emp.full_name);
 
                                                             if (mappedData.length > 0) {
-                                                                await dispatch(importHRProfiles(mappedData)).unwrap();
-                                                                setNotification({ type: 'success', message: `Đã nhập thành công ${mappedData.length} nhân viên vào bảng hồ sơ!` });
+                                                                const result: any = await dispatch(importHRProfiles(mappedData)).unwrap();
+                                                                dispatch(fetchHRProfiles());
+                                                                dispatch(fetchEmployees());
+                                                                const inserted = result?.inserted ?? 0;
+                                                                const updated = result?.updated ?? 0;
+                                                                let message = '';
+                                                                if (inserted > 0 && updated > 0) {
+                                                                    message = `Đã cập nhật ${updated} nhân viên và thêm mới ${inserted} nhân viên (khóa Mã NV)!`;
+                                                                } else if (updated > 0) {
+                                                                    message = `Đã cập nhật thành công ${updated} nhân viên theo Mã NV!`;
+                                                                } else {
+                                                                    message = `Đã thêm mới thành công ${inserted || mappedData.length} nhân viên theo Mã NV!`;
+                                                                }
+                                                                setNotification({ type: 'success', message });
                                                             } else {
-                                                                setNotification({ type: 'warning', message: 'Không tìm thấy dữ liệu hợp lệ trong file Excel.' });
+                                                                setNotification({ type: 'warning', message: 'Không tìm thấy dữ liệu hợp lệ trong file Excel. Vui lòng sử dụng file mẫu chuẩn.' });
                                                             }
                                                         } catch (error: any) {
                                                             setNotification({ type: 'error', message: `Lỗi khi nhập dữ liệu: ${error.message || JSON.stringify(error)}` });
@@ -761,6 +792,7 @@ const EmployeeList = () => {
                                             <Stack spacing={0.5} sx={{ fontSize: '0.875rem' }}>
                                                 <Box display="flex" justifyContent="space-between"><Box color="text.secondary">Vị trí:</Box><Box>{employee.job_position || '-'}</Box></Box>
                                                 <Box display="flex" justifyContent="space-between"><Box color="text.secondary">Đơn vị:</Box><Box>{employee.department || '-'}</Box></Box>
+                                                <Box display="flex" justifyContent="space-between"><Box color="text.secondary">Khu vực:</Box><Box>{employee.district || '-'}</Box></Box>
                                                 <Box display="flex" justifyContent="space-between"><Box color="text.secondary">Thâm niên:</Box><Box color="secondary.main" fontWeight="bold">{calculateSeniority(employee.official_date || employee.probation_date)}</Box></Box>
                                                 <Box display="flex" justifyContent="space-between"><Box color="text.secondary">Bảo hiểm:</Box><Box>{employee.insurance_participation ? 'Có' : 'Không'}</Box></Box>
                                             </Stack>
@@ -825,6 +857,7 @@ const EmployeeList = () => {
                                         <TableCell sx={{ borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap', fontWeight: 'bold', color: '#1e293b' }}>Email cơ quan</TableCell>
                                         <TableCell sx={{ borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap', fontWeight: 'bold', color: '#1e293b' }}>Vị trí công việc</TableCell>
                                         <TableCell sx={{ borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap', fontWeight: 'bold', color: '#1e293b' }}>Đơn vị công tác</TableCell>
+                                        <TableCell sx={{ borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap', fontWeight: 'bold', color: '#1e293b' }}>Khu vực (Quận/Huyện)</TableCell>
                                         <TableCell align="center" sx={{ borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap', fontWeight: 'bold', color: '#1e293b' }}>Ngày thử việc</TableCell>
                                         <TableCell align="center" sx={{ borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap', fontWeight: 'bold', color: '#1e293b' }}>Ngày chính thức</TableCell>
                                         <TableCell sx={{ borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap', fontWeight: 'bold', color: '#1e293b' }}>Loại hợp đồng</TableCell>
@@ -851,7 +884,7 @@ const EmployeeList = () => {
                         <TableBody>
                             {viewMode === 'personnel' ? (
                                 filteredHRProfiles.length === 0 ? (
-                                    <TableRow><TableCell colSpan={17} align="center" sx={{ py: 4, color: 'text.secondary' }}>Chưa có dữ liệu nhân sự</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={18} align="center" sx={{ py: 4, color: 'text.secondary' }}>Chưa có dữ liệu nhân sự</TableCell></TableRow>
                                 ) : (
                                     filteredHRProfiles.map((employee) => {
                                         const isSelected = selectedIds.includes(employee.id);
@@ -870,6 +903,7 @@ const EmployeeList = () => {
                                                 <TableCell>{employee.email || '-'}</TableCell>
                                                 <TableCell>{employee.job_position || '-'}</TableCell>
                                                 <TableCell>{employee.department || '-'}</TableCell>
+                                                <TableCell>{employee.district || '-'}</TableCell>
                                                 <TableCell align="center">{formatDate(employee.probation_date)}</TableCell>
                                                 <TableCell align="center">{formatDate(employee.official_date)}</TableCell>
                                                 <TableCell sx={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{employee.contract_type || '-'}</TableCell>
@@ -1028,12 +1062,21 @@ const EmployeeList = () => {
                                             onChange={handleChange}
                                         />
                                     </Grid>
-                                    <Grid size={{ xs: 12 }}>
+                                    <Grid size={{ xs: 12, sm: 8 }}>
                                         <TextField
                                             name="department"
                                             label="Đơn vị công tác"
                                             fullWidth
                                             value={formData.department}
+                                            onChange={handleChange}
+                                        />
+                                    </Grid>
+                                    <Grid size={{ xs: 12, sm: 4 }}>
+                                        <TextField
+                                            name="district"
+                                            label="Khu vực (Quận/Huyện)"
+                                            fullWidth
+                                            value={formData.district}
                                             onChange={handleChange}
                                         />
                                     </Grid>

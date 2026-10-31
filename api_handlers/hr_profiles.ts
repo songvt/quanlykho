@@ -2,7 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { randomUUID } from 'crypto';
 import { getGoogleSheet, getSheetByTitle } from './_utils/googleSheets.js';
 import { supabase } from './_utils/supabase.js';
-import { prepareHRProfileUpsert } from './_utils/hrProfiles.js';
+import { prepareHRProfileUpsert, mergeHRProfiles } from './_utils/hrProfiles.js';
 import { buildCDBREmployeeAccounts, CDBR_TECHNICAL_UNIT } from './_utils/hrEmployeeSync.js';
 
 async function syncCDBREmployeeAccounts(profiles: Record<string, unknown>[]) {
@@ -97,9 +97,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     return res.status(400).json({ error: error.message });
                 }
 
+                // 1. Fetch existing profiles matching Mã NV (id) to detect updates vs new inserts
+                const targetIds = formatted.map(item => String(item.id));
+                const { data: existingRecords, error: fetchError } = await supabase
+                    .from('hr_profiles')
+                    .select('*')
+                    .in('id', targetIds);
+                if (fetchError) {
+                    console.error('Fetch existing HR profiles error:', fetchError);
+                }
+
+                // 2. Merge changes for existing IDs; insert new records for non-existing IDs
+                const { mergedList, insertedCount, updatedCount } = mergeHRProfiles(
+                    formatted,
+                    (existingRecords || []) as Record<string, unknown>[]
+                );
+
+                // 3. Upsert into Supabase with Mã NV (id) as primary key
                 const { data: sbData, error: sbError } = await supabase
                     .from('hr_profiles')
-                    .upsert(formatted, { onConflict: 'id' })
+                    .upsert(mergedList, { onConflict: 'id' })
                     .select();
                 
                 if (sbError) {
@@ -111,42 +128,89 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 }
 
                 try {
-                    await syncCDBREmployeeAccounts((sbData || formatted) as Record<string, unknown>[]);
+                    await syncCDBREmployeeAccounts((sbData || mergedList) as Record<string, unknown>[]);
                 } catch (employeeSyncError) {
                     console.error('CDBR employee account sync failed:', employeeSyncError);
                     return res.status(500).json({ error: 'HR profile saved but employee account sync failed' });
                 }
 
-                // Sync to Google Sheets
+                // 4. Batch sync to Google Sheets (prevents 429 quota rate limit errors)
                 try {
                     const doc = await getGoogleSheet();
                     const sheet = await getSheetByTitle(doc, 'hr_profiles');
+                    await sheet.loadHeaderRow();
+                    const colKeys = sheet.headerValues;
                     const rows = await sheet.getRows();
-                    
-                    const rowsToAdd: any[] = [];
-                    for (const item of formatted) {
-                        const existingRow = rows.find(r => r.get('id') === item.id);
-                        if (existingRow) {
-                            existingRow.assign(item);
-                            await existingRow.save();
+                    const rowCount = rows.length;
+
+                    const existingRowMap = new Map<string, number>();
+                    rows.forEach((r, idx) => {
+                        const id = String(r.get('id') ?? '').trim();
+                        if (id) existingRowMap.set(id, idx);
+                    });
+
+                    const rowsToAdd: Record<string, unknown>[] = [];
+                    const rowsToUpdate: { rowIndex: number; item: Record<string, unknown> }[] = [];
+
+                    for (const item of mergedList) {
+                        const id = String(item.id ?? '').trim();
+                        if (existingRowMap.has(id)) {
+                            rowsToUpdate.push({ rowIndex: existingRowMap.get(id)!, item });
                         } else {
                             rowsToAdd.push(item);
                         }
                     }
+
                     if (rowsToAdd.length > 0) {
                         await sheet.addRows(rowsToAdd);
+                    }
+
+                    if (rowsToUpdate.length > 0 && rowCount > 0) {
+                        await sheet.loadCells({
+                            startRowIndex: 1,
+                            endRowIndex: rowCount + 1,
+                            startColumnIndex: 0,
+                            endColumnIndex: colKeys.length
+                        });
+
+                        let cellChanged = false;
+                        for (const { rowIndex, item } of rowsToUpdate) {
+                            for (let c = 0; c < colKeys.length; c++) {
+                                const key = colKeys[c];
+                                if (key in item) {
+                                    const cell = sheet.getCell(rowIndex + 1, c);
+                                    let val = item[key];
+                                    if (typeof val === 'boolean') val = val ? 'TRUE' : 'FALSE';
+                                    else if (val === null || val === undefined) val = '';
+                                    else val = String(val);
+
+                                    if (String(cell.value ?? '') !== String(val)) {
+                                        cell.value = val;
+                                        cellChanged = true;
+                                    }
+                                }
+                            }
+                        }
+                        if (cellChanged) {
+                            await sheet.saveUpdatedCells();
+                        }
                     }
                 } catch (e: any) {
                     console.error('GS Mirror HR Profiles Error, queuing:', e.message);
                     await supabase.from('gs_sync_queue').insert({
                         table_name: 'hr_profiles',
-                        action: 'insert',
-                        payload: formatted,
+                        action: 'upsert',
+                        payload: mergedList,
                         error_message: e.message
                     });
                 }
 
-                return res.status(201).json(action === 'bulk_insert' ? (sbData || formatted) : (sbData ? sbData[0] : formatted[0]));
+                return res.status(201).json({
+                    data: action === 'bulk_insert' ? (sbData || mergedList) : (sbData ? sbData[0] : mergedList[0]),
+                    inserted: insertedCount,
+                    updated: updatedCount,
+                    total: mergedList.length
+                });
             }
 
             case 'PUT': {

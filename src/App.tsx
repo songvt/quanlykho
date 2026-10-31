@@ -159,8 +159,12 @@ function App() {
                                 <Route element={<ProtectedRoute allowedPermissions={['assets.view', 'assets.manage', '*']} />}>
                                     <Route path="assets/report-ccdc" element={<AssetMonthlyReport reportType="CCDC" />} />
                                     <Route path="assets/report-tbvp" element={<AssetMonthlyReport reportType="TBVP" />} />
+                                    <Route path="assets/report-tbvp-ccdc" element={<AssetMonthlyReport reportType="ALL" />} />
+                                    <Route path="assets/report-all" element={<AssetMonthlyReport reportType="ALL" />} />
                                     <Route path="assets/detail-ccdc" element={<AssetDetailReport reportType="CCDC" />} />
                                     <Route path="assets/detail-tbvp" element={<AssetDetailReport reportType="TBVP" />} />
+                                    <Route path="assets/detail-tbvp-ccdc" element={<AssetDetailReport reportType="ALL" />} />
+                                    <Route path="assets/detail-all" element={<AssetDetailReport reportType="ALL" />} />
                                     <Route path="assets/quarterly-ccdc" element={<AssetQuarterlyReport reportType="CCDC" />} />
                                     <Route path="assets/quarterly-tbvp" element={<AssetQuarterlyReport reportType="TBVP" />} />
                                     <Route path="assets/broken-report" element={<AssetBrokenReport />} />

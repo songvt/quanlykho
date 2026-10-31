@@ -67,8 +67,15 @@ const hrProfilesSlice = createSlice({
             })
             // Import
             .addCase(importHRProfiles.fulfilled, (state, action) => {
-                if (action.payload) {
-                    state.items.push(...action.payload);
+                const list = Array.isArray(action.payload)
+                    ? action.payload
+                    : (action.payload?.data && Array.isArray(action.payload.data) ? action.payload.data : []);
+                if (list.length > 0) {
+                    const importedMap = new Map((list as HRProfile[]).map(p => [p.id, p]));
+                    const updated = state.items.map(item => importedMap.has(item.id) ? { ...item, ...importedMap.get(item.id) } : item);
+                    const existingIds = new Set(state.items.map(item => item.id));
+                    const newItems = (list as HRProfile[]).filter(p => !existingIds.has(p.id));
+                    state.items = [...updated, ...newItems];
                 }
             })
             // Update

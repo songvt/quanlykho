@@ -51,6 +51,7 @@ export interface HRProfile {
     email?: string;
     job_position?: string;
     department?: string;
+    district?: string;
     probation_date?: string;
     official_date?: string;
     contract_type?: string;

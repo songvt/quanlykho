@@ -48,3 +48,8 @@ debug_sync.cjs
 run_sync_now.cjs
 gs_assets_backup.json
 restore_assets.sql
+
+# Build outputs
+.codex-ppt-build/
+.codex_docx_asset_minutes/
+output/

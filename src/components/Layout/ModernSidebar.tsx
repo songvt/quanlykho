@@ -262,6 +262,8 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                     { text: 'Chi tiết TBVP', path: '/assets/detail-tbvp', icon: <FileSearch size={18} /> },
                                     { text: 'BC tổng hợp TBVP', path: '/assets/report-tbvp', icon: <FileText size={18} /> },
                                     { text: 'BC Quý chi tiết TBVP', path: '/assets/quarterly-tbvp', icon: <CalendarCheck size={18} /> },
+                                    { text: 'Chi tiết TBVP + CCDC', path: '/assets/detail-tbvp-ccdc', icon: <FileSearch size={18} /> },
+                                    { text: 'BC tổng hợp TBVP + CCDC', path: '/assets/report-tbvp-ccdc', icon: <FileText size={18} /> },
                                     { text: 'BC CCDC-TBVP hỏng', path: '/assets/broken-report', icon: <AlertTriangle size={18} /> },
                                 ] : []),
                             ];

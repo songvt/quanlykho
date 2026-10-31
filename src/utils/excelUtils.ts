@@ -411,33 +411,119 @@ export const generateProductTemplate = () => {
     const headers = [{ MA_HANG: "SP001", TEN_HANG_HOA: "Sản phẩm mẫu", LOAI_DM: "Hàng hóa", DON_GIA: 100000, DON_VI: "Cái", LOAI_HANG: "Thường" }];
     generateTemplateFromHeaders(headers, [15, 30, 20, 15, 10, 15], "ProductTemplate", "ProductImportTemplate.xlsx");
 };
-export const generateEmployeeTemplate = () => {
-    const headers = [{
-        MA_NHAN_VIEN: "NV001",
-        HO_TEN: "Nguyễn Văn A",
-        GIOI_TINH: "Nam",
-        NGAY_SINH: "15/10/1995",
-        SO_DIEN_THOAI: "0901234567",
-        EMAIL: "nguyenvan.a@example.com",
-        VI_TRI_CONG_VIEC: "Nhân viên Kỹ thuật",
-        DON_VI_CONG_TAC: "Trung tâm ACT BSG",
-        NGAY_THU_VIEC: "01/01/2024",
-        NGAY_CHINH_THUC: "01/03/2024",
-        LOAI_HOP_DONG: "HĐ lao động xác định thời hạn",
-        TRANG_THAI_LAO_DONG: "Đang làm việc",
-        THAM_GIA_BAO_HIEM: "Có",
-        VAI_TRO: "staff",
-        TEN_DANG_NHAP: "nguyenvana",
-        QUAN_HUYEN: "Quận 12",
-        SIZE_QUAN_AO_BHLD: "L",
-        SIZE_GIAY_DEP: "41"
-    }];
-    generateTemplateFromHeaders(
-        headers, 
-        [15, 25, 12, 15, 15, 30, 20, 25, 15, 15, 30, 20, 20, 15, 20, 15, 18, 15], 
-        "EmployeeTemplate", 
-        "EmployeeImportTemplate.xlsx"
-    );
+export const generateEmployeeTemplate = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Danh_Sach_Nhan_Su', {
+        views: [{ showGridLines: true, state: 'frozen', ySplit: 1 }]
+    });
+
+    const columns = [
+        { header: 'STT', key: 'stt', width: 6 },
+        { header: 'Mã NV', key: 'id', width: 14 },
+        { header: 'Họ và tên', key: 'full_name', width: 24 },
+        { header: 'Giới tính', key: 'gender', width: 12 },
+        { header: 'Ngày sinh', key: 'date_of_birth', width: 14 },
+        { header: 'ĐT di động', key: 'phone_number', width: 16 },
+        { header: 'Email cơ quan', key: 'email', width: 28 },
+        { header: 'Vị trí công việc', key: 'job_position', width: 24 },
+        { header: 'Đơn vị công tác', key: 'department', width: 28 },
+        { header: 'Khu vực (Quận/Huyện)', key: 'district', width: 22 },
+        { header: 'Ngày thử việc', key: 'probation_date', width: 14 },
+        { header: 'Ngày chính thức', key: 'official_date', width: 14 },
+        { header: 'Loại hợp đồng', key: 'contract_type', width: 28 },
+        { header: 'Trạng thái lao động', key: 'labor_status', width: 18 },
+        { header: 'Thâm niên', key: 'seniority', width: 14 },
+        { header: 'Tham gia bảo hiểm', key: 'insurance_participation', width: 18 },
+        { header: 'Size quần áo BHLĐ', key: 'uniform_size', width: 18 },
+        { header: 'Size giày dép', key: 'shoe_size', width: 14 }
+    ];
+
+    sheet.columns = columns;
+
+    // Header styling matching dark blue pattern in image
+    const headerRow = sheet.getRow(1);
+    headerRow.height = 30;
+    headerRow.eachCell((cell) => {
+        cell.font = { name: 'Times New Roman', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF153370' }
+        };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = {
+            top: { style: 'thin', color: { argb: 'FF2A4D8F' } },
+            bottom: { style: 'thin', color: { argb: 'FF2A4D8F' } },
+            left: { style: 'thin', color: { argb: 'FF2A4D8F' } },
+            right: { style: 'thin', color: { argb: 'FF2A4D8F' } }
+        };
+    });
+
+    // Sample data rows
+    const sampleRows = [
+        {
+            stt: 1,
+            id: 'NV001',
+            full_name: 'Nguyễn Văn A',
+            gender: 'Nam',
+            date_of_birth: '15/10/1995',
+            phone_number: '0901234567',
+            email: 'nguyenvan.a@vienthongact.vn',
+            job_position: 'Nhân viên Kỹ thuật CĐBR',
+            department: 'Lực lượng kỹ thuật CĐBR Bắc Sài Gòn',
+            district: 'Quận 12',
+            probation_date: '01/01/2024',
+            official_date: '01/03/2024',
+            contract_type: 'Hợp đồng xác định thời hạn',
+            labor_status: 'Đang làm việc',
+            seniority: '2 năm',
+            insurance_participation: 'Có',
+            uniform_size: 'L',
+            shoe_size: '41'
+        },
+        {
+            stt: 2,
+            id: 'NV002',
+            full_name: 'Trần Thị B',
+            gender: 'Nữ',
+            date_of_birth: '20/08/1998',
+            phone_number: '0912345678',
+            email: 'tranthib@vienthongact.vn',
+            job_position: 'Nhân viên Văn phòng',
+            department: 'Trung tâm ACT Bắc Sài Gòn',
+            district: 'Củ Chi',
+            probation_date: '15/02/2024',
+            official_date: '15/04/2024',
+            contract_type: 'Hợp đồng không xác định thời hạn',
+            labor_status: 'Đang làm việc',
+            seniority: '1 năm',
+            insurance_participation: 'Có',
+            uniform_size: 'M',
+            shoe_size: '37'
+        }
+    ];
+
+    sampleRows.forEach((item) => {
+        const row = sheet.addRow(item);
+        row.height = 24;
+        row.eachCell((cell, colNumber) => {
+            cell.font = { name: 'Times New Roman', size: 9 };
+            cell.border = {
+                top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+                right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+            };
+            const centerCols = [1, 2, 4, 5, 6, 11, 12, 14, 15, 16, 17, 18];
+            cell.alignment = {
+                vertical: 'middle',
+                horizontal: centerCols.includes(colNumber) ? 'center' : 'left'
+            };
+        });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    downloadAsDataUri(buffer, 'Mau_Nhap_Thong_Tin_Nhan_Su.xlsx');
 };
 export const generateInboundTemplate = () => {
     const headers = [{ MA_HANG: "SP001", SO_LUONG: 10, DON_GIA: 150000, SERIAL: "SN123456", GHI_CHU: "Nhập hàng đợt 1", QUAN_HUYEN: "Quận 1", TRANG_THAI_HANG: "Mới 100%" }];

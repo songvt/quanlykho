@@ -15,7 +15,7 @@ import { administrativeLandscapePrintPageMargin, administrativePageMargins, sign
 import { assetMonthlyStatusColumns, calculateInspectionQuantity, calculateQuantityDifference, getPreviousReportMonth } from '../../utils/assetMonthlyReportMath';
 
 interface Props {
-    reportType: 'CCDC' | 'TBVP';
+    reportType: 'CCDC' | 'TBVP' | 'ALL';
 }
 
 const STATUS_USING = ['Đang sử dụng', 'Đang SD', 'Active'];
@@ -53,8 +53,10 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
             if (reportType === 'CCDC') {
                 return typeCode.includes('CCDC') || typeCode.includes('TSNT') ||
                        grpCode.includes('CCDC') || grpCode.includes('TSNT');
-            } else {
+            } else if (reportType === 'TBVP') {
                 return typeCode.includes('TBVP') || grpCode.includes('TBVP') || typeCode.includes('TTB-PCCC');
+            } else {
+                return true;
             }
         };
 
@@ -224,9 +226,9 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
     const currentYear  = now.getFullYear();
     const dateFooterStr = `TP. Hồ Chí Minh, ngày ${currentDay} tháng ${currentMonth} năm ${currentYear}`;
     const movementMonth = getPreviousReportMonth(month, year);
-    const reportPeriod = reportType === 'TBVP'
-        ? { month: movementMonth.month, year: movementMonth.year, label: movementMonth.label }
-        : { month, year, label: String(month).padStart(2, '0') };
+    const reportPeriod = reportType === 'CCDC'
+        ? { month, year, label: String(month).padStart(2, '0') }
+        : { month: movementMonth.month, year: movementMonth.year, label: movementMonth.label };
 
     const handleExportExcel = async () => {
         const wb = new ExcelJS.Workbook();
@@ -256,7 +258,11 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
         ws.getRow(1).height = 31;
 
         ws.mergeCells('A2:N2');
-        ws.getCell('A2').value = reportType === 'TBVP' ? 'TỔNG HỢP TBVP VÀ SỰ BIẾN ĐỘNG' : 'BÁO CÁO TỔNG HỢP TÀI SẢN CCDC-TSNT';
+        ws.getCell('A2').value = reportType === 'TBVP'
+            ? 'TỔNG HỢP TBVP VÀ SỰ BIẾN ĐỘNG'
+            : reportType === 'ALL'
+                ? 'TỔNG HỢP TBVP & CCDC VÀ SỰ BIẾN ĐỘNG'
+                : 'BÁO CÁO TỔNG HỢP TÀI SẢN CCDC-TSNT';
         ws.getCell('A2').font = { bold:true, size:14, name:'Times New Roman' };
         ws.getCell('A2').alignment = { horizontal:'center', vertical:'middle' };
         ws.getRow(2).height = 23;
@@ -353,7 +359,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
         const blob = new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `BaoCao_${reportType}_T${month}.xlsx`;
+        a.download = `BaoCao_${reportType === 'ALL' ? 'TBVP_CCDC' : reportType}_T${month}.xlsx`;
         a.click();
     };
 
@@ -399,7 +405,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
         <Box sx={{ p: { xs: 1, sm: 3 } }}>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }} sx={{ mb: 3 }} className="no-print">
                 <Typography variant={isMobile ? 'body1' : 'h6'} fontWeight={700} sx={{ flexGrow: 1 }}>
-                    Báo cáo {reportType === 'CCDC' ? 'CCDC-TSNT' : 'TBVP'}
+                    Báo cáo {reportType === 'CCDC' ? 'CCDC-TSNT' : reportType === 'TBVP' ? 'TBVP' : 'tổng hợp TBVP + CCDC'}
                 </Typography>
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                     <FormControl size="small" sx={{ width: 90 }}><InputLabel>Tháng</InputLabel>
@@ -443,7 +449,11 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
 
                 <div style={{ textAlign: 'center', margin: '32px 0', fontFamily: 'Times New Roman' }}>
                     <div style={{ fontWeight: '800', textTransform: 'uppercase', fontSize: '14pt' }}>
-                        {reportType === 'TBVP' ? 'TỔNG HỢP TBVP VÀ SỰ BIẾN ĐỘNG' : 'BÁO CÁO TỔNG HỢP TÀI SẢN CCDC-TSNT'}
+                        {reportType === 'TBVP'
+                            ? 'TỔNG HỢP TBVP VÀ SỰ BIẾN ĐỘNG'
+                            : reportType === 'ALL'
+                                ? 'TỔNG HỢP TBVP & CCDC VÀ SỰ BIẾN ĐỘNG'
+                                : 'BÁO CÁO TỔNG HỢP TÀI SẢN CCDC-TSNT'}
                     </div>
                     <div style={{ fontStyle: 'italic', fontSize: '11pt' }}>
                         Kỳ báo cáo tháng {reportPeriod.label} năm {reportPeriod.year}

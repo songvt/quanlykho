@@ -25,6 +25,7 @@ export function prepareHRProfileUpsert(items: HRProfileInput[]) {
             email: profile.email || '',
             job_position: profile.job_position || '',
             department: profile.department || '',
+            district: profile.district || '',
             probation_date: profile.probation_date || null,
             official_date: profile.official_date || null,
             contract_type: profile.contract_type || '',
@@ -37,4 +38,54 @@ export function prepareHRProfileUpsert(items: HRProfileInput[]) {
     });
 
     return [...profilesById.values()];
+}
+
+export function mergeHRProfiles(
+    importedItems: Record<string, unknown>[],
+    existingProfiles: Record<string, unknown>[]
+) {
+    const existingMap = new Map<string, Record<string, unknown>>();
+    existingProfiles.forEach(p => {
+        const id = String(p.id ?? '').trim();
+        if (id) existingMap.set(id, p);
+    });
+
+    const fieldsToUpdate = [
+        'full_name', 'gender', 'date_of_birth', 'phone_number', 'email',
+        'job_position', 'department', 'district', 'probation_date',
+        'official_date', 'contract_type', 'labor_status',
+        'insurance_participation', 'uniform_size', 'shoe_size'
+    ];
+
+    let insertedCount = 0;
+    let updatedCount = 0;
+
+    const mergedList = importedItems.map(item => {
+        const id = String(item.id ?? '').trim();
+        const existing = existingMap.get(id);
+
+        if (existing) {
+            // Update existing record: merge changed fields, keep existing created_at
+            const updated = { ...existing };
+            fieldsToUpdate.forEach(field => {
+                const val = item[field];
+                if (typeof val === 'boolean') {
+                    updated[field] = val;
+                } else if (val !== undefined && val !== null && String(val).trim() !== '') {
+                    updated[field] = val;
+                }
+            });
+            updatedCount++;
+            return updated;
+        } else {
+            // New record
+            insertedCount++;
+            return {
+                ...item,
+                created_at: item.created_at || new Date().toISOString()
+            };
+        }
+    });
+
+    return { mergedList, insertedCount, updatedCount };
 }

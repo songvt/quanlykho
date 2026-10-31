@@ -15,7 +15,7 @@ import { administrativeLandscapePrintPageMargin, administrativePageMargins, buil
 import { getPreviousReportMonth } from '../../utils/assetMonthlyReportMath';
 
 interface Props {
-    reportType: 'CCDC' | 'TBVP';
+    reportType: 'CCDC' | 'TBVP' | 'ALL';
 }
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -43,7 +43,9 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
             const grpCode  = (a.asset_group || '').trim().toUpperCase();
             const isMatch = reportType === 'CCDC'
                 ? (typeCode.includes('CCDC') || typeCode.includes('TSNT') || grpCode.includes('CCDC') || grpCode.includes('TSNT'))
-                : (typeCode.includes('TBVP') || grpCode.includes('TBVP') || typeCode.includes('TTB-PCCC'));
+                : reportType === 'TBVP'
+                    ? (typeCode.includes('TBVP') || grpCode.includes('TBVP') || typeCode.includes('TTB-PCCC'))
+                    : true;
             
             if (!isMatch) return false;
 
@@ -132,9 +134,9 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
     const movementMonth = getPreviousReportMonth(month, year);
 
     const handleExportExcel = async () => {
-        if (reportType === 'TBVP') {
+        if (reportType === 'TBVP' || reportType === 'ALL') {
             const wb = new ExcelJS.Workbook();
-            const ws = wb.addWorksheet('ChiTiet_TBVP', {
+            const ws = wb.addWorksheet(reportType === 'ALL' ? 'ChiTiet_TBVP_CCDC' : 'ChiTiet_TBVP', {
                 views: [{ showGridLines: false }],
                 pageSetup: {
                     paperSize: 9,
@@ -165,7 +167,9 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                 cell.font = { name: 'Times New Roman', size: 10, bold: true };
                 cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
             });
-            ws.mergeCells('A2:W2'); ws.getCell('A2').value = 'DANH SÁCH TÀI SẢN TBVP TTKV BẮC SÀI GÒN';
+            ws.mergeCells('A2:W2'); ws.getCell('A2').value = reportType === 'ALL'
+                ? 'DANH SÁCH TÀI SẢN TBVP & CCDC TTKV BẮC SÀI GÒN'
+                : 'DANH SÁCH TÀI SẢN TBVP TTKV BẮC SÀI GÒN';
             ws.getCell('A2').font = { name: 'Times New Roman', size: 13, bold: true };
             ws.getCell('A2').alignment = { horizontal: 'center' };
             ws.mergeCells('A3:W3'); ws.getCell('A3').value = `Báo cáo biến động tháng: ${movementMonth.label}/${movementMonth.year}`;
@@ -275,7 +279,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
             const buffer = await wb.xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob); link.download = `BaoCao_ChiTiet_TBVP_T${month}.xlsx`; link.click();
+            link.href = URL.createObjectURL(blob); link.download = `BaoCao_ChiTiet_${reportType === 'ALL' ? 'TBVP_CCDC' : 'TBVP'}_T${month}.xlsx`; link.click();
             URL.revokeObjectURL(link.href);
             return;
         }
@@ -419,7 +423,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
         <Box sx={{ p: { xs: 1, sm: 3 } }}>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }} sx={{ mb: 3 }} className="no-print">
                 <Typography variant={isMobile ? 'body1' : 'h6'} fontWeight={700} sx={{ flexGrow: 1 }}>
-                    Báo cáo chi tiết {reportType === 'CCDC' ? 'CCDC-TSNT' : 'TBVP'}
+                    Báo cáo chi tiết {reportType === 'CCDC' ? 'CCDC-TSNT' : reportType === 'TBVP' ? 'TBVP' : 'TBVP + CCDC'}
                 </Typography>
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                     <FormControl size="small" sx={{ width: 90 }}><InputLabel>Tháng</InputLabel>
@@ -463,14 +467,18 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
 
                 <div style={{ textAlign: 'center', margin: '24px 0', fontFamily: 'Times New Roman' }}>
                     <div style={{ fontWeight: '800', textTransform: 'uppercase', fontSize: '13pt' }}>
-                        {reportType === 'TBVP' ? 'DANH SÁCH TÀI SẢN TBVP TTKV BẮC SÀI GÒN' : 'BÁO CÁO CHI TIẾT TÀI SẢN CCDC-TSNT'}
+                        {reportType === 'TBVP'
+                            ? 'DANH SÁCH TÀI SẢN TBVP TTKV BẮC SÀI GÒN'
+                            : reportType === 'ALL'
+                                ? 'DANH SÁCH TÀI SẢN TBVP & CCDC TTKV BẮC SÀI GÒN'
+                                : 'BÁO CÁO CHI TIẾT TÀI SẢN CCDC-TSNT'}
                     </div>
                     <div style={{ fontStyle: 'italic', fontSize: '11pt' }}>
-                        {reportType === 'TBVP' ? `Báo cáo biến động tháng: ${movementMonth.label}/${movementMonth.year}` : `Kỳ báo cáo tháng ${String(month).padStart(2,'0')} năm ${year}`}
+                        {reportType !== 'CCDC' ? `Báo cáo biến động tháng: ${movementMonth.label}/${movementMonth.year}` : `Kỳ báo cáo tháng ${String(month).padStart(2,'0')} năm ${year}`}
                     </div>
                 </div>
 
-                {reportType === 'TBVP' ? (
+                {reportType !== 'CCDC' ? (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Times New Roman', tableLayout: 'fixed', fontSize: '5.8pt' }}>
                     <colgroup>
                         {[2, 4.9, 8, 4.3, 2.2, 4.5, 3.7, 4.7, 3.7, 4.7, serialColumnWidths.printPercent, 3.6, 2.8, 2.8, 3.8, 6.2, 3.6, 4, 4, 4, 4, 3.4, 9.3].map((width, index) => <col key={index} style={{ width: `${width}%` }} />)}
@@ -562,7 +570,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                 </table>
                 )}
 
-                {reportType !== 'TBVP' && <div className="footer-container" style={{ marginTop: '10mm', fontFamily: 'Times New Roman' }}>
+                {reportType === 'CCDC' && <div className="footer-container" style={{ marginTop: '10mm', fontFamily: 'Times New Roman' }}>
                     <div className="sig-date" style={{ width: '45%', marginLeft: 'auto', textAlign: 'center', fontStyle: 'italic', marginBottom: '5px' }}>
                         {dateFooterStr}
                     </div>
