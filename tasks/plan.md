@@ -9,6 +9,7 @@ Specification: [`SPEC-exam-campaign-inventory.md`](../SPEC-exam-campaign-invento
 ## Architecture Decisions
 
 - Dữ liệu mới là additive, nằm trong các bảng `exam_*`; không tái sử dụng `products`, `transactions` hay tồn kho GGS.
+- Phân hệ được cô lập: chỉ thêm file/bảng/route/menu mới; mọi thay đổi đối với module GGS đang chạy đều ngoài phạm vi.
 - Server API là ranh giới duy nhất cho thao tác ghi. Frontend không gọi Supabase trực tiếp.
 - Các thao tác tạo/hủy phiếu dùng PostgreSQL RPC để khóa tồn và xử lý nguyên tử; hủy chỉ cho `admin`.
 - Nhân sự được đọc qua client/service hiện có của GGS, với API vẫn xác thực người nhận tồn tại tại thời điểm lập phiếu.

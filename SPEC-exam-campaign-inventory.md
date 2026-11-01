@@ -23,6 +23,15 @@ Người dùng có quyền phù hợp có thể:
 
 ## Scope
 
+## Isolation Guarantee
+
+Phân hệ Kỳ thi – Vật tư là một module độc lập. Mọi thay đổi phải tuân thủ các điều kiện sau:
+
+- Chỉ thêm bảng `exam_*`/`campaign_*`, endpoint `/api/exam-campaigns`, route và menu mới.
+- Không sửa cấu trúc, dữ liệu, RPC, quyền hoặc hành vi của `products`, `transactions`, `orders`, `assets`, `employees`, `hr_profiles` hay các báo cáo hiện hữu.
+- Không chạy migration production, đổi biến môi trường hoặc công khai menu cho người dùng cho đến khi có phê duyệt riêng.
+- Mỗi lát cắt phải chạy regression `npm test`, `npm run lint`, `npm run build`; nếu phát hiện ảnh hưởng, dừng triển khai và báo lại thay vì sửa lan sang module đang chạy.
+
 ### In scope
 
 - Menu, route và giao diện responsive của phân hệ mới.
