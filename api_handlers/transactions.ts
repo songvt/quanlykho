@@ -134,11 +134,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                             }
                         }
 
-                        await supabase.from('gs_sync_queue').insert({
+                        const { error: queueInsertError } = await supabase.from('gs_sync_queue').insert({
                             table_name: table,
                             action: queueAction,
                             payload: mirrorPayload
                         });
+                        if (queueInsertError) throw queueInsertError;
                         
                         // Kích hoạt tiến trình đồng bộ ngầm xử lý hàng đợi (chạy ngầm, không await để phản hồi client ngay)
                         runSyncQueue().catch(err => console.error('[Background Sync Trigger] Error:', err));

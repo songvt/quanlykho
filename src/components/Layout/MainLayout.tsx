@@ -23,7 +23,7 @@ const MainLayout: React.FC = () => {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [announcement, setAnnouncement] = useState<{ id: string; title: string; content: string } | null>(null);
     const [announcementOpen, setAnnouncementOpen] = useState(false);
-    const [progress, setProgress] = useState(100);
+    const [countdown, setCountdown] = useState(10);
 
     // Fetch active announcement upon mounting or profile change
     useEffect(() => {
@@ -49,7 +49,7 @@ const MainLayout: React.FC = () => {
                     if (!seenIds.includes(activeAnn.id)) {
                         setAnnouncement(activeAnn);
                         setAnnouncementOpen(true);
-                        setProgress(100);
+                        setCountdown(10);
                     }
                 }
             } catch (err) {
@@ -65,14 +65,9 @@ const MainLayout: React.FC = () => {
         if (!announcementOpen || !announcement) return;
 
         const duration = 10000; // 10s
-        const intervalTime = 100; // 100ms
-        const steps = duration / intervalTime;
-        let currentStep = 0;
-
         const progressInterval = setInterval(() => {
-            currentStep += 1;
-            setProgress(Math.max(0, 100 - (currentStep / steps) * 100));
-        }, intervalTime);
+            setCountdown(current => Math.max(0, current - 1));
+        }, 1000);
 
         const closeTimeout = setTimeout(() => {
             handleCloseAnnouncement();
@@ -275,7 +270,7 @@ const MainLayout: React.FC = () => {
                 <Box sx={{ width: '100%', px: { xs: 2.5, sm: 3 }, pt: 2, background: 'transparent' }}>
                     <LinearProgress 
                         variant="determinate" 
-                        value={progress} 
+                        value={countdown * 10}
                         sx={{ 
                             height: 6, 
                             borderRadius: 3,
@@ -311,7 +306,7 @@ const MainLayout: React.FC = () => {
                             }
                         }}
                     >
-                        Đồng ý (Tự đóng sau {Math.ceil(progress / 10)}s)
+                        Đồng ý (Tự đóng sau {countdown}s)
                     </Button>
                 </DialogActions>
             </Dialog>
