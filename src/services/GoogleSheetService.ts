@@ -278,9 +278,11 @@ export const GoogleSheetService = {
             body: JSON.stringify({ action: 'login', email, password })
         });
 
+        const { session_token, ...profile } = user;
         const session = {
             user: { id: user.id || user.auth_user_id, email: user.email, role: 'authenticated' },
-            profile: user
+            profile,
+            sessionToken: session_token
         };
         localStorage.setItem('qlkho_session', JSON.stringify(session));
         return { user: session.user, profile: session.profile };

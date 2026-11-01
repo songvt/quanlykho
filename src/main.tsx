@@ -9,6 +9,9 @@ import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 
 import ErrorBoundary from './components/ErrorBoundary';
+import { installApiSessionFetch } from './services/apiSessionFetch';
+
+installApiSessionFetch();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

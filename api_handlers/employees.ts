@@ -2,6 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getGoogleSheet, getSheetByTitle } from './_utils/googleSheets.js';
 import { supabase } from './_utils/supabase.js';
 import crypto from 'crypto';
+import { createAppSession } from './_utils/appSession.js';
 
 import hrProfilesHandler from './hr_profiles.js';
 import kpiInfractionsHandler from './kpi_infractions.js';
@@ -105,7 +106,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         } catch (logErr) {
                             console.error('Lỗi ghi log/thiết bị khi login:', logErr);
                         }
-                        return res.status(200).json({ ...user, permissions: typeof data.permissions === 'string' ? JSON.parse(data.permissions) : data.permissions });
+                        const authenticatedUser = { ...user, permissions: typeof data.permissions === 'string' ? JSON.parse(data.permissions) : data.permissions };
+                        const sessionSecret = process.env.APP_SESSION_SECRET;
+                        return res.status(200).json({
+                            ...authenticatedUser,
+                            ...(sessionSecret ? { session_token: createAppSession(authenticatedUser, sessionSecret) } : {})
+                        });
                     }
                     
                     // Fallback to Google Sheets
@@ -154,7 +160,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         } catch (logErr) {
                             console.error('Lỗi ghi log/thiết bị khi login GS:', logErr);
                         }
-                        return res.status(200).json({ ...user, permissions: typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions });
+                        const authenticatedUser = { ...user, permissions: typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions };
+                        const sessionSecret = process.env.APP_SESSION_SECRET;
+                        return res.status(200).json({
+                            ...authenticatedUser,
+                            ...(sessionSecret ? { session_token: createAppSession(authenticatedUser, sessionSecret) } : {})
+                        });
                     } catch (gsErr: any) {
                         console.error('Google Sheets login fallback failed:', gsErr.message);
                         return res.status(401).json({ error: 'Email hoặc mật khẩu không chính xác hoặc lỗi cấu hình hệ thống.' });

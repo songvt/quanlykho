@@ -4,6 +4,7 @@ import cors from 'cors';
 import compression from 'compression';
 import cron from 'node-cron';
 import { applySecurityHeaders, isCorsOriginAllowed, isProduction } from './api_handlers/_utils/httpSecurity.js';
+import { readBearerSession } from './api_handlers/_utils/appSession.js';
 
 import productsHandler from './api_handlers/products.js';
 import employeesHandler from './api_handlers/employees.js';
@@ -47,6 +48,17 @@ app.use((_, res, next) => {
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use((req, res, next) => {
+    const sessionSecret = process.env.APP_SESSION_SECRET;
+    if (!sessionSecret || req.method === 'OPTIONS') return next();
+    if (req.path === '/api/employees' && req.method === 'POST' && req.body?.action === 'login') return next();
+    if (req.path.startsWith('/api/cron-') && process.env.CRON_SECRET && req.headers.authorization === `Bearer ${process.env.CRON_SECRET}`) return next();
+
+    const session = readBearerSession(req.headers.authorization, sessionSecret);
+    if (!session) return res.status(401).json({ error: 'Unauthorized' });
+    (req as express.Request & { appSession?: unknown }).appSession = session;
+    return next();
+});
 
 // Function to cast Express req/res to Vercel/Next.js signature
 const createVercelHandler = (handler: any) => {
