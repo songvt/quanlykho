@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { normalizeCampaignInventoryItem, validateCampaignExportLines } from '../src/utils/examCampaigns.ts';
+import { canManageExamCampaigns, canViewExamCampaigns } from '../api_handlers/_utils/examCampaignAccess.ts';
 
 test('normalizes a campaign inventory item without linking it to the GGS product catalog', () => {
     assert.deepEqual(
@@ -18,6 +19,13 @@ test('normalizes a campaign inventory item without linking it to the GGS product
             serialNumbers: null,
         },
     );
+});
+
+test('uses existing GGS permissions for the isolated exam module', () => {
+    assert.equal(canViewExamCampaigns({ role: 'staff', permissions: ['inventory.view'] }), true);
+    assert.equal(canManageExamCampaigns({ role: 'staff', permissions: ['inventory.view'] }), false);
+    assert.equal(canManageExamCampaigns({ role: 'manager', permissions: ['inventory.manage'] }), true);
+    assert.equal(canManageExamCampaigns({ role: 'admin' }), true);
 });
 
 test('rejects campaign inventory with an empty identity or a non-positive received quantity', () => {
