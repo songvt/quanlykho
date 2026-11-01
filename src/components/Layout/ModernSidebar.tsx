@@ -344,6 +344,7 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                                 ...(profile?.role !== 'staff' ? [{ text: 'Tồn kho chi tiết (in_stock)', path: '/stock-summary-report', icon: <BarChart2 size={18} /> }] : []),
                                 ...(hasAnyPermission(['audit.view', 'audit.create', 'inventory.view', 'inventory.manage']) ? [{ text: 'Sơ đồ tồn kho', path: '/stock-map', icon: <BarChart2 size={18} /> }] : []),
                                 ...(hasPermission('inventory.view') ? [{ text: 'Sơ đồ kho thông minh', path: '/warehouse-layout', icon: <MapPinned size={18} /> }] : []),
+                                ...(hasAnyPermission(['inventory.view', 'inventory.manage']) ? [{ text: 'Kỳ thi - vật tư', path: '/exam-campaigns', icon: <ClipboardList size={18} /> }] : []),
                                 ...(hasAnyPermission(['audit.view', 'audit.create']) ? [{ text: 'Kiểm kê kho', path: '/audit', icon: <CheckSquare size={18} /> }] : []),
                                 ...(profile?.role !== 'staff' ? [
                                     { text: 'Upload tồn kho Đơn Vị', path: '/upload-inventory-donvi', icon: <FileText size={18} /> },

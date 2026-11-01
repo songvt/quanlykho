@@ -45,3 +45,17 @@ export interface CampaignExportLineInput {
     quantity: number;
     serialNumbers?: string | null;
 }
+
+export interface CampaignExportDocument {
+    id: string;
+    documentNumber: string;
+    campaignId: string;
+    siteId: string | null;
+    recipientEmployeeId: string;
+    exportDate: string;
+    status: CampaignExportStatus;
+    notes: string | null;
+    createdBy: string;
+    createdAt: string;
+    lines: Array<CampaignExportLineInput & { itemName?: string; unit?: string }>;
+}
