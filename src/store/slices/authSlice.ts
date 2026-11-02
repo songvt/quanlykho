@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { GoogleSheetService as SupabaseService } from '../../services/GoogleSheetService';
+import { isSessionTokenExpired } from '../../services/apiSessionFetch';
 import type { Employee } from '../../types';
 
 interface AuthState {
@@ -51,6 +52,17 @@ export const checkAuthSession = createAsyncThunk(
             if (sessionStr) {
                 const session = JSON.parse(sessionStr);
 
+                // Nếu có sessionToken nhưng đã hết hạn thì xóa session và yêu cầu đăng nhập lại
+                if (session.sessionToken && isSessionTokenExpired(session.sessionToken)) {
+                    localStorage.removeItem('qlkho_session');
+                    return null;
+                }
+
+                if (!session.profile) {
+                    localStorage.removeItem('qlkho_session');
+                    return null;
+                }
+
                 // Try to fetch fresh profile but with a 5-second timeout
                 // so the spinner never blocks the app indefinitely
                 try {
@@ -68,7 +80,13 @@ export const checkAuthSession = createAsyncThunk(
                         localStorage.setItem('qlkho_session', JSON.stringify(newSession));
                         return { user: session.user, profile: freshProfile };
                     }
-                } catch (err) {
+                } catch (err: any) {
+                    // Nếu lỗi do phiên không hợp lệ hoặc 401 thì hủy session
+                    const msg = String(err?.message || '');
+                    if (msg.includes('401') || msg.toLowerCase().includes('unauthorized')) {
+                        localStorage.removeItem('qlkho_session');
+                        return null;
+                    }
                     console.warn('Failed to fetch fresh profile, falling back to local storage', err);
                 }
 

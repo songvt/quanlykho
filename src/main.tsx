@@ -13,6 +13,15 @@ import { installApiSessionFetch } from './services/apiSessionFetch';
 
 installApiSessionFetch();
 
+// Gỡ bỏ Service Worker trong môi trường phát triển để tránh cache stale code/API proxy
+if (import.meta.env.DEV && typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const registration of registrations) {
+      registration.unregister();
+    }
+  });
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>

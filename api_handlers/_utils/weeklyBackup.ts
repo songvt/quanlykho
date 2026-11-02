@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { fetchAll, supabase } from './supabase.js';
 
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const serviceRoleKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
 
 const backupStore = serviceRoleKey && supabaseUrl

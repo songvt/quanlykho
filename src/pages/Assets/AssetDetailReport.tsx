@@ -21,6 +21,14 @@ interface Props {
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 const YEARS = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - 2 + i);
 
+const getAssetCategoryNote = (asset: Asset) => {
+    const source = `${asset.asset_type || ''} ${asset.asset_group || ''}`.toUpperCase();
+    if (source.includes('TSNT')) return 'TSNT';
+    if (source.includes('CCDC')) return 'CCDC';
+    if (source.includes('TBVP') || source.includes('TTB-PCCC')) return 'TBVP';
+    return 'TBVP';
+};
+
 const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -38,7 +46,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
     const printRef = useRef<HTMLDivElement>(null);
 
     const assets = useMemo(() => {
-        return sortAssetsByNameAndUser(allAssets.filter((a: Asset) => {
+        return [...sortAssetsByNameAndUser(allAssets.filter((a: Asset) => {
             const typeCode = (a.asset_type || '').trim().toUpperCase();
             const grpCode  = (a.asset_group || '').trim().toUpperCase();
             const isMatch = reportType === 'CCDC'
@@ -65,7 +73,11 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                 }
             }
             return true;
-        }));
+        }))].sort((left, right) => (
+            (left.asset_type || '').localeCompare(right.asset_type || '', 'vi', { sensitivity: 'base', numeric: true })
+            || getAssetCategoryNote(left).localeCompare(getAssetCategoryNote(right), 'vi', { sensitivity: 'base' })
+            || (left.asset_name || '').localeCompare(right.asset_name || '', 'vi', { sensitivity: 'base', numeric: true })
+        ));
     }, [allAssets, reportType, month, year]);
 
     const assetIncreasesDecreases = useMemo(() => {
@@ -136,6 +148,9 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
     const handleExportExcel = async () => {
         if (reportType === 'TBVP' || reportType === 'ALL') {
             const wb = new ExcelJS.Workbook();
+            wb.creator = 'Hệ thống quản lý kho GGS';
+            wb.created = new Date();
+            wb.modified = new Date();
             const ws = wb.addWorksheet(reportType === 'ALL' ? 'ChiTiet_TBVP_CCDC' : 'ChiTiet_TBVP', {
                 views: [{ showGridLines: false }],
                 pageSetup: {
@@ -148,12 +163,14 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                     margins: administrativePageMargins,
                 },
             });
+            ws.properties.defaultRowHeight = 20;
+            ws.properties.tabColor = { argb: 'FF1F4E78' };
             const border: Partial<ExcelJS.Borders> = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
             const fill = (argb: string): ExcelJS.Fill => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
-            const header = (address: string, value: string, color = 'FFD9D9D9') => {
+            const header = (address: string, value: string, color = 'FF1F4E78') => {
                 const cell = ws.getCell(address);
                 cell.value = value;
-                cell.font = { name: 'Times New Roman', size: 8, bold: true };
+                cell.font = { name: 'Times New Roman', size: 8, bold: true, color: { argb: color === 'FFFFFF00' || color === 'FFFFC7CE' ? 'FF000000' : 'FFFFFFFF' } };
                 cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
                 cell.fill = fill(color);
                 cell.border = border;
@@ -200,7 +217,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                 for (let column = 1; column <= 23; column += 1) ws.getCell(row, column).border = border;
             }
             ws.pageSetup.printTitlesRow = '5:7';
-            [4, 10, 21, 12, 4, 9, 8, 13, 8, 13, serialColumnWidths.excel, 8, 6, 6, 8, 12, 7, 7, 6, 7, 7, 6, 7]
+            [4, 10, 21, 12, 4, 9, 8, 13, 8, 13, serialColumnWidths.excel, 8, 6, 6, 8, 14, 7, 7, 6, 7, 7, 6, 4]
                 .forEach((width, index) => { ws.getColumn(index + 1).width = width; });
 
             const totalRow = ws.addRow([
@@ -227,7 +244,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                     index + 1, asset.asset_code || '-', asset.asset_name || '-', asset.asset_type || '-', asset.unit || '-', asset.status || '-',
                     asset.manager_code || '-', asset.manager_name || '-', asset.user_employee_code || '-', asset.user_employee_name || '-', asset.serial_number || '-', quantity,
                     movement.purchased || '-', '-', tbvpDetailMovementDates[asset.asset_code] || '-', '', checkedQuantity,
-                    condition.using, condition.broken, condition.unused, condition.repair, quantity - checkedQuantity, asset.notes || '-',
+                    condition.using, condition.broken, condition.unused, condition.repair, quantity - checkedQuantity, getAssetCategoryNote(asset),
                 ]);
                 row.height = getAssetDetailRowHeight({
                     assetName: asset.asset_name || '',
@@ -242,8 +259,11 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                     cell.alignment = { vertical: 'middle', wrapText: true, horizontal: [1, 5, 6, 7, 9, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25].includes(column) ? 'center' : 'left' };
                 });
             });
+            // Keep the signature area together with a meaningful final block
+            // of detail rows. Starting that block early prevents the signers
+            // from being stranded alone on a final page.
             const lastDetailRow = ws.rowCount;
-            const pageBreakAfterRow = getFinalSignaturePageBreakRow(firstDetailRow, lastDetailRow);
+            const pageBreakAfterRow = getFinalSignaturePageBreakRow(firstDetailRow, lastDetailRow, 18);
             if (pageBreakAfterRow) ws.getRow(pageBreakAfterRow).addPageBreak();
 
             const dateRow = ws.rowCount + 1;
@@ -256,10 +276,10 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
             const signatureRow = dateRow + 1;
             ws.mergeCells(signatureRow, 1, signatureRow, 12);
             ws.mergeCells(signatureRow, 13, signatureRow, 23);
-            const leaderCell = ws.getCell(signatureRow, 1);
-            const staffCell = ws.getCell(signatureRow, 13);
-            leaderCell.value = 'LÃNH ĐẠO ĐƠN VỊ';
+            const staffCell = ws.getCell(signatureRow, 1);
+            const leaderCell = ws.getCell(signatureRow, 13);
             staffCell.value = 'NHÂN VIÊN QLTS ĐƠN VỊ';
+            leaderCell.value = 'LÃNH ĐẠO ĐƠN VỊ';
             [leaderCell, staffCell].forEach((cell) => {
                 cell.font = { name: 'Times New Roman', size: 10, bold: true };
                 cell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -284,6 +304,9 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
             return;
         }
         const wb = new ExcelJS.Workbook();
+        wb.creator = 'Hệ thống quản lý kho GGS';
+        wb.created = new Date();
+        wb.modified = new Date();
         const ws = wb.addWorksheet('ChiTiet', {
             views: [{ showGridLines: true }],
             pageSetup: {
@@ -295,6 +318,8 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                 margins: { left: 0.79, right: 0.59, top: 0.79, bottom: 0.79, header: 0.3, footer: 0.3 }
             }
         });
+        ws.properties.defaultRowHeight = 20;
+        ws.properties.tabColor = { argb: 'FF1F4E78' };
         const border: Partial<ExcelJS.Borders> = { top:{style:'thin'}, bottom:{style:'thin'}, left:{style:'thin'}, right:{style:'thin'} };
         const hFill = (argb: string): ExcelJS.Fill => ({ type:'pattern', pattern:'solid', fgColor:{argb} });
 
@@ -341,9 +366,10 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                 a.user_employee_code||'-', a.user_employee_name||'-',
                 a.manager_code||'-', a.manager_name||'-',
                 a.receipt_date ? new Date(a.receipt_date).toLocaleDateString('vi-VN') : '-',
-                inc, dec, a.location_code||'-', a.location_name||'-', reportType
+                inc, dec, a.location_code||'-', a.location_name||'-', getAssetCategoryNote(a)
             ]);
             r.eachCell(c => { c.border = border; c.font = { size:9, name:'Times New Roman' }; c.alignment = { vertical:'middle', wrapText:true }; });
+            r.getCell(15).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
         });
 
         const fRow = ws.rowCount + 2;
@@ -353,8 +379,8 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
         ws.getCell(fRow, 12).alignment = { horizontal:'center' };
 
         const sRow = fRow + 1;
-        ws.mergeCells(sRow, 5, sRow, 8); ws.getCell(sRow,5).value = 'LÃNH ĐẠO ĐƠN VỊ';
-        ws.mergeCells(sRow, 11, sRow, 15); ws.getCell(sRow,11).value = 'NHÂN VIÊN QLTS ĐƠN VỊ';
+        ws.mergeCells(sRow, 5, sRow, 8); ws.getCell(sRow,5).value = 'NHÂN VIÊN QLTS ĐƠN VỊ';
+        ws.mergeCells(sRow, 11, sRow, 15); ws.getCell(sRow,11).value = 'LÃNH ĐẠO ĐƠN VỊ';
         [ws.getCell(sRow,5), ws.getCell(sRow,11)].forEach(c => {
             c.font = { bold:true, size:10, name:'Times New Roman' };
             c.alignment = { horizontal:'center' };
@@ -415,7 +441,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
         const detailStyle = { ...colStyle, fontSize: '5.8pt', padding: '2px 1px', overflowWrap: 'anywhere' as const };
         return <tr key={asset.id}>
             <td style={detailStyle}>{index + 1}</td><td style={detailStyle}>{asset.asset_code || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.asset_name || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.asset_type || '-'}</td><td style={detailStyle}>{asset.unit || '-'}</td><td style={detailStyle}>{asset.status || '-'}</td><td style={detailStyle}>{asset.manager_code || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.manager_name || '-'}</td><td style={detailStyle}>{asset.user_employee_code || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.user_employee_name || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.serial_number || '-'}</td><td style={detailStyle}>{quantity}</td>
-            <td style={detailStyle}>{movement.purchased || '-'}</td><td style={detailStyle}>-</td><td style={detailStyle}>{tbvpDetailMovementDates[asset.asset_code] || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}></td><td style={detailStyle}>{checkedQuantity}</td><td style={detailStyle}>{condition.using}</td><td style={detailStyle}>{condition.broken}</td><td style={detailStyle}>{condition.unused}</td><td style={detailStyle}>{condition.repair}</td><td style={detailStyle}>{quantity - checkedQuantity}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.notes || '-'}</td>
+            <td style={detailStyle}>{movement.purchased || '-'}</td><td style={detailStyle}>-</td><td style={detailStyle}>{tbvpDetailMovementDates[asset.asset_code] || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}></td><td style={detailStyle}>{checkedQuantity}</td><td style={detailStyle}>{condition.using}</td><td style={detailStyle}>{condition.broken}</td><td style={detailStyle}>{condition.unused}</td><td style={detailStyle}>{condition.repair}</td><td style={detailStyle}>{quantity - checkedQuantity}</td><td style={{ ...detailStyle, textAlign: 'center' }}>{getAssetCategoryNote(asset)}</td>
         </tr>;
     };
 
@@ -481,7 +507,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                 {reportType !== 'CCDC' ? (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Times New Roman', tableLayout: 'fixed', fontSize: '5.8pt' }}>
                     <colgroup>
-                        {[2, 4.9, 8, 4.3, 2.2, 4.5, 3.7, 4.7, 3.7, 4.7, serialColumnWidths.printPercent, 3.6, 2.8, 2.8, 3.8, 6.2, 3.6, 4, 4, 4, 4, 3.4, 9.3].map((width, index) => <col key={index} style={{ width: `${width}%` }} />)}
+                        {[2, 4.9, 8, 4.3, 2.2, 4.5, 3.7, 4.7, 3.7, 4.7, serialColumnWidths.printPercent, 3.6, 2.8, 2.8, 3.8, 11.5, 3.6, 4, 4, 4, 4, 3.4, 4].map((width, index) => <col key={index} style={{ width: `${width}%` }} />)}
                     </colgroup>
                     <thead>
                         <tr>
@@ -514,8 +540,8 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                             <div className="footer-container" style={{ marginTop: '10mm', fontFamily: 'Times New Roman' }}>
                                 <div className="sig-date" style={{ width: '45%', marginLeft: 'auto', textAlign: 'center', fontStyle: 'italic', marginBottom: '5px' }}>{dateFooterStr}</div>
                                 <div className="sig-grid" style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
-                                    <div className="sig-box" style={{ width: '45%' }}><div className="sig-title" style={{ fontWeight: 'bold' }}>LÃNH ĐẠO ĐƠN VỊ</div><div className="sig-note" style={{ fontStyle: 'italic', fontSize: '9pt' }}>(Ký, ghi rõ họ tên)</div></div>
                                     <div className="sig-box" style={{ width: '45%' }}><div className="sig-title" style={{ fontWeight: 'bold' }}>NHÂN VIÊN QLTS ĐƠN VỊ</div><div className="sig-note" style={{ fontStyle: 'italic', fontSize: '9pt' }}>(Ký, ghi rõ họ tên)</div></div>
+                                    <div className="sig-box" style={{ width: '45%' }}><div className="sig-title" style={{ fontWeight: 'bold' }}>LÃNH ĐẠO ĐƠN VỊ</div><div className="sig-note" style={{ fontStyle: 'italic', fontSize: '9pt' }}>(Ký, ghi rõ họ tên)</div></div>
                                 </div>
                             </div>
                         </td></tr>
@@ -539,7 +565,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                             <th style={{...headerStyle, width: '4%'}}>Giảm TS</th>
                             <th style={{...headerStyle, width: '6%'}}>Mã đơn vị</th>
                             <th style={{...headerStyle, width: '11%'}}>Tên đơn vị</th>
-                            <th style={{...headerStyle, width: '5%'}}>Ghi chú</th>
+                            <th style={{...headerStyle, width: '3%'}}>Ghi chú</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -562,7 +588,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                                     <td style={colStyle}>{dec}</td>
                                     <td style={colStyle}>{a.location_code || '-'}</td>
                                     <td style={{ ...colStyle, textAlign: 'left', fontSize: '8pt' }}>{a.location_name || '-'}</td>
-                                    <td style={colStyle}>{reportType}</td>
+                                    <td style={colStyle}>{getAssetCategoryNote(a)}</td>
                                 </tr>
                             );
                         })}
@@ -576,11 +602,11 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                     </div>
                     <div className="sig-grid" style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
                         <div className="sig-box" style={{ width: '45%' }}>
-                            <div className="sig-title" style={{ fontWeight: 'bold' }}>LÃNH ĐẠO ĐƠN VỊ</div>
+                            <div className="sig-title" style={{ fontWeight: 'bold' }}>NHÂN VIÊN QLTS ĐƠN VỊ</div>
                             <div className="sig-note" style={{ fontStyle: 'italic', fontSize: '9pt' }}>(Ký, ghi rõ họ tên)</div>
                         </div>
                         <div className="sig-box" style={{ width: '45%' }}>
-                            <div className="sig-title" style={{ fontWeight: 'bold' }}>NHÂN VIÊN QLTS ĐƠN VỊ</div>
+                            <div className="sig-title" style={{ fontWeight: 'bold' }}>LÃNH ĐẠO ĐƠN VỊ</div>
                             <div className="sig-note" style={{ fontStyle: 'italic', fontSize: '9pt' }}>(Ký, ghi rõ họ tên)</div>
                         </div>
                     </div>

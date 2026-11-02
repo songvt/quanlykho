@@ -16,7 +16,16 @@ const signatureFor = (payload: string, secret: string) =>
     crypto.createHmac('sha256', secret).update(payload).digest('base64url');
 
 export const createAppSession = (session: AppSession, secret: string, lifetimeSeconds = 12 * 60 * 60) => {
-    const payload = encode(JSON.stringify({ ...session, exp: Math.floor(Date.now() / 1000) + lifetimeSeconds }));
+    // JWT is sent in every Authorization header.  Never serialize the full
+    // employee record here: fields such as signature_data can be tens of KB
+    // and make every API request fail with HTTP 431.
+    const compactSession: AppSession = {
+        id: session.id,
+        email: session.email,
+        ...(session.role ? { role: session.role } : {}),
+        ...(session.permissions !== undefined ? { permissions: session.permissions } : {}),
+    };
+    const payload = encode(JSON.stringify({ ...compactSession, exp: Math.floor(Date.now() / 1000) + lifetimeSeconds }));
     return `${payload}.${signatureFor(payload, secret)}`;
 };
 

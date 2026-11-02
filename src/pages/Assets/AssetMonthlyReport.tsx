@@ -24,6 +24,16 @@ const STATUS_UNUSED = ['Chưa sử dụng', 'Mới', 'New', 'Tồn kho'];
 const STATUS_REPAIR = ['Đang bảo dưỡng', 'Sửa chữa', 'Bảo dưỡng', 'Maintenance'];
 const STATUS_LOST = ['Thất thoát', 'Mất', 'Lost'];
 
+// The combined TBVP + CCDC report needs a clear operational classification,
+// independent of the longer asset type text shown in the adjacent column.
+const getAssetCategoryNote = (assetType: string) => {
+    const normalized = (assetType || '').toUpperCase();
+    if (normalized.includes('TSNT')) return 'TSNT';
+    if (normalized.includes('CCDC')) return 'CCDC';
+    if (normalized.includes('TBVP') || normalized.includes('TTB-PCCC')) return 'TBVP';
+    return 'TBVP';
+};
+
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 const YEARS = Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - 2 + i);
 
@@ -184,6 +194,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                 return {
                     name: g.name,
                     type: g.type,
+                    categoryNote: getAssetCategoryNote(g.type),
                     unit: Array.from(g.units).join(', ') || '-',
                     totalQty,
                     usingQty,
@@ -201,8 +212,9 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
             })
             .filter(g => g.openingQty > 0 || g.increaseQty > 0 || g.decreaseQty > 0 || g.totalQty > 0)
             .sort((left, right) => (
-                (left.name || '').localeCompare(right.name || '', 'vi', { sensitivity: 'base', numeric: true })
-                || (left.type || '').localeCompare(right.type || '', 'vi', { sensitivity: 'base', numeric: true })
+                (left.type || '').localeCompare(right.type || '', 'vi', { sensitivity: 'base', numeric: true })
+                || (left.categoryNote || '').localeCompare(right.categoryNote || '', 'vi', { sensitivity: 'base' })
+                || (left.name || '').localeCompare(right.name || '', 'vi', { sensitivity: 'base', numeric: true })
             ));
     }, [allAssets, allLogs, reportType, month, year]);
 
@@ -232,6 +244,9 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
 
     const handleExportExcel = async () => {
         const wb = new ExcelJS.Workbook();
+        wb.creator = 'Hệ thống quản lý kho GGS';
+        wb.created = new Date();
+        wb.modified = new Date();
         const ws = wb.addWorksheet('BaoCao', {
             views: [{ showGridLines: false }],
             pageSetup: {
@@ -244,6 +259,8 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                 margins: administrativePageMargins,
             }
         });
+        ws.properties.defaultRowHeight = 20;
+        ws.properties.tabColor = { argb: 'FF1F4E78' };
         const border: Partial<ExcelJS.Borders> = { top:{style:'thin'}, bottom:{style:'thin'}, left:{style:'thin'}, right:{style:'thin'} };
         const hFill = (argb: string): ExcelJS.Fill => ({ type:'pattern', pattern:'solid', fgColor:{argb} });
 
@@ -275,13 +292,13 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
 
         // Keep the full table inside one A4 landscape page; long asset names
         // wrap instead of being clipped or forcing an unreadably small scale.
-        [4.5, 21, 12, 5, 7, 5.5, 5.5, 6, 7, 6.5, 7, 7, 6, 7].forEach((width, index) => { ws.getColumn(index + 1).width = width; });
+        [4.5, 21, 12, 5, 7, 5.5, 5.5, 6, 7, 6.5, 7, 10, 6, 4].forEach((width, index) => { ws.getColumn(index + 1).width = width; });
         ws.mergeCells('A5:A6'); ws.mergeCells('B5:B6'); ws.mergeCells('C5:C6'); ws.mergeCells('D5:D6'); ws.mergeCells('E5:E6');
         ws.mergeCells('F5:G5'); ws.mergeCells('H5:H6'); ws.mergeCells('I5:L5'); ws.mergeCells('M5:M6'); ws.mergeCells('N5:N6');
-        const setHeader = (address: string, value: string, fill = 'FFD0D0D0') => {
+        const setHeader = (address: string, value: string, fill = 'FF1F4E78') => {
             const cell = ws.getCell(address);
             cell.value = value;
-            cell.font = { bold:true, size:10, name:'Times New Roman' };
+            cell.font = { bold:true, size:10, name:'Times New Roman', color: { argb: fill === 'FFFFFF00' ? 'FF000000' : 'FFFFFFFF' } };
             cell.alignment = { horizontal:'center', vertical:'middle', wrapText:true };
             cell.fill = hFill(fill);
             cell.border = border;
@@ -291,6 +308,8 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
             ['F5', `BIẾN ĐỘNG\nTHÁNG: ${movementMonth.label}`], ['H5', 'Số lượng\nkiểm'], ['I5', 'Tình trạng'], ['M5', 'Chênh\nlệch'], ['N5', 'Ghi chú'],
             ['F6', 'Tăng', 'FFFFFF00'], ['G6', 'Giảm', 'FFFFFF00'], ...assetMonthlyStatusColumns.map((label, index) => [`${String.fromCharCode(73 + index)}6`, label]),
         ].forEach(([address, value, fill]) => setHeader(address, value, fill));
+        ws.getCell('L6').value = 'Sửa chữa/\nBảo dưỡng';
+        ws.getCell('L6').alignment = { horizontal: 'center', vertical: 'middle', wrapText: true, shrinkToFit: false };
         for (let column = 1; column <= 14; column += 1) {
             const cell = ws.getCell(7, column);
             cell.value = `(${column})`;
@@ -306,9 +325,8 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
         const totRow = ws.addRow(['Tổng','','','',summary.opening,summary.increase,summary.decrease,summary.inspection,summary.using,summary.broken,summary.unused,summary.repair,summary.difference,'']);
         totRow.eachCell(c => { c.font = { bold:true }; c.fill = hFill('FFE8E8E8'); c.border = border; });
 
-        const firstDataRow = ws.rowCount + 1;
         groupedAssets.forEach((g, idx) => {
-            const r = ws.addRow([idx+1, g.name, g.type, g.unit, g.openingQty, g.increaseQty || '-', g.decreaseQty || '-', g.inspectionQty, g.usingQty, g.brokenQty, g.unusedQty, g.repairQty, g.differenceQty, '']);
+            const r = ws.addRow([idx+1, g.name, g.type, g.unit, g.openingQty, g.increaseQty || '-', g.decreaseQty || '-', g.inspectionQty, g.usingQty, g.brokenQty, g.unusedQty, g.repairQty, g.differenceQty, g.categoryNote]);
             r.eachCell((c, column) => {
                 c.border = border;
                 c.font = { size:9, name:'Times New Roman' };
@@ -316,7 +334,7 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                     vertical: 'middle',
                     wrapText: true,
                     shrinkToFit: false,
-                    horizontal: [1, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].includes(column) ? 'center' : 'left',
+                    horizontal: [1, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].includes(column) ? 'center' : 'left',
                 };
             });
             const wrappedLines = Math.max(
@@ -324,18 +342,14 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                 Math.ceil((g.type || '').length / 17),
                 1,
             );
-            r.height = Math.max(22, wrappedLines * 15 + 3);
+            // Keep rows comfortably spaced for print readability. The final
+            // rows are deliberately moved to the signature page below.
+            r.height = Math.max(28, wrappedLines * 18 + 4);
         });
 
         const lastDataRow = ws.rowCount;
-        // Keep the last detail rows and signature block together. Without an
-        // explicit break, Excel can move only the signatures to a nearly blank page.
-        const signatureRowsToKeep = 5;
-        if (lastDataRow - firstDataRow + 1 > signatureRowsToKeep) {
-            // Row-level breaks happen after the specified row.  Start a fresh
-            // final page with six detail rows, leaving room for signatures.
-            ws.getRow(lastDataRow - signatureRowsToKeep).addPageBreak();
-        }
+        // Keep the footer directly after the last data row. A manual Excel
+        // break was forcing the signatures onto a separate blank page.
 
         const fRow = lastDataRow + 1;
         ws.mergeCells(fRow, 10, fRow, 14);
@@ -353,13 +367,13 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
         ws.getRow(sRow).height = 18;
         ws.mergeCells(sRow + 1, 5, sRow + 4, 9);
         ws.mergeCells(sRow + 1, 10, sRow + 4, 14);
-        ws.getRow(sRow + 1).height = 72;
+        ws.getRow(sRow + 1).height = 48;
 
         const buf = await wb.xlsx.writeBuffer();
         const blob = new Blob([buf], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `BaoCao_${reportType === 'ALL' ? 'TBVP_CCDC' : reportType}_T${month}.xlsx`;
+        a.download = `BaoCao_${reportType === 'ALL' ? 'TBVP_CCDC' : reportType}_T${month}_ky-cung-du-lieu.xlsx`;
         a.click();
     };
 
@@ -375,13 +389,16 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                 @page { size: A4 landscape; margin: ${administrativeLandscapePrintPageMargin}; }
                 body { font-family: 'Times New Roman', serif; font-size: 10.5pt; margin: 0; padding: 0; }
                 table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: fixed; }
-                th, td { border: 1px solid #000; padding: 4px 3px; text-align: center; vertical-align: middle; word-wrap: break-word; font-size: 8.5pt; }
+                th, td { border: 1px solid #000; padding: 6px 3.5px; text-align: center; vertical-align: middle; word-wrap: break-word; font-size: 8.5pt; line-height: 1.35; }
                 th { background: #e0e0e0; font-weight: bold; }
                 .footer-container {
-                    margin-top: 12mm;
+                    margin-top: 10mm;
                     min-height: 46mm;
                     ${signatureBlockKeepTogetherCss}
                 }
+                .footer-container > *, .footer-container .sig-grid, .footer-container .sig-box { ${signatureBlockKeepTogetherCss} }
+                tbody.signature-tail-rows, tr.signature-row { ${signatureBlockKeepTogetherCss} }
+                tr.signature-row > td { border: 0 !important; padding: 0 !important; }
                 .sig-date { width: 45%; margin-left: auto; text-align: center; font-style: italic; margin-bottom: 5px; font-size: 10pt; }
                 .sig-grid { display: flex; justify-content: space-between; text-align: center; width: 100%; }
                 .sig-box { width: 32%; min-height: 34mm; display: inline-block; vertical-align: top; }
@@ -398,8 +415,33 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
         setTimeout(() => { w.print(); }, 500);
     };
 
-    const colStyle: React.CSSProperties = { border: '1px solid #000', padding: '4px 3px', textAlign: 'center', fontSize: '8.5pt', fontFamily: 'Times New Roman' };
+    const colStyle: React.CSSProperties = { border: '1px solid #000', padding: '6px 3.5px', textAlign: 'center', fontSize: '8.5pt', fontFamily: 'Times New Roman', lineHeight: 1.35 };
     const headerStyle: React.CSSProperties = { ...colStyle, backgroundColor: '#e0e0e0', fontWeight: 'bold' };
+    const sttColStyle: React.CSSProperties = { ...colStyle, padding: '6px 2px', whiteSpace: 'nowrap' };
+    const sttHeaderStyle: React.CSSProperties = { ...headerStyle, padding: '6px 2px', whiteSpace: 'nowrap' };
+
+    // Keep a small group of data rows with the sign-off block to prevent orphaned signatures on a blank page
+    const signatureTailRowCount = 6;
+    const signatureTailStart = Math.max(0, groupedAssets.length - signatureTailRowCount);
+
+    const renderAssetRow = (g: (typeof groupedAssets)[number], i: number) => (
+        <tr key={i}>
+            <td style={sttColStyle}>{i + 1}</td>
+            <td style={{ ...colStyle, textAlign: 'left' }}>{g.name}</td>
+            <td style={{ ...colStyle, textAlign: 'left' }}>{g.type}</td>
+            <td style={colStyle}>{g.unit}</td>
+            <td style={colStyle}>{g.openingQty}</td>
+            <td style={colStyle}>{g.increaseQty || '-'}</td>
+            <td style={colStyle}>{g.decreaseQty || '-'}</td>
+            <td style={colStyle}>{g.inspectionQty}</td>
+            <td style={colStyle}>{g.usingQty}</td>
+            <td style={colStyle}>{g.brokenQty}</td>
+            <td style={colStyle}>{g.unusedQty}</td>
+            <td style={colStyle}>{g.repairQty}</td>
+            <td style={colStyle}>{g.differenceQty}</td>
+            <td style={{ ...colStyle, textAlign: 'center', fontSize: '8pt' }}>{g.categoryNote}</td>
+        </tr>
+    );
 
     return (
         <Box sx={{ p: { xs: 1, sm: 3 } }}>
@@ -462,13 +504,13 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
 
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Times New Roman' }}>
                     <colgroup>
-                        <col style={{ width: '3%' }} /><col style={{ width: '25%' }} /><col style={{ width: '15%' }} /><col style={{ width: '5%' }} />
+                        <col style={{ width: '4.5%' }} /><col style={{ width: '23.5%' }} /><col style={{ width: '13%' }} /><col style={{ width: '5%' }} />
                         <col style={{ width: '5%' }} /><col style={{ width: '6%' }} /><col style={{ width: '6%' }} /><col style={{ width: '5%' }} />
-                        <col style={{ width: '5%' }} /><col style={{ width: '5%' }} /><col style={{ width: '5%' }} /><col style={{ width: '5%' }} /><col style={{ width: '5%' }} /><col style={{ width: '5%' }} />
+                        <col style={{ width: '5%' }} /><col style={{ width: '5%' }} /><col style={{ width: '5%' }} /><col style={{ width: '8%' }} /><col style={{ width: '5%' }} /><col style={{ width: '4%' }} />
                     </colgroup>
                     <thead>
                         <tr>
-                            <th style={headerStyle} rowSpan={2}>STT</th>
+                            <th style={sttHeaderStyle} rowSpan={2}>STT</th>
                             <th style={headerStyle} rowSpan={2}>Tên tài sản</th>
                             <th style={headerStyle} rowSpan={2}>Loại tài sản</th>
                             <th style={headerStyle} rowSpan={2}>ĐVT</th>
@@ -482,12 +524,12 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                         <tr>
                             <th style={headerStyle}>Tăng</th>
                             <th style={headerStyle}>Giảm</th>
-                            {assetMonthlyStatusColumns.map(label => <th key={label} style={headerStyle}>{label}</th>)}
+                            {assetMonthlyStatusColumns.map((label, index) => <th key={label} style={index === 3 ? { ...headerStyle, lineHeight: 1.15 } : headerStyle}>{index === 3 ? <>Sửa chữa/<br/>Bảo dưỡng</> : label}</th>)}
                         </tr>
                     </thead>
                     <tbody>
                         <tr style={{ backgroundColor: '#e0e0e0', fontWeight: 'bold' }}>
-                            <td style={colStyle}>Tổng</td><td colSpan={3} style={colStyle}></td>
+                            <td style={sttColStyle}>Tổng</td><td colSpan={3} style={colStyle}></td>
                             <td style={colStyle}>{summary.opening}</td>
                             <td style={colStyle}>{summary.increase}</td>
                             <td style={colStyle}>{summary.decrease}</td>
@@ -495,43 +537,30 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                             <td style={colStyle}>{summary.broken}</td><td style={colStyle}>{summary.unused}</td><td style={colStyle}>{summary.repair}</td><td style={colStyle}>{summary.difference}</td>
                             <td style={colStyle}></td>
                         </tr>
-                        {groupedAssets.map((g, i) => (
-                            <tr key={i}>
-                                <td style={colStyle}>{i + 1}</td>
-                                <td style={{ ...colStyle, textAlign: 'left' }}>{g.name}</td>
-                                <td style={{ ...colStyle, textAlign: 'left' }}>{g.type}</td>
-                                <td style={colStyle}>{g.unit}</td>
-                                <td style={colStyle}>{g.openingQty}</td>
-                                <td style={colStyle}>{g.increaseQty || '-'}</td>
-                                <td style={colStyle}>{g.decreaseQty || '-'}</td>
-                                <td style={colStyle}>{g.inspectionQty}</td>
-                                <td style={colStyle}>{g.usingQty}</td>
-                                <td style={colStyle}>{g.brokenQty}</td>
-                                <td style={colStyle}>{g.unusedQty}</td>
-                                <td style={colStyle}>{g.repairQty}</td>
-                                <td style={colStyle}>{g.differenceQty}</td>
-                                <td style={{ ...colStyle, textAlign: 'left', fontSize: '8pt' }}></td>
-                            </tr>
-                        ))}
+                        {groupedAssets.slice(0, signatureTailStart).map(renderAssetRow)}
+                    </tbody>
+                    <tbody className="signature-tail-rows">
+                        {groupedAssets.slice(signatureTailStart).map((g, idx) => renderAssetRow(g, signatureTailStart + idx))}
+                        <tr className="signature-row"><td colSpan={14} style={{ border: 0, padding: 0 }}>
+                            {/* Robust Printed Footer */}
+                            <div className="footer-container" style={{ marginTop: '24px', fontFamily: 'Times New Roman' }}>
+                                <div className="sig-date" style={{ width: '45%', marginLeft: 'auto', textAlign: 'center', fontStyle: 'italic', marginBottom: '5px' }}>
+                                    {dateFooterStr}
+                                </div>
+                                <div className="sig-grid" style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
+                                    <div className="sig-box" style={{ width: '45%' }}>
+                                        <div className="sig-title" style={{ fontWeight: 'bold' }}>NHÂN VIÊN QLTS ĐƠN VỊ</div>
+                                        <div className="sig-note" style={{ fontStyle: 'italic', fontSize: '9pt' }}>(Ký, ghi rõ họ tên)</div>
+                                    </div>
+                                    <div className="sig-box" style={{ width: '45%' }}>
+                                        <div className="sig-title" style={{ fontWeight: 'bold' }}>LÃNH ĐẠO ĐƠN VỊ</div>
+                                        <div className="sig-note" style={{ fontStyle: 'italic', fontSize: '9pt' }}>(Ký, ghi rõ họ tên)</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td></tr>
                     </tbody>
                 </table>
-
-                {/* Robust Printed Footer */}
-                <div className="footer-container" style={{ fontFamily: 'Times New Roman' }}>
-                    <div className="sig-date" style={{ width: '45%', marginLeft: 'auto', textAlign: 'center', fontStyle: 'italic', marginBottom: '5px' }}>
-                        {dateFooterStr}
-                    </div>
-                    <div className="sig-grid" style={{ display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
-                        <div className="sig-box" style={{ width: '45%' }}>
-                            <div className="sig-title" style={{ fontWeight: 'bold' }}>NHÂN VIÊN QLTS ĐƠN VỊ</div>
-                            <div className="sig-note" style={{ fontStyle: 'italic', fontSize: '9pt' }}>(Ký, ghi rõ họ tên)</div>
-                        </div>
-                        <div className="sig-box" style={{ width: '45%' }}>
-                            <div className="sig-title" style={{ fontWeight: 'bold' }}>LÃNH ĐẠO ĐƠN VỊ</div>
-                            <div className="sig-note" style={{ fontStyle: 'italic', fontSize: '9pt' }}>(Ký, ghi rõ họ tên)</div>
-                        </div>
-                    </div>
-                </div>
             </Paper>
             </Box>
         </Box>

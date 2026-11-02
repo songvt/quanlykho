@@ -6,7 +6,7 @@ import { Box, CircularProgress } from '@mui/material';
 import MainLayout from './components/Layout/MainLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundary from './components/ErrorBoundary';
-import { checkAuthSession } from './store/slices/authSlice';
+import { checkAuthSession, logoutUser } from './store/slices/authSlice';
 import type { AppDispatch } from './store';
 import { NotificationProvider } from './contexts/NotificationContext';
 
@@ -88,6 +88,11 @@ function App() {
 
     useEffect(() => {
         dispatch(checkAuthSession());
+        const handleAuthExpired = () => {
+            dispatch(logoutUser());
+        };
+        window.addEventListener('auth:expired', handleAuthExpired);
+        return () => window.removeEventListener('auth:expired', handleAuthExpired);
     }, [dispatch]);
 
     return (

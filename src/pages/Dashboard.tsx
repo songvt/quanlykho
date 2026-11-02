@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
     Box, Paper, Typography, List, ListItem, ListItemText, Grid, IconButton, Tooltip, Avatar,
@@ -17,17 +17,14 @@ import {
     PieChart as RechartsPieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 
-import type { RootState, AppDispatch } from '../store';
-import { fetchProducts, fetchProductsForce } from '../store/slices/productsSlice';
-import { fetchTransactions, fetchTransactionsForce } from '../store/slices/transactionsSlice';
-import { fetchInventory, selectStockMap } from '../store/slices/inventorySlice';
-import { fetchOrders, fetchOrdersForce } from '../store/slices/ordersSlice';
-import { fetchEmployees, fetchEmployeesForce } from '../store/slices/employeesSlice';
+import type { RootState } from '../store';
+import type { DashboardStats } from '../types';
+import { GoogleSheetService } from '../services/GoogleSheetService';
 
 import DashboardSkeleton from './DashboardSkeleton';
 import { useTabVisibility } from '../hooks/useTabVisibility';
 import { usePermission } from '../hooks/usePermission';
-import { formatDate, parseDate } from '../utils/dateUtils';
+import { formatDate } from '../utils/dateUtils';
 import { formatNumber } from '../utils/numberUtils';
 
 // Premium SaaS Color Tokens
@@ -112,16 +109,9 @@ const modulesData = [
 ];
 
 const Dashboard = () => {
-    const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
     const { hasPermission, hasAnyPermission } = usePermission();
-    const { items: products, status: productStatus } = useSelector((state: RootState) => state.products);
-    const { items: transactions, status: transactionStatus } = useSelector((state: RootState) => state.transactions);
-    const { items: orders, status: orderStatus } = useSelector((state: RootState) => state.orders);
-    const { status: inventoryStatus } = useSelector((state: RootState) => state.inventory);
-    const { items: employees, status: employeeStatus } = useSelector((state: RootState) => state.employees);
     const { profile } = useSelector((state: RootState) => state.auth);
-    const stockMap = useSelector(selectStockMap);
 
     const filteredModules = useMemo(() => {
         return modulesData.map(mod => {
@@ -164,25 +154,27 @@ const Dashboard = () => {
     
     const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
     const [placeholderModule, setPlaceholderModule] = useState<string | null>(null);
+    const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
-    const isLoading = productStatus === 'loading' || transactionStatus === 'loading' || inventoryStatus === 'loading';
-
-    const refreshAll = useCallback(() => {
-        dispatch(fetchProductsForce());
-        dispatch(fetchTransactionsForce());
-        dispatch(fetchOrdersForce());
-        dispatch(fetchInventory());
-        dispatch(fetchEmployeesForce());
-        setLastUpdated(new Date());
-    }, [dispatch]);
+    const refreshAll = useCallback(async () => {
+        setIsLoading(true);
+        setLoadError(null);
+        try {
+            const nextStats = await GoogleSheetService.getDashboardStats();
+            setStats(nextStats);
+            setLastUpdated(new Date());
+        } catch (error: any) {
+            setLoadError(error?.message || 'Không thể tải dữ liệu tổng quan.');
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
-        if (productStatus === 'idle') dispatch(fetchProducts());
-        if (transactionStatus === 'idle') dispatch(fetchTransactions());
-        if (orderStatus === 'idle') dispatch(fetchOrders());
-        if (inventoryStatus === 'idle') dispatch(fetchInventory());
-        if (employeeStatus === 'idle') dispatch(fetchEmployees());
-    }, [productStatus, transactionStatus, inventoryStatus, orderStatus, employeeStatus, dispatch]);
+        void refreshAll();
+    }, [refreshAll]);
 
     useTabVisibility(refreshAll, 5 * 60 * 1000);
 
@@ -194,73 +186,33 @@ const Dashboard = () => {
         return `${text}, ${profile?.full_name || 'bạn'}`;
     }, [profile]);
 
-    const stats = useMemo(() => {
-        if (!products.length && !transactions.length) return null;
+    const isInitialLoading = isLoading && !stats;
 
-        let total_inventory = 0;
-        let low_stock_items = 0;
-        let out_of_stock_items = 0;
-        
-        products.forEach(p => {
-            const qty = stockMap[p.id] || 0;
-            total_inventory += Math.max(0, qty);
-            if (qty <= 0) out_of_stock_items++;
-            else if (qty < 10) low_stock_items++;
-        });
-
-        const recent_transactions = [...transactions]
-            .sort((a, b) => parseDate(b.date).getTime() - parseDate(a.date).getTime())
-            .slice(0, 8);
-
-        const weekly_stats: { date: string, inbound: number, outbound: number }[] = [];
-        const today = new Date();
-        for (let i = 6; i >= 0; i--) {
-            const d = new Date(today);
-            d.setDate(d.getDate() - i);
-            weekly_stats.push({ date: formatDate(d).substring(0, 5), inbound: 0, outbound: 0 });
-        }
-
-        const weeklyStatsMap = new Map<string, { date: string, inbound: number, outbound: number }>();
-        weekly_stats.forEach(w => weeklyStatsMap.set(w.date, w));
-
-        transactions.forEach(t => {
-            const tDate = formatDate(t.date).substring(0, 5);
-            const dayStat = weeklyStatsMap.get(tDate);
-            if (dayStat) {
-                if (t.type === 'inbound') dayStat.inbound += t.quantity;
-                else dayStat.outbound += t.quantity;
-            }
-        });
-
-        const catMap: Record<string, number> = {};
-        products.forEach(p => {
-            const cat = (p.category || 'Khác').trim();
-            catMap[cat] = (catMap[cat] || 0) + Math.max(0, stockMap[p.id] || 0);
-        });
-        const category_stats = Object.entries(catMap)
-            .map(([name, value]) => ({ name, value }))
-            .filter(c => c.value > 0)
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 5);
-
-        return {
-            total_products: products.length,
-            total_inventory,
-            low_stock_items,
-            out_of_stock_items,
-            recent_transactions,
-            weekly_stats,
-            category_stats
-        };
-    }, [products, transactions, stockMap]);
-
-    if (isLoading && !stats) return <DashboardSkeleton />;
+    if (isInitialLoading) return <DashboardSkeleton />;
 
     if (!stats) {
+        const hasError = Boolean(loadError);
+        const errorMessage = loadError;
+
         return (
             <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" p={4} minHeight="50vh">
-                <AlertCircle size={48} color="var(--text-secondary)" />
-                <Typography sx={{ mt: 2, fontWeight: 600, color: 'var(--text-primary)' }}>Không có dữ liệu</Typography>
+                <AlertCircle size={48} color={hasError ? '#ef4444' : 'var(--text-secondary)'} />
+                <Typography sx={{ mt: 2, fontWeight: 600, color: hasError ? 'error.main' : 'var(--text-primary)', textAlign: 'center' }}>
+                    {hasError ? 'Không thể tải dữ liệu từ máy chủ' : 'Không có dữ liệu'}
+                </Typography>
+                {errorMessage && (
+                    <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary', maxWidth: 480, textAlign: 'center' }}>
+                        {errorMessage}
+                    </Typography>
+                )}
+                <Button 
+                    variant="contained" 
+                    startIcon={<RefreshCw size={16} />} 
+                    onClick={() => void refreshAll()} 
+                    sx={{ mt: 2, textTransform: 'none', borderRadius: '8px' }}
+                >
+                    {hasError ? 'Thử lại kết nối' : 'Tải lại dữ liệu'}
+                </Button>
             </Box>
         );
     }
