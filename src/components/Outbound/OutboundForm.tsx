@@ -6,6 +6,7 @@ import {
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import CloseIcon from '@mui/icons-material/Close';
 import SaveIcon from '@mui/icons-material/Save';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState, AppDispatch } from '../../store';
 import { addOutboundTransaction, fetchTransactionsForce, importOutboundTransactions } from '../../store/slices/transactionsSlice';
@@ -71,10 +72,10 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
                 }
                 const newer = [...prev, ...uniqueNewCodes];
                 setQuantity(newer.length);
-                success(`Đã thêm ${uniqueNewCodes.length} serial`);
+                success(`✅ +${uniqueNewCodes.length} serial (tổng: ${newer.length})`);
                 return newer;
             });
-            setShowScanner(false);
+            // DON'T close scanner — keep scanning in continuous mode
         } else {
             setSerial(decodedText);
             setShowScanner(false);
@@ -199,6 +200,8 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
         }
     };
 
+    const isSerialized = products.find(p => p.id === selectedProduct)?.category?.toLowerCase() === 'hàng hóa';
+
     return (
         <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
             <Grid container spacing={2}>
@@ -219,7 +222,7 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
                     <TextField
                         fullWidth label="Số lượng" type="number" value={quantity}
                         onChange={e => setQuantity(Number(e.target.value))} size="small"
-                        disabled={products.find(p => p.id === selectedProduct)?.category?.toLowerCase() === 'hàng hóa'}
+                        disabled={isSerialized}
                     />
                 </Grid>
 
@@ -269,13 +272,14 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
                     </TextField>
                 </Grid>
 
-                {products.find(p => p.id === selectedProduct)?.category?.toLowerCase() === 'hàng hóa' && (
+                {isSerialized && (
                     <Grid size={{ xs: 12 }}>
                         <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
                             <Stack direction="row" spacing={1} mb={1}>
                                 <TextField
                                     fullWidth label="Serial Code" value={serial} onChange={e => setSerial(e.target.value)}
                                     onKeyDown={e => e.key === 'Enter' && handleManualAddSerial()} size="small"
+                                    placeholder="Nhập serial rồi Enter, hoặc bấm quét camera →"
                                 />
                                 <Button variant="outlined" onClick={() => setShowScanner(true)}><QrCodeScannerIcon /></Button>
                             </Stack>
@@ -298,14 +302,43 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
                 </Grid>
             </Grid>
 
-            <Dialog open={showScanner} onClose={() => setShowScanner(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
-                <DialogTitle sx={{ fontWeight: 900, textAlign: 'center', color: 'primary.main' }}>
-                    QUÉT MÃ QR / SERIAL
+            {/* Scanner Dialog — continuous mode for serialized products */}
+            <Dialog
+                open={showScanner}
+                onClose={() => setShowScanner(false)}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 3 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 900, textAlign: 'center', color: 'primary.main', pb: 1 }}>
+                    QUÉT SERIAL LIÊN TỤC
+                    {scannedSerials.length > 0 && (
+                        <Box component="span" sx={{ display: 'block', fontSize: '0.85rem', color: '#22c55e', fontWeight: 700 }}>
+                            <CheckCircleIcon sx={{ fontSize: 16, verticalAlign: 'middle', mr: 0.5 }} />
+                            Đã quét: {scannedSerials.length} serial
+                        </Box>
+                    )}
                 </DialogTitle>
                 <DialogContent sx={{ p: 0 }}>
-                    <QRScanner onScanSuccess={handleScanSuccess} onScanFailure={() => {}} height={400} />
+                    <QRScanner
+                        onScanSuccess={handleScanSuccess}
+                        onScanFailure={() => {}}
+                        height={400}
+                        continuous={isSerialized}
+                        scannedCount={scannedSerials.length}
+                    />
                     <Box p={2} textAlign="center">
-                        <Button variant="outlined" onClick={() => setShowScanner(false)}>Đóng Camera</Button>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={() => setShowScanner(false)}
+                            startIcon={<CheckCircleIcon />}
+                            sx={{ fontWeight: 700, borderRadius: 2 }}
+                        >
+                            {scannedSerials.length > 0
+                                ? `Xong (${scannedSerials.length} serial)`
+                                : 'Đóng Camera'}
+                        </Button>
                     </Box>
                 </DialogContent>
             </Dialog>

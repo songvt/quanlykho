@@ -1,21 +1,23 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
-import { Box, IconButton, Select, MenuItem, Typography, Button, CircularProgress, Alert, Slider } from '@mui/material';
+import { Box, IconButton, Select, MenuItem, Typography, Button, CircularProgress, Alert, Slider, Chip } from '@mui/material';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
 import FlashOffIcon from '@mui/icons-material/FlashOff';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { playBeep } from '../utils/audio';
 
 interface QRScannerProps {
     onScanSuccess: (decodedText: string) => void;
     onScanFailure?: (error: any) => void;
     height?: string | number;
+    /** Continuous mode: keep scanning after each decode (don't close dialog) */
+    continuous?: boolean;
+    /** Total scanned count to display in continuous mode */
+    scannedCount?: number;
 }
 
-const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProps) => {
-    // A scanner is rendered in several dialogs throughout the application. A fixed
-    // element id lets a stale dialog instance attach to the next scanner, which can
-    // leave the camera track locked and produces "Could not start video source".
+const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = false, scannedCount = 0 }: QRScannerProps) => {
     const regionId = useRef(`custom-reader-box-${crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)}`).current;
     const scannerRef = useRef<Html5Qrcode | null>(null);
     const [cameras, setCameras] = useState<Array<{ id: string, label: string }>>([]);
@@ -27,11 +29,19 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
     const [capabilities, setCapabilities] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    // Flash green overlay on successful scan
+    const [flashSuccess, setFlashSuccess] = useState(false);
+    const [lastScannedCode, setLastScannedCode] = useState<string>('');
 
-    // De-bouncing
+    // De-bouncing — keep refs stable across re-renders
     const lastScanRef = useRef<string>('');
     const lastScanTimeRef = useRef<number>(0);
     const scanLockedRef = useRef(false);
+    // Keep callback ref fresh so the scanner never needs to restart on prop change
+    const onScanSuccessRef = useRef(onScanSuccess);
+    useEffect(() => { onScanSuccessRef.current = onScanSuccess; }, [onScanSuccess]);
+    const continuousRef = useRef(continuous);
+    useEffect(() => { continuousRef.current = continuous; }, [continuous]);
 
     // Initialization Effect
     useEffect(() => {
@@ -39,7 +49,6 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
         let scannerInstance: Html5Qrcode | null = null;
 
         const initScanner = async () => {
-            // Wait for DOM element to be available
             let retryCount = 0;
             while (isMounted && !document.getElementById(regionId) && retryCount < 10) {
                 await new Promise(resolve => setTimeout(resolve, 50));
@@ -49,8 +58,6 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
             if (!isMounted || !document.getElementById(regionId)) return;
 
             try {
-                // Restrict decoding to the formats used by this app. On mobile, trying every
-                // available symbology on every frame makes autofocus/detection noticeably slower.
                 const SUPPORTED_FORMATS: Html5QrcodeSupportedFormats[] = [
                     Html5QrcodeSupportedFormats.QR_CODE,
                     Html5QrcodeSupportedFormats.DATA_MATRIX,
@@ -69,11 +76,6 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                 });
                 scannerRef.current = scannerInstance;
 
-                // Html5Qrcode.getCameras() opens a temporary video stream before it
-                // enumerates devices, then immediately closes it. On a number of Android
-                // browsers that second camera request fails with "Could not start video
-                // source". Enumerating does not open the camera; the sole permission and
-                // camera request now happens below in scanner.start().
                 if (!navigator.mediaDevices?.enumerateDevices) {
                     throw new Error('Trình duyệt không hỗ trợ truy cập camera. Hãy mở bằng Chrome hoặc Edge qua HTTPS.');
                 }
@@ -90,7 +92,6 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                                    lbl.includes('environment') ||
                                    lbl.includes('rear');
                         });
-                        // Mobile browsers commonly list the rear lens last when labels are hidden.
                         setSelectedCameraId(backCamera ? backCamera.id : devices[devices.length - 1].id);
                         setError(null);
                     } else {
@@ -119,6 +120,57 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
         };
     }, [regionId]);
 
+    // Auto-zoom to help mobile camera focus on barcodes
+    const applyInitialZoom = useCallback(async (caps: any) => {
+        if (!caps?.zoom || !scannerRef.current) return;
+        const minZoom = caps.zoom.min || 1;
+        const maxZoom = caps.zoom.max || 1;
+        // Auto-zoom to ~2x for better barcode focus on mobile
+        const targetZoom = Math.min(Math.max(1.8, minZoom), maxZoom);
+        if (targetZoom > minZoom) {
+            try {
+                await (scannerRef.current as any).applyVideoConstraints({
+                    advanced: [{ zoom: targetZoom }]
+                });
+                setZoom(targetZoom);
+            } catch { /* some devices don't support programmatic zoom */ }
+        }
+    }, []);
+
+    // Shared decode handler — always reads from refs, never stale
+    const handleDecoded = useCallback((decodedText: string) => {
+        const now = Date.now();
+        const isContinuous = continuousRef.current;
+        // In continuous mode: same code waits 1.5s, different code only 400ms
+        // In single mode: same code 2s, different 600ms
+        const sameCodeCooldown = isContinuous ? 1500 : 2000;
+        const diffCodeCooldown = isContinuous ? 400 : 600;
+
+        if (scanLockedRef.current) return;
+        const isSameCode = decodedText === lastScanRef.current;
+        const elapsed = now - lastScanTimeRef.current;
+        if (isSameCode && elapsed < sameCodeCooldown) return;
+        if (!isSameCode && elapsed < diffCodeCooldown) return;
+
+        scanLockedRef.current = true;
+        lastScanRef.current = decodedText;
+        lastScanTimeRef.current = now;
+
+        // Audio + haptic feedback — double-pulse vibration is more noticeable
+        playBeep(1400, 120);
+        if (window.navigator?.vibrate) window.navigator.vibrate([80, 40, 80]);
+
+        // Visual flash feedback
+        setFlashSuccess(true);
+        setLastScannedCode(decodedText.length > 30 ? decodedText.slice(0, 28) + '…' : decodedText);
+        setTimeout(() => setFlashSuccess(false), 600);
+
+        onScanSuccessRef.current(decodedText);
+
+        // Unlock faster in continuous mode for rapid scanning
+        window.setTimeout(() => { scanLockedRef.current = false; }, isContinuous ? 350 : 600);
+    }, []);
+
     // Start Scanning Effect
     useEffect(() => {
         let isCurrent = true;
@@ -133,41 +185,43 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                     setIsScanning(false);
                 }
 
-                const config = {
-                    // Serial barcodes (especially Code 128) are long and narrow. A higher
-                    // frame rate makes it more forgiving while the phone is moving into focus.
-                    fps: 18,
+                const scanConfig = {
+                    // Higher FPS = more decode attempts = faster detection on mobile
+                    fps: 25,
                     qrbox: (viewWidth: number, viewHeight: number) => {
-                        // Scan virtually the whole preview. A constrained central box works
-                        // well for QR codes but can crop the quiet zones at both ends of a
-                        // long serial barcode, causing noticeably worse results than AppSheet.
+                        // Use nearly the whole preview — a small central box crops
+                        // quiet zones on long serial barcodes.
                         const width = Math.floor(viewWidth * 0.96);
                         const height = Math.floor(viewHeight * 0.90);
                         return { width, height };
                     },
-                    // Warehouse serial labels are normal black-on-white prints; skipping the
-                    // mirrored retry leaves more processing time for the next camera frame.
                     disableFlip: true,
                 };
 
-                const onDecoded = (decodedText: string) => {
-                        const now = Date.now();
-                        if (scanLockedRef.current || (decodedText === lastScanRef.current && (now - lastScanTimeRef.current < 2200))) return;
+                // Try with HD resolution constraints first (much better decode rate on mobile)
+                let started = false;
+                try {
+                    await scanner.start(
+                        {
+                            deviceId: { exact: selectedCameraId },
+                            width: { ideal: 1920 },
+                            height: { ideal: 1080 },
+                            // @ts-ignore — focusMode is a valid constraint on mobile browsers
+                            focusMode: { ideal: 'continuous' },
+                        } as any,
+                        scanConfig,
+                        handleDecoded,
+                        () => { }
+                    );
+                    started = true;
+                } catch (hdErr) {
+                    console.warn("HD constraints rejected, falling back to basic camera ID", hdErr);
+                }
 
-                        scanLockedRef.current = true;
-                        lastScanRef.current = decodedText;
-                        lastScanTimeRef.current = now;
-                        playBeep();
-                        if (window.navigator?.vibrate) window.navigator.vibrate(100);
-                        onScanSuccess(decodedText);
-                        window.setTimeout(() => { scanLockedRef.current = false; }, 800);
-                    };
-
-                // Do not combine an exact device id with resolution/facing-mode
-                // constraints. Several Windows webcams reject that combination with
-                // NotReadableError / "Could not start video source". The selected id
-                // is already enough to request the intended camera.
-                await scanner.start(selectedCameraId, config, onDecoded, () => { });
+                // Fallback: some devices reject combined deviceId + resolution constraints
+                if (!started) {
+                    await scanner.start(selectedCameraId, scanConfig, handleDecoded, () => { });
+                }
 
                 if (isCurrent) {
                     setIsScanning(true);
@@ -176,7 +230,7 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                         const caps = (scanner as any).getRunningTrackCameraCapabilities();
                         setCapabilities(caps);
                         setHasTorch(!!caps?.torch);
-                        if (caps?.zoom) setZoom(caps.zoom.min || 1);
+                        await applyInitialZoom(caps);
                     } catch { setHasTorch(false); }
                 }
             } catch (err: any) {
@@ -191,17 +245,15 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
 
         const timer = setTimeout(() => {
             if (isCurrent) start();
-        }, 300); // Small delay to ensure previous instance is cleared
+        }, 300);
 
         return () => {
             isCurrent = false;
             clearTimeout(timer);
         };
-    }, [selectedCameraId, loading, error]); // eslint-disable-line react-hooks/exhaustive-deps -- Callback changes must not restart the active camera scanner.
+    }, [selectedCameraId, loading, error, handleDecoded, applyInitialZoom]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleRetry = () => {
-        // Retry only the camera request. Reloading loses the unfinished warehouse form
-        // and does not release a camera held by another application.
         setError(null);
         setLoading(false);
     };
@@ -248,6 +300,27 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                 </Box>
             )}
 
+            {/* Green flash on successful scan */}
+            {flashSuccess && (
+                <Box sx={{
+                    position: 'absolute', inset: 0, zIndex: 15,
+                    bgcolor: 'rgba(34, 197, 94, 0.25)',
+                    pointerEvents: 'none',
+                    transition: 'opacity 0.3s ease-out',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                    <Box sx={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5,
+                        bgcolor: 'rgba(0,0,0,0.7)', borderRadius: 3, px: 3, py: 1.5,
+                    }}>
+                        <CheckCircleIcon sx={{ color: '#22c55e', fontSize: 36 }} />
+                        <Typography sx={{ color: '#22c55e', fontWeight: 800, fontSize: '0.85rem' }}>
+                            {lastScannedCode}
+                        </Typography>
+                    </Box>
+                </Box>
+            )}
+
             {!loading && !error && (
                 <>
                     <Box sx={{
@@ -262,10 +335,28 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                         flexDirection: 'column',
                         gap: 1
                     }}>
+                        {/* Scanned count badge in continuous mode */}
+                        {continuous && scannedCount > 0 && (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 0.5 }}>
+                                <Chip
+                                    icon={<CheckCircleIcon sx={{ color: '#22c55e !important' }} />}
+                                    label={`Đã quét: ${scannedCount} serial`}
+                                    sx={{
+                                        bgcolor: 'rgba(34, 197, 94, 0.15)',
+                                        color: '#22c55e',
+                                        fontWeight: 800,
+                                        fontSize: '0.9rem',
+                                        height: 36,
+                                        border: '1px solid rgba(34, 197, 94, 0.3)',
+                                    }}
+                                />
+                            </Box>
+                        )}
+
                         {/* Zoom Slider */}
                         {capabilities?.zoom && (
                             <Box sx={{ display: 'flex', alignItems: 'center', px: 1, width: '100%', mb: 1 }}>
-                                <Typography variant="caption" sx={{ color: 'white', mr: 2, minWidth: 30, fontWeight: 600 }}>x{zoom}</Typography>
+                                <Typography variant="caption" sx={{ color: 'white', mr: 2, minWidth: 30, fontWeight: 600 }}>x{typeof zoom === 'number' ? zoom.toFixed(1) : zoom}</Typography>
                                 <Slider
                                     value={zoom}
                                     min={capabilities.zoom.min}
@@ -320,7 +411,7 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                                     <IconButton
                                         onClick={toggleTorch}
                                         sx={{
-                                            color: isTorchOn ? '#facc15' : 'white', // Yellow for ON
+                                            color: isTorchOn ? '#facc15' : 'white',
                                             bgcolor: isTorchOn ? 'rgba(250, 204, 21, 0.2)' : 'rgba(255,255,255,0.1)',
                                             '&:hover': { bgcolor: isTorchOn ? 'rgba(250, 204, 21, 0.3)' : 'rgba(255,255,255,0.2)' }
                                         }}
@@ -376,6 +467,28 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400 }: QRScannerProp
                                     }
                                 }} />
                             </Box>
+                        </Box>
+                    )}
+
+                    {/* Continuous mode hint */}
+                    {continuous && isScanning && !flashSuccess && scannedCount === 0 && (
+                        <Box sx={{
+                            position: 'absolute',
+                            top: 16,
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            zIndex: 12,
+                            pointerEvents: 'none',
+                        }}>
+                            <Chip
+                                label="📷 Liên tục quét — đưa mã vào khung"
+                                sx={{
+                                    bgcolor: 'rgba(0,0,0,0.6)',
+                                    color: 'white',
+                                    fontWeight: 600,
+                                    fontSize: '0.8rem',
+                                }}
+                            />
                         </Box>
                     )}
                 </>

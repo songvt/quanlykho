@@ -14,6 +14,7 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CloseIcon from '@mui/icons-material/Close';
 import SaveIcon from '@mui/icons-material/Save';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { AppButton } from '../../components/Common/AppButton';
 
 import { fetchReturns, addReturns, deleteReturns } from '../../store/slices/returnsSlice';
@@ -246,14 +247,14 @@ const EmployeeReturns = () => {
             setSerials(prev => {
                 const uniqueNew = filterNewSerials(newCodes, prev);
                 if (uniqueNew.length > 0) {
-                    success(`Đã quét thành công: ${uniqueNew.length} serial`);
+                    success(`✅ +${uniqueNew.length} serial (tổng: ${prev.length + uniqueNew.length})`);
                     return [...prev, ...uniqueNew];
                 } else {
                     notifyError("Serial này đã có trong danh sách.");
                     return prev;
                 }
             });
-            setOpenScanner(false);
+            // DON'T close scanner — keep scanning in continuous mode
         }
     }, [success, notifyError]);
 
@@ -645,7 +646,7 @@ const EmployeeReturns = () => {
                                                     handleAddManualSerial();
                                                 }
                                             }}
-                                            placeholder="Quét mã..."
+                                            placeholder="Nhập serial rồi Enter..."
                                         />
                                     </Grid>
                                     <Grid size={2}>
@@ -706,18 +707,36 @@ const EmployeeReturns = () => {
                 </DialogActions>
             </Dialog>
 
-            {/* QR Scanner */}
+            {/* QR Scanner — continuous mode */}
             <Dialog open={openScanner} onClose={() => setOpenScanner(false)} fullWidth maxWidth="sm" PaperProps={{ sx: { borderRadius: 3 } }}>
-                <DialogTitle sx={{ fontWeight: 900, textAlign: 'center', color: 'primary.main' }}>
-                    QUÉT MÃ TRẢ KHO
+                <DialogTitle sx={{ fontWeight: 900, textAlign: 'center', color: 'primary.main', pb: 1 }}>
+                    QUÉT SERIAL TRẢ KHO
+                    {serials.length > 0 && (
+                        <Box component="span" sx={{ display: 'block', fontSize: '0.85rem', color: '#22c55e', fontWeight: 700 }}>
+                            <CheckCircleIcon sx={{ fontSize: 16, verticalAlign: 'middle', mr: 0.5 }} />
+                            Đã quét: {serials.length} serial
+                        </Box>
+                    )}
                 </DialogTitle>
                 <DialogContent sx={{ p: 0 }}>
                     <QRScanner
                         onScanSuccess={handleScanSuccess}
                         onScanFailure={() => { }}
+                        continuous
+                        scannedCount={serials.length}
                     />
                     <Box p={2} textAlign="center">
-                        <AppButton onClick={() => setOpenScanner(false)} icon={<CloseIcon />} title="Đóng Camera" />
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={() => setOpenScanner(false)}
+                            startIcon={<CheckCircleIcon />}
+                            sx={{ fontWeight: 700, borderRadius: 2 }}
+                        >
+                            {serials.length > 0
+                                ? `Xong (${serials.length} serial)`
+                                : 'Đóng Camera'}
+                        </Button>
                     </Box>
                 </DialogContent>
             </Dialog>
