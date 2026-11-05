@@ -121,15 +121,13 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                     Html5QrcodeSupportedFormats.DATA_MATRIX,
                     Html5QrcodeSupportedFormats.PDF_417,
                     Html5QrcodeSupportedFormats.CODE_128,
-                    Html5QrcodeSupportedFormats.EAN_13,
-                    Html5QrcodeSupportedFormats.EAN_8,
                 ];
 
                 scannerInstance = new Html5Qrcode(regionId, {
                     formatsToSupport: SUPPORTED_FORMATS,
-                    experimentalFeatures: {
-                        useBarCodeDetectorIfSupported: true
-                    },
+                    // The ZXing decoder reads dense QR and multi-row PDF417 labels
+                    // more reliably than the browser BarcodeDetector on Android.
+                    experimentalFeatures: { useBarCodeDetectorIfSupported: false },
                     verbose: false
                 });
                 scannerRef.current = scannerInstance;
@@ -187,22 +185,12 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
         };
     }, [regionId, retryKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Auto-zoom to help mobile camera focus on barcodes
-    // Target ~2x for barcode scanning; stay within device limits
+    // Preserve native camera zoom at startup. Digital 2x zoom can blur dense
+    // QR/PDF417 labels on mid-range Android cameras; manual zoom remains available.
     const applyInitialZoom = useCallback(async (caps: any) => {
         if (!caps?.zoom || !scannerRef.current) return;
         const minZoom = caps.zoom.min ?? 1;
-        const maxZoom = caps.zoom.max ?? 1;
-        // 2x optical zoom hits the sweet spot for serial barcodes on most phones
-        const targetZoom = Math.min(Math.max(2.0, minZoom), maxZoom);
-        if (targetZoom > minZoom) {
-            try {
-                await (scannerRef.current as any).applyVideoConstraints({
-                    advanced: [{ zoom: targetZoom }]
-                });
-                setZoom(targetZoom);
-            } catch { /* ignore devices that don't support zoom */ }
-        }
+        setZoom(minZoom);
     }, []);
 
     // Tap-to-focus: trigger a brief manual focus then return to continuous
@@ -303,20 +291,12 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                 }
 
                 // ─── Scan config ──────────────────────────────────────────────
-                // fps=30 gives 30 decode attempts/sec without overloading CPU.
-                // qrbox nearly fills the viewport so long CODE-128 barcodes
-                // (which have wide quiet zones) are captured without cropping.
+                // Decode the whole frame. A constrained scan box can crop the
+                // quiet zones of a dense QR or the top/bottom rows of PDF417.
                 const scanConfig = {
-                    fps: 30,
-                    qrbox: (viewWidth: number, viewHeight: number) => {
-                        const w = Math.floor(viewWidth * 0.95);
-                        const h = Math.floor(viewHeight * 0.85);
-                        return { width: w, height: h };
-                    },
+                    fps: 12,
                     disableFlip: true,
-                    // Use native BarcodeDetector when available — 3-5× faster on
-                    // Android Chrome 83+ and Safari 17+ than JS fallback.
-                    experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+                    experimentalFeatures: { useBarCodeDetectorIfSupported: false },
                 };
 
                 // Start directly with the rear-camera preference. This is more
@@ -339,6 +319,13 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                 if (isCurrent) {
                     setIsScanning(true);
                     setError(null);
+                    // Request a detailed frame only after the stream is active.
+                    // This avoids start-up failures on Android while giving dense
+                    // labels enough pixels to be decoded.
+                    await scanner.applyVideoConstraints?.({
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 },
+                    }).catch(() => {});
                     // Read capabilities after a short delay — some drivers need time
                     // to initialise before reporting focus/zoom/torch support.
                     setTimeout(async () => {
