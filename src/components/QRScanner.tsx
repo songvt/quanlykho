@@ -144,6 +144,10 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                     audio: false,
                 });
                 permissionStream.getTracks().forEach(track => track.stop());
+                // Several Android camera drivers release a stopped track
+                // asynchronously. Starting html5-qrcode immediately can yield
+                // NotReadableError (camera still reported as in use).
+                await new Promise(resolve => setTimeout(resolve, 350));
 
                 const devices = (await navigator.mediaDevices.enumerateDevices())
                     .filter((device) => device.kind === 'videoinput')
@@ -319,55 +323,21 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                     experimentalFeatures: { useBarCodeDetectorIfSupported: true },
                 };
 
-                // ─── Camera constraints ───────────────────────────────────────
-                // Priority 1: 1280×720 (720p) is the sweet spot — better autofocus
-                // response than 1080p on mobile, still plenty of resolution for
-                // small barcodes.  We also request focusMode:continuous and
-                // exposureMode:continuous so the sensor adapts quickly.
-                const hdConstraints: MediaTrackConstraints = {
-                    deviceId: { exact: selectedCameraId },
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 },
-                    // @ts-ignore — valid on Chrome/Android
-                    focusMode: { ideal: 'continuous' },
-                    // @ts-ignore
-                    exposureMode: { ideal: 'continuous' },
-                    // @ts-ignore — reduce motion blur on fast-moving hands
-                    frameRate: { ideal: 30, min: 15 },
-                };
-
+                // Start with only the chosen ID. Android vendors differ widely
+                // in support for resolution/focus constraints; applying them
+                // before start can reject an otherwise usable rear camera.
                 let started = false;
                 try {
-                    await scanner.start(hdConstraints as any, scanConfig as any, handleDecoded, () => {});
-                    started = true;
-                } catch (hdErr) {
-                    console.warn('HD constraints rejected, trying 480p fallback', hdErr);
-                }
-
-                // Priority 2: 480p — works on nearly every Android/iOS device
-                if (!started) {
-                    try {
-                        await scanner.start(
-                            {
-                                deviceId: { exact: selectedCameraId },
-                                width: { ideal: 854 },
-                                height: { ideal: 480 },
-                                // @ts-ignore
-                                focusMode: { ideal: 'continuous' },
-                            } as any,
-                            scanConfig as any,
-                            handleDecoded,
-                            () => {}
-                        );
-                        started = true;
-                    } catch (sdErr) {
-                        console.warn('480p also rejected, bare camera ID fallback', sdErr);
-                    }
-                }
-
-                // Priority 3: bare camera ID — most permissive, always works
-                if (!started) {
                     await scanner.start(selectedCameraId, scanConfig as any, handleDecoded, () => {});
+                    started = true;
+                } catch (idError) {
+                    console.warn('Selected camera ID failed, trying rear-camera constraint', idError);
+                }
+
+                // Some Android browsers return transient device IDs. Fall back
+                // to facingMode rather than failing the scan dialog.
+                if (!started) {
+                    await scanner.start({ facingMode: { ideal: 'environment' } }, scanConfig as any, handleDecoded, () => {});
                 }
 
                 if (isCurrent) {
