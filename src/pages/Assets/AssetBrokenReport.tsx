@@ -68,7 +68,8 @@ const AssetBrokenReport = () => {
             list = list.filter(a =>
                 a.asset_code.toLowerCase().includes(s) ||
                 a.asset_name.toLowerCase().includes(s) ||
-                (a.user_employee_name || '').toLowerCase().includes(s)
+                (a.user_employee_name || '').toLowerCase().includes(s) ||
+                (a.manager_name || '').toLowerCase().includes(s)
             );
         }
 
@@ -99,6 +100,7 @@ const AssetBrokenReport = () => {
             { header: 'SL', key: 'quantity', width: 8, align: 'center' as const },
             { header: 'ĐV', key: 'unit', width: 8, align: 'center' as const },
             { header: 'Người sử dụng', key: 'user_employee_name', width: 25 },
+            { header: 'Người quản lý', key: 'manager_name', width: 25 },
             { header: 'Tình trạng', key: 'status', width: 15, align: 'center' as const },
             { header: 'Mô tả chi tiết', key: 'status_description', width: 30 },
             { header: 'Chức vụ', key: 'user_type', width: 15 },
@@ -175,7 +177,7 @@ const AssetBrokenReport = () => {
 
             <Paper sx={{ p: 1.5, mb: 2, borderRadius: 2, display: 'flex', gap: 1.5, alignItems: 'center', flexWrap: 'wrap' }}>
                 <TextField
-                    placeholder="Tìm theo mã, tên TS, người sử dụng..."
+                    placeholder="Tìm theo mã, tên TS, người sử dụng, quản lý..."
                     size="small"
                     fullWidth={isMobile}
                     sx={{ flex: isMobile ? 'none' : 1, width: isMobile ? '100%' : undefined, bgcolor: '#f8fafc' }}
@@ -249,6 +251,9 @@ const AssetBrokenReport = () => {
                                         {asset.user_employee_name && (
                                             <Typography variant="caption" color="text.secondary">👤 {asset.user_employee_name} {asset.user_type ? `- ${asset.user_type}` : ''}</Typography>
                                         )}
+                                        {asset.manager_name && (
+                                            <Typography variant="caption" color="text.secondary">👔 Quản lý: {asset.manager_name}</Typography>
+                                        )}
                                         {asset.location_name && (
                                             <Typography variant="caption" color="text.secondary">🏢 {asset.location_name}</Typography>
                                         )}
@@ -284,6 +289,7 @@ const AssetBrokenReport = () => {
                                 <TableCell sx={{ fontWeight: 700 }}>TÊN TÀI SẢN</TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>SL</TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>NGƯỜI SỬ DỤNG</TableCell>
+                                <TableCell sx={{ fontWeight: 700 }}>NGƯỜI QUẢN LÝ</TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>TÌNH TRẠNG</TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>MÔ TẢ CHI TIẾT</TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>CHỨC VỤ</TableCell>
@@ -305,6 +311,7 @@ const AssetBrokenReport = () => {
                                     <TableCell>{asset.asset_name}</TableCell>
                                     <TableCell>{asset.quantity || 1}</TableCell>
                                     <TableCell>{asset.user_employee_name || '-'}</TableCell>
+                                    <TableCell>{asset.manager_name || '-'}</TableCell>
                                     <TableCell>
                                         <Box component="span" sx={{ px: 1, py: 0.5, borderRadius: 1, bgcolor: '#fee2e2', color: '#ef4444', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>
                                             {asset.status}
@@ -317,7 +324,7 @@ const AssetBrokenReport = () => {
                             ))}
                             {filteredAssets.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={10} align="center" sx={{ py: 8 }}>
+                                    <TableCell colSpan={11} align="center" sx={{ py: 8 }}>
                                         <Typography variant="body1" color="text.secondary">Không tìm thấy tài sản nào có tình trạng "Hỏng".</Typography>
                                     </TableCell>
                                 </TableRow>

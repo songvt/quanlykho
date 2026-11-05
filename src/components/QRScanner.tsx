@@ -20,21 +20,24 @@ interface QRScannerProps {
 
 const getCameraErrorMessage = (error: unknown) => {
     const name = error instanceof DOMException ? error.name : '';
-    const msg = error instanceof Error ? error.message.toLowerCase() : '';
+    // html5-qrcode may reject with a string instead of a DOMException.
+    // Keep the original browser error detectable so Android users receive
+    // a useful recovery action instead of the generic access-camera message.
+    const msg = String(error instanceof Error ? error.message : error || '').toLowerCase();
 
-    if (name === 'NotAllowedError' || name === 'SecurityError') {
+    if (name === 'NotAllowedError' || name === 'SecurityError' || /notallowed|securityerror|permission.*denied/.test(msg)) {
         return 'Quyền camera bị từ chối. Vào Cài đặt trình duyệt → Quyền riêng tư → Camera → Cho phép trang này, rồi bấm Thử lại.';
     }
-    if (name === 'NotFoundError') {
+    if (name === 'NotFoundError' || /notfound|requested device not found/.test(msg)) {
         return 'Không tìm thấy camera nào trên thiết bị.';
     }
-    if (name === 'OverconstrainedError') {
+    if (name === 'OverconstrainedError' || /overconstrained|constraint/.test(msg)) {
         return 'Camera không hỗ trợ cấu hình yêu cầu. Vui lòng thử lại.';
     }
-    if (name === 'NotReadableError') {
+    if (name === 'NotReadableError' || /notreadable|could not start video source|device.*busy/.test(msg)) {
         return 'Camera đang được ứng dụng khác sử dụng. Hãy đóng ứng dụng đó rồi thử lại.';
     }
-    if (name === 'AbortError') {
+    if (name === 'AbortError' || /aborterror/.test(msg)) {
         return 'Kết nối camera bị gián đoạn. Hãy bấm Thử lại.';
     }
     // Catch-all for messages containing permission keywords
@@ -138,17 +141,10 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                     throw new Error('Trình duyệt không hỗ trợ camera. Hãy dùng Chrome/Edge qua HTTPS.');
                 }
 
-                // Request permission first so Android returns real device labels
-                const permissionStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: { ideal: 'environment' } },
-                    audio: false,
-                });
-                permissionStream.getTracks().forEach(track => track.stop());
-                // Several Android camera drivers release a stopped track
-                // asynchronously. Starting html5-qrcode immediately can yield
-                // NotReadableError (camera still reported as in use).
-                await new Promise(resolve => setTimeout(resolve, 350));
-
+                // Do not open a separate permission stream here. On a number of
+                // Android devices the stopped probe remains locked briefly, which
+                // makes the immediately-following scanner start fail. The scanner
+                // itself requests permission when it opens its single video stream.
                 const devices = (await navigator.mediaDevices.enumerateDevices())
                     .filter((device) => device.kind === 'videoinput')
                     .map((device) => ({ id: device.deviceId, label: device.label }));
@@ -323,21 +319,21 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                     experimentalFeatures: { useBarCodeDetectorIfSupported: true },
                 };
 
-                // Start with only the chosen ID. Android vendors differ widely
-                // in support for resolution/focus constraints; applying them
-                // before start can reject an otherwise usable rear camera.
+                // Start directly with the rear-camera preference. This is more
+                // reliable on Android/PWA than opening a separate permission probe
+                // followed by a second stream using a transient device ID.
                 let started = false;
                 try {
-                    await scanner.start(selectedCameraId, scanConfig as any, handleDecoded, () => {});
+                    await scanner.start({ facingMode: { ideal: 'environment' } }, scanConfig as any, handleDecoded, () => {});
                     started = true;
-                } catch (idError) {
-                    console.warn('Selected camera ID failed, trying rear-camera constraint', idError);
+                } catch (facingModeError) {
+                    console.warn('Rear-camera constraint failed, trying selected camera ID', facingModeError);
                 }
 
-                // Some Android browsers return transient device IDs. Fall back
-                // to facingMode rather than failing the scan dialog.
+                // Fall back to the selected physical camera for browsers that do
+                // not honour facingMode (for example, some embedded WebViews).
                 if (!started) {
-                    await scanner.start({ facingMode: { ideal: 'environment' } }, scanConfig as any, handleDecoded, () => {});
+                    await scanner.start(selectedCameraId, scanConfig as any, handleDecoded, () => {});
                 }
 
                 if (isCurrent) {

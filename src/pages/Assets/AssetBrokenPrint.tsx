@@ -197,6 +197,7 @@ const AssetBrokenPrint: React.FC<Props> = ({ open, onClose, assets }) => {
                                 <th style={{ width: '40px', border: '1px solid black', padding: '6px 4px', backgroundColor: '#f2f2f2' }}>SL</th>
                                 <th style={{ width: '40px', border: '1px solid black', padding: '6px 4px', backgroundColor: '#f2f2f2' }}>ĐV</th>
                                 <th style={{ width: '110px', border: '1px solid black', padding: '6px 4px', backgroundColor: '#f2f2f2' }}>Người sử dụng</th>
+                                <th style={{ width: '110px', border: '1px solid black', padding: '6px 4px', backgroundColor: '#f2f2f2' }}>Người quản lý</th>
                                 <th style={{ width: '80px', border: '1px solid black', padding: '6px 4px', backgroundColor: '#f2f2f2' }}>Tình trạng</th>
                                 <th style={{ width: '130px', border: '1px solid black', padding: '6px 4px', backgroundColor: '#f2f2f2' }}>Mô tả chi tiết</th>
                                 <th style={{ width: '80px', border: '1px solid black', padding: '6px 4px', backgroundColor: '#f2f2f2' }}>Chức vụ</th>
@@ -213,6 +214,7 @@ const AssetBrokenPrint: React.FC<Props> = ({ open, onClose, assets }) => {
                                     <td style={{ textAlign: 'center', border: '1px solid black', padding: '6px 4px' }}>{asset.quantity || 1}</td>
                                     <td style={{ textAlign: 'center', border: '1px solid black', padding: '6px 4px' }}>{asset.unit || 'Cái'}</td>
                                     <td style={{ border: '1px solid black', padding: '6px 4px' }}>{asset.user_employee_name || ''}</td>
+                                    <td style={{ border: '1px solid black', padding: '6px 4px' }}>{asset.manager_name || ''}</td>
                                     <td style={{ textAlign: 'center', border: '1px solid black', padding: '6px 4px' }}>{asset.status}</td>
                                     <td style={{ border: '1px solid black', padding: '6px 4px' }}>{asset.status_description || ''}</td>
                                     <td style={{ border: '1px solid black', padding: '6px 4px' }}>{asset.user_type || ''}</td>
