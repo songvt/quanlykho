@@ -47,11 +47,11 @@ export const addNewAsset = createAsyncThunk('assets/addNewAsset', async ({ asset
     return (await response.json()) as Asset;
 });
 
-export const importAssets = createAsyncThunk('assets/importAssets', async ({ assets, performedBy }: { assets: Omit<Asset, 'id'>[], performedBy?: string }) => {
+export const importAssets = createAsyncThunk('assets/importAssets', async ({ assets, performedBy, reason }: { assets: Omit<Asset, 'id'>[], performedBy?: string, reason: string }) => {
     const response = await fetch('/api/assets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'bulk_insert', payload: assets, performed_by: performedBy }),
+        body: JSON.stringify({ action: 'bulk_insert', payload: assets, performed_by: performedBy, reason }),
     });
     if (!response.ok) {
         const err = await response.json().catch(() => ({}));
@@ -74,11 +74,11 @@ export const updateAsset = createAsyncThunk('assets/updateAsset', async ({ updat
     return (await response.json()) as Asset;
 });
 
-export const deleteAsset = createAsyncThunk('assets/deleteAsset', async ({ id, performedBy }: { id: string, performedBy?: string }) => {
+export const deleteAsset = createAsyncThunk('assets/deleteAsset', async ({ id, performedBy, reason }: { id: string, performedBy?: string, reason: string }) => {
     const response = await fetch('/api/assets', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, performed_by: performedBy }),
+        body: JSON.stringify({ id, performed_by: performedBy, reason }),
     });
     if (!response.ok) {
         const err = await response.json().catch(() => ({}));

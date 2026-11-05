@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => ({
     mode === 'development' && basicSsl(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
+      includeAssets: ['warehouse-logo.png'],
       manifest: {
         name: 'Quản Lý Kho GGS',
         short_name: 'QL Kho',
@@ -18,7 +18,14 @@ export default defineConfig(({ mode }) => ({
         theme_color: '#1d4ed8',
         background_color: '#f6f8fb',
         display: 'standalone',
-        icons: []
+        icons: [
+          {
+            src: '/warehouse-logo.png',
+            sizes: '715x715',
+            type: 'image/png',
+            purpose: 'any maskable'
+          }
+        ]
       }
     })
   ].filter(Boolean),

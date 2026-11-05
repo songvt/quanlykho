@@ -76,7 +76,8 @@ const AssetList = () => {
         serialNumber: string;
     }>({ open: false, assetId: '', status: '', description: '', managerCode: '', managerName: '', serialNumber: '' });
 
-    const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string }>({ open: false, id: '' });
+    const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string; reason: string }>({ open: false, id: '', reason: '' });
+    const [pendingImport, setPendingImport] = useState<{ assets: Omit<Asset, 'id'>[]; duplicateCount: number; reason: string } | null>(null);
     const [searchEmployee, setSearchEmployee] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');
     const [managerFilter, setManagerFilter] = useState('');
@@ -320,12 +321,7 @@ const AssetList = () => {
                 const duplicateCount = mappedData.length - newAssets.length;
 
                 if (newAssets.length > 0) {
-                    await dispatch(importAssets({ assets: newAssets as Omit<Asset, 'id'>[], performedBy: profile?.full_name })).unwrap();
-                    let msg = `Đã nhập thành công ${newAssets.length} tài sản mới!`;
-                    if (duplicateCount > 0) {
-                        msg += ` (Đã bỏ qua ${duplicateCount} mã đã tồn tại)`;
-                    }
-                    success(msg);
+                    setPendingImport({ assets: newAssets as Omit<Asset, 'id'>[], duplicateCount, reason: '' });
                 } else {
                     notifyError(duplicateCount > 0 
                         ? `Tất cả ${duplicateCount} tài sản trong file đều đã tồn tại trong hệ thống.` 
@@ -336,6 +332,19 @@ const AssetList = () => {
                 notifyError(`Lỗi khi nhập: ${err.message}`);
             }
             e.target.value = '';
+        }
+    };
+
+    const handleConfirmImport = async () => {
+        if (!pendingImport?.reason.trim()) return;
+        try {
+            await dispatch(importAssets({ assets: pendingImport.assets, performedBy: profile?.full_name, reason: pendingImport.reason.trim() })).unwrap();
+            let message = `Đã nhập thành công ${pendingImport.assets.length} tài sản mới!`;
+            if (pendingImport.duplicateCount > 0) message += ` (Đã bỏ qua ${pendingImport.duplicateCount} mã đã tồn tại)`;
+            success(message);
+            setPendingImport(null);
+        } catch (err: any) {
+            notifyError(`Lỗi khi nhập: ${err.message}`);
         }
     };
 
@@ -427,11 +436,11 @@ const AssetList = () => {
     };
 
     const handleDeleteConfirm = async () => {
-        if (!deleteConfirm.id) return;
+        if (!deleteConfirm.id || !deleteConfirm.reason.trim()) return;
         try {
-            await dispatch(deleteAsset({ id: deleteConfirm.id, performedBy: profile?.full_name })).unwrap();
+            await dispatch(deleteAsset({ id: deleteConfirm.id, performedBy: profile?.full_name, reason: deleteConfirm.reason.trim() })).unwrap();
             success('Đã xóa tài sản thành công!');
-            setDeleteConfirm({ open: false, id: '' });
+            setDeleteConfirm({ open: false, id: '', reason: '' });
         } catch (err: any) {
             notifyError('Lỗi khi xóa: ' + err.message);
         }
@@ -644,7 +653,7 @@ const AssetList = () => {
                                         <IconButton
                                             size="small"
                                             color="error"
-                                            onClick={() => setDeleteConfirm({ open: true, id: asset.id })}
+                                            onClick={() => setDeleteConfirm({ open: true, id: asset.id, reason: '' })}
                                         >
                                             <DeleteIcon fontSize="small" />
                                         </IconButton>
@@ -744,7 +753,7 @@ const AssetList = () => {
                                             <IconButton 
                                                 size="small" 
                                                 color="error" 
-                                                onClick={() => setDeleteConfirm({ open: true, id: asset.id })}
+                                                onClick={() => setDeleteConfirm({ open: true, id: asset.id, reason: '' })}
                                             >
                                                 <DeleteIcon fontSize="small" />
                                             </IconButton>
@@ -1017,14 +1026,27 @@ const AssetList = () => {
             </Dialog>
 
             {/* Delete Confirmation Dialog */}
-            <Dialog open={deleteConfirm.open} onClose={() => setDeleteConfirm({ open: false, id: '' })} maxWidth="xs" fullWidth>
+            <Dialog open={deleteConfirm.open} onClose={() => setDeleteConfirm({ open: false, id: '', reason: '' })} maxWidth="xs" fullWidth>
                 <DialogTitle sx={{ color: 'error.main', fontWeight: 700 }}>Xác nhận xóa</DialogTitle>
                 <DialogContent>
                     <Typography>Bạn có chắc chắn muốn xóa tài sản này khỏi hệ thống? Thao tác này không thể hoàn tác.</Typography>
+                    <TextField label="Lý do xóa" value={deleteConfirm.reason} onChange={event => setDeleteConfirm({ ...deleteConfirm, reason: event.target.value })} required fullWidth multiline minRows={2} margin="dense" error={!deleteConfirm.reason.trim()} helperText={!deleteConfirm.reason.trim() ? 'Bắt buộc nhập lý do để hiển thị trên báo cáo biến động.' : ''} />
                 </DialogContent>
                 <DialogActions sx={{ gap: 1 }}>
-                    <AppButton onClick={() => setDeleteConfirm({ open: false, id: '' })} icon={<CloseIcon />} title="Hủy" />
-                    <AppButton variant="contained" color="error" onClick={handleDeleteConfirm} icon={<DeleteIcon />} title="Xác nhận xóa" />
+                    <AppButton onClick={() => setDeleteConfirm({ open: false, id: '', reason: '' })} icon={<CloseIcon />} title="Hủy" />
+                    <AppButton variant="contained" color="error" onClick={handleDeleteConfirm} disabled={!deleteConfirm.reason.trim()} icon={<DeleteIcon />} title="Xác nhận xóa" />
+                </DialogActions>
+            </Dialog>
+
+            <Dialog open={Boolean(pendingImport)} onClose={() => setPendingImport(null)} maxWidth="sm" fullWidth>
+                <DialogTitle sx={{ fontWeight: 700 }}>Xác nhận nhập tài sản</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" sx={{ mb: 2 }}>Nhập {pendingImport?.assets.length || 0} tài sản mới. Vui lòng ghi lý do để diễn giải trong cột “Lý do: TT, QĐ, KH, PXK, BBBG”.</Typography>
+                    <TextField label="Lý do nhập / tăng tài sản" value={pendingImport?.reason || ''} onChange={event => setPendingImport(current => current ? { ...current, reason: event.target.value } : current)} required fullWidth multiline minRows={3} autoFocus error={Boolean(pendingImport && !pendingImport.reason.trim())} helperText="Ví dụ: Nhập theo PXK số…, QĐ số…, mua mới theo HĐ…" />
+                </DialogContent>
+                <DialogActions sx={{ gap: 1 }}>
+                    <AppButton onClick={() => setPendingImport(null)} icon={<CloseIcon />} title="Hủy" />
+                    <AppButton variant="contained" onClick={handleConfirmImport} disabled={!pendingImport?.reason.trim()} icon={<CheckIcon />} title="Xác nhận nhập" />
                 </DialogActions>
             </Dialog>
 

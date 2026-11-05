@@ -23,7 +23,7 @@ import { useNotification } from '../../contexts/NotificationContext';
 import type { RootState, AppDispatch } from '../../store';
 import type { Asset, HRProfile } from '../../types';
 import { formatPhone } from '../../utils/format';
-import { exportHandoverHistory } from '../../utils/excelUtils';
+import { exportEmployeeHandoverSummary, exportHandoverHistory } from '../../utils/excelUtils';
 import { saveAssetHandoverHistory } from '../../services/assetHandoverHistory';
 import { getDefaultSecondGiver } from '../../utils/assetHandoverGiver';
 
@@ -86,6 +86,8 @@ const AssetHandoverBhl: React.FC = () => {
     // History logs State
     const [history, setHistory] = useState<any[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
+    const [reportStartDate, setReportStartDate] = useState('');
+    const [reportEndDate, setReportEndDate] = useState('');
 
     const actionHistory = useMemo(
         () => history.filter(record => record.action_type === actionType),
@@ -103,6 +105,35 @@ const AssetHandoverBhl: React.FC = () => {
         : actionType === 'transfer'
             ? 'Lich_Su_Dieu_Chuyen_CCDC_BHLD'
             : 'Lich_Su_Ban_Giao_CCDC_BHLD';
+
+    const employeeSummary = useMemo(() => {
+        const start = reportStartDate ? new Date(`${reportStartDate}T00:00:00`) : null;
+        const end = reportEndDate ? new Date(`${reportEndDate}T23:59:59.999`) : null;
+        const rows = new Map<string, { employeeName: string; department: string; equipmentName: string; allocated: number; revoked: number; transferred: number; total: number }>();
+
+        history.forEach(record => {
+            const createdAt = new Date(record.created_at);
+            if ((start && createdAt < start) || (end && createdAt > end)) return;
+            const employeeName = (record.receiver_name || 'Chưa xác định').trim();
+            const department = (record.receiver_dept || '—').trim() || '—';
+            const items = Array.isArray(record.items) ? record.items : [];
+            const reportItems = items.length > 0 ? items : [{ name: 'Trang bị không xác định', quantity: record.total_quantity || 0 }];
+
+            reportItems.forEach((item: any) => {
+                const equipmentName = (item.name || item.asset_name || 'Trang bị không xác định').trim();
+                const quantity = Number(item.quantity) || 0;
+                const key = `${record.employee_id || ''}::${employeeName}::${department}::${equipmentName}`.toLocaleLowerCase('vi-VN');
+                const summary = rows.get(key) || { employeeName, department, equipmentName, allocated: 0, revoked: 0, transferred: 0, total: 0 };
+                if (record.action_type === 'revoke') summary.revoked += quantity;
+                else if (record.action_type === 'transfer') summary.transferred += quantity;
+                else summary.allocated += quantity;
+                summary.total += quantity;
+                rows.set(key, summary);
+            });
+        });
+
+        return Array.from(rows.values()).sort((a, b) => a.employeeName.localeCompare(b.employeeName, 'vi') || a.equipmentName.localeCompare(b.equipmentName, 'vi'));
+    }, [history, reportStartDate, reportEndDate]);
 
     const fetchHistory = async () => {
         try {
@@ -148,6 +179,16 @@ const AssetHandoverBhl: React.FC = () => {
             success('Xuất file Excel lịch sử thành công.');
         } catch (err: any) {
             error('Lỗi khi xuất Excel: ' + err.message);
+        }
+    };
+
+    const handleExportEmployeeSummary = async () => {
+        try {
+            const periodLabel = `${reportStartDate ? `Từ ${new Date(`${reportStartDate}T00:00:00`).toLocaleDateString('vi-VN')}` : 'Từ đầu kỳ'}${reportEndDate ? ` đến ${new Date(`${reportEndDate}T00:00:00`).toLocaleDateString('vi-VN')}` : ' đến nay'}`;
+            await exportEmployeeHandoverSummary(employeeSummary, 'Bao_Cao_Tong_Hop_CCDC_Theo_Nhan_Vien', periodLabel);
+            success('Đã xuất báo cáo tổng hợp theo nhân viên.');
+        } catch (err: any) {
+            error('Lỗi khi xuất báo cáo: ' + err.message);
         }
     };
 
@@ -698,6 +739,83 @@ const AssetHandoverBhl: React.FC = () => {
                                         })}
                                     </Stack>
                                 )}
+                            </CardContent>
+                        </Card>
+
+                        <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid #334155', boxShadow: '0 8px 24px rgba(15,23,42,0.18)' }}>
+                            <CardContent sx={{ p: 3 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, gap: 1 }}>
+                                    <Box>
+                                        <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                                            Báo cáo tổng hợp theo nhân viên
+                                        </Typography>
+                                        <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                                            Thống kê theo từng nhân viên và từng trang bị từ các biên bản đã lưu.
+                                        </Typography>
+                                    </Box>
+                                    <Button
+                                        variant="contained"
+                                        size="small"
+                                        startIcon={<FileDownloadIcon />}
+                                        onClick={handleExportEmployeeSummary}
+                                        disabled={employeeSummary.length === 0}
+                                        sx={{ whiteSpace: 'nowrap' }}
+                                    >
+                                        Xuất Excel
+                                    </Button>
+                                </Box>
+
+                                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
+                                    <TextField
+                                        label="Từ ngày"
+                                        type="date"
+                                        value={reportStartDate}
+                                        onChange={(event) => setReportStartDate(event.target.value)}
+                                        size="small"
+                                        fullWidth
+                                        slotProps={{ inputLabel: { shrink: true } }}
+                                    />
+                                    <TextField
+                                        label="Đến ngày"
+                                        type="date"
+                                        value={reportEndDate}
+                                        onChange={(event) => setReportEndDate(event.target.value)}
+                                        size="small"
+                                        fullWidth
+                                        slotProps={{ inputLabel: { shrink: true } }}
+                                    />
+                                </Stack>
+
+                                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, maxHeight: 300 }}>
+                                    <Table size="small" stickyHeader>
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell sx={{ fontWeight: 700 }}>Nhân viên</TableCell>
+                                                <TableCell sx={{ fontWeight: 700 }}>Đơn vị</TableCell>
+                                                <TableCell sx={{ fontWeight: 700 }}>Tên trang bị</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#16a34a' }}>Cấp phát</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#dc2626' }}>Thu hồi</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#7c3aed' }}>Điều chuyển</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 700 }}>Tổng</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {employeeSummary.length === 0 ? (
+                                                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 3, color: 'text.secondary' }}>Chưa có dữ liệu trong khoảng thời gian đã chọn.</TableCell></TableRow>
+                                            ) : employeeSummary.map(row => (
+                                                <TableRow key={`${row.employeeName}-${row.department}`} hover>
+                                                    <TableCell sx={{ fontWeight: 600 }}>{row.employeeName}</TableCell>
+                                                    <TableCell>{row.department}</TableCell>
+                                                    <TableCell>{row.equipmentName}</TableCell>
+                                                    <TableCell align="center">{row.allocated}</TableCell>
+                                                    <TableCell align="center">{row.revoked}</TableCell>
+                                                    <TableCell align="center">{row.transferred}</TableCell>
+                                                    <TableCell align="center" sx={{ fontWeight: 700 }}>{row.total}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
                             </CardContent>
                         </Card>
                     </Stack>

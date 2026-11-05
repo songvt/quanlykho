@@ -108,6 +108,19 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
         return result;
     }, [allLogs, month, year]);
 
+    const assetMovementReasons = useMemo(() => {
+        const reasons: Record<string, string> = {};
+        (allLogs || []).forEach(log => {
+            const date = new Date(log.created_at);
+            if (date.getMonth() + 1 !== month || date.getFullYear() !== year || !log.asset_code) return;
+            const action = (log.action || '').toLocaleLowerCase('vi-VN');
+            if (!/(tăng|giảm|xóa|delete|remove|thêm mới|tạo mới)/.test(action)) return;
+            const details = String(log.details || '').trim();
+            if (details) reasons[log.asset_code] = details;
+        });
+        return reasons;
+    }, [allLogs, month, year]);
+
     const tbvpMonthlyLogs = useMemo(() => (allLogs || []).filter((log) => {
         const date = new Date(log.created_at);
         return date.getMonth() + 1 === month && date.getFullYear() === year;
@@ -405,11 +418,18 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                 @page { size: A4 landscape; margin: ${administrativeLandscapePrintPageMargin}; }
                 body { font-family: 'Times New Roman', serif; font-size: 10pt; margin: 0; padding: 0; }
                 table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; }
+                thead { display: table-header-group; }
+                tbody { display: table-row-group; }
+                tr { break-inside: avoid; page-break-inside: avoid; }
                 th, td { border: 1px solid #000; padding: 3px 2px; text-align: center; vertical-align: middle; word-wrap: break-word; font-size: 7.2pt; }
                 th { background: #e0e0e0; font-weight: bold; }
                 .footer-container { display: block; width: 100%; margin-top: 10mm; ${signatureBlockKeepTogetherCss} }
                 .footer-container > *, .footer-container .sig-grid, .footer-container .sig-box { ${signatureBlockKeepTogetherCss} }
-                tbody.signature-tail-rows, tr.signature-row { ${signatureBlockKeepTogetherCss} }
+                /* Let the final asset rows flow naturally. Keeping the whole
+                   tbody together causes Chrome to split its collapsed borders
+                   at the page edge, leaving vertical lines without row borders. */
+                tbody.signature-tail-rows { break-inside: auto !important; page-break-inside: auto !important; }
+                tr.signature-row { ${signatureBlockKeepTogetherCss} }
                 tr.signature-row > td { border: 0 !important; padding: 0 !important; }
                 .sig-date { width: 45%; margin-left: auto; text-align: center; font-style: italic; margin-bottom: 5px; font-size: 10pt; }
                 .sig-grid { display: flex; justify-content: space-between; text-align: center; width: 100%; }
@@ -429,6 +449,7 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
 
     const colStyle: React.CSSProperties = { border: '1px solid #000', padding: '3px 2px', textAlign: 'center', fontSize: '7.2pt', fontFamily: 'Times New Roman' };
     const headerStyle: React.CSSProperties = { ...colStyle, backgroundColor: '#e0e0e0', fontWeight: 'bold' };
+    const sttHeaderStyle: React.CSSProperties = { ...headerStyle, whiteSpace: 'nowrap', wordBreak: 'keep-all', overflowWrap: 'normal' };
     // Keep a small, useful part of the inventory with the sign-off block. This
     // prevents Chrome from creating a last page containing only signatures.
     const signatureTailRowCount = 6;
@@ -440,8 +461,8 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
         const checkedQuantity = condition.using + condition.broken + condition.unused + condition.repair;
         const detailStyle = { ...colStyle, fontSize: '5.8pt', padding: '2px 1px', overflowWrap: 'anywhere' as const };
         return <tr key={asset.id}>
-            <td style={detailStyle}>{index + 1}</td><td style={detailStyle}>{asset.asset_code || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.asset_name || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.asset_type || '-'}</td><td style={detailStyle}>{asset.unit || '-'}</td><td style={detailStyle}>{asset.status || '-'}</td><td style={detailStyle}>{asset.manager_code || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.manager_name || '-'}</td><td style={detailStyle}>{asset.user_employee_code || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.user_employee_name || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.serial_number || '-'}</td><td style={detailStyle}>{quantity}</td>
-            <td style={detailStyle}>{movement.purchased || '-'}</td><td style={detailStyle}>-</td><td style={detailStyle}>{tbvpDetailMovementDates[asset.asset_code] || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}></td><td style={detailStyle}>{checkedQuantity}</td><td style={detailStyle}>{condition.using}</td><td style={detailStyle}>{condition.broken}</td><td style={detailStyle}>{condition.unused}</td><td style={detailStyle}>{condition.repair}</td><td style={detailStyle}>{quantity - checkedQuantity}</td><td style={{ ...detailStyle, textAlign: 'center' }}>{getAssetCategoryNote(asset)}</td>
+            <td style={{ ...detailStyle, whiteSpace: 'nowrap', wordBreak: 'keep-all', overflowWrap: 'normal' }}>{index + 1}</td><td style={detailStyle}>{asset.asset_code || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.asset_name || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.asset_type || '-'}</td><td style={detailStyle}>{asset.unit || '-'}</td><td style={detailStyle}>{asset.status || '-'}</td><td style={detailStyle}>{asset.manager_code || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.manager_name || '-'}</td><td style={detailStyle}>{asset.user_employee_code || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.user_employee_name || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{asset.serial_number || '-'}</td><td style={detailStyle}>{quantity}</td>
+            <td style={detailStyle}>{movement.purchased || '-'}</td><td style={detailStyle}>-</td><td style={detailStyle}>{tbvpDetailMovementDates[asset.asset_code] || '-'}</td><td style={{ ...detailStyle, textAlign: 'left' }}>{assetMovementReasons[asset.asset_code] || '-'}</td><td style={detailStyle}>{checkedQuantity}</td><td style={detailStyle}>{condition.using}</td><td style={detailStyle}>{condition.broken}</td><td style={detailStyle}>{condition.unused}</td><td style={detailStyle}>{condition.repair}</td><td style={detailStyle}>{quantity - checkedQuantity}</td><td style={{ ...detailStyle, textAlign: 'center' }}>{getAssetCategoryNote(asset)}</td>
         </tr>;
     };
 
@@ -507,11 +528,11 @@ const AssetDetailReport: React.FC<Props> = ({ reportType }) => {
                 {reportType !== 'CCDC' ? (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Times New Roman', tableLayout: 'fixed', fontSize: '5.8pt' }}>
                     <colgroup>
-                        {[2, 4.9, 8, 4.3, 2.2, 4.5, 3.7, 4.7, 3.7, 4.7, serialColumnWidths.printPercent, 3.6, 2.8, 2.8, 3.8, 11.5, 3.6, 4, 4, 4, 4, 3.4, 4].map((width, index) => <col key={index} style={{ width: `${width}%` }} />)}
+                        {[2.6, 4.7, 8, 4.3, 2.2, 4.5, 3.7, 4.7, 3.7, 4.7, serialColumnWidths.printPercent, 3.6, 2.8, 2.8, 3.8, 11.5, 3.6, 4, 4, 4, 4, 3.4, 4].map((width, index) => <col key={index} style={{ width: `${width}%` }} />)}
                     </colgroup>
                     <thead>
                         <tr>
-                            {['STT', 'Mã tài sản', 'Tên tài sản', 'Loại tài sản', 'ĐVT', 'Tình trạng', 'Mã NQL', 'Người quản lý', 'Mã NV SD', 'Nhân viên sử dụng', 'Số serial', 'Số lượng sổ sách'].map((label) => <th key={label} rowSpan={2} style={{ ...headerStyle, fontSize: '6pt' }}>{label}</th>)}
+                            {['STT', 'Mã tài sản', 'Tên tài sản', 'Loại tài sản', 'ĐVT', 'Tình trạng', 'Mã NQL', 'Người quản lý', 'Mã NV SD', 'Nhân viên sử dụng', 'Số serial', 'Số lượng sổ sách'].map((label) => <th key={label} rowSpan={2} style={{ ...(label === 'STT' ? sttHeaderStyle : headerStyle), fontSize: '6pt' }}>{label}</th>)}
                             <th colSpan={3} style={{ ...headerStyle, backgroundColor: '#ffff00', fontSize: '6pt' }}>BIẾN ĐỘNG THÁNG:{movementMonth.label}</th>
                             <th rowSpan={2} style={{ ...headerStyle, color: '#c00000', fontSize: '6pt' }}>Lý do: TT, QĐ, KH, PXK, BBBG</th>
                             <th rowSpan={2} style={{ ...headerStyle, fontSize: '6pt' }}>Số lượng kiểm thực tế</th>

@@ -1434,6 +1434,79 @@ export const exportHandoverHistory = async (
     downloadAsDataUri(buffer, `${fileName}.xlsx`);
 };
 
+export type EmployeeHandoverSummaryRow = {
+    employeeName: string;
+    department: string;
+    equipmentName: string;
+    allocated: number;
+    revoked: number;
+    transferred: number;
+    total: number;
+};
+
+export const exportEmployeeHandoverSummary = async (
+    rows: EmployeeHandoverSummaryRow[],
+    fileName: string,
+    periodLabel: string
+) => {
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Hệ thống quản lý kho GGS';
+    const sheet = workbook.addWorksheet('Tong_hop_nhan_vien', {
+        pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 }
+    });
+
+    sheet.columns = [
+        { width: 7 }, { width: 26 }, { width: 28 }, { width: 34 },
+        { width: 16 }, { width: 16 }, { width: 18 }, { width: 18 }
+    ];
+    sheet.mergeCells('A1:H1');
+    sheet.getCell('A1').value = 'BÁO CÁO TỔNG HỢP CẤP PHÁT, THU HỒI VÀ ĐIỀU CHUYỂN CCDC - BHLĐ';
+    sheet.getCell('A1').font = { name: 'Times New Roman', size: 14, bold: true, color: { argb: 'FF1E3A8A' } };
+    sheet.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
+    sheet.getRow(1).height = 28;
+
+    sheet.mergeCells('A2:H2');
+    sheet.getCell('A2').value = `Kỳ báo cáo: ${periodLabel}`;
+    sheet.getCell('A2').font = { name: 'Times New Roman', size: 11, italic: true };
+    sheet.getCell('A2').alignment = { horizontal: 'center' };
+
+    const header = sheet.addRow(['STT', 'Nhân viên', 'Đơn vị', 'Tên trang bị', 'Cấp phát', 'Thu hồi', 'Điều chuyển', 'Tổng phát sinh']);
+    header.height = 28;
+    header.eachCell(cell => {
+        cell.font = { name: 'Times New Roman', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    });
+
+    rows.forEach((row, index) => {
+        const excelRow = sheet.addRow([index + 1, row.employeeName, row.department, row.equipmentName, row.allocated, row.revoked, row.transferred, row.total]);
+        excelRow.eachCell((cell, cellNumber) => {
+            cell.font = { name: 'Times New Roman', size: 11 };
+            cell.alignment = { horizontal: [2, 3, 4].includes(cellNumber) ? 'left' : 'center', vertical: 'middle', wrapText: true };
+            cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        });
+    });
+
+    const totals = rows.reduce((sum, row) => ({
+        allocated: sum.allocated + row.allocated,
+        revoked: sum.revoked + row.revoked,
+        transferred: sum.transferred + row.transferred,
+        total: sum.total + row.total,
+    }), { allocated: 0, revoked: 0, transferred: 0, total: 0 });
+    const totalRow = sheet.addRow(['', 'TỔNG CỘNG', '', '', totals.allocated, totals.revoked, totals.transferred, totals.total]);
+    sheet.mergeCells(`B${totalRow.number}:D${totalRow.number}`);
+    totalRow.eachCell(cell => {
+        cell.font = { name: 'Times New Roman', size: 11, bold: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCE6F1' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    downloadAsDataUri(buffer, `${fileName}.xlsx`);
+};
+
 export const exportAssetReport = async (assets: any[], reporterName: string = 'Admin') => {
     const sortedAssets = sortAssetsByNameAndUser(assets);
     const workbook = new ExcelJS.Workbook();

@@ -389,6 +389,9 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                 @page { size: A4 landscape; margin: ${administrativeLandscapePrintPageMargin}; }
                 body { font-family: 'Times New Roman', serif; font-size: 10.5pt; margin: 0; padding: 0; }
                 table { width: 100%; border-collapse: collapse; margin-top: 15px; table-layout: fixed; }
+                thead { display: table-header-group; }
+                tbody { display: table-row-group; }
+                tr { break-inside: avoid; page-break-inside: avoid; }
                 th, td { border: 1px solid #000; padding: 6px 3.5px; text-align: center; vertical-align: middle; word-wrap: break-word; font-size: 8.5pt; line-height: 1.35; }
                 th { background: #e0e0e0; font-weight: bold; }
                 .footer-container {
@@ -397,7 +400,11 @@ const AssetMonthlyReport: React.FC<Props> = ({ reportType }) => {
                     ${signatureBlockKeepTogetherCss}
                 }
                 .footer-container > *, .footer-container .sig-grid, .footer-container .sig-box { ${signatureBlockKeepTogetherCss} }
-                tbody.signature-tail-rows, tr.signature-row { ${signatureBlockKeepTogetherCss} }
+                /* Keep each asset row intact, but allow the final rows to flow
+                   to the next page. Forcing the whole tbody to stay together
+                   makes Chromium clip collapsed horizontal borders at page end. */
+                tbody.signature-tail-rows { break-inside: auto !important; page-break-inside: auto !important; }
+                tr.signature-row { ${signatureBlockKeepTogetherCss} }
                 tr.signature-row > td { border: 0 !important; padding: 0 !important; }
                 .sig-date { width: 45%; margin-left: auto; text-align: center; font-style: italic; margin-bottom: 5px; font-size: 10pt; }
                 .sig-grid { display: flex; justify-content: space-between; text-align: center; width: 100%; }

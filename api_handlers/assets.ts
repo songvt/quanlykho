@@ -460,8 +460,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
 
             case 'POST': {
-                const { action, performed_by } = req.body;
+                const { action, performed_by, reason } = req.body;
                 const creator = performed_by || 'Hệ thống';
+                if (action === 'bulk_insert' && !String(reason || '').trim()) return res.status(400).json({ error: 'Lý do import tài sản là bắt buộc' });
                 const itemsToInsert = (req.body.payload as any[]).map(item => ({
                     ...item,
                     id: item.id || randomUUID()
@@ -529,7 +530,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         employee_name: item.user_employee_name || '',
                         employee_code: item.user_employee_code || '',
                         department: item.user_department_name || '',
-                        performed_by: creator
+                        performed_by: creator,
+                        details: `Lý do tăng tài sản: ${String(reason || '').trim()}`
                     }));
                     await logAssetFluctuation(doc, logEntries);
                 } catch (logErr) {
@@ -651,8 +653,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
 
             case 'DELETE': {
-                const { id, ids, performed_by } = req.body;
+                const { id, ids, performed_by, reason } = req.body;
                 const remover = performed_by || 'Hệ thống';
+                if (!String(reason || '').trim()) return res.status(400).json({ error: 'Lý do xóa tài sản là bắt buộc' });
                 const targetIds = ids && Array.isArray(ids) ? ids : [id];
                 if (targetIds.length === 0) return res.status(400).json({ error: 'ID required' });
                 
@@ -690,7 +693,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                             employee_code: item.user_employee_code || '',
                             department: item.user_department_name || '',
                             performed_by: remover,
-                            details: `Xóa tài sản khỏi hệ thống (Người sử dụng cuối: ${item.user_employee_name || 'Không có'})`
+                            details: `Lý do giảm tài sản: ${String(reason).trim()}. Xóa tài sản khỏi hệ thống (Người sử dụng cuối: ${item.user_employee_name || 'Không có'})`
                         }));
                         await logAssetFluctuation(doc, logEntries);
                     } catch (logErr) {
