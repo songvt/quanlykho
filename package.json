@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"vite --host\" \"npm run dev:api\"",
+    "dev": "concurrently --restart-tries -1 --restart-after 1000 \"vite --host\" \"npm run dev:api\"",
     "dev:api": "tsx watch server.ts",
     "build": "tsc -b && vite build",
     "lint": "eslint .",

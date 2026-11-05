@@ -6,6 +6,7 @@ import {
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import CloseIcon from '@mui/icons-material/Close';
 import SaveIcon from '@mui/icons-material/Save';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState, AppDispatch } from '../../store';
 import { addInboundTransaction, importInboundTransactions, fetchTransactionsForce } from '../../store/slices/transactionsSlice';
@@ -71,17 +72,16 @@ const InboundForm: React.FC<InboundFormProps> = ({ onSuccess }) => {
                     pendingCountRef.current = 0;
                 }, 400);
 
-                if (showScanner) setShowScanner(false);
+                // Keep scanner open in continuous mode — do NOT close after each scan
             } else {
                 notifyError(newCodes.length === 1 ? `⚠️ Serial đã tồn tại: ${newCodes[0]}` : `⚠️ ${newCodes.length} serial đã tồn tại`);
-                if (showScanner) setShowScanner(false);
             }
         } else {
             setSerial(decodedText);
             setShowScanner(false);
             success('Đã quét mã thành công!');
         }
-    }, [selectedProduct, products, showScanner, success, notifyError]);
+    }, [selectedProduct, products, success, notifyError]);
 
     const handlePhysicalScan = useCallback((code: string) => {
         playBeep();
@@ -304,13 +304,35 @@ const InboundForm: React.FC<InboundFormProps> = ({ onSuccess }) => {
             </Grid>
 
             <Dialog open={showScanner} onClose={() => setShowScanner(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
-                <DialogTitle sx={{ fontWeight: 900, textTransform: 'uppercase', color: 'primary.main', textAlign: 'center' }}>
-                    QUÉT MÃ QR/MÃ VẠCH
+                <DialogTitle sx={{ fontWeight: 900, textTransform: 'uppercase', color: 'primary.main', textAlign: 'center', pb: 1 }}>
+                    QUÉT SERIAL NHẬP KHO
+                    {scannedSerials.length > 0 && (
+                        <Box component="span" sx={{ display: 'block', fontSize: '0.85rem', color: '#22c55e', fontWeight: 700 }}>
+                            <CheckCircleIcon sx={{ fontSize: 16, verticalAlign: 'middle', mr: 0.5 }} />
+                            Đã quét: {scannedSerials.length} serial
+                        </Box>
+                    )}
                 </DialogTitle>
                 <DialogContent sx={{ p: 0, overflow: 'hidden' }}>
-                    <QRScanner onScanSuccess={handleScanSuccess} onScanFailure={() => { }} height={400} />
+                    <QRScanner
+                        onScanSuccess={handleScanSuccess}
+                        onScanFailure={() => { }}
+                        height={400}
+                        continuous
+                        scannedCount={scannedSerials.length}
+                    />
                     <Box textAlign="center" p={2}>
-                        <Button onClick={() => setShowScanner(false)} variant="outlined" color="inherit">Đóng Camera</Button>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={() => setShowScanner(false)}
+                            startIcon={<CheckCircleIcon />}
+                            sx={{ fontWeight: 700, borderRadius: 2 }}
+                        >
+                            {scannedSerials.length > 0
+                                ? `Xong (${scannedSerials.length} serial)`
+                                : 'Đóng Camera'}
+                        </Button>
                     </Box>
                 </DialogContent>
             </Dialog>

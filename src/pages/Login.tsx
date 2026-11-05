@@ -84,20 +84,21 @@ const Login = () => {
                     <Box sx={{
                         width: 72,
                         height: 72,
-                        borderRadius: '24px',
-                        background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
                         mb: 2,
-                        boxShadow: '0 12px 32px rgba(37, 99, 235, 0.45)',
+                        overflow: 'hidden',
+                        borderRadius: '50%',
                         animation: 'bounceIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both',
                         '@keyframes bounceIn': {
                             from: { transform: 'scale(0.7)', opacity: 0 },
                             to: { transform: 'scale(1)', opacity: 1 }
                         }
                     }}>
-                        <LockOutlinedIcon sx={{ color: 'white', fontSize: 36 }} />
+                        <Box
+                            component="img"
+                            src="/warehouse-logo.png"
+                            alt="Logo Quản lý kho"
+                            sx={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
+                        />
                     </Box>
                     <Typography sx={{
                         fontWeight: 900,

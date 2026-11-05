@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
-import { Box, IconButton, Select, MenuItem, Typography, Button, CircularProgress, Alert, Slider, Chip } from '@mui/material';
+import { Box, IconButton, Select, MenuItem, Typography, Button, CircularProgress, Alert, Slider, Chip, Tooltip } from '@mui/material';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
 import FlashOffIcon from '@mui/icons-material/FlashOff';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CenterFocusStrongIcon from '@mui/icons-material/CenterFocusStrong';
 import { playBeep } from '../utils/audio';
 
 interface QRScannerProps {
@@ -16,6 +17,38 @@ interface QRScannerProps {
     /** Total scanned count to display in continuous mode */
     scannedCount?: number;
 }
+
+const getCameraErrorMessage = (error: unknown) => {
+    const name = error instanceof DOMException ? error.name : '';
+    const msg = error instanceof Error ? error.message.toLowerCase() : '';
+
+    if (name === 'NotAllowedError' || name === 'SecurityError') {
+        return 'Quyền camera bị từ chối. Vào Cài đặt trình duyệt → Quyền riêng tư → Camera → Cho phép trang này, rồi bấm Thử lại.';
+    }
+    if (name === 'NotFoundError') {
+        return 'Không tìm thấy camera nào trên thiết bị.';
+    }
+    if (name === 'OverconstrainedError') {
+        return 'Camera không hỗ trợ cấu hình yêu cầu. Vui lòng thử lại.';
+    }
+    if (name === 'NotReadableError') {
+        return 'Camera đang được ứng dụng khác sử dụng. Hãy đóng ứng dụng đó rồi thử lại.';
+    }
+    if (name === 'AbortError') {
+        return 'Kết nối camera bị gián đoạn. Hãy bấm Thử lại.';
+    }
+    // Catch-all for messages containing permission keywords
+    if (msg.includes('permission') || msg.includes('denied') || msg.includes('quyền')) {
+        return 'Quyền camera bị từ chối. Vào Cài đặt trình duyệt → Cho phép Camera, rồi bấm Thử lại.';
+    }
+    if (msg.includes('https') || msg.includes('secure')) {
+        return 'Camera chỉ hoạt động trên HTTPS. Hãy mở ứng dụng qua https://';
+    }
+
+    return error instanceof Error && error.message
+        ? `Lỗi camera: ${error.message}`
+        : 'Không thể truy cập camera. Vui lòng thử lại.';
+};
 
 const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = false, scannedCount = 0 }: QRScannerProps) => {
     const regionId = useRef(`custom-reader-box-${crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)}`).current;
@@ -43,16 +76,38 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
     const continuousRef = useRef(continuous);
     useEffect(() => { continuousRef.current = continuous; }, [continuous]);
 
+    // Retry counter — incrementing it triggers a re-run of the init effect
+    const [retryKey, setRetryKey] = useState(0);
+    // Track tap-to-focus state for UI feedback
+    const [isFocusing, setIsFocusing] = useState(false);
+    // Track whether native BarcodeDetector was available (for status display)
+    const [usingNativeDetector, setUsingNativeDetector] = useState(false);
+
     // Initialization Effect
     useEffect(() => {
         let isMounted = true;
         let scannerInstance: Html5Qrcode | null = null;
 
+        // Destroy any previous scanner instance cleanly before reinitialising
+        if (scannerRef.current) {
+            const prev = scannerRef.current;
+            scannerRef.current = null;
+            (prev.isScanning ? prev.stop() : Promise.resolve())
+                .then(() => { try { prev.clear(); } catch (_) {} })
+                .catch(() => { try { prev.clear(); } catch (_) {} });
+        }
+
+        setLoading(true);
+        setError(null);
+        setIsScanning(false);
+        setCameras([]);
+        setSelectedCameraId('');
+
         const initScanner = async () => {
-            let retryCount = 0;
-            while (isMounted && !document.getElementById(regionId) && retryCount < 10) {
+            let waitCount = 0;
+            while (isMounted && !document.getElementById(regionId) && waitCount < 20) {
                 await new Promise(resolve => setTimeout(resolve, 50));
-                retryCount++;
+                waitCount++;
             }
 
             if (!isMounted || !document.getElementById(regionId)) return;
@@ -76,33 +131,45 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                 });
                 scannerRef.current = scannerInstance;
 
-                if (!navigator.mediaDevices?.enumerateDevices) {
-                    throw new Error('Trình duyệt không hỗ trợ truy cập camera. Hãy mở bằng Chrome hoặc Edge qua HTTPS.');
+                if (!window.isSecureContext) {
+                    throw new Error('Camera chỉ hoạt động trên HTTPS. Hãy mở ứng dụng qua https://');
                 }
+                if (!navigator.mediaDevices?.getUserMedia || !navigator.mediaDevices.enumerateDevices) {
+                    throw new Error('Trình duyệt không hỗ trợ camera. Hãy dùng Chrome/Edge qua HTTPS.');
+                }
+
+                // Request permission first so Android returns real device labels
+                const permissionStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: 'environment' } },
+                    audio: false,
+                });
+                permissionStream.getTracks().forEach(track => track.stop());
+
                 const devices = (await navigator.mediaDevices.enumerateDevices())
                     .filter((device) => device.kind === 'videoinput')
                     .map((device) => ({ id: device.deviceId, label: device.label }));
-                if (isMounted) {
-                    if (devices && devices.length > 0) {
-                        setCameras(devices);
-                        const backCamera = devices.find(d => {
-                            const lbl = d.label.toLowerCase();
-                            return lbl.includes('back') ||
-                                   lbl.includes('sau') ||
-                                   lbl.includes('environment') ||
-                                   lbl.includes('rear');
-                        });
-                        setSelectedCameraId(backCamera ? backCamera.id : devices[devices.length - 1].id);
-                        setError(null);
-                    } else {
-                        setError("Không tìm thấy camera nào trên thiết bị.");
-                    }
-                    setLoading(false);
+
+                if (!isMounted) return;
+
+                if (devices && devices.length > 0) {
+                    setCameras(devices);
+                    const backCamera = devices.find(d => {
+                        const lbl = d.label.toLowerCase();
+                        return lbl.includes('back') ||
+                               lbl.includes('sau') ||
+                               lbl.includes('environment') ||
+                               lbl.includes('rear');
+                    });
+                    setSelectedCameraId(backCamera ? backCamera.id : devices[devices.length - 1].id);
+                    setError(null);
+                } else {
+                    setError('Không tìm thấy camera nào trên thiết bị.');
                 }
+                setLoading(false);
             } catch (err: any) {
-                console.error("Error initializing scanner", err);
+                console.error('Error initializing scanner', err);
                 if (isMounted) {
-                    setError(`Lỗi khởi tạo camera: ${err.message || "Không thể truy cập camera"}`);
+                    setError(getCameraErrorMessage(err));
                     setLoading(false);
                 }
             }
@@ -113,29 +180,79 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
         return () => {
             isMounted = false;
             if (scannerInstance && scannerInstance.isScanning) {
-                scannerInstance.stop().then(() => scannerInstance?.clear()).catch(e => console.warn("Cleanup stop failed", e));
+                scannerInstance.stop().then(() => { try { scannerInstance?.clear(); } catch(_) {} }).catch(() => {});
             } else if (scannerInstance) {
-                try { scannerInstance.clear(); } catch(e) {}
+                try { scannerInstance.clear(); } catch (_) {}
             }
         };
-    }, [regionId]);
+    }, [regionId, retryKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Auto-zoom to help mobile camera focus on barcodes
+    // Target ~2x for barcode scanning; stay within device limits
     const applyInitialZoom = useCallback(async (caps: any) => {
         if (!caps?.zoom || !scannerRef.current) return;
-        const minZoom = caps.zoom.min || 1;
-        const maxZoom = caps.zoom.max || 1;
-        // Auto-zoom to ~2x for better barcode focus on mobile
-        const targetZoom = Math.min(Math.max(1.8, minZoom), maxZoom);
+        const minZoom = caps.zoom.min ?? 1;
+        const maxZoom = caps.zoom.max ?? 1;
+        // 2x optical zoom hits the sweet spot for serial barcodes on most phones
+        const targetZoom = Math.min(Math.max(2.0, minZoom), maxZoom);
         if (targetZoom > minZoom) {
             try {
                 await (scannerRef.current as any).applyVideoConstraints({
                     advanced: [{ zoom: targetZoom }]
                 });
                 setZoom(targetZoom);
-            } catch { /* some devices don't support programmatic zoom */ }
+            } catch { /* ignore devices that don't support zoom */ }
         }
     }, []);
+
+    // Tap-to-focus: trigger a brief manual focus then return to continuous
+    const handleTapFocus = useCallback(async (e: React.TouchEvent | React.MouseEvent) => {
+        if (!scannerRef.current || !isScanning) return;
+        const scanner = scannerRef.current as any;
+        setIsFocusing(true);
+        try {
+            const videoEl = document.getElementById(regionId)?.querySelector('video');
+            if (videoEl && 'getVideoTracks' in (videoEl.srcObject ?? {})) {
+                const track = (videoEl.srcObject as MediaStream).getVideoTracks()[0];
+                if (track) {
+                    // Compute tap point as a [0,1] relative coordinate
+                    const rect = videoEl.getBoundingClientRect();
+                    const clientX = 'touches' in e.nativeEvent
+                        ? (e as React.TouchEvent).touches[0].clientX
+                        : (e as React.MouseEvent).clientX;
+                    const clientY = 'touches' in e.nativeEvent
+                        ? (e as React.TouchEvent).touches[0].clientY
+                        : (e as React.MouseEvent).clientY;
+                    const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+                    const y = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+                    const pointOfInterest = [{ x, y, weight: 1 }];
+                    // Set manual focus at tap point, then revert to continuous after 1.5s
+                    await track.applyConstraints({
+                        advanced: [{ focusMode: 'manual', pointsOfInterest: pointOfInterest } as any]
+                    }).catch(() => {});
+                    setTimeout(async () => {
+                        await track.applyConstraints({
+                            advanced: [{ focusMode: 'continuous' } as any]
+                        }).catch(() => {});
+                        setIsFocusing(false);
+                    }, 1500);
+                    return;
+                }
+            }
+            // Fallback: just toggle focusMode via applyVideoConstraints
+            await scanner.applyVideoConstraints?.({
+                advanced: [{ focusMode: 'manual' }]
+            }).catch(() => {});
+            setTimeout(async () => {
+                await scanner.applyVideoConstraints?.({
+                    advanced: [{ focusMode: 'continuous' }]
+                }).catch(() => {});
+                setIsFocusing(false);
+            }, 1500);
+        } catch {
+            setIsFocusing(false);
+        }
+    }, [isScanning, regionId]);
 
     // Shared decode handler — always reads from refs, never stale
     const handleDecoded = useCallback((decodedText: string) => {
@@ -185,58 +302,96 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                     setIsScanning(false);
                 }
 
+                // ─── Scan config ──────────────────────────────────────────────
+                // fps=30 gives 30 decode attempts/sec without overloading CPU.
+                // qrbox nearly fills the viewport so long CODE-128 barcodes
+                // (which have wide quiet zones) are captured without cropping.
                 const scanConfig = {
-                    // Higher FPS = more decode attempts = faster detection on mobile
-                    fps: 25,
+                    fps: 30,
                     qrbox: (viewWidth: number, viewHeight: number) => {
-                        // Use nearly the whole preview — a small central box crops
-                        // quiet zones on long serial barcodes.
-                        const width = Math.floor(viewWidth * 0.96);
-                        const height = Math.floor(viewHeight * 0.90);
-                        return { width, height };
+                        const w = Math.floor(viewWidth * 0.95);
+                        const h = Math.floor(viewHeight * 0.85);
+                        return { width: w, height: h };
                     },
                     disableFlip: true,
+                    // Use native BarcodeDetector when available — 3-5× faster on
+                    // Android Chrome 83+ and Safari 17+ than JS fallback.
+                    experimentalFeatures: { useBarCodeDetectorIfSupported: true },
                 };
 
-                // Try with HD resolution constraints first (much better decode rate on mobile)
+                // ─── Camera constraints ───────────────────────────────────────
+                // Priority 1: 1280×720 (720p) is the sweet spot — better autofocus
+                // response than 1080p on mobile, still plenty of resolution for
+                // small barcodes.  We also request focusMode:continuous and
+                // exposureMode:continuous so the sensor adapts quickly.
+                const hdConstraints: MediaTrackConstraints = {
+                    deviceId: { exact: selectedCameraId },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    // @ts-ignore — valid on Chrome/Android
+                    focusMode: { ideal: 'continuous' },
+                    // @ts-ignore
+                    exposureMode: { ideal: 'continuous' },
+                    // @ts-ignore — reduce motion blur on fast-moving hands
+                    frameRate: { ideal: 30, min: 15 },
+                };
+
                 let started = false;
                 try {
-                    await scanner.start(
-                        {
-                            deviceId: { exact: selectedCameraId },
-                            width: { ideal: 1920 },
-                            height: { ideal: 1080 },
-                            // @ts-ignore — focusMode is a valid constraint on mobile browsers
-                            focusMode: { ideal: 'continuous' },
-                        } as any,
-                        scanConfig,
-                        handleDecoded,
-                        () => { }
-                    );
+                    await scanner.start(hdConstraints as any, scanConfig as any, handleDecoded, () => {});
                     started = true;
                 } catch (hdErr) {
-                    console.warn("HD constraints rejected, falling back to basic camera ID", hdErr);
+                    console.warn('HD constraints rejected, trying 480p fallback', hdErr);
                 }
 
-                // Fallback: some devices reject combined deviceId + resolution constraints
+                // Priority 2: 480p — works on nearly every Android/iOS device
                 if (!started) {
-                    await scanner.start(selectedCameraId, scanConfig, handleDecoded, () => { });
+                    try {
+                        await scanner.start(
+                            {
+                                deviceId: { exact: selectedCameraId },
+                                width: { ideal: 854 },
+                                height: { ideal: 480 },
+                                // @ts-ignore
+                                focusMode: { ideal: 'continuous' },
+                            } as any,
+                            scanConfig as any,
+                            handleDecoded,
+                            () => {}
+                        );
+                        started = true;
+                    } catch (sdErr) {
+                        console.warn('480p also rejected, bare camera ID fallback', sdErr);
+                    }
+                }
+
+                // Priority 3: bare camera ID — most permissive, always works
+                if (!started) {
+                    await scanner.start(selectedCameraId, scanConfig as any, handleDecoded, () => {});
                 }
 
                 if (isCurrent) {
                     setIsScanning(true);
                     setError(null);
-                    try {
-                        const caps = (scanner as any).getRunningTrackCameraCapabilities();
-                        setCapabilities(caps);
-                        setHasTorch(!!caps?.torch);
-                        await applyInitialZoom(caps);
-                    } catch { setHasTorch(false); }
+                    // Read capabilities after a short delay — some drivers need time
+                    // to initialise before reporting focus/zoom/torch support.
+                    setTimeout(async () => {
+                        if (!isCurrent) return;
+                        try {
+                            const caps = (scanner as any).getRunningTrackCameraCapabilities();
+                            setCapabilities(caps);
+                            setHasTorch(!!caps?.torch);
+                            // Log native detector availability for debugging
+                            const hasNative = !!(window as any).BarcodeDetector;
+                            setUsingNativeDetector(hasNative);
+                            await applyInitialZoom(caps);
+                        } catch { setHasTorch(false); }
+                    }, 600);
                 }
             } catch (err: any) {
-                console.error("Failed to start scanner", err);
+                console.error('Failed to start scanner', err);
                 if (isCurrent) {
-                    setError(`Lỗi khởi động: ${err.message || "Kiểm tra quyền truy cập camera"}`);
+                    setError(getCameraErrorMessage(err));
                     setIsScanning(false);
                     if (onScanFailure) onScanFailure(err);
                 }
@@ -254,8 +409,8 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
     }, [selectedCameraId, loading, error, handleDecoded, applyInitialZoom]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleRetry = () => {
-        setError(null);
-        setLoading(false);
+        // Increment retryKey to re-trigger the initialization effect
+        setRetryKey(k => k + 1);
     };
 
     const toggleTorch = async () => {

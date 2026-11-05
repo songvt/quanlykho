@@ -1293,7 +1293,11 @@ export const exportPeriodicAssetAuditReport = async (records: any[]) => {
     downloadAsDataUri(buffer, `Bao_cao_chi_tiet_kiem_ke_${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}.xlsx`);
 };
 
-export const exportHandoverHistory = async (history: any[], fileName: string) => {
+export const exportHandoverHistory = async (
+    history: any[],
+    fileName: string,
+    actionType?: 'allocate' | 'revoke' | 'transfer'
+) => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Lich_Su_Ban_Giao', {
         pageSetup: {
@@ -1331,10 +1335,16 @@ export const exportHandoverHistory = async (history: any[], fileName: string) =>
         { key: 'created_by', width: 20 },
     ];
 
+    const actionLabel = actionType === 'revoke'
+        ? 'THU HỒI'
+        : actionType === 'transfer'
+            ? 'ĐIỀU CHUYỂN'
+            : 'BÀN GIAO';
+
     // Header Title
     sheet.mergeCells(1, 1, 1, 12);
     const titleCell = sheet.getCell(1, 1);
-    titleCell.value = 'DANH SÁCH LỊCH SỬ BÀN GIAO & THU HỒI CCDC - BHLĐ';
+    titleCell.value = `DANH SÁCH LỊCH SỬ ${actionLabel} CCDC - BHLĐ`;
     titleCell.font = fontHeader;
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     sheet.getRow(1).height = 30;

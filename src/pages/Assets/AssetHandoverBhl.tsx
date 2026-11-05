@@ -87,6 +87,23 @@ const AssetHandoverBhl: React.FC = () => {
     const [history, setHistory] = useState<any[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
 
+    const actionHistory = useMemo(
+        () => history.filter(record => record.action_type === actionType),
+        [history, actionType]
+    );
+
+    const actionHistoryLabel = actionType === 'revoke'
+        ? 'Lịch sử thu hồi'
+        : actionType === 'transfer'
+            ? 'Lịch sử điều chuyển'
+            : 'Lịch sử bàn giao';
+
+    const actionHistoryFileName = actionType === 'revoke'
+        ? 'Lich_Su_Thu_Hoi_CCDC_BHLD'
+        : actionType === 'transfer'
+            ? 'Lich_Su_Dieu_Chuyen_CCDC_BHLD'
+            : 'Lich_Su_Ban_Giao_CCDC_BHLD';
+
     const fetchHistory = async () => {
         try {
             setHistoryLoading(true);
@@ -127,7 +144,7 @@ const AssetHandoverBhl: React.FC = () => {
 
     const handleExportHistory = async () => {
         try {
-            await exportHandoverHistory(history, `Lich_Su_Ban_Giao_CCDC_BHLD`);
+            await exportHandoverHistory(actionHistory, actionHistoryFileName, actionType);
             success('Xuất file Excel lịch sử thành công.');
         } catch (err: any) {
             error('Lỗi khi xuất Excel: ' + err.message);
@@ -267,6 +284,7 @@ const AssetHandoverBhl: React.FC = () => {
     };
 
     const currentTitle = templateType === 'default' ? titleMapDefault[actionType] : titleMapBhl[actionType];
+    const isRevoke = actionType === 'revoke';
 
     const resetBhlItems = () => {
         setBhlItems([
@@ -586,14 +604,14 @@ const AssetHandoverBhl: React.FC = () => {
                             </Card>
                         )}
 
-                        {/* 4. Lịch sử bàn giao gần đây */}
+                        {/* 4. Separate history for each handover operation */}
                         <Card className="handover-history-panel" variant="outlined" sx={{ borderRadius: 3, border: '1px solid #334155', boxShadow: '0 8px 24px rgba(15,23,42,0.18)' }}>
                             <CardContent sx={{ p: 3 }}>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                     <Typography className="handover-history-title" variant="subtitle1" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <HistoryIcon sx={{ color: '#2563eb' }} /> Lịch sử bàn giao gần đây
+                                        <HistoryIcon sx={{ color: '#2563eb' }} /> {actionHistoryLabel} gần đây
                                     </Typography>
-                                    {history.length > 0 && (
+                                    {actionHistory.length > 0 && (
                                         <Tooltip title="Xuất Excel" arrow>
                                             <Button
                                                 className="handover-history-export"
@@ -611,13 +629,13 @@ const AssetHandoverBhl: React.FC = () => {
                                     <Typography variant="body2" sx={{ color: '#64748b', textAlign: 'center', py: 2 }}>
                                         Đang tải lịch sử...
                                     </Typography>
-                                ) : history.length === 0 ? (
+                                ) : actionHistory.length === 0 ? (
                                     <Typography variant="body2" sx={{ color: '#64748b', textAlign: 'center', py: 2, fontStyle: 'italic' }}>
-                                        Chưa có lịch sử bàn giao nào được lưu.
+                                        Chưa có {actionType === 'revoke' ? 'lịch sử thu hồi' : actionType === 'transfer' ? 'lịch sử điều chuyển' : 'lịch sử bàn giao'} nào được lưu.
                                     </Typography>
                                 ) : (
                                     <Stack spacing={1.5} sx={{ maxHeight: 300, overflowY: 'auto', pr: 0.5 }}>
-                                        {history.map((h) => {
+                                        {actionHistory.map((h) => {
                                             const formattedDate = new Date(h.created_at).toLocaleString('vi-VN', {
                                                 day: '2-digit',
                                                 month: '2-digit',
@@ -736,40 +754,41 @@ const AssetHandoverBhl: React.FC = () => {
                                     {currentTitle}
                                 </div>
 
-                                {/* Giver Info Section */}
-                                <div style={{ fontWeight: 'bold', fontSize: '10.5pt', color: '#003087', margin: '6px 0 2px' }}>BÊN GIAO :</div>
-                                {giverInfo.giverName && (
-                                    <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}>
-                                        <span style={{ fontWeight: 'bold', width: 120 }}>Họ và tên:</span>
-                                        <span style={{ flex: 1, fontWeight: 'bold', textTransform: 'uppercase' }}>{giverInfo.giverName}</span>
-                                        <span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span>
-                                        <span style={{ flex: 1 }}>{giverInfo.giverTitle}</span>
-                                        <span style={{ width: 110, textAlign: 'right' }}>{formatPhone(giverInfo.giverPhone)}</span>
-                                    </div>
+                                {/* A revocation reverses the legal handover direction: the employee returns equipment to the warehouse. */}
+                                {isRevoke ? (
+                                    <>
+                                        <div style={{ fontWeight: 'bold', fontSize: '10.5pt', color: '#003087', margin: '6px 0 2px' }}>BÊN GIAO :</div>
+                                        <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}>
+                                            <span style={{ fontWeight: 'bold', width: 120 }}>Họ và tên:</span>
+                                            <span style={{ flex: '0 0 150px', minWidth: 0, fontWeight: 'bold', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{receiverName || '........................................................'}</span>
+                                            <span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span>
+                                            <span style={{ flex: 1 }}>{receiverTitle || '......................................'}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}>
+                                            <span style={{ fontWeight: 'bold', width: 120 }}>Đơn vị:</span>
+                                            <span style={{ flex: 1 }}>{receiverDept || '........................................................................................................................'}</span>
+                                        </div>
+                                        <div style={{ fontWeight: 'bold', fontSize: '10.5pt', color: '#003087', margin: '8px 0 2px' }}>BÊN NHẬN :</div>
+                                        {[['giverName', 'giverTitle', 'giverPhone'], ['giverName2', 'giverTitle2', 'giverPhone2']].map(([nameKey, titleKey, phoneKey]) => giverInfo[nameKey as keyof typeof giverInfo] ? (
+                                            <div key={nameKey} style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}>
+                                                <span style={{ fontWeight: 'bold', width: 120 }}>Họ và tên:</span>
+                                                <span style={{ flex: 1, fontWeight: 'bold', textTransform: 'uppercase' }}>{giverInfo[nameKey as keyof typeof giverInfo] as string}</span>
+                                                <span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span>
+                                                <span style={{ flex: 1 }}>{giverInfo[titleKey as keyof typeof giverInfo] as string}</span>
+                                                <span style={{ width: 110, textAlign: 'right' }}>{formatPhone(giverInfo[phoneKey as keyof typeof giverInfo] as string)}</span>
+                                            </div>
+                                        ) : null)}
+                                    </>
+                                ) : (
+                                    <>
+                                        <div style={{ fontWeight: 'bold', fontSize: '10.5pt', color: '#003087', margin: '6px 0 2px' }}>BÊN GIAO :</div>
+                                        {giverInfo.giverName && <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}><span style={{ fontWeight: 'bold', width: 120 }}>Họ và tên:</span><span style={{ flex: 1, fontWeight: 'bold', textTransform: 'uppercase' }}>{giverInfo.giverName}</span><span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span><span style={{ flex: 1 }}>{giverInfo.giverTitle}</span><span style={{ width: 110, textAlign: 'right' }}>{formatPhone(giverInfo.giverPhone)}</span></div>}
+                                        {giverInfo.giverName2 && <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}><span style={{ fontWeight: 'bold', width: 120 }}>Họ và tên:</span><span style={{ flex: 1, fontWeight: 'bold', textTransform: 'uppercase' }}>{giverInfo.giverName2}</span><span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span><span style={{ flex: 1 }}>{giverInfo.giverTitle2}</span><span style={{ width: 110, textAlign: 'right' }}>{formatPhone(giverInfo.giverPhone2)}</span></div>}
+                                        <div style={{ fontWeight: 'bold', fontSize: '10.5pt', color: '#003087', margin: '8px 0 2px' }}>BÊN NHẬN :</div>
+                                        <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}><span style={{ fontWeight: 'bold', width: 120 }}>Họ và tên:</span><span style={{ flex: '0 0 150px', minWidth: 0, fontWeight: 'bold', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{receiverName || '........................................................'}</span><span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span><span style={{ flex: 1 }}>{receiverTitle || '......................................'}</span></div>
+                                        <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}><span style={{ fontWeight: 'bold', width: 120 }}>Đơn vị:</span><span style={{ flex: 1 }}>{receiverDept || '........................................................................................................................'}</span></div>
+                                    </>
                                 )}
-                                {giverInfo.giverName2 && (
-                                    <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}>
-                                        <span style={{ fontWeight: 'bold', width: 120 }}>Họ và tên:</span>
-                                        <span style={{ flex: 1, fontWeight: 'bold', textTransform: 'uppercase' }}>{giverInfo.giverName2}</span>
-                                        <span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span>
-                                        <span style={{ flex: 1 }}>{giverInfo.giverTitle2}</span>
-                                        <span style={{ width: 110, textAlign: 'right' }}>{formatPhone(giverInfo.giverPhone2)}</span>
-                                    </div>
-                                )}
-
-                                {/* Receiver Info Section */}
-                                <div style={{ fontWeight: 'bold', fontSize: '10.5pt', color: '#003087', margin: '8px 0 2px' }}>BÊN NHẬN :</div>
-                                <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}>
-                                    <span style={{ fontWeight: 'bold', width: 120 }}>Họ và tên:</span>
-                                    <span style={{ flex: '0 0 150px', minWidth: 0, fontWeight: 'bold', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{receiverName || '........................................................'}</span>
-                                    <span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span>
-                                    <span style={{ flex: 1 }}>{receiverTitle || '......................................'}</span>
-                                    <span style={{ width: 110, textAlign: 'right' }}></span>
-                                </div>
-                                <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}>
-                                    <span style={{ fontWeight: 'bold', width: 120 }}>Đơn vị:</span>
-                                    <span style={{ flex: 1 }}>{receiverDept || '........................................................................................................................'}</span>
-                                </div>
 
                                 {/* Dynamic Table */}
                                 <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 14, fontSize: '10pt' }}>

@@ -198,15 +198,16 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ isMobile, handleDrawerTog
                 <Box sx={{
                     width: 40,
                     height: 40,
-                    borderRadius: '12px',
-                    background: `linear-gradient(135deg, ${UI.primary} 0%, #4F46E5 100%)`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
                     flexShrink: 0,
-                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+                    overflow: 'hidden',
+                    borderRadius: '50%',
                 }}>
-                    <Package color="white" size={22} strokeWidth={2.5} />
+                    <Box
+                        component="img"
+                        src="/warehouse-logo.png"
+                        alt="Logo Quản lý kho"
+                        sx={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
+                    />
                 </Box>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Typography sx={{
