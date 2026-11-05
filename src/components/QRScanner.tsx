@@ -19,26 +19,25 @@ interface QRScannerProps {
 }
 
 const getCameraErrorMessage = (error: unknown) => {
-    const errorRecord = error && typeof error === 'object' ? error as { name?: unknown; message?: unknown } : null;
-    const name = String(errorRecord?.name ?? (error instanceof DOMException ? error.name : '')).toLowerCase();
+    const name = error instanceof DOMException ? error.name : '';
     // html5-qrcode may reject with a string instead of a DOMException.
     // Keep the original browser error detectable so Android users receive
     // a useful recovery action instead of the generic access-camera message.
-    const msg = String(errorRecord?.message ?? (error instanceof Error ? error.message : error || '')).toLowerCase();
+    const msg = String(error instanceof Error ? error.message : error || '').toLowerCase();
 
-    if (name === 'notallowederror' || name === 'securityerror' || /notallowed|securityerror|permission.*denied/.test(msg)) {
+    if (name === 'NotAllowedError' || name === 'SecurityError' || /notallowed|securityerror|permission.*denied/.test(msg)) {
         return 'Quyền camera bị từ chối. Vào Cài đặt trình duyệt → Quyền riêng tư → Camera → Cho phép trang này, rồi bấm Thử lại.';
     }
-    if (name === 'notfounderror' || /notfound|requested device not found/.test(msg)) {
+    if (name === 'NotFoundError' || /notfound|requested device not found/.test(msg)) {
         return 'Không tìm thấy camera nào trên thiết bị.';
     }
-    if (name === 'overconstrainederror' || /overconstrained|constraint/.test(msg)) {
+    if (name === 'OverconstrainedError' || /overconstrained|constraint/.test(msg)) {
         return 'Camera không hỗ trợ cấu hình yêu cầu. Vui lòng thử lại.';
     }
-    if (name === 'notreadableerror' || /notreadable|could not start video source|device.*busy/.test(msg)) {
+    if (name === 'NotReadableError' || /notreadable|could not start video source|device.*busy/.test(msg)) {
         return 'Camera đang được ứng dụng khác sử dụng. Hãy đóng ứng dụng đó rồi thử lại.';
     }
-    if (name === 'aborterror' || /aborterror/.test(msg)) {
+    if (name === 'AbortError' || /aborterror/.test(msg)) {
         return 'Kết nối camera bị gián đoạn. Hãy bấm Thử lại.';
     }
     // Catch-all for messages containing permission keywords
@@ -128,7 +127,9 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
 
                 scannerInstance = new Html5Qrcode(regionId, {
                     formatsToSupport: SUPPORTED_FORMATS,
-                    experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+                    experimentalFeatures: {
+                        useBarCodeDetectorIfSupported: true
+                    },
                     verbose: false
                 });
                 scannerRef.current = scannerInstance;
@@ -186,12 +187,22 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
         };
     }, [regionId, retryKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Preserve native camera zoom at startup. Digital 2x zoom can blur dense
-    // QR/PDF417 labels on mid-range Android cameras; manual zoom remains available.
+    // Auto-zoom to help mobile camera focus on barcodes
+    // Target ~2x for barcode scanning; stay within device limits
     const applyInitialZoom = useCallback(async (caps: any) => {
         if (!caps?.zoom || !scannerRef.current) return;
         const minZoom = caps.zoom.min ?? 1;
-        setZoom(minZoom);
+        const maxZoom = caps.zoom.max ?? 1;
+        // 2x optical zoom hits the sweet spot for serial barcodes on most phones
+        const targetZoom = Math.min(Math.max(2.0, minZoom), maxZoom);
+        if (targetZoom > minZoom) {
+            try {
+                await (scannerRef.current as any).applyVideoConstraints({
+                    advanced: [{ zoom: targetZoom }]
+                });
+                setZoom(targetZoom);
+            } catch { /* ignore devices that don't support zoom */ }
+        }
     }, []);
 
     // Tap-to-focus: trigger a brief manual focus then return to continuous
@@ -292,22 +303,25 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                 }
 
                 // ─── Scan config ──────────────────────────────────────────────
-                // Stable configuration used by all mobile browsers. The wide box
-                // retains the quiet zone needed by serial barcodes without asking
-                // Safari to resize or recreate its live video stream.
+                // fps=30 gives 30 decode attempts/sec without overloading CPU.
+                // qrbox nearly fills the viewport so long CODE-128 barcodes
+                // (which have wide quiet zones) are captured without cropping.
                 const scanConfig = {
                     fps: 30,
-                    qrbox: (viewWidth: number, viewHeight: number) => ({
-                        width: Math.floor(viewWidth * 0.95),
-                        height: Math.floor(viewHeight * 0.85),
-                    }),
+                    qrbox: (viewWidth: number, viewHeight: number) => {
+                        const w = Math.floor(viewWidth * 0.95);
+                        const h = Math.floor(viewHeight * 0.85);
+                        return { width: w, height: h };
+                    },
                     disableFlip: true,
+                    // Use native BarcodeDetector when available — 3-5× faster on
+                    // Android Chrome 83+ and Safari 17+ than JS fallback.
                     experimentalFeatures: { useBarCodeDetectorIfSupported: true },
                 };
 
-                // Keep the known-stable two-step startup sequence. Retrying a
-                // failed iOS camera request with a different lens in the same
-                // scanner instance can leave WebKit without a usable stream.
+                // Start directly with the rear-camera preference. This is more
+                // reliable on Android/PWA than opening a separate permission probe
+                // followed by a second stream using a transient device ID.
                 let started = false;
                 try {
                     await scanner.start({ facingMode: { ideal: 'environment' } }, scanConfig as any, handleDecoded, () => {});
@@ -316,7 +330,8 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                     console.warn('Rear-camera constraint failed, trying selected camera ID', facingModeError);
                 }
 
-                // Fall back to the selected physical camera only once.
+                // Fall back to the selected physical camera for browsers that do
+                // not honour facingMode (for example, some embedded WebViews).
                 if (!started) {
                     await scanner.start(selectedCameraId, scanConfig as any, handleDecoded, () => {});
                 }
@@ -324,10 +339,6 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                 if (isCurrent) {
                     setIsScanning(true);
                     setError(null);
-                    // Do not change video constraints after startup: iOS Safari
-                    // can keep the stream alive but render a black preview after
-                    // an in-flight resolution switch. The browser selects the
-                    // best supported rear-camera resolution at start instead.
                     // Read capabilities after a short delay — some drivers need time
                     // to initialise before reporting focus/zoom/torch support.
                     setTimeout(async () => {

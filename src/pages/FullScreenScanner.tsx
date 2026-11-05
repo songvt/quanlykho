@@ -10,6 +10,8 @@ const ALL_SUPPORTED_FORMATS: Html5QrcodeSupportedFormats[] = [
     Html5QrcodeSupportedFormats.DATA_MATRIX,
     Html5QrcodeSupportedFormats.PDF_417,
     Html5QrcodeSupportedFormats.CODE_128,
+    Html5QrcodeSupportedFormats.EAN_13,
+    Html5QrcodeSupportedFormats.EAN_8,
 ];
 
 const FullScreenScanner: React.FC = () => {
@@ -30,7 +32,9 @@ const FullScreenScanner: React.FC = () => {
             try {
                 const html5QrCode = new Html5Qrcode("reader", {
                     formatsToSupport: ALL_SUPPORTED_FORMATS,
-                    experimentalFeatures: { useBarCodeDetectorIfSupported: false },
+                    experimentalFeatures: {
+                        useBarCodeDetectorIfSupported: true
+                    },
                     verbose: false
                 });
                 scannerRef.current = html5QrCode;
@@ -39,6 +43,11 @@ const FullScreenScanner: React.FC = () => {
                     { facingMode: "environment" },
                     {
                         fps: 12,
+                        qrbox: (viewWidth, viewHeight) => {
+                            const width = Math.floor(Math.min(viewWidth * 0.82, 420));
+                            const height = Math.floor(Math.min(viewHeight * 0.62, Math.max(180, width * 0.72)));
+                            return { width, height };
+                        },
                         videoConstraints: {
                             facingMode: { ideal: "environment" },
                             width: { ideal: 1920 },
