@@ -122,13 +122,13 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                     Html5QrcodeSupportedFormats.DATA_MATRIX,
                     Html5QrcodeSupportedFormats.PDF_417,
                     Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.EAN_8,
                 ];
 
                 scannerInstance = new Html5Qrcode(regionId, {
                     formatsToSupport: SUPPORTED_FORMATS,
-                    // The ZXing decoder reads dense QR and multi-row PDF417 labels
-                    // more reliably than the browser BarcodeDetector on Android.
-                    experimentalFeatures: { useBarCodeDetectorIfSupported: false },
+                    experimentalFeatures: { useBarCodeDetectorIfSupported: true },
                     verbose: false
                 });
                 scannerRef.current = scannerInstance;
@@ -292,50 +292,33 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                 }
 
                 // ─── Scan config ──────────────────────────────────────────────
-                // Decode the whole frame. A constrained scan box can crop the
-                // quiet zones of a dense QR or the top/bottom rows of PDF417.
+                // Stable configuration used by all mobile browsers. The wide box
+                // retains the quiet zone needed by serial barcodes without asking
+                // Safari to resize or recreate its live video stream.
                 const scanConfig = {
-                    fps: 12,
+                    fps: 30,
+                    qrbox: (viewWidth: number, viewHeight: number) => ({
+                        width: Math.floor(viewWidth * 0.95),
+                        height: Math.floor(viewHeight * 0.85),
+                    }),
                     disableFlip: true,
-                    experimentalFeatures: { useBarCodeDetectorIfSupported: false },
+                    experimentalFeatures: { useBarCodeDetectorIfSupported: true },
                 };
 
-                // Try all safe ways of opening a camera. Different mobile browsers
-                // disagree on facingMode and transient device IDs, especially in a
-                // standalone PWA after an app update.
+                // Keep the known-stable two-step startup sequence. Retrying a
+                // failed iOS camera request with a different lens in the same
+                // scanner instance can leave WebKit without a usable stream.
                 let started = false;
-                let lastStartError: unknown;
                 try {
                     await scanner.start({ facingMode: { ideal: 'environment' } }, scanConfig as any, handleDecoded, () => {});
                     started = true;
                 } catch (facingModeError) {
-                    lastStartError = facingModeError;
                     console.warn('Rear-camera constraint failed, trying selected camera ID', facingModeError);
                 }
 
-                // Fall back to the selected physical camera for browsers that do
-                // not honour facingMode (for example, iOS standalone PWAs).
+                // Fall back to the selected physical camera only once.
                 if (!started) {
-                    try {
-                        await scanner.start(selectedCameraId, scanConfig as any, handleDecoded, () => {});
-                        started = true;
-                    } catch (cameraIdError) {
-                        lastStartError = cameraIdError;
-                        console.warn('Selected camera ID failed, trying default camera', cameraIdError);
-                    }
-                }
-
-                // Final compatibility fallback: the system's default camera.
-                if (!started) {
-                    try {
-                        await scanner.start({ facingMode: 'user' }, scanConfig as any, handleDecoded, () => {});
-                        started = true;
-                    } catch (defaultCameraError) {
-                        lastStartError = defaultCameraError;
-                    }
-                }
-                if (!started) {
-                    throw lastStartError ?? new Error('Không thể khởi động camera.');
+                    await scanner.start(selectedCameraId, scanConfig as any, handleDecoded, () => {});
                 }
 
                 if (isCurrent) {
