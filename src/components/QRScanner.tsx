@@ -19,25 +19,26 @@ interface QRScannerProps {
 }
 
 const getCameraErrorMessage = (error: unknown) => {
-    const name = error instanceof DOMException ? error.name : '';
+    const errorRecord = error && typeof error === 'object' ? error as { name?: unknown; message?: unknown } : null;
+    const name = String(errorRecord?.name ?? (error instanceof DOMException ? error.name : '')).toLowerCase();
     // html5-qrcode may reject with a string instead of a DOMException.
     // Keep the original browser error detectable so Android users receive
     // a useful recovery action instead of the generic access-camera message.
-    const msg = String(error instanceof Error ? error.message : error || '').toLowerCase();
+    const msg = String(errorRecord?.message ?? (error instanceof Error ? error.message : error || '')).toLowerCase();
 
-    if (name === 'NotAllowedError' || name === 'SecurityError' || /notallowed|securityerror|permission.*denied/.test(msg)) {
+    if (name === 'notallowederror' || name === 'securityerror' || /notallowed|securityerror|permission.*denied/.test(msg)) {
         return 'Quyền camera bị từ chối. Vào Cài đặt trình duyệt → Quyền riêng tư → Camera → Cho phép trang này, rồi bấm Thử lại.';
     }
-    if (name === 'NotFoundError' || /notfound|requested device not found/.test(msg)) {
+    if (name === 'notfounderror' || /notfound|requested device not found/.test(msg)) {
         return 'Không tìm thấy camera nào trên thiết bị.';
     }
-    if (name === 'OverconstrainedError' || /overconstrained|constraint/.test(msg)) {
+    if (name === 'overconstrainederror' || /overconstrained|constraint/.test(msg)) {
         return 'Camera không hỗ trợ cấu hình yêu cầu. Vui lòng thử lại.';
     }
-    if (name === 'NotReadableError' || /notreadable|could not start video source|device.*busy/.test(msg)) {
+    if (name === 'notreadableerror' || /notreadable|could not start video source|device.*busy/.test(msg)) {
         return 'Camera đang được ứng dụng khác sử dụng. Hãy đóng ứng dụng đó rồi thử lại.';
     }
-    if (name === 'AbortError' || /aborterror/.test(msg)) {
+    if (name === 'aborterror' || /aborterror/.test(msg)) {
         return 'Kết nối camera bị gián đoạn. Hãy bấm Thử lại.';
     }
     // Catch-all for messages containing permission keywords
@@ -299,21 +300,42 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                     experimentalFeatures: { useBarCodeDetectorIfSupported: false },
                 };
 
-                // Start directly with the rear-camera preference. This is more
-                // reliable on Android/PWA than opening a separate permission probe
-                // followed by a second stream using a transient device ID.
+                // Try all safe ways of opening a camera. Different mobile browsers
+                // disagree on facingMode and transient device IDs, especially in a
+                // standalone PWA after an app update.
                 let started = false;
+                let lastStartError: unknown;
                 try {
                     await scanner.start({ facingMode: { ideal: 'environment' } }, scanConfig as any, handleDecoded, () => {});
                     started = true;
                 } catch (facingModeError) {
+                    lastStartError = facingModeError;
                     console.warn('Rear-camera constraint failed, trying selected camera ID', facingModeError);
                 }
 
                 // Fall back to the selected physical camera for browsers that do
-                // not honour facingMode (for example, some embedded WebViews).
+                // not honour facingMode (for example, iOS standalone PWAs).
                 if (!started) {
-                    await scanner.start(selectedCameraId, scanConfig as any, handleDecoded, () => {});
+                    try {
+                        await scanner.start(selectedCameraId, scanConfig as any, handleDecoded, () => {});
+                        started = true;
+                    } catch (cameraIdError) {
+                        lastStartError = cameraIdError;
+                        console.warn('Selected camera ID failed, trying default camera', cameraIdError);
+                    }
+                }
+
+                // Final compatibility fallback: the system's default camera.
+                if (!started) {
+                    try {
+                        await scanner.start({ facingMode: 'user' }, scanConfig as any, handleDecoded, () => {});
+                        started = true;
+                    } catch (defaultCameraError) {
+                        lastStartError = defaultCameraError;
+                    }
+                }
+                if (!started) {
+                    throw lastStartError ?? new Error('Không thể khởi động camera.');
                 }
 
                 if (isCurrent) {
