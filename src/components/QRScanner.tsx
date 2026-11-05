@@ -319,13 +319,10 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                 if (isCurrent) {
                     setIsScanning(true);
                     setError(null);
-                    // Request a detailed frame only after the stream is active.
-                    // This avoids start-up failures on Android while giving dense
-                    // labels enough pixels to be decoded.
-                    await scanner.applyVideoConstraints?.({
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 },
-                    }).catch(() => {});
+                    // Do not change video constraints after startup: iOS Safari
+                    // can keep the stream alive but render a black preview after
+                    // an in-flight resolution switch. The browser selects the
+                    // best supported rear-camera resolution at start instead.
                     // Read capabilities after a short delay — some drivers need time
                     // to initialise before reporting focus/zoom/torch support.
                     setTimeout(async () => {
