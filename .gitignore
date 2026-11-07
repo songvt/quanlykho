@@ -41,7 +41,14 @@ api_handlers/**/*.js
 
 # Embedded repos and scratch files
 quanlykhobsg/
-scratch/
+
+# Chỉ ignore toàn bộ scratch ngoại trừ các script automation quan trọng
+scratch/*
+!scratch/sync_sheet_to_db_with_products.cjs
+!scratch/daily_sync.cjs
+!scratch/restore_inbound_transactions.cjs
+!scratch/check_sync_counts.cjs
+!scratch/backup_current_inbound_transactions.cjs
 
 # Local diagnostics and data snapshots (never publish operational data)
 debug_sync.cjs
