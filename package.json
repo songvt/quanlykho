@@ -1,7 +1,7 @@
 {
   "name": "app-ql-kho",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
   "scripts": {
     "dev": "concurrently --restart-tries -1 --restart-after 1000 \"vite --host\" \"npm run dev:api\"",

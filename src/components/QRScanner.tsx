@@ -58,6 +58,7 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
     const scannerRef = useRef<Html5Qrcode | null>(null);
     const [cameras, setCameras] = useState<Array<{ id: string, label: string }>>([]);
     const [selectedCameraId, setSelectedCameraId] = useState<string>('');
+    const [userSelectedCamera, setUserSelectedCamera] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
     const [isTorchOn, setIsTorchOn] = useState(false);
     const [hasTorch, setHasTorch] = useState(false);
@@ -160,7 +161,7 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                                lbl.includes('environment') ||
                                lbl.includes('rear');
                     });
-                    setSelectedCameraId(backCamera ? backCamera.id : devices[devices.length - 1].id);
+                    setSelectedCameraId(backCamera ? backCamera.id : devices[0].id);
                     setError(null);
                 } else {
                     setError('Không tìm thấy camera nào trên thiết bị.');
@@ -323,12 +324,32 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                     }
                 };
 
-                // Priority 1: User's explicitly chosen physical camera
-                if (selectedCameraId) {
+                const ensureVideoPlaying = () => {
+                    const el = document.getElementById(regionId);
+                    if (!el) return;
+                    const video = el.querySelector('video');
+                    if (video) {
+                        video.setAttribute('playsinline', 'true');
+                        video.setAttribute('webkit-playsinline', 'true');
+                        video.setAttribute('autoplay', 'true');
+                        video.setAttribute('muted', 'true');
+                        video.style.width = '100%';
+                        video.style.height = '100%';
+                        video.style.objectFit = 'cover';
+                        if (video.paused) {
+                            video.play().catch(() => {});
+                        }
+                    }
+                };
+
+                // Priority 1: User explicitly picked a camera from the dropdown
+                if (userSelectedCamera && selectedCameraId) {
                     started = await tryStartCamera(selectedCameraId);
                 }
 
                 // Priority 2: Standard rear-camera facingMode ("environment")
+                // On mobile devices, this ALWAYS opens the main 1x rear camera with autofocus,
+                // avoiding auxiliary/depth/infrared sensors that produce a black screen.
                 if (!started) {
                     started = await tryStartCamera({ facingMode: 'environment' });
                 }
@@ -338,32 +359,45 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                     started = await tryStartCamera({ facingMode: 'user' });
                 }
 
-                // Priority 4: Any detected device ID
-                if (!started && cameras.length > 0 && cameras[0].id !== selectedCameraId) {
+                // Priority 4: Fallback to the FIRST detected camera (Camera 0 is primary)
+                if (!started && cameras.length > 0) {
                     started = await tryStartCamera(cameras[0].id);
+                }
+
+                // Priority 5: Fallback to selectedCameraId if set
+                if (!started && selectedCameraId) {
+                    started = await tryStartCamera(selectedCameraId);
                 }
 
                 if (!started) {
                     throw startError || new Error('Không thể khởi động camera.');
                 }
 
+                ensureVideoPlaying();
+                setTimeout(ensureVideoPlaying, 250);
+
                 if (isCurrent) {
                     setIsScanning(true);
                     setError(null);
-                    // Read capabilities after a short delay — some drivers need time
-                    // to initialise before reporting focus/zoom/torch support.
                     setTimeout(async () => {
                         if (!isCurrent) return;
                         try {
+                            ensureVideoPlaying();
+                            // Refresh camera list now that permissions are active to display proper labels
+                            const updatedDevices = (await navigator.mediaDevices.enumerateDevices())
+                                .filter((device) => device.kind === 'videoinput')
+                                .map((device) => ({ id: device.deviceId, label: device.label }));
+                            if (updatedDevices.length > 0) {
+                                setCameras(updatedDevices);
+                            }
                             const caps = (scanner as any).getRunningTrackCameraCapabilities();
                             setCapabilities(caps);
                             setHasTorch(!!caps?.torch);
-                            // Log native detector availability for debugging
                             const hasNative = !!(window as any).BarcodeDetector;
                             setUsingNativeDetector(hasNative);
                             await applyInitialZoom(caps);
                         } catch { setHasTorch(false); }
-                    }, 600);
+                    }, 500);
                 }
             } catch (err: any) {
                 console.error('Failed to start scanner', err);
@@ -383,7 +417,7 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
             isCurrent = false;
             clearTimeout(timer);
         };
-    }, [selectedCameraId, loading, error, handleDecoded, applyInitialZoom]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [selectedCameraId, userSelectedCamera, loading, error, handleDecoded, applyInitialZoom]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleRetry = () => {
         // Increment retryKey to re-trigger the initialization effect
@@ -535,7 +569,10 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                                 {cameras.length > 1 && (
                                     <Select
                                         value={selectedCameraId}
-                                        onChange={(e) => setSelectedCameraId(e.target.value)}
+                                        onChange={(e) => {
+                                            setSelectedCameraId(e.target.value);
+                                            setUserSelectedCamera(true);
+                                        }}
                                         size="small"
                                         sx={{
                                             color: 'white',
