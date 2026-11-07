@@ -185,7 +185,7 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                 try { scannerInstance.clear(); } catch (_) {}
             }
         };
-    }, [regionId, retryKey]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [regionId, retryKey]);
 
     // Preserve native camera zoom at startup. In-flight zoom adjustments on startup
     // can cause the active video stream to freeze or render a black preview on iOS and Android.
