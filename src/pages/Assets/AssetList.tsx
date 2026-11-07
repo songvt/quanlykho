@@ -130,7 +130,8 @@ const AssetList = () => {
                 (a.manager_name || '').toLowerCase().includes(s) ||
                 (a.asset_name || '').toLowerCase().includes(s) ||
                 (a.status || '').toLowerCase().includes(s) ||
-                (a.asset_code || '').toLowerCase().includes(s)
+                (a.asset_code || '').toLowerCase().includes(s) ||
+                (a.serial_number || '').toLowerCase().includes(s)
             );
         }
 
@@ -546,7 +547,7 @@ const AssetList = () => {
             {/* Search + selection info */}
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} mb={2} alignItems={{ sm: 'center' }}>
                 <TextField
-                    placeholder="Tìm người dùng/quản lý, tên/mã TS, tình trạng..."
+                    placeholder="Tìm người dùng/quản lý, tên/mã TS, serial, tình trạng..."
                     size="small"
                     fullWidth={isMobile}
                     sx={{ width: isMobile ? '100%' : 350 }}
@@ -593,7 +594,7 @@ const AssetList = () => {
             </Stack>
 
             {status === 'loading' ? (
-                <TableSkeleton columns={7} rows={10} />
+                <TableSkeleton columns={8} rows={10} />
             ) : isMobile ? (
                 /* ── MOBILE: Card list ── */
                 <Box>
@@ -666,6 +667,11 @@ const AssetList = () => {
                                         {asset.asset_name}
                                     </Typography>
                                     <Stack direction="row" flexWrap="wrap" gap={1} alignItems="center">
+                                        {asset.serial_number && (
+                                            <Typography variant="caption" sx={{ fontFamily: 'monospace', bgcolor: 'rgba(255, 255, 255, 0.08)', px: 0.8, py: 0.2, borderRadius: 1, border: '1px solid rgba(255, 255, 255, 0.12)' }}>
+                                                SN: {asset.serial_number}
+                                            </Typography>
+                                        )}
                                         <Chip
                                             label={asset.status || 'Không rõ'}
                                             size="small"
@@ -719,6 +725,7 @@ const AssetList = () => {
                                 </TableCell>
                                 <TableCell><b>MÃ TÀI SẢN</b></TableCell>
                                 <TableCell><b>TÊN TÀI SẢN</b></TableCell>
+                                <TableCell><b>SỐ SERIAL</b></TableCell>
                                 <TableCell><b>TÌNH TRẠNG</b></TableCell>
                                 <TableCell><b>NGƯỜI SỬ DỤNG</b></TableCell>
                                 <TableCell><b>NGƯỜI QUẢN LÝ</b></TableCell>
@@ -737,6 +744,7 @@ const AssetList = () => {
                                     </TableCell>
                                     <TableCell>{asset.asset_code}</TableCell>
                                     <TableCell>{asset.asset_name}</TableCell>
+                                    <TableCell sx={{ fontFamily: asset.serial_number ? 'monospace' : 'inherit' }}>{asset.serial_number || '-'}</TableCell>
                                     <TableCell>{asset.status}</TableCell>
                                     <TableCell>{asset.user_employee_name || '-'}</TableCell>
                                     <TableCell>{asset.manager_name || '-'}</TableCell>
@@ -763,7 +771,7 @@ const AssetList = () => {
                             ))}
                             {assets.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={8} align="center" sx={{ py: 3 }}>Chưa có tài sản nào.</TableCell>
+                                    <TableCell colSpan={9} align="center" sx={{ py: 3 }}>Chưa có tài sản nào.</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
