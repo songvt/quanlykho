@@ -39,37 +39,45 @@ const FullScreenScanner: React.FC = () => {
                 });
                 scannerRef.current = html5QrCode;
                 
-                await html5QrCode.start(
-                    { facingMode: "environment" },
-                    {
-                        fps: 12,
-                        qrbox: (viewWidth, viewHeight) => {
-                            const width = Math.floor(Math.min(viewWidth * 0.82, 420));
-                            const height = Math.floor(Math.min(viewHeight * 0.62, Math.max(180, width * 0.72)));
-                            return { width, height };
-                        },
-                        videoConstraints: {
-                            facingMode: { ideal: "environment" },
-                            width: { ideal: 1920 },
-                            height: { ideal: 1080 },
-                        } as any
+                const scanConfig = {
+                    fps: 12,
+                    qrbox: (viewWidth: number, viewHeight: number) => {
+                        const width = Math.floor(Math.min(viewWidth * 0.82, 420));
+                        const height = Math.floor(Math.min(viewHeight * 0.62, Math.max(180, width * 0.72)));
+                        return { width, height };
                     },
-                    (decodedText) => {
-                        if (scanLockedRef.current) return;
-                        scanLockedRef.current = true;
-                        html5QrCode.pause();
-                        const serials = parseSerialInput(decodedText);
-                        setScanResult(decodedText);
-                        setParsedSerials(serials.length > 0 ? serials : [decodedText]);
-                        // Optional beep
-                        try {
-                            const audio = new Audio('/success-beep.mp3');
-                            audio.play().catch(() => {});
-                        } catch (e) {}
-                        if (window.navigator?.vibrate) window.navigator.vibrate(100);
-                    },
-                    () => {}
-                );
+                    videoConstraints: {
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 },
+                    } as any
+                };
+
+                const onDecode = (decodedText: string) => {
+                    if (scanLockedRef.current) return;
+                    scanLockedRef.current = true;
+                    html5QrCode.pause();
+                    const serials = parseSerialInput(decodedText);
+                    setScanResult(decodedText);
+                    setParsedSerials(serials.length > 0 ? serials : [decodedText]);
+                    // Optional beep
+                    try {
+                        const audio = new Audio('/success-beep.mp3');
+                        audio.play().catch(() => {});
+                    } catch (e) {}
+                    if (window.navigator?.vibrate) window.navigator.vibrate(100);
+                };
+
+                let started = false;
+                try {
+                    await html5QrCode.start({ facingMode: "environment" }, scanConfig, onDecode, () => {});
+                    started = true;
+                } catch (envErr) {
+                    console.warn("FacingMode environment failed, trying user camera", envErr);
+                }
+
+                if (!started) {
+                    await html5QrCode.start({ facingMode: "user" }, scanConfig, onDecode, () => {});
+                }
 
                 try {
                     const caps = (html5QrCode as any).getRunningTrackCameraCapabilities();

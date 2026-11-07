@@ -187,22 +187,12 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
         };
     }, [regionId, retryKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Auto-zoom to help mobile camera focus on barcodes
-    // Target ~2x for barcode scanning; stay within device limits
+    // Preserve native camera zoom at startup. In-flight zoom adjustments on startup
+    // can cause the active video stream to freeze or render a black preview on iOS and Android.
     const applyInitialZoom = useCallback(async (caps: any) => {
-        if (!caps?.zoom || !scannerRef.current) return;
+        if (!caps?.zoom) return;
         const minZoom = caps.zoom.min ?? 1;
-        const maxZoom = caps.zoom.max ?? 1;
-        // 2x optical zoom hits the sweet spot for serial barcodes on most phones
-        const targetZoom = Math.min(Math.max(2.0, minZoom), maxZoom);
-        if (targetZoom > minZoom) {
-            try {
-                await (scannerRef.current as any).applyVideoConstraints({
-                    advanced: [{ zoom: targetZoom }]
-                });
-                setZoom(targetZoom);
-            } catch { /* ignore devices that don't support zoom */ }
-        }
+        setZoom(minZoom);
     }, []);
 
     // Tap-to-focus: trigger a brief manual focus then return to continuous
@@ -319,21 +309,42 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
                     experimentalFeatures: { useBarCodeDetectorIfSupported: true },
                 };
 
-                // Start directly with the rear-camera preference. This is more
-                // reliable on Android/PWA than opening a separate permission probe
-                // followed by a second stream using a transient device ID.
                 let started = false;
-                try {
-                    await scanner.start({ facingMode: { ideal: 'environment' } }, scanConfig as any, handleDecoded, () => {});
-                    started = true;
-                } catch (facingModeError) {
-                    console.warn('Rear-camera constraint failed, trying selected camera ID', facingModeError);
+                let startError: unknown;
+
+                const tryStartCamera = async (config: any) => {
+                    try {
+                        await scanner.start(config, scanConfig as any, handleDecoded, () => {});
+                        return true;
+                    } catch (err) {
+                        startError = err;
+                        console.warn('Camera start attempt failed for config', config, err);
+                        return false;
+                    }
+                };
+
+                // Priority 1: User's explicitly chosen physical camera
+                if (selectedCameraId) {
+                    started = await tryStartCamera(selectedCameraId);
                 }
 
-                // Fall back to the selected physical camera for browsers that do
-                // not honour facingMode (for example, some embedded WebViews).
+                // Priority 2: Standard rear-camera facingMode ("environment")
                 if (!started) {
-                    await scanner.start(selectedCameraId, scanConfig as any, handleDecoded, () => {});
+                    started = await tryStartCamera({ facingMode: 'environment' });
+                }
+
+                // Priority 3: Fallback to user camera ("user" for laptop / front webcam)
+                if (!started) {
+                    started = await tryStartCamera({ facingMode: 'user' });
+                }
+
+                // Priority 4: Any detected device ID
+                if (!started && cameras.length > 0 && cameras[0].id !== selectedCameraId) {
+                    started = await tryStartCamera(cameras[0].id);
+                }
+
+                if (!started) {
+                    throw startError || new Error('Không thể khởi động camera.');
                 }
 
                 if (isCurrent) {
@@ -402,7 +413,25 @@ const QRScanner = ({ onScanSuccess, onScanFailure, height = 400, continuous = fa
     };
 
     return (
-        <Box sx={{ width: '100%', position: 'relative', bgcolor: '#000', borderRadius: 2, overflow: 'hidden', minHeight: 300, height: height }}>
+        <Box sx={{
+            width: '100%',
+            position: 'relative',
+            bgcolor: '#000',
+            borderRadius: 2,
+            overflow: 'hidden',
+            minHeight: 300,
+            height: height,
+            '& video': {
+                width: '100% !important',
+                height: '100% !important',
+                objectFit: 'cover !important',
+                display: 'block !important',
+                borderRadius: '8px',
+            },
+            '& #qr-canvas-visible': {
+                display: 'none !important',
+            }
+        }}>
             <div id={regionId} style={{ width: '100%', height: '100%' }} />
 
             {loading && (
