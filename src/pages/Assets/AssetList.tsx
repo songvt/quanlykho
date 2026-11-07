@@ -714,7 +714,7 @@ const AssetList = () => {
             ) : (
                 /* ── DESKTOP: Table ── */
                 <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 'var(--shadow-glass)', border: '1px solid var(--border-glass)' }}>
-                    <Table size="small">
+                    <Table size="small" sx={{ minWidth: 1100 }}>
                         <TableHead sx={{ bgcolor: 'rgba(255, 255, 255, 0.02)' }}>
                             <TableRow>
                                 <TableCell padding="checkbox">
@@ -725,7 +725,7 @@ const AssetList = () => {
                                 </TableCell>
                                 <TableCell><b>MÃ TÀI SẢN</b></TableCell>
                                 <TableCell><b>TÊN TÀI SẢN</b></TableCell>
-                                <TableCell><b>SỐ SERIAL</b></TableCell>
+                                <TableCell sx={{ minWidth: 160, whiteSpace: 'nowrap' }}><b>SỐ SERIAL</b></TableCell>
                                 <TableCell><b>TÌNH TRẠNG</b></TableCell>
                                 <TableCell><b>NGƯỜI SỬ DỤNG</b></TableCell>
                                 <TableCell><b>NGƯỜI QUẢN LÝ</b></TableCell>
@@ -744,7 +744,7 @@ const AssetList = () => {
                                     </TableCell>
                                     <TableCell>{asset.asset_code}</TableCell>
                                     <TableCell>{asset.asset_name}</TableCell>
-                                    <TableCell sx={{ fontFamily: asset.serial_number ? 'monospace' : 'inherit' }}>{asset.serial_number || '-'}</TableCell>
+                                    <TableCell sx={{ minWidth: 160, whiteSpace: 'nowrap' }}>{asset.serial_number || '-'}</TableCell>
                                     <TableCell>{asset.status}</TableCell>
                                     <TableCell>{asset.user_employee_name || '-'}</TableCell>
                                     <TableCell>{asset.manager_name || '-'}</TableCell>
