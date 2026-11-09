@@ -4,7 +4,7 @@ import {
     TableContainer, TableHead, TableRow, Button, IconButton,
     Chip, Toolbar
 } from '@mui/material';
-import { Add as AddIcon, Print as PrintIcon, Visibility as ViewIcon, Delete as DeleteIcon, Download as DownloadIcon } from '@mui/icons-material';
+import { Add as AddIcon, Print as PrintIcon, Visibility as ViewIcon, Delete as DeleteIcon, Download as DownloadIcon, Edit as EditIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../config/supabase';
 import dayjs from 'dayjs';
@@ -205,6 +205,9 @@ const KCSWarrantyList: React.FC = () => {
                                         <Chip label={getTypeLabel(row.form_type)} size="small" color="primary" variant="outlined" />
                                     </TableCell>
                                     <TableCell align="center">
+                                        <IconButton color="primary" onClick={() => navigate(`/assets/kcs-warranty/edit/${row.id}`)} title="Sửa phiếu">
+                                            <EditIcon />
+                                        </IconButton>
                                         <IconButton color="info" onClick={() => navigate(`/assets/kcs-warranty/new?print=${row.id}`)} title="In phiếu">
                                             <PrintIcon />
                                         </IconButton>

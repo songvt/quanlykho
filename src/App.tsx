@@ -161,6 +161,7 @@ function App() {
                                     <Route path="assets/print-qr" element={<AssetQrPrint />} />
                                     <Route path="assets/kcs-warranty" element={<KCSWarrantyList />} />
                                     <Route path="assets/kcs-warranty/new" element={<KCSWarrantyForm />} />
+                                    <Route path="assets/kcs-warranty/edit/:id" element={<KCSWarrantyForm />} />
                                 </Route>
 
                                 <Route element={<ProtectedRoute allowedPermissions={['assets.view', 'assets.manage', '*']} />}>

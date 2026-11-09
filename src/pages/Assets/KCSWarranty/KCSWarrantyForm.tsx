@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
     Box, Typography, Paper, TextField, Button, Grid, MenuItem, Select, InputLabel, FormControl, Divider, CircularProgress, Autocomplete
 } from '@mui/material';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../../config/supabase';
 import { PrintTemplates } from './PrintTemplates';
 import dayjs from 'dayjs';
@@ -10,7 +11,9 @@ import dayjs from 'dayjs';
 const KCSWarrantyForm: React.FC = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+    const { id: paramId } = useParams();
     const printId = searchParams.get('print');
+    const editId = searchParams.get('edit') || paramId;
 
     const [loading, setLoading] = useState(false);
     const [employees, setEmployees] = useState<any[]>([]);
@@ -52,6 +55,48 @@ const KCSWarrantyForm: React.FC = () => {
         if (assetData) setAssetsOptions(assetData);
     }
 
+    async function fetchEditData(id: string) {
+        setLoading(true);
+        const { data, error } = await supabase
+            .from('warranty_history')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) {
+            console.error("Lỗi khi tải dữ liệu phiếu để sửa:", error);
+            alert("Không thể tải dữ liệu phiếu: " + error.message);
+        } else if (data) {
+            setFormData({
+                form_code: data.form_code || '',
+                form_type: data.form_type || 'YEU_CAU_KCS',
+                requester_id: data.requester_id || '',
+                department: data.department || 'Trung Tâm Bắc Sài Gòn',
+                reason: data.reason || '',
+                kcs_conclusion: data.kcs_conclusion || '',
+                handover_representative: data.handover_representative || '',
+                receiver_representative: data.receiver_representative || '',
+            });
+            if (Array.isArray(data.equipment_list) && data.equipment_list.length > 0) {
+                setEquipmentList(data.equipment_list.map((item: any) => ({
+                    product_id: item.product_id || '',
+                    product_name: item.product_name || '',
+                    item_code: item.item_code || '',
+                    serial: item.serial || '',
+                    quantity: item.quantity ?? 1,
+                    status: item.status || 'Không đạt',
+                    issue_notes: item.issue_notes || '',
+                    supplier: item.supplier || '',
+                    import_date: item.import_date || '',
+                    manufacturer: item.manufacturer || '',
+                    broken_date: item.broken_date || '',
+                    warranty_end: item.warranty_end || ''
+                })));
+            }
+        }
+        setLoading(false);
+    }
+
     async function fetchPrintData(id: string) {
         setLoading(true);
         const { data, error } = await supabase
@@ -87,9 +132,12 @@ const KCSWarrantyForm: React.FC = () => {
         fetchOptions();
         if (printId) {
             fetchPrintData(printId);
+        } else if (editId) {
+            fetchEditData(editId);
         }
-    }, [printId]);
-    const handleSave = async () => {
+    }, [printId, editId]);
+
+    const handleSave = async (goToPrint: boolean = true) => {
         setLoading(true);
         const record = {
             form_code: formData.form_code,
@@ -103,18 +151,38 @@ const KCSWarrantyForm: React.FC = () => {
             receiver_representative: formData.receiver_representative,
         };
 
-        const { data, error } = await supabase
-            .from('warranty_history')
-            .insert(record)
-            .select()
-            .single();
+        let resultData: any = null;
+        let resultError: any = null;
+
+        if (editId) {
+            const { data, error } = await supabase
+                .from('warranty_history')
+                .update(record)
+                .eq('id', editId)
+                .select()
+                .single();
+            resultData = data;
+            resultError = error;
+        } else {
+            const { data, error } = await supabase
+                .from('warranty_history')
+                .insert(record)
+                .select()
+                .single();
+            resultData = data;
+            resultError = error;
+        }
 
         setLoading(false);
-        if (!error && data) {
-            navigate(`/assets/kcs-warranty/new?print=${data.id}`);
+        if (!resultError && resultData) {
+            if (goToPrint) {
+                navigate(`/assets/kcs-warranty/new?print=${resultData.id}`);
+            } else {
+                navigate('/assets/kcs-warranty');
+            }
         } else {
-            console.error(error);
-            alert(`Có lỗi xảy ra khi lưu: ${error?.message || JSON.stringify(error)}`);
+            console.error(resultError);
+            alert(`Có lỗi xảy ra khi lưu: ${resultError?.message || JSON.stringify(resultError)}`);
         }
     };
 
@@ -122,38 +190,99 @@ const KCSWarrantyForm: React.FC = () => {
     if (printId) {
         if (loading) return <Box p={4}>Đang tải bản in...</Box>;
         return (
-            <Box>
-                <Box sx={{ mb: 2, display: 'flex', gap: 2 }} className="no-print">
-                    <Button variant="contained" onClick={() => window.print()}>In Trang</Button>
-                    <Button variant="outlined" onClick={() => navigate('/assets/kcs-warranty')}>Quay lại danh sách</Button>
+            <>
+                {/* Giao diện xem trước trên màn hình */}
+                <Box className="print-wrapper no-print" sx={{ bgcolor: '#525659', minHeight: '100vh', py: 3 }}>
+                    <Box sx={{ mb: 2, display: 'flex', gap: 2, justifyContent: 'center' }}>
+                        <Button variant="contained" color="primary" onClick={() => window.print()}>In Biểu Mẫu</Button>
+                        <Button variant="outlined" sx={{ bgcolor: 'white', '&:hover': { bgcolor: '#f5f5f5' } }} onClick={() => navigate('/assets/kcs-warranty')}>Quay lại danh sách</Button>
+                    </Box>
+                    <Box sx={{
+                        width: '100%',
+                        maxWidth: '210mm',
+                        minHeight: '297mm',
+                        mx: 'auto',
+                        bgcolor: '#ffffff',
+                        color: '#000000',
+                        p: '15mm 15mm 15mm 18mm',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+                        boxSizing: 'border-box'
+                    }}>
+                        <PrintTemplates data={printData} />
+                    </Box>
                 </Box>
-                <PrintTemplates data={printData} />
-                {/* CSS to hide non-print elements */}
+
+                {/* Container in thực tế: Portal trực tiếp ra document.body để không bị ảnh hưởng bởi Sidebar/Layout/App CSS */}
+                {typeof document !== 'undefined' && createPortal(
+                    <div id="print-portal-root">
+                        <PrintTemplates data={printData} />
+                    </div>,
+                    document.body
+                )}
+
+                {/* CSS in ấn tuyệt đối chuẩn A4, full-width, không lẹm biên, không co nhỏ */}
                 <style>{`
                     @media print {
-                        @page { size: A4 portrait; margin: 20mm 15mm 20mm 30mm; }
-                        body * { visibility: hidden !important; }
-                        .print-page, .print-page * { visibility: visible !important; }
-                        .print-page { 
-                            position: fixed !important; 
-                            left: 0 !important; 
-                            top: 0 !important; 
-                            width: 100vw !important; 
+                        @page { 
+                            size: A4 portrait; 
+                            margin: 8mm 12mm 8mm 16mm !important; 
+                        }
+                        html, body {
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            background: #ffffff !important;
+                            -webkit-print-color-adjust: exact !important;
+                            print-color-adjust: exact !important;
+                        }
+                        body > *:not(#print-portal-root) { 
+                            display: none !important; 
+                        }
+                        body > #print-portal-root { 
+                            display: block !important; 
+                            position: static !important; 
+                            width: 100% !important; 
+                            max-width: 100% !important;
                             margin: 0 !important; 
                             padding: 0 !important; 
-                            max-width: none !important;
+                            background: #ffffff !important;
                         }
-                        .no-print { display: none !important; }
+                        body > #print-portal-root * { 
+                            color: #000000 !important; 
+                        }
+                        table {
+                            width: 100% !important;
+                            border-collapse: collapse !important;
+                        }
+                        table, th, td {
+                            border: 1px solid #000000 !important;
+                            border-color: #000000 !important;
+                        }
+                        th, td {
+                            color: #000000 !important;
+                        }
+                        tr {
+                            page-break-inside: avoid !important;
+                            break-inside: avoid !important;
+                        }
+                        .page-break-avoid {
+                            page-break-inside: avoid !important;
+                            break-inside: avoid !important;
+                        }
+                    }
+                    #print-portal-root {
+                        display: none;
                     }
                 `}</style>
-            </Box>
+            </>
         );
     }
 
     return (
         <Box sx={{ maxWidth: 800, mx: 'auto' }}>
             <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h5" fontWeight="bold" mb={3}>Tạo mới Phiếu KCS / Bảo Hành</Typography>
+                <Typography variant="h5" fontWeight="bold" mb={3}>
+                    {editId ? `Chỉnh sửa Phiếu KCS / Bảo Hành (${formData.form_code})` : 'Tạo mới Phiếu KCS / Bảo Hành'}
+                </Typography>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 2 }}>
                     <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                         <Box sx={{ flex: '1 1 200px' }}>
@@ -295,9 +424,12 @@ const KCSWarrantyForm: React.FC = () => {
                     </Box>
                 )}
 
-                <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-                    <Button variant="contained" color="primary" onClick={handleSave} disabled={loading}>
-                        {loading ? <CircularProgress size={24} /> : 'Lưu & Chuyển tới Bản in'}
+                <Box sx={{ mt: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                    <Button variant="contained" color="primary" onClick={() => handleSave(true)} disabled={loading}>
+                        {loading ? <CircularProgress size={24} /> : (editId ? 'Cập nhật & Chuyển tới Bản in' : 'Lưu & Chuyển tới Bản in')}
+                    </Button>
+                    <Button variant="outlined" color="success" onClick={() => handleSave(false)} disabled={loading}>
+                        {editId ? 'Cập nhật & Quay lại danh sách' : 'Lưu & Quay lại danh sách'}
                     </Button>
                     <Button variant="outlined" onClick={() => navigate('/assets/kcs-warranty')}>Hủy</Button>
                 </Box>
