@@ -218,7 +218,20 @@ const KCSWarrantyForm: React.FC = () => {
                         color: '#000000',
                         p: '15mm 15mm 15mm 18mm',
                         boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
-                        boxSizing: 'border-box'
+                        boxSizing: 'border-box',
+                        '& *': { color: '#000000 !important' },
+                        '& table': { borderCollapse: 'collapse', width: '100%' },
+                        '& table td, & table th': {
+                            color: '#000000 !important',
+                            backgroundColor: '#ffffff !important',
+                            border: '1px solid #000000 !important',
+                        },
+                        '& table thead tr': {
+                            backgroundColor: '#ffffff !important',
+                        },
+                        '& table tbody tr': {
+                            backgroundColor: '#ffffff !important',
+                        },
                     }}>
                         <PrintTemplates data={printData} />
                     </Box>
