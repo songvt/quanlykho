@@ -247,18 +247,22 @@ const KCSWarrantyForm: React.FC = () => {
                             background: #ffffff !important;
                         }
                         body > #print-portal-root * { 
-                            color: #000000 !important; 
-                        }
-                        table {
-                            width: 100% !important;
-                            border-collapse: collapse !important;
-                        }
-                        table, th, td {
-                            border: 1px solid #000000 !important;
+                            color: #000000 !important;
                             border-color: #000000 !important;
                         }
-                        th, td {
+                        body > #print-portal-root table {
+                            width: 100% !important;
+                            border-collapse: collapse !important;
+                            border: 1px solid #000000 !important;
+                        }
+                        body > #print-portal-root table th,
+                        body > #print-portal-root table td {
+                            border: 1px solid #000000 !important;
+                            border-color: #000000 !important;
                             color: #000000 !important;
+                        }
+                        body > #print-portal-root table tr {
+                            border: 1px solid #000000 !important;
                         }
                         tr {
                             page-break-inside: avoid !important;
