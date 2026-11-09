@@ -194,8 +194,20 @@ const KCSWarrantyForm: React.FC = () => {
                 {/* Giao diện xem trước trên màn hình */}
                 <Box className="print-wrapper no-print" sx={{ bgcolor: '#525659', minHeight: '100vh', py: 3 }}>
                     <Box sx={{ mb: 2, display: 'flex', gap: 2, justifyContent: 'center' }}>
-                        <Button variant="contained" color="primary" onClick={() => window.print()}>In Biểu Mẫu</Button>
-                        <Button variant="outlined" sx={{ bgcolor: 'white', '&:hover': { bgcolor: '#f5f5f5' } }} onClick={() => navigate('/assets/kcs-warranty')}>Quay lại danh sách</Button>
+                        <Button
+                            variant="contained"
+                            onClick={() => window.print()}
+                            sx={{ bgcolor: '#1976d2', color: '#ffffff', fontWeight: 'bold', px: 3, '&:hover': { bgcolor: '#1565c0' } }}
+                        >
+                            🖨️ In Biểu Mẫu
+                        </Button>
+                        <Button
+                            variant="contained"
+                            onClick={() => navigate('/assets/kcs-warranty')}
+                            sx={{ bgcolor: '#ffffff', color: '#374151', border: '1px solid #d1d5db', fontWeight: 'bold', px: 3, '&:hover': { bgcolor: '#f3f4f6' } }}
+                        >
+                            ← Quay lại danh sách
+                        </Button>
                     </Box>
                     <Box sx={{
                         width: '100%',
