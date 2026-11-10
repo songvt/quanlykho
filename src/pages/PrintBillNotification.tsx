@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { 
     Box, Typography, Button, Paper, Table, TableBody, 
     TableCell, TableContainer, TableHead, TableRow, 
@@ -17,7 +17,9 @@ import {
     Person as PersonIcon,
     Phone as PhoneIcon,
     LocationOn as LocationIcon,
-    Payment as PaymentIcon
+    Payment as PaymentIcon,
+    CloudSync as CloudSyncIcon,
+    Refresh as RefreshIcon
 } from '@mui/icons-material';
 import ExcelJS from 'exceljs';
 import { useReactToPrint } from 'react-to-print';
@@ -26,14 +28,16 @@ import { jsPDF } from 'jspdf';
 import BillTemplateA5 from '../components/BillTemplateA5';
 import type { BillData } from '../components/BillTemplateA5';
 import { parseExcelNumber, numberToWordsVN, formatNumber } from '../utils/numberUtils';
+import { supabase } from '../config/supabase';
 
 const STORAGE_KEY = 'PRINT_BILL_NOTIFICATION_DATA';
+const DB_STATUS_TAG = 'bill_notification_item';
 
 const PrintBillNotification: React.FC = () => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-    // Khởi tạo state data từ localStorage (nếu có)
+    // Khởi tạo state data từ localStorage (để hiển thị tức thì nếu có cache)
     const [data, setData] = useState<BillData[]>(() => {
         try {
             const saved = localStorage.getItem(STORAGE_KEY);
@@ -48,24 +52,51 @@ const PrintBillNotification: React.FC = () => {
     });
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(false);
+    const [syncingDb, setSyncingDb] = useState(false);
     const [exportingPdf, setExportingPdf] = useState(false);
     const [exportingSingleId, setExportingSingleId] = useState<string | null>(null);
     const [sharingId, setSharingId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const printRef = useRef<HTMLDivElement>(null);
 
-    // Tự động lưu dữ liệu vào localStorage mỗi khi data thay đổi
-    useEffect(() => {
+    // Tải dữ liệu từ Database Supabase về (đồng bộ giữa Web và Mobile)
+    const fetchBillsFromDatabase = useCallback(async (silent = false) => {
         try {
-            if (data.length > 0) {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-            } else {
-                localStorage.removeItem(STORAGE_KEY);
+            if (!silent) setSyncingDb(true);
+            const { data: records, error: dbError } = await supabase
+                .from('zalo_notification_logs')
+                .select('*')
+                .eq('status', DB_STATUS_TAG)
+                .order('created_at', { ascending: true });
+
+            if (dbError) {
+                console.error('Lỗi khi tải danh sách từ database:', dbError);
+                return;
             }
-        } catch (e) {
-            console.error('Không thể lưu dữ liệu vào localStorage:', e);
+
+            if (records) {
+                const loadedBills: BillData[] = records
+                    .map(r => r.params as BillData)
+                    .filter((item): item is BillData => !!item && !!item.customerName);
+
+                setData(loadedBills);
+                if (loadedBills.length > 0) {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedBills));
+                } else {
+                    localStorage.removeItem(STORAGE_KEY);
+                }
+            }
+        } catch (err: any) {
+            console.error('Lỗi khi kết nối database:', err);
+        } finally {
+            if (!silent) setSyncingDb(false);
         }
-    }, [data]);
+    }, []);
+
+    // Tự động tải từ Database khi mở màn hình
+    useEffect(() => {
+        fetchBillsFromDatabase();
+    }, [fetchBillsFromDatabase]);
 
     // Mẫu branch config (có thể thay đổi nếu cần)
     const branchConfig = {
@@ -160,6 +191,30 @@ const PrintBillNotification: React.FC = () => {
             });
 
             setData(parsedData);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(parsedData));
+
+            // Lưu đồng bộ lên Database Supabase để máy tính và điện thoại đều có chung dữ liệu
+            try {
+                // Xóa danh sách cũ trên DB trước khi chèn danh sách mới
+                await supabase.from('zalo_notification_logs').delete().eq('status', DB_STATUS_TAG);
+
+                if (parsedData.length > 0) {
+                    const dbPayload = parsedData.map(item => ({
+                        id: crypto.randomUUID ? crypto.randomUUID() : (Math.random().toString(36).substring(2) + Date.now().toString(36)),
+                        recipient_phone: item.phone || '',
+                        status: DB_STATUS_TAG,
+                        error_message: item.id, // Lưu bill ID
+                        params: item
+                    }));
+
+                    const { error: insertErr } = await supabase.from('zalo_notification_logs').insert(dbPayload);
+                    if (insertErr) {
+                        console.error('Lỗi khi lưu danh sách vào Database:', insertErr);
+                    }
+                }
+            } catch (dbErr) {
+                console.error('Không thể đồng bộ vào database:', dbErr);
+            }
         } catch (err: any) {
             console.error('Excel parse error:', err);
             setError('Lỗi khi đọc file Excel. Vui lòng đảm bảo đúng định dạng mẫu.');
@@ -327,15 +382,20 @@ const PrintBillNotification: React.FC = () => {
         }
     };
 
-    const clearData = () => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ danh sách? Thao tác này sẽ xóa dữ liệu đã lưu.')) {
+    const clearData = async () => {
+        if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ danh sách? Thao tác này sẽ xóa dữ liệu trên cả máy tính và điện thoại.')) {
             setData([]);
             localStorage.removeItem(STORAGE_KEY);
+            try {
+                await supabase.from('zalo_notification_logs').delete().eq('status', DB_STATUS_TAG);
+            } catch (err) {
+                console.error('Lỗi khi xóa danh sách trên Database:', err);
+            }
         }
     };
 
     // Xóa đơn lẻ 1 khách hàng
-    const handleDeleteSingle = (billItem: BillData) => {
+    const handleDeleteSingle = async (billItem: BillData) => {
         if (window.confirm(`Bạn có chắc muốn xóa khách hàng "${billItem.customerName}" khỏi danh sách?`)) {
             setData(prev => {
                 const next = prev.filter(item => item.id !== billItem.id);
@@ -346,6 +406,16 @@ const PrintBillNotification: React.FC = () => {
                 }
                 return next;
             });
+
+            // Đồng bộ xóa trên Database
+            try {
+                await supabase.from('zalo_notification_logs').delete().match({
+                    status: DB_STATUS_TAG,
+                    error_message: billItem.id
+                });
+            } catch (err) {
+                console.error('Lỗi khi xóa trên Database:', err);
+            }
         }
     };
 
@@ -375,14 +445,28 @@ const PrintBillNotification: React.FC = () => {
                 gap: 1.5 
             }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 'bold' }}>
-                        In Thông Báo Cước A5
-                    </Typography>
-                    {data.length > 0 && isMobile && (
-                        <IconButton color="error" size="small" onClick={clearData} title="Xóa tất cả">
-                            <DeleteIcon />
-                        </IconButton>
-                    )}
+                    <Stack direction="row" spacing={1} alignItems="center">
+                        <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 'bold' }}>
+                            In Thông Báo Cước A5
+                        </Typography>
+                        {syncingDb && (
+                            <Tooltip title="Đang đồng bộ cơ sở dữ liệu...">
+                                <CircularProgress size={18} color="info" />
+                            </Tooltip>
+                        )}
+                    </Stack>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Tooltip title="Làm mới từ Database">
+                            <IconButton size="small" onClick={() => fetchBillsFromDatabase()} disabled={syncingDb}>
+                                <RefreshIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                        {data.length > 0 && isMobile && (
+                            <IconButton color="error" size="small" onClick={clearData} title="Xóa tất cả">
+                                <DeleteIcon fontSize="small" />
+                            </IconButton>
+                        )}
+                    </Box>
                 </Box>
                 
                 {/* Nút hành động toolbar */}
