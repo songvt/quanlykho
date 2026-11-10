@@ -129,12 +129,40 @@ const PrintBillNotification: React.FC = () => {
         documentTitle: 'In_Thong_Bao_Cuoc',
         pageStyle: `
             @page {
-                size: A5 landscape;
-                margin: 0;
+                size: 210mm 148mm !important;
+                margin: 0 !important;
             }
             @media print {
-                body {
-                    -webkit-print-color-adjust: exact;
+                html, body {
+                    width: 210mm !important;
+                    height: 148mm !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    background: #fff !important;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+                .bill-print-container {
+                    display: block !important;
+                    position: static !important;
+                    left: 0 !important;
+                    top: 0 !important;
+                    width: 210mm !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                }
+                .bill-page-item {
+                    width: 210mm !important;
+                    height: 148mm !important;
+                    max-height: 148mm !important;
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                    page-break-after: always !important;
+                    break-after: page !important;
+                    box-sizing: border-box !important;
+                    overflow: hidden !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
                 }
             }
         `
@@ -283,10 +311,10 @@ const PrintBillNotification: React.FC = () => {
             </Paper>
 
             {/* Kept offscreen rather than display:none so html2canvas can create an A5 PDF. */}
-            <Box sx={{ position: 'fixed', left: '-10000px', top: 0, width: '209mm', bgcolor: '#fff', pointerEvents: 'none', zIndex: -1 }}>
+            <Box className="bill-print-container" sx={{ position: 'fixed', left: '-10000px', top: 0, width: '210mm', bgcolor: '#fff', pointerEvents: 'none', zIndex: -1 }}>
                 <div ref={printRef}>
                     {data.map((item) => (
-                        <div key={item.id} data-bill-page="true" style={{ width: '209mm', height: '145mm', overflow: 'hidden', background: '#fff' }}>
+                        <div key={item.id} data-bill-page="true" className="bill-page-item" style={{ width: '210mm', height: '148mm', overflow: 'hidden', background: '#fff', boxSizing: 'border-box' }}>
                             <BillTemplateA5 data={item} />
                         </div>
                     ))}

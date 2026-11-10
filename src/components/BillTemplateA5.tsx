@@ -1,5 +1,8 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
+import { QRCodeSVG } from 'qrcode.react';
+import { buildVietQRPayload } from '../utils/vietqr';
+import viettelColorLogo from '../assets/viettel-logo-color.png';
 
 export interface BillData {
     id: string; // Unique identifier for mapping
@@ -22,131 +25,275 @@ interface BillTemplateA5Props {
     data: BillData;
 }
 
+// Hàm chuẩn hóa viết hoa chữ cái đầu cho từ
+const toTitleCase = (str: string) => {
+    if (!str) return '';
+    return str
+        .toLowerCase()
+        .split(' ')
+        .filter(Boolean)
+        .map(word => {
+            // Giữ nguyên các ký hiệu viết tắt phổ biến
+            if (['q.12', 'q12', 'tp.hcm', 'tphcm'].includes(word)) {
+                return word.toUpperCase();
+            }
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        })
+        .join(' ');
+};
+
 const BillTemplateA5: React.FC<BillTemplateA5Props> = ({ data }) => {
+    // Format hiển thị số tiền có đơn vị đ
+    const displayAmount = data.amount?.toLowerCase().includes('đ') 
+        ? data.amount 
+        : `${data.amount} đ`;
+
+    // Lấy số tiền nguyên bản
+    const numericAmount = data.amount ? data.amount.replace(/[^0-9]/g, '') : '0';
+
+    // Nội dung chuyển khoản: GHÉP [THUÊ BAO] + [DỊCH VỤ & THÁNG]
+    const transferMessage = `${data.phone || ''} ${data.serviceMonth || ''}`.trim();
+
+    // Cấu hình ngân hàng MBBank
+    const bankBin = '970422'; // MBBank
+    const bankAccount = '1010165154001';
+    const accountName = 'DO THI NGOC MAI';
+
+    // Sinh payload VietQR EMVCo chuẩn (chữ thường không dấu, chạy trực tiếp offline)
+    const qrPayload = buildVietQRPayload({
+        bankBin,
+        bankAccount,
+        amount: numericAmount,
+        message: transferMessage
+    });
+
     return (
         <Box 
             sx={{
-                width: '100%',
-                maxWidth: '209mm',
-                height: '145mm', // Sát mức 148.5mm nhưng vẫn an toàn
-                padding: '4mm 10mm 4mm 15mm', // Tăng lề trái (15mm) để thụt vào trong một chút
+                width: '210mm',
+                maxWidth: '210mm',
+                height: '148mm',
+                maxHeight: '148mm',
+                padding: '5mm 14mm 5mm 15mm',
                 backgroundColor: '#fff',
                 fontFamily: '"Times New Roman", Times, serif',
-                color: '#000',
+                color: '#1a1a1a',
                 boxSizing: 'border-box',
                 position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
                 pageBreakInside: 'avoid',
-                pageBreakAfter: 'always', // Bắt buộc sang trang mới sau mỗi phiếu để an toàn tuyệt đối
+                breakInside: 'avoid',
+                pageBreakAfter: 'always',
+                breakAfter: 'page',
                 '& .MuiTypography-root': {
                     fontFamily: '"Times New Roman", Times, serif'
                 }
             }}
         >
-            <Box sx={{ display: 'flex', mb: 1, alignItems: 'center', width: '100%' }}>
-                <Box sx={{ width: '35%', display: 'flex', alignItems: 'center' }}>
-                    <img 
-                        src={window.location.origin + "/viettel-logo.png"} 
-                        alt="Viettel Logo" 
-                        style={{ width: '180px', height: 'auto', objectFit: 'contain' }} 
-                    />
-                </Box>
-                <Box sx={{ width: '65%', textAlign: 'center' }}>
-                    <Typography 
-                        variant="h5" 
-                        sx={{ 
-                            fontWeight: 'bold', 
-                            textTransform: 'uppercase',
-                            fontFamily: '"Times New Roman", Times, serif',
-                            fontSize: '28px',
-                            lineHeight: 1.2
-                        }}
-                    >
-                        THÔNG BÁO
-                    </Typography>
-                    <Typography 
-                        variant="h5" 
-                        sx={{ 
-                            fontWeight: 'bold', 
-                            textTransform: 'uppercase',
-                            fontFamily: '"Times New Roman", Times, serif',
-                            fontSize: '28px',
-                            lineHeight: 1.2
-                        }}
-                    >
-                        CƯỚC DỊCH VỤ VIETTEL
-                    </Typography>
-                </Box>
-            </Box>
-
-            {/* Customer Info */}
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <Box sx={{ display: 'flex', alignItems: 'baseline' }}>
-                    <Typography sx={{ fontWeight: 'bold', textTransform: 'uppercase', width: '130px', fontSize: '17px' }}>KHÁCH HÀNG:</Typography>
-                    <Typography sx={{ fontSize: '22px' }}>{data.customerName}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'baseline' }}>
-                    <Typography sx={{ fontWeight: 'bold', textTransform: 'uppercase', width: '130px', fontSize: '17px' }}>ĐỊA CHỈ:</Typography>
-                    <Typography sx={{ fontSize: '20px' }}>{data.address}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'baseline' }}>
-                    <Typography sx={{ fontWeight: 'bold', textTransform: 'uppercase', width: '130px', fontSize: '17px' }}>THUÊ BAO:</Typography>
-                    <Typography sx={{ fontSize: '20px' }}>{data.phone}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'baseline' }}>
-                    <Typography sx={{ fontWeight: 'bold', textTransform: 'uppercase', mr: 1, fontSize: '17px' }}>THANH TOÁN CƯỚC</Typography>
-                    <Typography sx={{ fontWeight: 'bold', textTransform: 'uppercase', mr: 2, fontSize: '17px' }}>{data.serviceMonth}</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'baseline' }}>
-                    <Typography sx={{ fontWeight: 'bold', textTransform: 'uppercase', width: '130px', fontSize: '17px' }}>SỐ TIỀN:</Typography>
-                    <Typography sx={{ fontSize: '20px', fontWeight: 'bold' }}>{data.amount}</Typography>
-                </Box>
-                {data.amountInWords && (
-                    <Box sx={{ display: 'flex', alignItems: 'baseline' }}>
-                        <Typography sx={{ fontWeight: 'bold', textTransform: 'uppercase', width: '130px', fontSize: '17px' }}>BẰNG CHỮ:</Typography>
-                        <Typography sx={{ fontSize: '18px', fontStyle: 'italic', fontWeight: 'bold' }}>{data.amountInWords}</Typography>
+            {/* 1. HEADER: Logo Viettel màu đỏ + Tiêu đề + Đường line thương hiệu */}
+            <Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 0.8 }}>
+                    <Box sx={{ width: '35%', display: 'flex', alignItems: 'center' }}>
+                        <img 
+                            src={viettelColorLogo} 
+                            alt="Viettel Logo" 
+                            style={{ width: '165px', height: 'auto', objectFit: 'contain' }} 
+                        />
                     </Box>
-                )}
+                    <Box sx={{ width: '65%', textAlign: 'center', pr: 1 }}>
+                        <Typography 
+                            sx={{ 
+                                fontWeight: 800, 
+                                textTransform: 'uppercase',
+                                fontSize: '23px',
+                                letterSpacing: '0.8px',
+                                color: '#ee0033', // Đỏ Viettel
+                                lineHeight: 1.15
+                            }}
+                        >
+                            THÔNG BÁO CƯỚC DỊCH VỤ
+                        </Typography>
+                        <Typography 
+                            sx={{ 
+                                fontWeight: 'bold', 
+                                fontSize: '13px',
+                                color: '#555',
+                                letterSpacing: '0.5px',
+                                mt: 0.3
+                            }}
+                        >
+                            TẬP ĐOÀN CÔNG NGHIỆP - VIỄN THÔNG QUÂN ĐỘI
+                        </Typography>
+                    </Box>
+                </Box>
+                {/* Dải line đỏ nhận diện Viettel */}
+                <Box sx={{ height: '2.5px', bgcolor: '#ee0033', width: '100%', mb: 1, borderRadius: '1px' }} />
             </Box>
 
-            {/* Footer Information */}
-            <Box sx={{ display: 'flex', mt: 1, width: '100%', alignItems: 'flex-start' }}>
-                <Box sx={{ width: '64%' }}>
+            {/* 2. BODY: Grid thông tin + Mã QR thanh toán */}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flex: 1 }}>
+                {/* Cột trái: Thông tin khách hàng */}
+                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '5px' }}>
+                    {/* Khách hàng */}
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '135px 1fr', alignItems: 'baseline' }}>
+                        <Typography sx={{ fontWeight: 'bold', fontSize: '16px', color: '#000' }}>
+                            Khách Hàng:
+                        </Typography>
+                        <Typography sx={{ fontSize: '19px', fontWeight: 'bold', color: '#000' }}>
+                            {data.customerName ? toTitleCase(data.customerName) : ''}
+                        </Typography>
+                    </Box>
+
+                    {/* Địa chỉ */}
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '135px 1fr', alignItems: 'baseline' }}>
+                        <Typography sx={{ fontWeight: 'bold', fontSize: '16px', color: '#000' }}>
+                            Địa Chỉ:
+                        </Typography>
+                        <Typography sx={{ fontSize: '16.5px', color: '#111', lineHeight: 1.25 }}>
+                            {data.address ? toTitleCase(data.address) : ''}
+                        </Typography>
+                    </Box>
+
+                    {/* Thuê bao */}
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '135px 1fr', alignItems: 'baseline' }}>
+                        <Typography sx={{ fontWeight: 'bold', fontSize: '16px', color: '#000' }}>
+                            Thuê Bao:
+                        </Typography>
+                        <Typography sx={{ fontSize: '18px', fontWeight: 700, color: '#000', letterSpacing: '0.3px' }}>
+                            {data.phone}
+                        </Typography>
+                    </Box>
+
+                    {/* Dịch vụ / kỳ cước */}
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '135px 1fr', alignItems: 'baseline' }}>
+                        <Typography sx={{ fontWeight: 'bold', fontSize: '16px', color: '#000' }}>
+                            Kỳ Cước:
+                        </Typography>
+                        <Typography sx={{ fontSize: '16.5px', fontWeight: 600, color: '#1a1a1a' }}>
+                            {data.serviceMonth ? toTitleCase(data.serviceMonth) : ''}
+                        </Typography>
+                    </Box>
+
+                    {/* Số tiền & Bằng chữ - Thuần văn bản trang trọng */}
+                    <Box sx={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: '135px 1fr', 
+                        alignItems: 'baseline'
+                    }}>
+                        <Typography sx={{ fontWeight: 'bold', fontSize: '16px', color: '#000' }}>
+                            Số Tiền:
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1.5, flexWrap: 'wrap' }}>
+                            <Typography sx={{ fontSize: '20px', fontWeight: 'bold', color: '#000' }}>
+                                {displayAmount}
+                            </Typography>
+                            {data.amountInWords && (
+                                <Typography sx={{ fontSize: '15px', fontStyle: 'italic', color: '#333' }}>
+                                    ({data.amountInWords})
+                                </Typography>
+                            )}
+                        </Box>
+                    </Box>
+                </Box>
+
+                {/* Cột phải: Khung QR VietQR thanh toán thu nhỏ gọn gàng, không xuống dòng */}
+                <Box 
+                    sx={{ 
+                        width: '122px', 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '6px',
+                        py: 0.6,
+                        px: 0.6,
+                        bgcolor: '#fff',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                    }}
+                >
+                    <Typography 
+                        sx={{ 
+                            fontSize: '9.5px', 
+                            fontWeight: 'bold', 
+                            color: '#ee0033', 
+                            textTransform: 'uppercase', 
+                            mb: 0.4, 
+                            textAlign: 'center',
+                            whiteSpace: 'nowrap'
+                        }}
+                    >
+                        Quét QR Thanh Toán
+                    </Typography>
+                    
+                    <Box sx={{ p: '2px', bgcolor: '#fff', display: 'flex', justifyContent: 'center' }}>
+                        <QRCodeSVG 
+                            value={qrPayload} 
+                            size={92} 
+                            level="M" 
+                            includeMargin={false} 
+                        />
+                    </Box>
+
+                    <Typography sx={{ fontSize: '9.5px', fontWeight: 'bold', color: '#003399', textAlign: 'center', mt: 0.3, whiteSpace: 'nowrap' }}>
+                        MB: {bankAccount}
+                    </Typography>
+                    <Typography sx={{ fontSize: '8.5px', color: '#555', textAlign: 'center', lineHeight: 1.1, whiteSpace: 'nowrap' }}>
+                        {accountName}
+                    </Typography>
+                </Box>
+            </Box>
+
+            {/* 3. FOOTER: Thông tin hỗ trợ + Ký nhận */}
+            <Box sx={{ display: 'flex', width: '100%', alignItems: 'flex-end', pt: 0.8, borderTop: '1px dashed #ccc' }}>
+                {/* Box Thông tin chi nhánh bên trái */}
+                <Box sx={{ width: '60%', pr: 2 }}>
                     <Box 
                         sx={{ 
-                            border: '1px solid #000', 
-                            p: 1,
-                            mt: 0.5,
-                            textAlign: 'center',
-                            width: '95%'
+                            border: '1px solid #e2e8f0', 
+                            bgcolor: '#f8fafc',
+                            p: 1.1,
+                            borderRadius: '6px',
+                            textAlign: 'left'
                         }}
                     >
-                        <Typography sx={{ fontWeight: 'bold', fontSize: '16px', fontFamily: '"Times New Roman", Times, serif', whiteSpace: 'nowrap' }}>
-                            {data.branchName || 'VIETTEL QUẬN 12'}
+                        <Typography sx={{ fontWeight: 'bold', fontSize: '14.5px', color: '#ee0033', textTransform: 'uppercase', mb: 0.2 }}>
+                            📍 {data.branchName || 'VIETTEL QUẬN 12'}
                         </Typography>
-                        <Typography sx={{ fontWeight: 'bold', fontSize: '15px', fontFamily: '"Times New Roman", Times, serif', mt: 0.5, whiteSpace: 'nowrap' }}>
-                            {data.branchAddress || '50 TRƯƠNG THỊ HOA PHƯỜNG TÂN THỚI HIỆP Q12'}
+                        <Typography sx={{ fontSize: '13px', color: '#333', mb: 0.2, lineHeight: 1.3 }}>
+                            <b>Đ/C:</b> 50 Trương Thị Hoa, P. Tân Thới Hiệp, Q.12
                         </Typography>
-                        <Typography sx={{ fontWeight: 'bold', fontSize: '15px', fontFamily: '"Times New Roman", Times, serif', mt: 0.5, whiteSpace: 'nowrap' }}>
-                            {data.branchContact || 'ĐT- ZALO 0979 092 604 – 0987 268 794'}
+                        <Typography sx={{ fontSize: '13px', color: '#333', mb: 0.2 }}>
+                            <b>ĐT / Zalo:</b> <span style={{ fontWeight: 600 }}>0979 092 604 – 0987 268 794</span>
                         </Typography>
-                        <Typography sx={{ fontWeight: 'bold', fontSize: '15px', fontFamily: '"Times New Roman", Times, serif', mt: 0.5, whiteSpace: 'nowrap' }}>
-                            {data.branchServices || 'THU CƯỚC –LẮP ĐẶT INTERNET – SIM SỐ ĐẸP'}
+                        <Typography sx={{ fontSize: '12px', color: '#666', fontStyle: 'italic' }}>
+                            Thu cước – Lắp đặt Internet – Sim số đẹp
                         </Typography>
                     </Box>
                 </Box>
-                <Box sx={{ width: '36%', textAlign: 'center', pl: 1 }}>
-                    <Typography sx={{ fontStyle: 'italic', fontSize: '15px', mb: 0.5, mt: -1, whiteSpace: 'nowrap' }}>
-                        {data.dateString}
+
+                {/* Chữ ký nhân viên bên phải */}
+                <Box sx={{ width: '40%', textAlign: 'center', pb: 0.3 }}>
+                    <Typography sx={{ fontStyle: 'italic', fontSize: '13px', color: '#555', mb: 0.2 }}>
+                        {data.dateString || 'TP. HCM, ngày ... tháng ... năm 2026'}
                     </Typography>
-                    <Typography sx={{ fontWeight: 'bold', fontSize: '17px', mb: 0.5 }}>
+                    <Typography sx={{ fontWeight: 'bold', fontSize: '14.5px', textTransform: 'uppercase', color: '#111' }}>
                         Nhân viên thu cước
                     </Typography>
-                    <Typography sx={{ fontWeight: 'bold', fontSize: '17px', mb: 2 }}>
-                        {data.collectorPhone}
+                    <Typography sx={{ fontStyle: 'italic', fontSize: '11.5px', color: '#777', mb: 3 }}>
+                        (Ký, ghi rõ họ tên)
                     </Typography>
-                    <Typography sx={{ fontWeight: 'bold', fontSize: '18px', textTransform: 'uppercase' }}>
+                    
+                    {/* Họ tên nhân viên & số điện thoại */}
+                    <Typography sx={{ fontWeight: 'bold', fontSize: '15.5px', textTransform: 'uppercase', color: '#000', lineHeight: 1.2 }}>
                         {data.collectorName}
                     </Typography>
+                    {data.collectorPhone && (
+                        <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#444', mt: 0.2 }}>
+                            SĐT: {data.collectorPhone}
+                        </Typography>
+                    )}
                 </Box>
             </Box>
         </Box>
