@@ -299,23 +299,25 @@ const PrintBillNotification: React.FC = () => {
         }
     };
 
-    // Hàm tạo PDF cho 1 khách hàng cụ thể
+    // Tạo file PDF cho 1 khách hàng cụ thể với tốc độ tối ưu
     const generateSinglePdf = async (billItem: BillData): Promise<{ blob: Blob; fileName: string }> => {
         if (!printRef.current) throw new Error('Không tìm thấy vùng in.');
         const billEl = printRef.current.querySelector<HTMLElement>(`[data-bill-id="${billItem.id}"]`);
         if (!billEl) throw new Error('Không tìm thấy phần tử hóa đơn của khách hàng này.');
 
+        // Tối ưu tốc độ: scale: 1.5, tắt logging và các tùy chọn nặng nề để render siêu tốc
         const canvas = await html2canvas(billEl, {
-            scale: 2,
+            scale: 1.5,
             useCORS: true,
             backgroundColor: '#ffffff',
             logging: false,
+            removeContainer: true,
             windowWidth: billEl.scrollWidth,
             windowHeight: billEl.scrollHeight,
         });
 
-        const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a5', compress: true });
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, 148.5, undefined, 'FAST');
+        const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a5', compress: false });
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.85), 'JPEG', 0, 0, 210, 148.5, undefined, 'FAST');
         
         const cleanName = (billItem.customerName || 'KH').trim().replace(/[^a-zA-Z0-9\u00C0-\u1EF9]/g, '_');
         const fileName = `Thong_Bao_Cuoc_${cleanName}_${billItem.phone || ''}.pdf`;
@@ -343,14 +345,15 @@ const PrintBillNotification: React.FC = () => {
         }
     };
 
-    // Chia sẻ file / thông báo cước qua Zalo
+    // Chia sẻ file / thông báo cước qua Zalo siêu tốc
     const handleShareZalo = async (billItem: BillData) => {
         setSharingId(billItem.id);
         setError(null);
         try {
+            // Chuẩn hóa nội dung tin nhắn gửi kèm
             const shareText = `Kính gửi Quý khách ${billItem.customerName},\nViettel xin gửi Thông báo cước dịch vụ:\n- Thuê bao: ${billItem.phone}\n- Kỳ cước: ${billItem.serviceMonth}\n- Số tiền cần thanh toán: ${billItem.amount} đ\nTrân trọng cảm ơn Quý khách!`;
 
-            // Tự động sao chép nội dung tin nhắn vào Clipboard để dán nhanh trên Zalo nếu cần
+            // Tự động sao chép sẵn vào Clipboard ngay lập tức để dán ngay trên ô chat Zalo nếu cần
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 try {
                     await navigator.clipboard.writeText(shareText);
@@ -359,27 +362,26 @@ const PrintBillNotification: React.FC = () => {
                 }
             }
 
-            // Tạo file PDF chất lượng cao
+            // Tạo file PDF nhanh
             const { blob, fileName } = await generateSinglePdf(billItem);
             const file = new File([blob], fileName, { type: 'application/pdf' });
 
-            // Ưu tiên số 1 trên Mobile: Bật Web Share popup hệ thống để chọn Zalo chuyển tiếp file PDF + text
-            // KHÔNG tự động trigger tải về (download) gây phiền người dùng
+            // Popup Web Share Sheet hệ thống: Đảm bảo text được đưa lên đầu
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 try {
                     await navigator.share({
-                        title: `Thông Báo Cước - ${billItem.customerName}`,
+                        title: shareText,
                         text: shareText,
                         files: [file],
                     });
-                    return; // Đã popup native share sheet thành công
+                    return;
                 } catch (shareErr: any) {
-                    if (shareErr.name === 'AbortError') return; // Người dùng ấn hủy đóng popup
+                    if (shareErr.name === 'AbortError') return;
                     console.warn('Share file thất bại, thử share text:', shareErr);
                 }
             }
 
-            // Nếu thiết bị không nhận kèm file trong share sheet, thử share popup text trực tiếp
+            // Fallback chỉ share Text nếu thiết bị không hỗ trợ chia sẻ file trực tiếp
             if (navigator.share) {
                 try {
                     await navigator.share({
@@ -392,7 +394,7 @@ const PrintBillNotification: React.FC = () => {
                 }
             }
 
-            // Fallback khi chạy trên máy tính desktop không có Web Share API: mở Zalo Web
+            // Fallback mở Zalo Web trên máy tính
             window.open('https://chat.zalo.me', '_blank');
         } catch (err: any) {
             if (err.name !== 'AbortError') {
