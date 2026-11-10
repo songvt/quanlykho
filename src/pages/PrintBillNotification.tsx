@@ -1,23 +1,34 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { 
     Box, Typography, Button, Paper, Table, TableBody, 
     TableCell, TableContainer, TableHead, TableRow, 
-    Stack, Alert, CircularProgress, IconButton
+    Stack, Alert, CircularProgress, IconButton, TextField, 
+    InputAdornment, Tooltip
 } from '@mui/material';
-import { Download as DownloadIcon, Upload as UploadIcon, Print as PrintIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { 
+    Download as DownloadIcon, 
+    Upload as UploadIcon, 
+    Print as PrintIcon, 
+    Delete as DeleteIcon,
+    Search as SearchIcon,
+    Share as ShareIcon,
+    PictureAsPdf as PictureAsPdfIcon
+} from '@mui/icons-material';
 import ExcelJS from 'exceljs';
 import { useReactToPrint } from 'react-to-print';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import BillTemplateA5 from '../components/BillTemplateA5';
 import type { BillData } from '../components/BillTemplateA5';
 import { parseExcelNumber, numberToWordsVN, formatNumber } from '../utils/numberUtils';
 
 const PrintBillNotification: React.FC = () => {
     const [data, setData] = useState<BillData[]>([]);
+    const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(false);
     const [exportingPdf, setExportingPdf] = useState(false);
+    const [exportingSingleId, setExportingSingleId] = useState<string | null>(null);
+    const [sharingId, setSharingId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const printRef = useRef<HTMLDivElement>(null);
 
@@ -119,7 +130,6 @@ const PrintBillNotification: React.FC = () => {
             setError('Lỗi khi đọc file Excel. Vui lòng đảm bảo đúng định dạng mẫu.');
         } finally {
             setLoading(false);
-            // reset input
             e.target.value = '';
         }
     };
@@ -168,6 +178,7 @@ const PrintBillNotification: React.FC = () => {
         `
     });
 
+    // Xuất tất cả các hóa đơn thành 1 file PDF A5
     const handleExportPdf = async () => {
         if (!printRef.current || data.length === 0) return;
         setExportingPdf(true);
@@ -198,20 +209,118 @@ const PrintBillNotification: React.FC = () => {
         }
     };
 
+    // Hàm tạo PDF cho 1 khách hàng cụ thể
+    const generateSinglePdf = async (billItem: BillData): Promise<{ blob: Blob; fileName: string }> => {
+        if (!printRef.current) throw new Error('Không tìm thấy vùng in.');
+        const billEl = printRef.current.querySelector<HTMLElement>(`[data-bill-id="${billItem.id}"]`);
+        if (!billEl) throw new Error('Không tìm thấy phần tử hóa đơn của khách hàng này.');
+
+        const canvas = await html2canvas(billEl, {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            logging: false,
+            windowWidth: billEl.scrollWidth,
+            windowHeight: billEl.scrollHeight,
+        });
+
+        const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a5', compress: true });
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, 148.5, undefined, 'FAST');
+        
+        const cleanName = (billItem.customerName || 'KH').trim().replace(/[^a-zA-Z0-9\u00C0-\u1EF9]/g, '_');
+        const fileName = `Thong_Bao_Cuoc_${cleanName}_${billItem.phone || ''}.pdf`;
+        const blob = pdf.output('blob');
+        return { blob, fileName };
+    };
+
+    // Tải file PDF đơn lẻ của 1 khách hàng
+    const handleDownloadSinglePdf = async (billItem: BillData) => {
+        setExportingSingleId(billItem.id);
+        setError(null);
+        try {
+            const { blob, fileName } = await generateSinglePdf(billItem);
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            link.click();
+            window.URL.revokeObjectURL(url);
+        } catch (err: any) {
+            console.error('Lỗi khi tải PDF đơn lẻ:', err);
+            setError(err.message || 'Không thể tải file PDF khách hàng này.');
+        } finally {
+            setExportingSingleId(null);
+        }
+    };
+
+    // Chia sẻ file / thông báo cước qua Zalo
+    const handleShareZalo = async (billItem: BillData) => {
+        setSharingId(billItem.id);
+        setError(null);
+        try {
+            const shareText = `Kính gửi Quý khách ${billItem.customerName},\nViettel xin gửi Thông báo cước dịch vụ:\n- Thuê bao: ${billItem.phone}\n- Kỳ cước: ${billItem.serviceMonth}\n- Số tiền cần thanh toán: ${billItem.amount} đ\nTrân trọng cảm ơn Quý khách!`;
+
+            // Kiểm tra Web Share API hỗ trợ chia sẻ tệp tin
+            const { blob, fileName } = await generateSinglePdf(billItem);
+            const file = new File([blob], fileName, { type: 'application/pdf' });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    title: 'Thông Báo Cước Viettel',
+                    text: shareText,
+                    files: [file],
+                });
+            } else {
+                // Tải file về máy để tiện gửi đính kèm vào chat
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = fileName;
+                link.click();
+                window.URL.revokeObjectURL(url);
+
+                // Mở cửa sổ Zalo Web để người dùng gửi trực tiếp
+                window.open('https://chat.zalo.me', '_blank');
+            }
+        } catch (err: any) {
+            if (err.name !== 'AbortError') {
+                console.error('Lỗi chia sẻ Zalo:', err);
+                window.open('https://chat.zalo.me', '_blank');
+            }
+        } finally {
+            setSharingId(null);
+        }
+    };
+
     const clearData = () => {
         if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ danh sách?')) {
             setData([]);
         }
     };
 
+    // Lọc danh sách theo thanh tìm kiếm
+    const filteredData = useMemo(() => {
+        if (!searchTerm.trim()) return data;
+        const term = searchTerm.toLowerCase().trim();
+        return data.filter(item => 
+            (item.customerName || '').toLowerCase().includes(term) ||
+            (item.phone || '').toLowerCase().includes(term) ||
+            (item.address || '').toLowerCase().includes(term) ||
+            (item.serviceMonth || '').toLowerCase().includes(term) ||
+            (item.amount || '').toLowerCase().includes(term) ||
+            (item.collectorName || '').toLowerCase().includes(term)
+        );
+    }, [data, searchTerm]);
+
     return (
         <Box sx={{ p: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            {/* Top Toolbar */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, flexWrap: 'wrap', gap: 2 }}>
                 <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
                     In Thông Báo Cước (Khổ A5)
                 </Typography>
                 
-                <Stack direction="row" spacing={2}>
+                <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
                     <Button
                         variant="outlined"
                         startIcon={<DownloadIcon />}
@@ -264,44 +373,115 @@ const PrintBillNotification: React.FC = () => {
             </Box>
 
             {error && (
-                <Alert severity="error" sx={{ mb: 3 }}>
+                <Alert severity="error" sx={{ mb: 2 }}>
                     {error}
                 </Alert>
             )}
 
+            {/* Thanh tìm kiếm */}
+            {data.length > 0 && (
+                <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <TextField
+                        size="small"
+                        placeholder="Tìm kiếm theo Tên khách hàng, Thuê bao, Địa chỉ, Số tiền..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        sx={{ 
+                            width: { xs: '100%', sm: 400 },
+                            bgcolor: 'background.paper',
+                            borderRadius: 1
+                        }}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchIcon color="action" fontSize="small" />
+                                </InputAdornment>
+                            ),
+                        }}
+                    />
+                    <Typography variant="body2" color="text.secondary">
+                        Hiển thị <b>{filteredData.length}</b> / {data.length} khách hàng
+                    </Typography>
+                </Box>
+            )}
+
             <Paper sx={{ width: '100%', mb: 2, overflow: 'hidden' }}>
-                <TableContainer sx={{ maxHeight: 'calc(100vh - 250px)' }}>
-                    <Table stickyHeader>
+                <TableContainer sx={{ maxHeight: 'calc(100vh - 270px)' }}>
+                    <Table stickyHeader size="small">
                         <TableHead>
                             <TableRow>
-                                <TableCell><b>STT</b></TableCell>
+                                <TableCell align="center" sx={{ width: 50 }}><b>STT</b></TableCell>
                                 <TableCell><b>Khách Hàng</b></TableCell>
                                 <TableCell><b>Thuê Bao</b></TableCell>
                                 <TableCell><b>Địa Chỉ</b></TableCell>
                                 <TableCell><b>Dịch Vụ & Tháng</b></TableCell>
-                                <TableCell><b>Số Tiền</b></TableCell>
+                                <TableCell align="right"><b>Số Tiền</b></TableCell>
                                 <TableCell><b>Bằng Chữ</b></TableCell>
                                 <TableCell><b>Nhân Viên</b></TableCell>
+                                <TableCell align="center" sx={{ minWidth: 110 }}><b>Thao Tác</b></TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {data.length === 0 ? (
+                            {filteredData.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} align="center" sx={{ py: 5 }}>
-                                        Chưa có dữ liệu. Vui lòng tải file mẫu và nhập liệu.
+                                    <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
+                                        {data.length === 0 
+                                            ? 'Chưa có dữ liệu. Vui lòng tải file mẫu và nhập liệu từ Excel.' 
+                                            : 'Không tìm thấy khách hàng nào khớp với từ khóa tìm kiếm.'}
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                data.map((row, index) => (
+                                filteredData.map((row, index) => (
                                     <TableRow hover key={row.id}>
-                                        <TableCell>{index + 1}</TableCell>
-                                        <TableCell>{row.customerName}</TableCell>
-                                        <TableCell>{row.phone}</TableCell>
-                                        <TableCell>{row.address}</TableCell>
+                                        <TableCell align="center">{index + 1}</TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>{row.customerName}</TableCell>
+                                        <TableCell sx={{ fontFamily: 'monospace' }}>{row.phone}</TableCell>
+                                        <TableCell sx={{ maxWidth: 260 }}>{row.address}</TableCell>
                                         <TableCell>{row.serviceMonth}</TableCell>
-                                        <TableCell>{row.amount}</TableCell>
-                                        <TableCell>{row.amountInWords}</TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 700, color: '#ee0033' }}>
+                                            {row.amount} đ
+                                        </TableCell>
+                                        <TableCell sx={{ fontStyle: 'italic', fontSize: '13px' }}>{row.amountInWords}</TableCell>
                                         <TableCell>{row.collectorName}</TableCell>
+                                        <TableCell align="center">
+                                            <Stack direction="row" spacing={0.5} justifyContent="center">
+                                                {/* Nút tải PDF đơn lẻ */}
+                                                <Tooltip title="Tải file PDF đơn lẻ" arrow>
+                                                    <span>
+                                                        <IconButton 
+                                                            size="small" 
+                                                            color="primary"
+                                                            disabled={exportingSingleId === row.id}
+                                                            onClick={() => handleDownloadSinglePdf(row)}
+                                                        >
+                                                            {exportingSingleId === row.id ? (
+                                                                <CircularProgress size={18} />
+                                                            ) : (
+                                                                <PictureAsPdfIcon fontSize="small" />
+                                                            )}
+                                                        </IconButton>
+                                                    </span>
+                                                </Tooltip>
+
+                                                {/* Nút chia sẻ qua Zalo */}
+                                                <Tooltip title="Chia sẻ thông báo cước qua Zalo" arrow>
+                                                    <span>
+                                                        <IconButton 
+                                                            size="small" 
+                                                            sx={{ color: '#0068ff' }}
+                                                            disabled={sharingId === row.id}
+                                                            onClick={() => handleShareZalo(row)}
+                                                        >
+                                                            {sharingId === row.id ? (
+                                                                <CircularProgress size={18} />
+                                                            ) : (
+                                                                <ShareIcon fontSize="small" />
+                                                            )}
+                                                        </IconButton>
+                                                    </span>
+                                                </Tooltip>
+                                            </Stack>
+                                        </TableCell>
                                     </TableRow>
                                 ))
                             )}
@@ -314,7 +494,7 @@ const PrintBillNotification: React.FC = () => {
             <Box className="bill-print-container" sx={{ position: 'fixed', left: '-10000px', top: 0, width: '210mm', bgcolor: '#fff', pointerEvents: 'none', zIndex: -1 }}>
                 <div ref={printRef}>
                     {data.map((item) => (
-                        <div key={item.id} data-bill-page="true" className="bill-page-item" style={{ width: '210mm', height: '148mm', overflow: 'hidden', background: '#fff', boxSizing: 'border-box' }}>
+                        <div key={item.id} data-bill-page="true" data-bill-id={item.id} className="bill-page-item" style={{ width: '210mm', height: '148mm', overflow: 'hidden', background: '#fff', boxSizing: 'border-box' }}>
                             <BillTemplateA5 data={item} />
                         </div>
                     ))}
