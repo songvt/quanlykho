@@ -631,15 +631,15 @@ const PrintBillNotification: React.FC = () => {
                                     {/* Thông tin chi tiết */}
                                     <Stack spacing={0.6} sx={{ fontSize: '13px', color: 'text.secondary', mb: 1.5 }}>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <PhoneIcon sx={{ fontSize: 15, color: '#0068ff' }} />
-                                            <span>Thuê bao: <b style={{ color: '#000' }}>{row.phone}</b></span>
+                                            <PhoneIcon sx={{ fontSize: 15, color: '#3b82f6' }} />
+                                            <span>Thuê bao (Account): <Box component="span" sx={{ color: 'text.primary', fontWeight: 700, fontFamily: 'monospace', fontSize: '13.5px' }}>{row.phone}</Box></span>
                                         </Box>
                                         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                                            <LocationIcon sx={{ fontSize: 15, color: '#666', mt: 0.3 }} />
+                                            <LocationIcon sx={{ fontSize: 15, color: 'text.secondary', mt: 0.3 }} />
                                             <span style={{ lineHeight: 1.25 }}>{row.address}</span>
                                         </Box>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <PaymentIcon sx={{ fontSize: 15, color: '#2e7d32' }} />
+                                            <PaymentIcon sx={{ fontSize: 15, color: '#10b981' }} />
                                             <span>{row.serviceMonth}</span>
                                         </Box>
                                     </Stack>
