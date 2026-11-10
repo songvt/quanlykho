@@ -326,6 +326,21 @@ const PrintBillNotification: React.FC = () => {
         }
     };
 
+    // Xóa đơn lẻ 1 khách hàng
+    const handleDeleteSingle = (billItem: BillData) => {
+        if (window.confirm(`Bạn có chắc muốn xóa khách hàng "${billItem.customerName}" khỏi danh sách?`)) {
+            setData(prev => {
+                const next = prev.filter(item => item.id !== billItem.id);
+                if (next.length === 0) {
+                    localStorage.removeItem(STORAGE_KEY);
+                } else {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+                }
+                return next;
+            });
+        }
+    };
+
     // Lọc danh sách theo thanh tìm kiếm
     const filteredData = useMemo(() => {
         if (!searchTerm.trim()) return data;
@@ -507,6 +522,17 @@ const PrintBillNotification: React.FC = () => {
                                                             )}
                                                         </IconButton>
                                                     </span>
+                                                </Tooltip>
+
+                                                {/* Nút xóa đơn lẻ khách hàng */}
+                                                <Tooltip title="Xóa khách hàng này" arrow>
+                                                    <IconButton 
+                                                        size="small" 
+                                                        color="error"
+                                                        onClick={() => handleDeleteSingle(row)}
+                                                    >
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
                                                 </Tooltip>
                                             </Stack>
                                         </TableCell>
