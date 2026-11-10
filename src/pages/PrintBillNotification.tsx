@@ -350,18 +350,58 @@ const PrintBillNotification: React.FC = () => {
         try {
             const shareText = `Kính gửi Quý khách ${billItem.customerName},\nViettel xin gửi Thông báo cước dịch vụ:\n- Thuê bao: ${billItem.phone}\n- Kỳ cước: ${billItem.serviceMonth}\n- Số tiền cần thanh toán: ${billItem.amount} đ\nTrân trọng cảm ơn Quý khách!`;
 
-            // Kiểm tra Web Share API hỗ trợ chia sẻ tệp tin
+            // Tự động sao chép nội dung tin nhắn vào bộ nhớ đệm (Clipboard) để dán nhanh trên Zalo/tin nhắn
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                try {
+                    await navigator.clipboard.writeText(shareText);
+                } catch (clipErr) {
+                    console.log('Clipboard copy note:', clipErr);
+                }
+            }
+
+            // Tạo file PDF chất lượng cao
             const { blob, fileName } = await generateSinglePdf(billItem);
             const file = new File([blob], fileName, { type: 'application/pdf' });
 
+            // 1. Thử chia sẻ đồng thời cả File PDF và Nội dung văn bản qua Web Share API
+            let sharedSuccessfully = false;
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({
-                    title: 'Thông Báo Cước Viettel',
-                    text: shareText,
-                    files: [file],
-                });
-            } else {
-                // Tải file về máy để tiện gửi đính kèm vào chat
+                try {
+                    await navigator.share({
+                        title: `Thông Báo Cước - ${billItem.customerName}`,
+                        text: shareText,
+                        files: [file],
+                    });
+                    sharedSuccessfully = true;
+                } catch (shareFilesErr: any) {
+                    if (shareFilesErr.name === 'AbortError') return; // Người dùng chủ động hủy chia sẻ
+                    console.warn('Share kèm file không thành công, thử share nội dung văn bản:', shareFilesErr);
+                }
+            }
+
+            // 2. Nếu chia sẻ cả file không được (một số thiết bị mobile/app chỉ nhận text), chia sẻ text trước
+            if (!sharedSuccessfully && navigator.share) {
+                try {
+                    // Tải file PDF về máy trước để người dùng sẵn sàng đính kèm
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = fileName;
+                    link.click();
+                    window.URL.revokeObjectURL(url);
+
+                    await navigator.share({
+                        title: `Thông Báo Cước - ${billItem.customerName}`,
+                        text: shareText,
+                    });
+                    sharedSuccessfully = true;
+                } catch (shareTextErr: any) {
+                    if (shareTextErr.name === 'AbortError') return;
+                }
+            }
+
+            // 3. Fallback cho máy tính hoặc trình duyệt không hỗ trợ Web Share API
+            if (!sharedSuccessfully) {
                 const url = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
@@ -369,7 +409,6 @@ const PrintBillNotification: React.FC = () => {
                 link.click();
                 window.URL.revokeObjectURL(url);
 
-                // Mở cửa sổ Zalo Web để người dùng gửi trực tiếp
                 window.open('https://chat.zalo.me', '_blank');
             }
         } catch (err: any) {
