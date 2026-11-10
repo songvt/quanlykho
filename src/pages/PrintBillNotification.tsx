@@ -350,7 +350,7 @@ const PrintBillNotification: React.FC = () => {
         try {
             const shareText = `Kính gửi Quý khách ${billItem.customerName},\nViettel xin gửi Thông báo cước dịch vụ:\n- Thuê bao: ${billItem.phone}\n- Kỳ cước: ${billItem.serviceMonth}\n- Số tiền cần thanh toán: ${billItem.amount} đ\nTrân trọng cảm ơn Quý khách!`;
 
-            // Tự động sao chép nội dung tin nhắn vào bộ nhớ đệm (Clipboard) để dán nhanh trên Zalo/tin nhắn
+            // Tự động sao chép nội dung tin nhắn vào Clipboard để dán nhanh trên Zalo nếu cần
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 try {
                     await navigator.clipboard.writeText(shareText);
@@ -363,8 +363,8 @@ const PrintBillNotification: React.FC = () => {
             const { blob, fileName } = await generateSinglePdf(billItem);
             const file = new File([blob], fileName, { type: 'application/pdf' });
 
-            // 1. Thử chia sẻ đồng thời cả File PDF và Nội dung văn bản qua Web Share API
-            let sharedSuccessfully = false;
+            // Ưu tiên số 1 trên Mobile: Bật Web Share popup hệ thống để chọn Zalo chuyển tiếp file PDF + text
+            // KHÔNG tự động trigger tải về (download) gây phiền người dùng
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 try {
                     await navigator.share({
@@ -372,45 +372,28 @@ const PrintBillNotification: React.FC = () => {
                         text: shareText,
                         files: [file],
                     });
-                    sharedSuccessfully = true;
-                } catch (shareFilesErr: any) {
-                    if (shareFilesErr.name === 'AbortError') return; // Người dùng chủ động hủy chia sẻ
-                    console.warn('Share kèm file không thành công, thử share nội dung văn bản:', shareFilesErr);
+                    return; // Đã popup native share sheet thành công
+                } catch (shareErr: any) {
+                    if (shareErr.name === 'AbortError') return; // Người dùng ấn hủy đóng popup
+                    console.warn('Share file thất bại, thử share text:', shareErr);
                 }
             }
 
-            // 2. Nếu chia sẻ cả file không được (một số thiết bị mobile/app chỉ nhận text), chia sẻ text trước
-            if (!sharedSuccessfully && navigator.share) {
+            // Nếu thiết bị không nhận kèm file trong share sheet, thử share popup text trực tiếp
+            if (navigator.share) {
                 try {
-                    // Tải file PDF về máy trước để người dùng sẵn sàng đính kèm
-                    const url = window.URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = fileName;
-                    link.click();
-                    window.URL.revokeObjectURL(url);
-
                     await navigator.share({
                         title: `Thông Báo Cước - ${billItem.customerName}`,
                         text: shareText,
                     });
-                    sharedSuccessfully = true;
+                    return;
                 } catch (shareTextErr: any) {
                     if (shareTextErr.name === 'AbortError') return;
                 }
             }
 
-            // 3. Fallback cho máy tính hoặc trình duyệt không hỗ trợ Web Share API
-            if (!sharedSuccessfully) {
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = fileName;
-                link.click();
-                window.URL.revokeObjectURL(url);
-
-                window.open('https://chat.zalo.me', '_blank');
-            }
+            // Fallback khi chạy trên máy tính desktop không có Web Share API: mở Zalo Web
+            window.open('https://chat.zalo.me', '_blank');
         } catch (err: any) {
             if (err.name !== 'AbortError') {
                 console.error('Lỗi chia sẻ Zalo:', err);
