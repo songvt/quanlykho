@@ -285,15 +285,10 @@ const BillTemplateA5: React.FC<BillTemplateA5Props> = ({ data }) => {
                         (Ký, ghi rõ họ tên)
                     </Typography>
                     
-                    {/* Họ tên nhân viên & số điện thoại */}
+                    {/* Họ tên nhân viên */}
                     <Typography sx={{ fontWeight: 'bold', fontSize: '15.5px', textTransform: 'uppercase', color: '#000', lineHeight: 1.2 }}>
                         {data.collectorName}
                     </Typography>
-                    {data.collectorPhone && (
-                        <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#444', mt: 0.2 }}>
-                            SĐT: {data.collectorPhone}
-                        </Typography>
-                    )}
                 </Box>
             </Box>
         </Box>
