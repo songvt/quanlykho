@@ -3,7 +3,8 @@ import {
     Box, Typography, Button, Paper, Table, TableBody, 
     TableCell, TableContainer, TableHead, TableRow, 
     Stack, Alert, CircularProgress, IconButton, TextField, 
-    InputAdornment, Tooltip
+    InputAdornment, Tooltip, Card, CardContent, Divider,
+    useMediaQuery, useTheme, Chip
 } from '@mui/material';
 import { 
     Download as DownloadIcon, 
@@ -12,7 +13,11 @@ import {
     Delete as DeleteIcon,
     Search as SearchIcon,
     Share as ShareIcon,
-    PictureAsPdf as PictureAsPdfIcon
+    PictureAsPdf as PictureAsPdfIcon,
+    Person as PersonIcon,
+    Phone as PhoneIcon,
+    LocationOn as LocationIcon,
+    Payment as PaymentIcon
 } from '@mui/icons-material';
 import ExcelJS from 'exceljs';
 import { useReactToPrint } from 'react-to-print';
@@ -25,6 +30,9 @@ import { parseExcelNumber, numberToWordsVN, formatNumber } from '../utils/number
 const STORAGE_KEY = 'PRINT_BILL_NOTIFICATION_DATA';
 
 const PrintBillNotification: React.FC = () => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
     // Khởi tạo state data từ localStorage (nếu có)
     const [data, setData] = useState<BillData[]>(() => {
         try {
@@ -356,18 +364,40 @@ const PrintBillNotification: React.FC = () => {
     }, [data, searchTerm]);
 
     return (
-        <Box sx={{ p: 3 }}>
+        <Box sx={{ p: { xs: 1.5, sm: 2.5, md: 3 } }}>
             {/* Top Toolbar */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, flexWrap: 'wrap', gap: 2 }}>
-                <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
-                    In Thông Báo Cước (Khổ A5)
-                </Typography>
+            <Box sx={{ 
+                display: 'flex', 
+                flexDirection: { xs: 'column', sm: 'row' },
+                justifyContent: 'space-between', 
+                alignItems: { xs: 'stretch', sm: 'center' }, 
+                mb: 2, 
+                gap: 1.5 
+            }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 'bold' }}>
+                        In Thông Báo Cước A5
+                    </Typography>
+                    {data.length > 0 && isMobile && (
+                        <IconButton color="error" size="small" onClick={clearData} title="Xóa tất cả">
+                            <DeleteIcon />
+                        </IconButton>
+                    )}
+                </Box>
                 
-                <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
+                {/* Nút hành động toolbar */}
+                <Box sx={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'auto auto auto auto auto' }, 
+                    gap: 1,
+                    alignItems: 'center'
+                }}>
                     <Button
                         variant="outlined"
+                        size={isMobile ? "small" : "medium"}
                         startIcon={<DownloadIcon />}
                         onClick={handleDownloadTemplate}
+                        sx={{ fontSize: { xs: '12px', sm: '14px' }, py: { xs: 0.8, sm: 0.7 } }}
                     >
                         Tải File Mẫu
                     </Button>
@@ -375,10 +405,12 @@ const PrintBillNotification: React.FC = () => {
                     <Button
                         variant="contained"
                         component="label"
-                        startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <UploadIcon />}
+                        size={isMobile ? "small" : "medium"}
+                        startIcon={loading ? <CircularProgress size={18} color="inherit" /> : <UploadIcon />}
                         disabled={loading}
+                        sx={{ fontSize: { xs: '12px', sm: '14px' }, py: { xs: 0.8, sm: 0.7 } }}
                     >
-                        Nhập từ Excel
+                        Nhập Excel
                         <input
                             type="file"
                             hidden
@@ -390,9 +422,11 @@ const PrintBillNotification: React.FC = () => {
                     <Button
                         variant="contained"
                         color="secondary"
+                        size={isMobile ? "small" : "medium"}
                         startIcon={<PrintIcon />}
                         disabled={data.length === 0}
                         onClick={() => handlePrint()}
+                        sx={{ fontSize: { xs: '12px', sm: '14px' }, py: { xs: 0.8, sm: 0.7 } }}
                     >
                         In {data.length > 0 ? `(${data.length})` : ''}
                     </Button>
@@ -400,19 +434,21 @@ const PrintBillNotification: React.FC = () => {
                     <Button
                         variant="contained"
                         color="error"
+                        size={isMobile ? "small" : "medium"}
                         startIcon={exportingPdf ? <CircularProgress size={18} color="inherit" /> : <PictureAsPdfIcon />}
                         disabled={data.length === 0 || exportingPdf}
                         onClick={handleExportPdf}
+                        sx={{ fontSize: { xs: '12px', sm: '14px' }, py: { xs: 0.8, sm: 0.7 } }}
                     >
-                        {exportingPdf ? 'Đang xuất PDF...' : `Xuất PDF A5${data.length > 0 ? ` (${data.length})` : ''}`}
+                        {exportingPdf ? 'Đang xuất...' : `Xuất PDF${data.length > 0 ? ` (${data.length})` : ''}`}
                     </Button>
                     
-                    {data.length > 0 && (
-                        <IconButton color="error" onClick={clearData} title="Xóa danh sách">
+                    {data.length > 0 && !isMobile && (
+                        <IconButton color="error" onClick={clearData} title="Xóa toàn bộ danh sách">
                             <DeleteIcon />
                         </IconButton>
                     )}
-                </Stack>
+                </Box>
             </Box>
 
             {error && (
@@ -421,16 +457,24 @@ const PrintBillNotification: React.FC = () => {
                 </Alert>
             )}
 
-            {/* Thanh tìm kiếm */}
+            {/* Thanh tìm kiếm & thống kê số lượng */}
             {data.length > 0 && (
-                <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box sx={{ 
+                    mb: 2, 
+                    display: 'flex', 
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    justifyContent: 'space-between', 
+                    alignItems: { xs: 'stretch', sm: 'center' },
+                    gap: 1
+                }}>
                     <TextField
                         size="small"
-                        placeholder="Tìm kiếm theo Tên khách hàng, Thuê bao, Địa chỉ, Số tiền..."
+                        fullWidth={isMobile}
+                        placeholder="Tìm tên khách hàng, thuê bao, số tiền..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         sx={{ 
-                            width: { xs: '100%', sm: 400 },
+                            width: { xs: '100%', sm: 380 },
                             bgcolor: 'background.paper',
                             borderRadius: 1
                         }}
@@ -442,107 +486,201 @@ const PrintBillNotification: React.FC = () => {
                             ),
                         }}
                     />
-                    <Typography variant="body2" color="text.secondary">
-                        Hiển thị <b>{filteredData.length}</b> / {data.length} khách hàng
+                    <Typography variant="body2" color="text.secondary" sx={{ textAlign: { xs: 'right', sm: 'left' } }}>
+                        Tìm thấy: <b>{filteredData.length}</b> / {data.length} khách hàng
                     </Typography>
                 </Box>
             )}
 
-            <Paper sx={{ width: '100%', mb: 2, overflow: 'hidden' }}>
-                <TableContainer sx={{ maxHeight: 'calc(100vh - 270px)' }}>
-                    <Table stickyHeader size="small">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell align="center" sx={{ width: 50 }}><b>STT</b></TableCell>
-                                <TableCell><b>Khách Hàng</b></TableCell>
-                                <TableCell><b>Thuê Bao</b></TableCell>
-                                <TableCell><b>Địa Chỉ</b></TableCell>
-                                <TableCell><b>Dịch Vụ & Tháng</b></TableCell>
-                                <TableCell align="right"><b>Số Tiền</b></TableCell>
-                                <TableCell><b>Bằng Chữ</b></TableCell>
-                                <TableCell><b>Nhân Viên</b></TableCell>
-                                <TableCell align="center" sx={{ minWidth: 110 }}><b>Thao Tác</b></TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {filteredData.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
-                                        {data.length === 0 
-                                            ? 'Chưa có dữ liệu. Vui lòng tải file mẫu và nhập liệu từ Excel.' 
-                                            : 'Không tìm thấy khách hàng nào khớp với từ khóa tìm kiếm.'}
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                filteredData.map((row, index) => (
-                                    <TableRow hover key={row.id}>
-                                        <TableCell align="center">{index + 1}</TableCell>
-                                        <TableCell sx={{ fontWeight: 600 }}>{row.customerName}</TableCell>
-                                        <TableCell sx={{ fontFamily: 'monospace' }}>{row.phone}</TableCell>
-                                        <TableCell sx={{ maxWidth: 260 }}>{row.address}</TableCell>
-                                        <TableCell>{row.serviceMonth}</TableCell>
-                                        <TableCell align="right" sx={{ fontWeight: 700, color: '#ee0033' }}>
+            {/* GIAO DIỆN MOBILE: Card List (Dễ nhìn, bấm thao tác tiện dụng trên điện thoại) */}
+            {isMobile ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    {filteredData.length === 0 ? (
+                        <Paper sx={{ p: 3, textAlign: 'center' }}>
+                            <Typography color="text.secondary" variant="body2">
+                                {data.length === 0 
+                                    ? 'Chưa có dữ liệu. Vui lòng tải file mẫu và nhập liệu từ Excel.' 
+                                    : 'Không tìm thấy khách hàng nào khớp với từ khóa tìm kiếm.'}
+                            </Typography>
+                        </Paper>
+                    ) : (
+                        filteredData.map((row, index) => (
+                            <Card key={row.id} variant="outlined" sx={{ borderRadius: 2, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                                <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                                    {/* Hàng trên: STT + Tên KH + Số tiền */}
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Chip label={index + 1} size="small" sx={{ height: 20, fontSize: '11px', fontWeight: 'bold' }} />
+                                            <Typography sx={{ fontWeight: 'bold', fontSize: '15px' }}>
+                                                {row.customerName}
+                                            </Typography>
+                                        </Box>
+                                        <Typography sx={{ fontWeight: 800, color: '#ee0033', fontSize: '16px' }}>
                                             {row.amount} đ
-                                        </TableCell>
-                                        <TableCell sx={{ fontStyle: 'italic', fontSize: '13px' }}>{row.amountInWords}</TableCell>
-                                        <TableCell>{row.collectorName}</TableCell>
-                                        <TableCell align="center">
-                                            <Stack direction="row" spacing={0.5} justifyContent="center">
-                                                {/* Nút tải PDF đơn lẻ */}
-                                                <Tooltip title="Tải file PDF đơn lẻ" arrow>
-                                                    <span>
-                                                        <IconButton 
-                                                            size="small" 
-                                                            color="primary"
-                                                            disabled={exportingSingleId === row.id}
-                                                            onClick={() => handleDownloadSinglePdf(row)}
-                                                        >
-                                                            {exportingSingleId === row.id ? (
-                                                                <CircularProgress size={18} />
-                                                            ) : (
-                                                                <PictureAsPdfIcon fontSize="small" />
-                                                            )}
-                                                        </IconButton>
-                                                    </span>
-                                                </Tooltip>
+                                        </Typography>
+                                    </Box>
 
-                                                {/* Nút chia sẻ qua Zalo */}
-                                                <Tooltip title="Chia sẻ thông báo cước qua Zalo" arrow>
-                                                    <span>
-                                                        <IconButton 
-                                                            size="small" 
-                                                            sx={{ color: '#0068ff' }}
-                                                            disabled={sharingId === row.id}
-                                                            onClick={() => handleShareZalo(row)}
-                                                        >
-                                                            {sharingId === row.id ? (
-                                                                <CircularProgress size={18} />
-                                                            ) : (
-                                                                <ShareIcon fontSize="small" />
-                                                            )}
-                                                        </IconButton>
-                                                    </span>
-                                                </Tooltip>
+                                    {/* Thông tin chi tiết */}
+                                    <Stack spacing={0.6} sx={{ fontSize: '13px', color: 'text.secondary', mb: 1.5 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <PhoneIcon sx={{ fontSize: 15, color: '#0068ff' }} />
+                                            <span>Thuê bao: <b style={{ color: '#000' }}>{row.phone}</b></span>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                                            <LocationIcon sx={{ fontSize: 15, color: '#666', mt: 0.3 }} />
+                                            <span style={{ lineHeight: 1.25 }}>{row.address}</span>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <PaymentIcon sx={{ fontSize: 15, color: '#2e7d32' }} />
+                                            <span>{row.serviceMonth}</span>
+                                        </Box>
+                                    </Stack>
 
-                                                {/* Nút xóa đơn lẻ khách hàng */}
-                                                <Tooltip title="Xóa khách hàng này" arrow>
-                                                    <IconButton 
-                                                        size="small" 
-                                                        color="error"
-                                                        onClick={() => handleDeleteSingle(row)}
-                                                    >
-                                                        <DeleteIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            </Stack>
+                                    <Divider sx={{ mb: 1 }} />
+
+                                    {/* Hàng dưới: Các nút bấm thao tác lớn dễ chạm trên màn hình cảm ứng */}
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Typography variant="caption" color="text.secondary">
+                                            NV: {row.collectorName}
+                                        </Typography>
+
+                                        <Stack direction="row" spacing={1}>
+                                            <Button
+                                                variant="outlined"
+                                                size="small"
+                                                color="primary"
+                                                startIcon={exportingSingleId === row.id ? <CircularProgress size={14} /> : <PictureAsPdfIcon fontSize="small" />}
+                                                disabled={exportingSingleId === row.id}
+                                                onClick={() => handleDownloadSinglePdf(row)}
+                                                sx={{ py: 0.4, px: 1, fontSize: '12px' }}
+                                            >
+                                                Tải PDF
+                                            </Button>
+
+                                            <Button
+                                                variant="contained"
+                                                size="small"
+                                                startIcon={sharingId === row.id ? <CircularProgress size={14} color="inherit" /> : <ShareIcon fontSize="small" />}
+                                                disabled={sharingId === row.id}
+                                                onClick={() => handleShareZalo(row)}
+                                                sx={{ bgcolor: '#0068ff', '&:hover': { bgcolor: '#0055d4' }, py: 0.4, px: 1, fontSize: '12px' }}
+                                            >
+                                                Zalo
+                                            </Button>
+
+                                            <IconButton 
+                                                size="small" 
+                                                color="error"
+                                                onClick={() => handleDeleteSingle(row)}
+                                                title="Xóa khách hàng"
+                                            >
+                                                <DeleteIcon fontSize="small" />
+                                            </IconButton>
+                                        </Stack>
+                                    </Box>
+                                </CardContent>
+                            </Card>
+                        ))
+                    )}
+                </Box>
+            ) : (
+                /* GIAO DIỆN DESKTOP: Bảng chi tiết */
+                <Paper sx={{ width: '100%', mb: 2, overflow: 'hidden' }}>
+                    <TableContainer sx={{ maxHeight: 'calc(100vh - 270px)' }}>
+                        <Table stickyHeader size="small">
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell align="center" sx={{ width: 50 }}><b>STT</b></TableCell>
+                                    <TableCell><b>Khách Hàng</b></TableCell>
+                                    <TableCell><b>Thuê Bao</b></TableCell>
+                                    <TableCell><b>Địa Chỉ</b></TableCell>
+                                    <TableCell><b>Dịch Vụ & Tháng</b></TableCell>
+                                    <TableCell align="right"><b>Số Tiền</b></TableCell>
+                                    <TableCell><b>Bằng Chữ</b></TableCell>
+                                    <TableCell><b>Nhân Viên</b></TableCell>
+                                    <TableCell align="center" sx={{ minWidth: 120 }}><b>Thao Tác</b></TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {filteredData.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
+                                            {data.length === 0 
+                                                ? 'Chưa có dữ liệu. Vui lòng tải file mẫu và nhập liệu từ Excel.' 
+                                                : 'Không tìm thấy khách hàng nào khớp với từ khóa tìm kiếm.'}
                                         </TableCell>
                                     </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-            </Paper>
+                                ) : (
+                                    filteredData.map((row, index) => (
+                                        <TableRow hover key={row.id}>
+                                            <TableCell align="center">{index + 1}</TableCell>
+                                            <TableCell sx={{ fontWeight: 600 }}>{row.customerName}</TableCell>
+                                            <TableCell sx={{ fontFamily: 'monospace' }}>{row.phone}</TableCell>
+                                            <TableCell sx={{ maxWidth: 260 }}>{row.address}</TableCell>
+                                            <TableCell>{row.serviceMonth}</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 700, color: '#ee0033' }}>
+                                                {row.amount} đ
+                                            </TableCell>
+                                            <TableCell sx={{ fontStyle: 'italic', fontSize: '13px' }}>{row.amountInWords}</TableCell>
+                                            <TableCell>{row.collectorName}</TableCell>
+                                            <TableCell align="center">
+                                                <Stack direction="row" spacing={0.5} justifyContent="center">
+                                                    {/* Nút tải PDF đơn lẻ */}
+                                                    <Tooltip title="Tải file PDF đơn lẻ" arrow>
+                                                        <span>
+                                                            <IconButton 
+                                                                size="small" 
+                                                                color="primary"
+                                                                disabled={exportingSingleId === row.id}
+                                                                onClick={() => handleDownloadSinglePdf(row)}
+                                                            >
+                                                                {exportingSingleId === row.id ? (
+                                                                    <CircularProgress size={18} />
+                                                                ) : (
+                                                                    <PictureAsPdfIcon fontSize="small" />
+                                                                )}
+                                                            </IconButton>
+                                                        </span>
+                                                    </Tooltip>
+
+                                                    {/* Nút chia sẻ qua Zalo */}
+                                                    <Tooltip title="Chia sẻ thông báo cước qua Zalo" arrow>
+                                                        <span>
+                                                            <IconButton 
+                                                                size="small" 
+                                                                sx={{ color: '#0068ff' }}
+                                                                disabled={sharingId === row.id}
+                                                                onClick={() => handleShareZalo(row)}
+                                                            >
+                                                                {sharingId === row.id ? (
+                                                                    <CircularProgress size={18} />
+                                                                ) : (
+                                                                    <ShareIcon fontSize="small" />
+                                                                )}
+                                                            </IconButton>
+                                                        </span>
+                                                    </Tooltip>
+
+                                                    {/* Nút xóa đơn lẻ khách hàng */}
+                                                    <Tooltip title="Xóa khách hàng này" arrow>
+                                                        <IconButton 
+                                                            size="small" 
+                                                            color="error"
+                                                            onClick={() => handleDeleteSingle(row)}
+                                                        >
+                                                            <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </Stack>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                                )}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                </Paper>
+            )}
 
             {/* Kept offscreen rather than display:none so html2canvas can create an A5 PDF. */}
             <Box className="bill-print-container" sx={{ position: 'fixed', left: '-10000px', top: 0, width: '210mm', bgcolor: '#fff', pointerEvents: 'none', zIndex: -1 }}>
