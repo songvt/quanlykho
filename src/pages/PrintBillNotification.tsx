@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { 
     Box, Typography, Button, Paper, Table, TableBody, 
     TableCell, TableContainer, TableHead, TableRow, 
@@ -22,8 +22,22 @@ import BillTemplateA5 from '../components/BillTemplateA5';
 import type { BillData } from '../components/BillTemplateA5';
 import { parseExcelNumber, numberToWordsVN, formatNumber } from '../utils/numberUtils';
 
+const STORAGE_KEY = 'PRINT_BILL_NOTIFICATION_DATA';
+
 const PrintBillNotification: React.FC = () => {
-    const [data, setData] = useState<BillData[]>([]);
+    // Khởi tạo state data từ localStorage (nếu có)
+    const [data, setData] = useState<BillData[]>(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed)) return parsed;
+            }
+        } catch (e) {
+            console.error('Không thể đọc dữ liệu lưu từ localStorage:', e);
+        }
+        return [];
+    });
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(false);
     const [exportingPdf, setExportingPdf] = useState(false);
@@ -31,6 +45,19 @@ const PrintBillNotification: React.FC = () => {
     const [sharingId, setSharingId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const printRef = useRef<HTMLDivElement>(null);
+
+    // Tự động lưu dữ liệu vào localStorage mỗi khi data thay đổi
+    useEffect(() => {
+        try {
+            if (data.length > 0) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            } else {
+                localStorage.removeItem(STORAGE_KEY);
+            }
+        } catch (e) {
+            console.error('Không thể lưu dữ liệu vào localStorage:', e);
+        }
+    }, [data]);
 
     // Mẫu branch config (có thể thay đổi nếu cần)
     const branchConfig = {
@@ -293,8 +320,9 @@ const PrintBillNotification: React.FC = () => {
     };
 
     const clearData = () => {
-        if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ danh sách?')) {
+        if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ danh sách? Thao tác này sẽ xóa dữ liệu đã lưu.')) {
             setData([]);
+            localStorage.removeItem(STORAGE_KEY);
         }
     };
 
