@@ -347,13 +347,20 @@ const PrintBillNotification: React.FC = () => {
         }
     };
 
+    // Bộ nhớ đệm lưu ảnh thẻ QR đã sinh để chia sẻ tức thì (<10ms)
+    const qrImageCacheRef = useRef<Map<string, { blob: Blob; fileName: string }>>(new Map());
+
     // Tạo file ảnh thẻ QR Ngân Hàng siêu nét với tốc độ cực nhanh (để Zalo tự nhận diện hiện nút "Chuyển tiền / Chuyển khoản")
     const generateQrCardImage = async (billItem: BillData): Promise<{ blob: Blob; fileName: string }> => {
+        // Nếu đã có trong cache thì trả về ngay lập tức không cần render lại
+        const cached = qrImageCacheRef.current.get(billItem.id);
+        if (cached) return cached;
+
         if (!qrCardRef.current) throw new Error('Không tìm thấy vùng thẻ QR.');
         const cardEl = qrCardRef.current.querySelector<HTMLElement>(`[data-qr-card-id="${billItem.id}"]`);
         if (!cardEl) throw new Error('Không tìm thấy phần tử thẻ QR của khách hàng này.');
 
-        // Scale 2x trên kích thước 420x264 cho ra ảnh 840x528 pixel cực kỳ sắc nét mà xử lý chỉ mất ~100ms
+        // Scale 2x trên kích thước 420x264 cho ra ảnh 840x528 pixel sắc nét hoàn hảo
         const canvas = await html2canvas(cardEl, {
             scale: 2,
             useCORS: true,
@@ -374,7 +381,9 @@ const PrintBillNotification: React.FC = () => {
             }, 'image/png');
         });
 
-        return { blob, fileName };
+        const result = { blob, fileName };
+        qrImageCacheRef.current.set(billItem.id, result);
+        return result;
     };
 
     // Chia sẻ thông báo cước + ảnh thẻ mã QR qua Zalo (hiện nút Chuyển tiền / Chuyển khoản)

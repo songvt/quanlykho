@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeCanvas } from 'qrcode.react';
 import { buildVietQRPayload } from '../utils/vietqr';
 import type { BillData } from './BillTemplateA5';
 
@@ -145,32 +145,20 @@ export const BankQrCard: React.FC<BankQrCardProps> = ({ data }) => {
                         position: 'relative'
                     }}
                 >
-                    <QRCodeSVG
+                    <QRCodeCanvas
                         value={qrPayload}
                         size={128}
                         level="M"
                         includeMargin={false}
-                    />
-                    {/* Logo trung tâm màu đỏ chuẩn nhận diện */}
-                    <Box
-                        sx={{
-                            position: 'absolute',
-                            width: '26px',
-                            height: '26px',
-                            borderRadius: '50%',
-                            bgcolor: '#ee0033',
-                            color: '#ffffff',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 900,
-                            fontSize: '14px',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.25)',
-                            border: '2px solid #ffffff'
+                        imageSettings={{
+                            src: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="14" fill="%23ee0033" stroke="%23ffffff" stroke-width="2"/><text x="15" y="21" font-size="16" font-family="sans-serif" font-weight="900" fill="%23ffffff" text-anchor="middle">V</text></svg>',
+                            x: undefined,
+                            y: undefined,
+                            height: 28,
+                            width: 28,
+                            excavate: true,
                         }}
-                    >
-                        V
-                    </Box>
+                    />
                 </Box>
             </Box>
         </Box>
