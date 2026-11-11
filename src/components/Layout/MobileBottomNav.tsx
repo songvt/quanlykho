@@ -77,11 +77,14 @@ const MobileBottomNav: React.FC = () => {
                     bottom: 0,
                     left: 0,
                     right: 0,
+                    width: '100vw',
                     display: { sm: 'none' },
                     zIndex: 1300,
-                    pb: 'max(env(safe-area-inset-bottom), 6px)',
+                    pb: 'max(env(safe-area-inset-bottom, 0px), 6px)',
                     borderTop: '1px solid var(--border-color)',
-                    boxShadow: '0 -8px 30px rgba(0, 0, 0, 0.03)',
+                    boxShadow: '0 -8px 30px rgba(0, 0, 0, 0.15)',
+                    transform: 'translate3d(0, 0, 0)', // Khóa chặt tọa độ viewport trên iOS Safari
+                    WebkitTransform: 'translate3d(0, 0, 0)',
                 }}
                 elevation={0}
             >

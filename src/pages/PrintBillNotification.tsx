@@ -839,7 +839,20 @@ const PrintBillNotification: React.FC = () => {
             )}
 
             {/* Kept offscreen rather than display:none so html2canvas can create an A5 PDF and QR Card Image. */}
-            <Box className="bill-print-container" sx={{ position: 'fixed', left: '-10000px', top: 0, width: '210mm', bgcolor: '#fff', pointerEvents: 'none', zIndex: -1 }}>
+            <div 
+                className="bill-print-container" 
+                style={{ 
+                    position: 'absolute', 
+                    left: '-9999px', 
+                    top: '-9999px', 
+                    width: '1px', 
+                    height: '1px', 
+                    overflow: 'hidden', 
+                    opacity: 0, 
+                    pointerEvents: 'none', 
+                    zIndex: -9999 
+                }}
+            >
                 <div ref={printRef}>
                     {data.map((item) => (
                         <div key={item.id} data-bill-page="true" data-bill-id={item.id} className="bill-page-item" style={{ width: '210mm', height: '148mm', overflow: 'hidden', background: '#fff', boxSizing: 'border-box' }}>
@@ -854,7 +867,7 @@ const PrintBillNotification: React.FC = () => {
                         </div>
                     ))}
                 </div>
-            </Box>
+            </div>
         </Box>
     );
 };
