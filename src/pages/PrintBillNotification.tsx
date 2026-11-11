@@ -27,6 +27,7 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import BillTemplateA5 from '../components/BillTemplateA5';
 import type { BillData } from '../components/BillTemplateA5';
+import BankQrCard from '../components/BankQrCard';
 import { parseExcelNumber, numberToWordsVN, formatNumber } from '../utils/numberUtils';
 import { supabase } from '../config/supabase';
 
@@ -58,6 +59,7 @@ const PrintBillNotification: React.FC = () => {
     const [sharingId, setSharingId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const printRef = useRef<HTMLDivElement>(null);
+    const qrCardRef = useRef<HTMLDivElement>(null);
 
     // Tải dữ liệu từ Database Supabase về (đồng bộ giữa Web và Mobile)
     const fetchBillsFromDatabase = useCallback(async (silent = false) => {
@@ -345,7 +347,36 @@ const PrintBillNotification: React.FC = () => {
         }
     };
 
-    // Chia sẻ file / thông báo cước qua Zalo siêu tốc
+    // Tạo file ảnh thẻ QR Ngân Hàng siêu nét (để Zalo tự nhận diện hiện nút "Chuyển tiền / Chuyển khoản")
+    const generateQrCardImage = async (billItem: BillData): Promise<{ blob: Blob; fileName: string }> => {
+        if (!qrCardRef.current) throw new Error('Không tìm thấy vùng thẻ QR.');
+        const cardEl = qrCardRef.current.querySelector<HTMLElement>(`[data-qr-card-id="${billItem.id}"]`);
+        if (!cardEl) throw new Error('Không tìm thấy phần tử thẻ QR của khách hàng này.');
+
+        const canvas = await html2canvas(cardEl, {
+            scale: 2.5, // Siêu nét để Zalo quét tức thì
+            useCORS: true,
+            backgroundColor: null, // Giữ góc bo mềm mại
+            logging: false,
+            removeContainer: true,
+            windowWidth: 360,
+            windowHeight: 226,
+        });
+
+        const cleanName = (billItem.customerName || 'KH').trim().replace(/[^a-zA-Z0-9\u00C0-\u1EF9]/g, '_');
+        const fileName = `Ma_QR_MBBank_${cleanName}_${billItem.phone || ''}.png`;
+
+        const blob = await new Promise<Blob>((resolve, reject) => {
+            canvas.toBlob((b) => {
+                if (b) resolve(b);
+                else reject(new Error('Không thể tạo file ảnh QR.'));
+            }, 'image/png');
+        });
+
+        return { blob, fileName };
+    };
+
+    // Chia sẻ thông báo cước + ảnh thẻ mã QR qua Zalo (hiện nút Chuyển tiền / Chuyển khoản)
     const handleShareZalo = async (billItem: BillData) => {
         setSharingId(billItem.id);
         setError(null);
@@ -362,26 +393,26 @@ const PrintBillNotification: React.FC = () => {
                 }
             }
 
-            // Tạo file PDF nhanh
-            const { blob, fileName } = await generateSinglePdf(billItem);
-            const file = new File([blob], fileName, { type: 'application/pdf' });
+            // Tạo file ảnh thẻ QR Ngân hàng MB Bank (Zalo sẽ tự động nhận diện và hiện nút "Chuyển tiền / Chuyển khoản" trực tiếp trên ảnh)
+            const { blob, fileName } = await generateQrCardImage(billItem);
+            const imageFile = new File([blob], fileName, { type: 'image/png' });
 
-            // Popup Web Share Sheet hệ thống: Đảm bảo text được đưa lên đầu
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            // Popup Web Share Sheet hệ thống: Chia sẻ dạng ảnh PNG + text để Zalo hiển thị ảnh xem trước và nhận diện nút chuyển tiền
+            if (navigator.canShare && navigator.canShare({ files: [imageFile] })) {
                 try {
                     await navigator.share({
                         title: shareText,
                         text: shareText,
-                        files: [file],
+                        files: [imageFile],
                     });
                     return;
                 } catch (shareErr: any) {
                     if (shareErr.name === 'AbortError') return;
-                    console.warn('Share file thất bại, thử share text:', shareErr);
+                    console.warn('Share ảnh QR thất bại, thử share text:', shareErr);
                 }
             }
 
-            // Fallback chỉ share Text nếu thiết bị không hỗ trợ chia sẻ file trực tiếp
+            // Fallback chỉ share Text nếu thiết bị không hỗ trợ chia sẻ tệp ảnh trực tiếp
             if (navigator.share) {
                 try {
                     await navigator.share({
@@ -790,12 +821,19 @@ const PrintBillNotification: React.FC = () => {
                 </Paper>
             )}
 
-            {/* Kept offscreen rather than display:none so html2canvas can create an A5 PDF. */}
+            {/* Kept offscreen rather than display:none so html2canvas can create an A5 PDF and QR Card Image. */}
             <Box className="bill-print-container" sx={{ position: 'fixed', left: '-10000px', top: 0, width: '210mm', bgcolor: '#fff', pointerEvents: 'none', zIndex: -1 }}>
                 <div ref={printRef}>
                     {data.map((item) => (
                         <div key={item.id} data-bill-page="true" data-bill-id={item.id} className="bill-page-item" style={{ width: '210mm', height: '148mm', overflow: 'hidden', background: '#fff', boxSizing: 'border-box' }}>
                             <BillTemplateA5 data={item} />
+                        </div>
+                    ))}
+                </div>
+                <div ref={qrCardRef}>
+                    {data.map((item) => (
+                        <div key={item.id} data-qr-card-id={item.id} style={{ width: '360px', height: '226px', background: 'transparent', display: 'inline-block' }}>
+                            <BankQrCard data={item} />
                         </div>
                     ))}
                 </div>
