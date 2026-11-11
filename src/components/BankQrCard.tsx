@@ -30,15 +30,14 @@ export const BankQrCard: React.FC<BankQrCardProps> = ({ data }) => {
     return (
         <Box
             sx={{
-                width: '360px',
-                height: '226px',
-                borderRadius: '16px',
-                background: 'linear-gradient(135deg, #102693 0%, #1738bd 50%, #0d1e7c 100%)',
-                p: '16px 18px',
+                width: '420px',
+                height: '264px',
+                borderRadius: '24px',
+                background: 'linear-gradient(135deg, #0d38c7 0%, #0044d6 50%, #062ca6 100%)',
+                p: '22px 24px',
                 color: '#fff',
                 fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
                 position: 'relative',
-                boxShadow: '0 10px 25px rgba(16, 38, 147, 0.4)',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
@@ -46,72 +45,86 @@ export const BankQrCard: React.FC<BankQrCardProps> = ({ data }) => {
                 overflow: 'hidden'
             }}
         >
-            {/* Hiệu ứng nền nhẹ bo góc */}
+            {/* Hiệu ứng mảng sáng cong ở góc trên bên phải chuẩn nhận diện MB Bank */}
             <Box
                 sx={{
                     position: 'absolute',
-                    top: '-30px',
-                    right: '-30px',
-                    width: '120px',
-                    height: '120px',
+                    top: '-60px',
+                    right: '-40px',
+                    width: '240px',
+                    height: '240px',
                     borderRadius: '50%',
-                    background: 'rgba(255, 255, 255, 0.05)',
+                    background: 'radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 70%)',
                     pointerEvents: 'none'
                 }}
             />
 
-            {/* Hàng trên: Logo MBBank + Tên ngân hàng */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2, zIndex: 1 }}>
+            {/* HÀNG TRÊN: Logo MB Bank + Tên ngân hàng */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, zIndex: 1 }}>
+                {/* Khung icon logo MB Bank màu trắng bo tròn mềm mại */}
                 <Box
                     sx={{
-                        width: '38px',
-                        height: '38px',
-                        borderRadius: '10px',
-                        bgcolor: '#fff',
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '14px',
+                        bgcolor: '#ffffff',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        p: '3px',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.15)'
+                        p: '4px',
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
                     }}
                 >
                     <Typography
                         sx={{
-                            color: '#1428a0',
+                            color: '#0033a0',
                             fontWeight: 900,
-                            fontSize: '13px',
-                            letterSpacing: '-0.5px'
+                            fontSize: '15.5px',
+                            letterSpacing: '-0.5px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            fontFamily: 'sans-serif'
                         }}
                     >
                         ★MB
                     </Typography>
                 </Box>
-                <Typography sx={{ fontSize: '15px', fontWeight: 600, color: 'rgba(255,255,255,0.92)' }}>
+                <Typography
+                    sx={{
+                        fontSize: '19px',
+                        fontWeight: 700,
+                        color: '#ffffff',
+                        letterSpacing: '0.2px',
+                        textShadow: '0 1px 2px rgba(0,0,0,0.15)'
+                    }}
+                >
                     {bankName}
                 </Typography>
             </Box>
 
-            {/* Hàng giữa & dưới: Thông tin STT/Chủ TK bên trái, Mã QR bên phải */}
+            {/* HÀNG DƯỚI: STK + Tên người nhận (trái) và Mã QR (phải) */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', zIndex: 1 }}>
-                <Box sx={{ pr: 1 }}>
+                {/* Thông tin tài khoản */}
+                <Box sx={{ pr: 1, pb: 0.5 }}>
                     <Typography
                         sx={{
-                            fontSize: '20px',
-                            fontWeight: 800,
-                            letterSpacing: '0.5px',
+                            fontSize: '25px',
+                            fontWeight: 900,
+                            letterSpacing: '0.8px',
                             color: '#ffffff',
-                            lineHeight: 1.2,
-                            mb: 0.4
+                            lineHeight: 1.15,
+                            mb: 0.6,
+                            textShadow: '0 2px 4px rgba(0,0,0,0.2)'
                         }}
                     >
                         {bankAccount}
                     </Typography>
                     <Typography
                         sx={{
-                            fontSize: '13px',
-                            fontWeight: 600,
-                            color: 'rgba(255,255,255,0.75)',
-                            letterSpacing: '0.8px',
+                            fontSize: '15px',
+                            fontWeight: 700,
+                            color: 'rgba(255, 255, 255, 0.88)',
+                            letterSpacing: '1px',
                             textTransform: 'uppercase'
                         }}
                     >
@@ -119,41 +132,41 @@ export const BankQrCard: React.FC<BankQrCardProps> = ({ data }) => {
                     </Typography>
                 </Box>
 
-                {/* Khung QR Code bo góc trắng tinh tế */}
+                {/* Khung QR Code bo góc chuẩn nét cao */}
                 <Box
                     sx={{
-                        p: '6px',
-                        bgcolor: '#fff',
-                        borderRadius: '10px',
+                        p: '8px',
+                        bgcolor: '#ffffff',
+                        borderRadius: '16px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                        boxShadow: '0 8px 20px rgba(0,0,0,0.25)',
                         position: 'relative'
                     }}
                 >
                     <QRCodeSVG
                         value={qrPayload}
-                        size={104}
+                        size={128}
                         level="M"
                         includeMargin={false}
                     />
-                    {/* Logo nhỏ giữa QR code */}
+                    {/* Logo trung tâm màu đỏ chuẩn nhận diện */}
                     <Box
                         sx={{
                             position: 'absolute',
-                            width: '20px',
-                            height: '20px',
+                            width: '26px',
+                            height: '26px',
                             borderRadius: '50%',
                             bgcolor: '#ee0033',
-                            color: '#fff',
+                            color: '#ffffff',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontWeight: 900,
-                            fontSize: '11px',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-                            border: '1.5px solid #fff'
+                            fontSize: '14px',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.25)',
+                            border: '2px solid #ffffff'
                         }}
                     >
                         V
