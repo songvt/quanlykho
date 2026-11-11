@@ -390,24 +390,21 @@ const PrintBillNotification: React.FC = () => {
     const handleShareZalo = async (billItem: BillData) => {
         setSharingId(billItem.id);
         setError(null);
+
+        // Chuẩn hóa nội dung tin nhắn gửi kèm
+        const shareText = `Kính gửi Quý khách ${billItem.customerName},\nViettel xin gửi Thông báo cước dịch vụ:\n- Thuê bao: ${billItem.phone}\n- Kỳ cước: ${billItem.serviceMonth}\n- Số tiền cần thanh toán: ${billItem.amount} đ\nTrân trọng cảm ơn Quý khách!`;
+
+        // Tự động sao chép sẵn vào Clipboard ngay lập tức
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(shareText).catch(() => {});
+        }
+
         try {
-            // Chuẩn hóa nội dung tin nhắn gửi kèm
-            const shareText = `Kính gửi Quý khách ${billItem.customerName},\nViettel xin gửi Thông báo cước dịch vụ:\n- Thuê bao: ${billItem.phone}\n- Kỳ cước: ${billItem.serviceMonth}\n- Số tiền cần thanh toán: ${billItem.amount} đ\nTrân trọng cảm ơn Quý khách!`;
-
-            // Tự động sao chép sẵn vào Clipboard ngay lập tức để dán ngay trên ô chat Zalo nếu cần
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                try {
-                    await navigator.clipboard.writeText(shareText);
-                } catch (clipErr) {
-                    console.log('Clipboard copy note:', clipErr);
-                }
-            }
-
             // Tạo file ảnh thẻ QR Ngân hàng MB Bank (Zalo sẽ tự động nhận diện và hiện nút "Chuyển tiền / Chuyển khoản" trực tiếp trên ảnh)
             const { blob, fileName } = await generateQrCardImage(billItem);
             const imageFile = new File([blob], fileName, { type: 'image/png' });
 
-            // Popup Web Share Sheet hệ thống: Chia sẻ dạng ảnh PNG + text để Zalo hiển thị ảnh xem trước và nhận diện nút chuyển tiền
+            // Popup Web Share Sheet hệ thống ngay trong cùng gesture tương tác của người dùng
             if (navigator.canShare && navigator.canShare({ files: [imageFile] })) {
                 try {
                     await navigator.share({
@@ -712,7 +709,17 @@ const PrintBillNotification: React.FC = () => {
                                                 startIcon={sharingId === row.id ? <CircularProgress size={14} color="inherit" /> : <ShareIcon fontSize="small" />}
                                                 disabled={sharingId === row.id}
                                                 onClick={() => handleShareZalo(row)}
-                                                sx={{ bgcolor: '#0068ff', '&:hover': { bgcolor: '#0055d4' }, py: 0.4, px: 1, fontSize: '12px' }}
+                                                sx={{ 
+                                                    bgcolor: '#0068ff', 
+                                                    '&:hover': { bgcolor: '#0055d4' }, 
+                                                    py: 0.6, 
+                                                    px: 1.5, 
+                                                    fontSize: '12.5px',
+                                                    fontWeight: 600,
+                                                    touchAction: 'manipulation',
+                                                    minHeight: '36px',
+                                                    boxShadow: '0 2px 6px rgba(0, 104, 255, 0.3)'
+                                                }}
                                             >
                                                 Zalo
                                             </Button>
