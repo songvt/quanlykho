@@ -2,7 +2,10 @@ import React from 'react';
 import { Box, Typography } from '@mui/material';
 import { QRCodeSVG } from 'qrcode.react';
 import { buildVietQRPayload } from '../utils/vietqr';
+import { toTitleCase } from '../utils/format';
 import viettelColorLogo from '../assets/viettel-logo-color.png';
+
+export { toTitleCase };
 
 export interface BillData {
     id: string; // Unique identifier for mapping
@@ -25,22 +28,7 @@ interface BillTemplateA5Props {
     data: BillData;
 }
 
-// Hàm chuẩn hóa viết hoa chữ cái đầu cho từ
-const toTitleCase = (str: string) => {
-    if (!str) return '';
-    return str
-        .toLowerCase()
-        .split(' ')
-        .filter(Boolean)
-        .map(word => {
-            // Giữ nguyên các ký hiệu viết tắt phổ biến
-            if (['q.12', 'q12', 'tp.hcm', 'tphcm'].includes(word)) {
-                return word.toUpperCase();
-            }
-            return word.charAt(0).toUpperCase() + word.slice(1);
-        })
-        .join(' ');
-};
+
 
 const BillTemplateA5: React.FC<BillTemplateA5Props> = ({ data }) => {
     // Format hiển thị số tiền có đơn vị đ

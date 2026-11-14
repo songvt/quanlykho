@@ -29,6 +29,7 @@ import BillTemplateA5 from '../components/BillTemplateA5';
 import type { BillData } from '../components/BillTemplateA5';
 import BankQrCard from '../components/BankQrCard';
 import { parseExcelNumber, numberToWordsVN, formatNumber } from '../utils/numberUtils';
+import { toTitleCase } from '../utils/format';
 import { supabase } from '../config/supabase';
 
 const STORAGE_KEY = 'PRINT_BILL_NOTIFICATION_DATA';
@@ -179,14 +180,14 @@ const PrintBillNotification: React.FC = () => {
 
                 parsedData.push({
                     id: Math.random().toString(36).substr(2, 9),
-                    customerName: getVal(1),
+                    customerName: toTitleCase(getVal(1)),
                     address: getVal(2),
                     phone: getVal(3),
-                    serviceMonth: getVal(4),
+                    serviceMonth: toTitleCase(getVal(4)),
                     amount: formatNumber(parsedAmountNum),
                     amountInWords: numberToWordsVN(parsedAmountNum),
                     dateString: getVal(6),
-                    collectorName: getVal(7),
+                    collectorName: toTitleCase(getVal(7)),
                     collectorPhone: getVal(8),
                     ...branchConfig
                 });
@@ -392,7 +393,7 @@ const PrintBillNotification: React.FC = () => {
         setError(null);
 
         // Chuẩn hóa nội dung tin nhắn gửi kèm
-        const shareText = `Kính gửi Quý khách ${billItem.customerName},\nViettel xin gửi Thông báo cước dịch vụ:\n- Thuê bao: ${billItem.phone}\n- Kỳ cước: ${billItem.serviceMonth}\n- Số tiền cần thanh toán: ${billItem.amount} đ\nTrân trọng cảm ơn Quý khách!`;
+        const shareText = `Kính gửi Quý khách ${toTitleCase(billItem.customerName)},\nViettel xin gửi Thông báo cước dịch vụ:\n- Thuê bao: ${billItem.phone}\n- Kỳ cước: ${toTitleCase(billItem.serviceMonth)}\n- Số tiền cần thanh toán: ${billItem.amount} đ\nTrân trọng cảm ơn Quý khách!`;
 
         // Tự động sao chép sẵn vào Clipboard ngay lập tức
         if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -658,7 +659,7 @@ const PrintBillNotification: React.FC = () => {
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <Chip label={index + 1} size="small" sx={{ height: 20, fontSize: '11px', fontWeight: 'bold' }} />
                                             <Typography sx={{ fontWeight: 'bold', fontSize: '15px' }}>
-                                                {row.customerName}
+                                                {toTitleCase(row.customerName)}
                                             </Typography>
                                         </Box>
                                         <Typography sx={{ fontWeight: 800, color: '#ee0033', fontSize: '16px' }}>
@@ -670,7 +671,7 @@ const PrintBillNotification: React.FC = () => {
                                     <Stack spacing={0.6} sx={{ fontSize: '13px', color: 'text.secondary', mb: 1.5 }}>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <PhoneIcon sx={{ fontSize: 15, color: '#3b82f6' }} />
-                                            <span>Thuê bao (Account): <Box component="span" sx={{ color: 'text.primary', fontWeight: 700, fontFamily: 'monospace', fontSize: '13.5px' }}>{row.phone}</Box></span>
+                                            <span>Thuê bao (Account): <Box component="span" sx={{ color: 'text.primary', fontWeight: 600, fontSize: '14px' }}>{row.phone}</Box></span>
                                         </Box>
                                         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                                             <LocationIcon sx={{ fontSize: 15, color: 'text.secondary', mt: 0.3 }} />
@@ -678,7 +679,7 @@ const PrintBillNotification: React.FC = () => {
                                         </Box>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <PaymentIcon sx={{ fontSize: 15, color: '#10b981' }} />
-                                            <span>{row.serviceMonth}</span>
+                                            <span>{toTitleCase(row.serviceMonth)}</span>
                                         </Box>
                                     </Stack>
 
@@ -687,7 +688,7 @@ const PrintBillNotification: React.FC = () => {
                                     {/* Hàng dưới: Các nút bấm thao tác lớn dễ chạm trên màn hình cảm ứng */}
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <Typography variant="caption" color="text.secondary">
-                                            NV: {row.collectorName}
+                                            NV: {toTitleCase(row.collectorName)}
                                         </Typography>
 
                                         <Stack direction="row" spacing={1}>
@@ -747,13 +748,13 @@ const PrintBillNotification: React.FC = () => {
                             <TableHead>
                                 <TableRow>
                                     <TableCell align="center" sx={{ width: 50 }}><b>STT</b></TableCell>
-                                    <TableCell><b>Khách Hàng</b></TableCell>
-                                    <TableCell><b>Thuê Bao</b></TableCell>
-                                    <TableCell><b>Địa Chỉ</b></TableCell>
-                                    <TableCell><b>Dịch Vụ & Tháng</b></TableCell>
-                                    <TableCell align="right"><b>Số Tiền</b></TableCell>
-                                    <TableCell><b>Bằng Chữ</b></TableCell>
-                                    <TableCell><b>Nhân Viên</b></TableCell>
+                                    <TableCell sx={{ minWidth: 160, whiteSpace: 'nowrap' }}><b>Khách Hàng</b></TableCell>
+                                    <TableCell sx={{ minWidth: 170, whiteSpace: 'nowrap' }}><b>Thuê Bao</b></TableCell>
+                                    <TableCell sx={{ minWidth: 240 }}><b>Địa Chỉ</b></TableCell>
+                                    <TableCell sx={{ minWidth: 190, whiteSpace: 'nowrap' }}><b>Dịch Vụ & Tháng</b></TableCell>
+                                    <TableCell align="right" sx={{ minWidth: 110, whiteSpace: 'nowrap' }}><b>Số Tiền</b></TableCell>
+                                    <TableCell sx={{ minWidth: 200 }}><b>Bằng Chữ</b></TableCell>
+                                    <TableCell sx={{ minWidth: 150, whiteSpace: 'nowrap' }}><b>Nhân Viên</b></TableCell>
                                     <TableCell align="center" sx={{ minWidth: 120 }}><b>Thao Tác</b></TableCell>
                                 </TableRow>
                             </TableHead>
@@ -770,15 +771,15 @@ const PrintBillNotification: React.FC = () => {
                                     filteredData.map((row, index) => (
                                         <TableRow hover key={row.id}>
                                             <TableCell align="center">{index + 1}</TableCell>
-                                            <TableCell sx={{ fontWeight: 600 }}>{row.customerName}</TableCell>
-                                            <TableCell sx={{ fontFamily: 'monospace' }}>{row.phone}</TableCell>
-                                            <TableCell sx={{ maxWidth: 260 }}>{row.address}</TableCell>
-                                            <TableCell>{row.serviceMonth}</TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 700, color: '#ee0033' }}>
+                                            <TableCell sx={{ fontWeight: 600, fontSize: '14px', whiteSpace: 'nowrap' }}>{toTitleCase(row.customerName)}</TableCell>
+                                            <TableCell sx={{ fontSize: '14px', fontWeight: 500, whiteSpace: 'nowrap' }}>{row.phone}</TableCell>
+                                            <TableCell sx={{ maxWidth: 300, fontSize: '14px' }}>{row.address}</TableCell>
+                                            <TableCell sx={{ fontSize: '14px' }}>{toTitleCase(row.serviceMonth)}</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 700, color: '#ee0033', fontSize: '14.5px', whiteSpace: 'nowrap' }}>
                                                 {row.amount} đ
                                             </TableCell>
-                                            <TableCell sx={{ fontStyle: 'italic', fontSize: '13px' }}>{row.amountInWords}</TableCell>
-                                            <TableCell>{row.collectorName}</TableCell>
+                                            <TableCell sx={{ fontStyle: 'italic', fontSize: '13.5px' }}>{row.amountInWords}</TableCell>
+                                            <TableCell sx={{ fontSize: '14px', whiteSpace: 'nowrap' }}>{toTitleCase(row.collectorName)}</TableCell>
                                             <TableCell align="center">
                                                 <Stack direction="row" spacing={0.5} justifyContent="center">
                                                     {/* Nút tải PDF đơn lẻ */}

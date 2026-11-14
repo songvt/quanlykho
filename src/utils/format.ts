@@ -55,3 +55,20 @@ export const formatPhone = (phone: string | undefined | null): string => {
     }
     return clean;
 };
+
+// Hàm chuẩn hóa viết hoa chữ cái đầu cho từ (Title Case), giữ nguyên các từ viết tắt phổ biến
+export const toTitleCase = (str: string | undefined | null): string => {
+    if (!str) return '';
+    return str
+        .toLowerCase()
+        .split(' ')
+        .filter(Boolean)
+        .map(word => {
+            // Giữ nguyên các ký hiệu viết tắt phổ biến
+            if (['q.12', 'q12', 'tp.hcm', 'tphcm', 'ftth', 'gftth'].includes(word)) {
+                return word.toUpperCase();
+            }
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        })
+        .join(' ');
+};
