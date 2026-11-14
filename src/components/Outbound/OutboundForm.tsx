@@ -35,14 +35,14 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
     const { items: employees } = useSelector((state: RootState) => state.employees);
     const { profile } = useSelector((state: RootState) => state.auth);
     const isAdmin = profile?.role === 'admin' || profile?.role === 'manager';
-    const { success, error: notifyError } = useNotification();
+    const { success, error: notifyError, warning: notifyWarning } = useNotification();
 
     // Form state
     const [selectedProduct, setSelectedProduct] = useState('');
     const [quantity, setQuantity] = useState(1);
     const [serial, setSerial] = useState('');
     const [receiver, setReceiver] = useState(isAdmin ? '' : (profile?.full_name || ''));
-    const [district, setDistrict] = useState(profile?.district || '');
+    const [district, setDistrict] = useState('');
     const [warehouseType, setWarehouseType] = useState('');
     const [itemStatus, setItemStatus] = useState('Hàng mới');
     const [scannedSerials, setScannedSerials] = useState<string[]>([]);
@@ -54,8 +54,14 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
         selectDetailedStock(state, selectedProduct, district, itemStatus)
     );
     const warehouseDetailedStock = useSelector(selectWarehouseDetailedStockMap);
+    const resolvedDistrict = district || (
+        warehouseType.endsWith('Q12') ? 'Q12' :
+        warehouseType.endsWith('HMN') ? 'HMN' :
+        warehouseType.endsWith('CCI') ? 'CCI' : ''
+    );
     const currentWarehouseStock = warehouseType
-        ? (warehouseDetailedStock[`${selectedProduct}|${district}|${itemStatus}|${warehouseType}`] || 0)
+        ? (warehouseDetailedStock[`${selectedProduct}|${resolvedDistrict}|${itemStatus}|${warehouseType}`] ?? 
+           (warehouseDetailedStock[`${selectedProduct}|${district}|${itemStatus}|${warehouseType}`] ?? 0))
         : 0;
 
     const handleScanSuccess = useCallback((decodedText: string) => {
@@ -125,20 +131,29 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
 
         if (isSerialized && serialList.length === 0) return notifyError('Vui lòng quét serial');
         
+        // Kiểm tra tồn kho
         if (totalQuantity > currentTotalStock) {
             if (!isAdmin) {
-                return notifyError(`Vượt quá tổng tồn kho (${currentTotalStock})`);
+                return notifyError(`Vượt quá tổng tồn kho (Hiện có: ${currentTotalStock})`);
             } else {
-                // Admin can proceed but gets a warning
-                success(`⚠️ Tổng tồn kho không đủ (Có: ${currentTotalStock}) — Đang xuất âm!`);
+                notifyWarning(`⚠️ Cảnh báo: Vượt quá tổng tồn kho (Hiện có: ${currentTotalStock}) — Đang xuất âm theo quyền Admin!`);
             }
         }
         
-        if (isAdmin && district && totalQuantity > currentDetailedStock) {
-             success(`⚠️ Kho "${district}" không đủ tồn (Có: ${currentDetailedStock}) — Đang xuất âm!`);
+        if (district && totalQuantity > currentDetailedStock) {
+            if (!isAdmin) {
+                return notifyError(`Kho "${district}" không đủ tồn (Hiện có: ${currentDetailedStock})`);
+            } else {
+                notifyWarning(`⚠️ Cảnh báo: Kho "${district}" không đủ tồn (Hiện có: ${currentDetailedStock}) — Đang xuất âm theo quyền Admin!`);
+            }
         }
+
         if (totalQuantity > currentWarehouseStock) {
-            return notifyError(`Kho ${warehouseType} không đủ tồn (Có: ${currentWarehouseStock})`);
+            if (!isAdmin) {
+                return notifyError(`Kho ${warehouseType} không đủ tồn (Hiện có: ${currentWarehouseStock})`);
+            } else {
+                notifyWarning(`⚠️ Cảnh báo: Kho ${warehouseType} không đủ tồn (Hiện có: ${currentWarehouseStock}) — Đang xuất âm theo quyền Admin!`);
+            }
         }
 
         setIsSaving(true);
@@ -146,6 +161,7 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
             const newTransactions: any[] = [];
             const price = product?.unit_price || 0;
             const productName = product?.name || selectedProduct;
+            const saveDistrict = district || resolvedDistrict;
 
             if (isSerialized) {
                 const txPayloads = serialList.map(code => ({
@@ -156,7 +172,7 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
                     receiver_name: receiver,
                     receiver_group: receiver,
                     unit_price: price, 
-                    district, 
+                    district: saveDistrict, 
                     item_status: itemStatus,
                     warehouse_type: warehouseType,
                     user_id: profile?.id,
@@ -173,7 +189,7 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
                     group_name: receiver, 
                     receiver_name: receiver,
                     receiver_group: receiver,
-                    unit_price: price, district, item_status: itemStatus,
+                    unit_price: price, district: saveDistrict, item_status: itemStatus,
                     warehouse_type: warehouseType,
                     user_id: profile?.id,
                     created_by: profile?.full_name || profile?.username || profile?.email || 'system'
@@ -235,7 +251,7 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
                         onChange={(_, nv: any) => {
                             if (typeof nv === 'object' && nv) {
                                 setReceiver(nv.full_name || '');
-                                setDistrict(nv.district || '');
+                                // Không tự động nhảy kho xuất theo quận/huyện của nhân viên nhận
                             }
                         }}
                         renderInput={(params) => <TextField {...params} label="Người nhận" size="small" />}
@@ -256,7 +272,15 @@ const OutboundForm: React.FC<OutboundFormProps> = ({ onSuccess }) => {
 
                 <Grid size={{ xs: 12, md: 3 }}>
                     <TextField fullWidth select required label="Kho xuất" value={warehouseType}
-                        onChange={e => setWarehouseType(e.target.value)} size="small">
+                        onChange={e => {
+                            const val = e.target.value;
+                            setWarehouseType(val);
+                            if (!district && val) {
+                                if (val.endsWith('Q12')) setDistrict('Q12');
+                                else if (val.endsWith('HMN')) setDistrict('HMN');
+                                else if (val.endsWith('CCI')) setDistrict('CCI');
+                            }
+                        }} size="small">
                         <MenuItem value=""><em>-- Chọn kho --</em></MenuItem>
                         {WAREHOUSE_TYPES.map(warehouse => <MenuItem key={warehouse} value={warehouse}>{warehouse}</MenuItem>)}
                     </TextField>
