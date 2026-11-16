@@ -16,6 +16,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 
 import { fetchAssets } from '../../store/slices/assetsSlice';
 import { fetchHRProfiles } from '../../store/slices/hrProfilesSlice';
@@ -27,6 +28,8 @@ import { exportEmployeeHandoverSummary, exportHandoverHistory } from '../../util
 import { saveAssetHandoverHistory } from '../../services/assetHandoverHistory';
 import { getDefaultSecondGiver } from '../../utils/assetHandoverGiver';
 import { createDefaultBhlItems, formatBhlItemNote, splitBhlItemNote, type BhlItem } from '../../utils/assetBhlItems';
+import { AssetHandoverBatchModal } from './AssetHandoverBatchModal';
+import { generateBhlHandoverTemplate } from '../../utils/assetBhlBatch';
 
 const AssetHandoverBhl: React.FC = () => {
     const theme = useTheme();
@@ -60,6 +63,9 @@ const AssetHandoverBhl: React.FC = () => {
 
     // 12 Safety Protective Equipment (CCDC-BHLĐ) Items State (including Dép rọ)
     const [bhlItems, setBhlItems] = useState<BhlItem[]>(createDefaultBhlItems());
+
+    // Batch import modal state
+    const [batchModalOpen, setBatchModalOpen] = useState(false);
 
     // History logs State
     const [history, setHistory] = useState<any[]>([]);
@@ -190,6 +196,15 @@ const AssetHandoverBhl: React.FC = () => {
             setBhlItems(restored);
         }
         success('Đã tải lại biên bản lịch sử lên màn hình xem trước.');
+    };
+
+    const handleDownloadTemplate = async () => {
+        try {
+            await generateBhlHandoverTemplate();
+            success('Đã tải xuống file mẫu import bàn giao BHLĐ.');
+        } catch (err: any) {
+            error('Lỗi khi tải file mẫu: ' + (err?.message || 'Không thể tạo file'));
+        }
     };
 
     const handleSaveAndPrint = async () => {
@@ -410,27 +425,63 @@ const AssetHandoverBhl: React.FC = () => {
                         Cấu hình và in trực quan Biên bản CCDC-BHLĐ cho nhân viên kỹ thuật
                     </Typography>
                 </Box>
-                <Button
-                    variant="contained"
-                    startIcon={<PrintIcon />}
-                    onClick={handleSaveAndPrint}
-                    size="large"
-                    disabled={templateType === 'default' ? employeeAssets.length === 0 : activeBhlItems.length === 0}
-                    sx={{
-                        background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                        boxShadow: '0 4px 12px rgba(37,99,235,0.2)',
-                        textTransform: 'none',
-                        px: 3,
-                        py: 1.2,
-                        borderRadius: 2,
-                        fontWeight: 700,
-                        '&:hover': {
-                            background: 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)',
-                        }
-                    }}
-                >
-                    In biên bản
-                </Button>
+                <Stack direction="row" spacing={1.5} flexWrap="wrap">
+                    <Button
+                        variant="outlined"
+                        startIcon={<FileDownloadIcon />}
+                        onClick={handleDownloadTemplate}
+                        size="medium"
+                        sx={{
+                            borderRadius: 2,
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            borderColor: '#cbd5e1',
+                            color: 'var(--text-primary)',
+                            '&:hover': {
+                                borderColor: '#0284c7',
+                                bgcolor: 'rgba(2, 132, 199, 0.05)',
+                            }
+                        }}
+                    >
+                        Tải mẫu Excel
+                    </Button>
+
+                    <Button
+                        variant="outlined"
+                        startIcon={<UploadFileIcon />}
+                        onClick={() => setBatchModalOpen(true)}
+                        size="medium"
+                        color="primary"
+                        sx={{
+                            borderRadius: 2,
+                            textTransform: 'none',
+                            fontWeight: 600,
+                        }}
+                    >
+                        Import Excel in hàng loạt
+                    </Button>
+
+                    <Button
+                        variant="contained"
+                        startIcon={<PrintIcon />}
+                        onClick={handleSaveAndPrint}
+                        size="medium"
+                        disabled={templateType === 'default' ? employeeAssets.length === 0 : activeBhlItems.length === 0}
+                        sx={{
+                            background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                            boxShadow: '0 4px 12px rgba(37,99,235,0.2)',
+                            textTransform: 'none',
+                            px: 2.5,
+                            borderRadius: 2,
+                            fontWeight: 700,
+                            '&:hover': {
+                                background: 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)',
+                            }
+                        }}
+                    >
+                        In biên bản
+                    </Button>
+                </Stack>
             </Box>
 
             <Grid container spacing={4}>
@@ -1038,6 +1089,15 @@ const AssetHandoverBhl: React.FC = () => {
                 </Grid>
 
             </Grid>
+            {/* Modal Import & In hàng loạt */}
+            <AssetHandoverBatchModal
+                open={batchModalOpen}
+                onClose={() => setBatchModalOpen(false)}
+                hrProfiles={hrProfiles}
+                giverInfo={giverInfo}
+                actionType={actionType}
+                onBatchCompleted={fetchHistory}
+            />
         </Box>
     );
 };
