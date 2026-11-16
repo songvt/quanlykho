@@ -66,6 +66,7 @@ export const generateBhlHandoverTemplate = async () => {
         'Áo thun ACT',
         'Áo sơ mi',
         'Găng tay',
+        'Áo phản quang màu xanh chuối',
         'Ghi chú'
     ];
 
@@ -89,6 +90,7 @@ export const generateBhlHandoverTemplate = async () => {
         14,  // Áo thun
         12,  // Áo sơ mi
         12,  // Găng tay
+        22,  // Áo phản quang màu xanh chuối
         25   // Ghi chú
     ];
 
@@ -109,11 +111,11 @@ export const generateBhlHandoverTemplate = async () => {
 
         // Color categories:
         // Cols 1-7: Employee info (Navy blue #003087)
-        // Cols 8-19: Equipment quantities (Teal #0D5C75)
-        // Col 20: Note (Slate #334155)
+        // Cols 8-20: Equipment quantities (Teal #0D5C75)
+        // Col 21: Note (Slate #334155)
         if (colNumber <= 7) {
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF003087' } };
-        } else if (colNumber <= 19) {
+        } else if (colNumber <= 20) {
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0D5C75' } };
         } else {
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF334155' } };
@@ -132,19 +134,19 @@ export const generateBhlHandoverTemplate = async () => {
         [
             1, 'ACT001', 'LƯU TẤN THÀNH', 'Nhân viên Kỹ thuật CĐBR', 'Lực lượng kỹ thuật CĐBR Bắc Sài Gòn',
             'L', '42',
-            1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 2,
+            1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 2, 1,
             'Cấp mới định kỳ đợt 1'
         ],
         [
             2, 'ACT002', 'NGUYỄN VĂN AN', 'Nhân viên Kỹ thuật CĐBR', 'Lực lượng kỹ thuật CĐBR Bắc Sài Gòn',
             'XL', '41',
-            1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1,
+            1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1,
             ''
         ],
         [
             3, 'ACT003', 'TRẦN MINH TÂM', 'Trưởng nhóm Kỹ thuật', 'Trung tâm ACT Bắc Sài Gòn',
             'M', '40',
-            1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2,
+            1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 2, 1,
             'Cấp bổ sung trạm viễn thông'
         ]
     ];
@@ -161,9 +163,9 @@ export const generateBhlHandoverTemplate = async () => {
                 right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
             };
 
-            // Text columns: Name (3), Title (4), Dept (5), Note (20) -> left
+            // Text columns: Name (3), Title (4), Dept (5), Note (21) -> left
             // Number / size columns -> center
-            const leftCols = [3, 4, 5, 20];
+            const leftCols = [3, 4, 5, 21];
             cell.alignment = {
                 vertical: 'middle',
                 horizontal: leftCols.includes(colNumber) ? 'left' : 'center'
@@ -244,6 +246,7 @@ export const parseBhlHandoverExcel = async (
                 else if (normalized.includes('ao thun')) colIndexMap['item_10'] = colNumber;
                 else if (normalized.includes('ao so mi') || normalized.includes('so mi')) colIndexMap['item_11'] = colNumber;
                 else if (normalized.includes('gang tay')) colIndexMap['item_12'] = colNumber;
+                else if (normalized.includes('phan quang') || normalized.includes('xanh chuoi')) colIndexMap['item_13'] = colNumber;
                 else if (normalized.includes('ghi chu')) colIndexMap['note'] = colNumber;
             });
         }

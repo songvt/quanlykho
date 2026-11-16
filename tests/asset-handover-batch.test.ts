@@ -122,26 +122,26 @@ test('parseBhlHandoverExcel filters out column numbering and summary rows', asyn
     sheet.addRow([
         'STT', 'Mã NV', 'Họ và tên', 'Chức vụ', 'Đơn vị', 'Size quần áo', 'Size giày/dép',
         '1. Dây đai 1 móc', '2. Dây đai 2 móc', '3. Mũ cứng', '4. Quần áo BHLĐ', '5. Áo mùa đông',
-        '6. Giày BHLĐ', '7. Dép rọ', '8. Bảng tên', '9. Áo gió', '10. Áo thun ACT', '11. Áo sơ mi', '12. Găng tay', 'Ghi chú'
+        '6. Giày BHLĐ', '7. Dép rọ', '8. Bảng tên', '9. Áo gió', '10. Áo thun ACT', '11. Áo sơ mi', '12. Găng tay', '13. Áo phản quang màu xanh chuối', 'Ghi chú'
     ]);
 
-    // Row 2: Numbering instruction row (1..20)
+    // Row 2: Numbering instruction row (1..21)
     sheet.addRow([
         '1', '2', '3', '4', '5', '6', '7',
-        '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20'
+        '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21'
     ]);
 
     // Row 3: Real employee
     sheet.addRow([
         1, 'ACT001', 'NGUYỄN VĂN A', 'Nhân viên Kỹ thuật CĐBR', 'Lực lượng kỹ thuật CĐBR',
         'L', '41',
-        1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 2, 'Ghi chú A'
+        1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 2, 1, 'Ghi chú A'
     ]);
 
     // Row 4: Summary row
     sheet.addRow([
         '', '', 'TỔNG CỘNG', '', '', '', '',
-        1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 2, ''
+        1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 2, 1, ''
     ]);
 
     const buffer = await workbook.xlsx.writeBuffer();
@@ -156,4 +156,9 @@ test('parseBhlHandoverExcel filters out column numbering and summary rows', asyn
     assert.equal(employees[0].fullName, 'NGUYỄN VĂN A');
     assert.equal(employees[0].employeeId, 'ACT001');
     assert.equal(employees[0].shoeSize, '41');
+
+    const phanQuang = employees[0].items.find(i => i.name === 'Áo phản quang màu xanh chuối');
+    assert.ok(phanQuang);
+    assert.equal(phanQuang.quantity, 1);
+    assert.equal(phanQuang.unit, 'Cái');
 });

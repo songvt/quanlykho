@@ -24,7 +24,7 @@ test('does not treat an unsuccessful history response as saved', async () => {
 
 test('includes Dép rọ with unit Đôi directly after Giày Bảo Hộ Lao Động in default BHL items', () => {
     const items = createDefaultBhlItems();
-    assert.equal(items.length, 12);
+    assert.equal(items.length, 13);
 
     const giayIndex = items.findIndex(i => i.name === 'Giày Bảo Hộ Lao Động');
     assert.ok(giayIndex >= 0);
@@ -35,6 +35,12 @@ test('includes Dép rọ with unit Đôi directly after Giày Bảo Hộ Lao Đ�
     assert.equal(depRoItem.unit, 'Đôi');
     assert.equal(depRoItem.contract, '≥ 1');
     assert.equal(depRoItem.quota, '1 Đôi/1 NV');
+
+    const phanQuangItem = items.find(i => i.name === 'Áo phản quang màu xanh chuối');
+    assert.ok(phanQuangItem);
+    assert.equal(phanQuangItem.unit, 'Cái');
+    assert.equal(phanQuangItem.stt, 13);
+    assert.equal(phanQuangItem.quota, '1 Cái/1 NV');
 });
 
 test('formatBhlItemNote avoids duplicate size prefixes for Dép rọ', () => {

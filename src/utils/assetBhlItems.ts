@@ -23,6 +23,7 @@ export const createDefaultBhlItems = (): BhlItem[] => [
     { stt: 10, name: 'Áo thun ACT', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo thun đồng phục ACT', serial: '', note: '' },
     { stt: 11, name: 'Áo sơ mi', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo sơ mi đồng phục', serial: '', note: '' },
     { stt: 12, name: 'Găng tay', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Găng tay bảo hộ lao động', serial: '', note: '' },
+    { stt: 13, name: 'Áo phản quang màu xanh chuối', unit: 'Cái', contract: '≥ 1', quota: '1 Cái/1 NV', quantity: 0, spec: 'Áo phản quang màu xanh chuối', serial: '', note: '' },
 ];
 
 /**
