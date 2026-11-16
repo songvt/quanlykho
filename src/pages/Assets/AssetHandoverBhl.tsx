@@ -4,7 +4,8 @@ import {
     Box, Paper, Typography, Button, TextField, Grid, Stack, Divider,
     Radio, RadioGroup, FormControlLabel, FormControl, FormLabel,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-    Autocomplete, IconButton, Card, CardContent, InputAdornment, useTheme, useMediaQuery, Tooltip
+    Autocomplete, IconButton, Card, CardContent, InputAdornment, useTheme, useMediaQuery, Tooltip,
+    CircularProgress
 } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
 import RotateLeftIcon from '@mui/icons-material/RotateLeft';
@@ -66,6 +67,8 @@ const AssetHandoverBhl: React.FC = () => {
 
     // Batch import modal state
     const [batchModalOpen, setBatchModalOpen] = useState(false);
+    const [isPrinting, setIsPrinting] = useState(false);
+    const isPrintingRef = useRef(false);
 
     // History logs State
     const [history, setHistory] = useState<any[]>([]);
@@ -208,10 +211,21 @@ const AssetHandoverBhl: React.FC = () => {
     };
 
     const handleSaveAndPrint = async () => {
+        if (isPrintingRef.current || isPrinting) return;
+
         if (!receiverName) {
             error('Vui lòng nhập Họ tên bên nhận trước khi thực hiện!');
             return;
         }
+
+        const printHtml = printRef.current?.innerHTML;
+        if (!printHtml) {
+            error('Không tìm thấy nội dung biên bản để in!');
+            return;
+        }
+
+        isPrintingRef.current = true;
+        setIsPrinting(true);
 
         try {
             const itemsToSave = templateType === 'default'
@@ -240,6 +254,11 @@ const AssetHandoverBhl: React.FC = () => {
         } catch (err) {
             console.error('Lỗi khi tự động lưu lịch sử:', err);
             error(err instanceof Error ? err.message : 'Không thể lưu lịch sử bàn giao. Vui lòng thử lại.');
+        } finally {
+            setTimeout(() => {
+                isPrintingRef.current = false;
+                setIsPrinting(false);
+            }, 600);
         }
     };
 
@@ -354,62 +373,105 @@ const AssetHandoverBhl: React.FC = () => {
         success('Đã đặt lại cấu hình mặc định.');
     };
 
+    const buildPrintHtml = (content: string) => `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8"/>
+            <title>In Biên Bản</title>
+            <style>
+                @page { size: A4 portrait; margin: 20mm 15mm 20mm 30mm; }
+                * { box-sizing: border-box; }
+                body { font-family: 'Times New Roman', Times, serif; font-size: 13pt; color: #000; margin: 0; padding: 0; line-height: 1.35; }
+                /* Preserve the compact inline sizes in the document so the BHLĐ
+                   handover record, including signatures, remains on one A4 page. */
+                body * { color: #000 !important; }
+                body .document-title { font-size: 16pt !important; }
+                .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+                .header-left { width: 55%; display: flex; align-items: center; gap: 10px; }
+                .header-right { width: 45%; text-align: center; }
+                .logo-box { width: 55px; height: 55px; background: #cc0000; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14pt; border-radius: 4px; flex-shrink: 0; }
+                .company-name, .company-sub, .republic, .motto { font-size: 13pt; font-weight: bold; text-align: center; }
+                .motto { text-decoration: underline; }
+                .date-line { text-align: right; font-style: italic; font-size: 13pt; margin: 10px 0 6px; }
+                .title { text-align: center; font-size: 16pt; font-weight: bold; color: #000; margin: 14px 0 18px; text-transform: uppercase; }
+                .section-label { font-weight: bold; font-size: 13pt; margin: 6px 0 2px; }
+                .person-row { display: flex; font-size: 13pt; margin: 3px 0; align-items: center; }
+                .person-label { width: 120px; font-weight: bold; }
+                .person-name { width: 200px; flex: 0 0 200px; font-weight: bold; text-transform: uppercase; }
+                .person-right { display: flex; flex: 1; align-items: center; }
+                .person-title-label { font-weight: bold; width: 75px; }
+                .person-title-val { flex: 1; }
+                .person-phone { width: 110px; text-align: right; }
+                table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13pt; }
+                th { background: #fff; border: 1px solid #000; padding: 5px 4px; text-align: center; font-weight: bold; }
+                td { border: 1px solid #000; padding: 4px; vertical-align: middle; word-wrap: break-word; overflow-wrap: break-word; }
+                td.note-cell { font-size: 8.5pt; line-height: 1.35; vertical-align: top; }
+                .footer-note { font-style: italic; font-size: 13pt; margin-top: 8px; border-top: 1px solid #000; padding-top: 6px; text-align: justify; }
+                .signatures { display: flex; justify-content: space-between; margin-top: 30px; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+                .sig-block { width: 30%; }
+                .sig-title, .sig-sub { font-size: 13pt; }
+                .sig-title { font-weight: bold; }
+                .sig-sub { font-style: italic; margin-top: 2px; }
+                .sig-space { height: 55px; }
+            </style>
+        </head>
+        <body>
+            ${content}
+        </body>
+        </html>
+    `;
+
     const handlePrint = () => {
         const content = printRef.current?.innerHTML;
         if (!content) return;
-        const w = window.open('', '_blank', 'width=1000,height=800');
-        if (!w) return;
-        w.document.write(`
-            <html>
-            <head>
-                <meta charset="utf-8"/>
-                <title>In Biên Bản</title>
-                <style>
-                    @page { size: A4 portrait; margin: 20mm 15mm 20mm 30mm; }
-                    * { box-sizing: border-box; }
-                    body { font-family: 'Times New Roman', Times, serif; font-size: 13pt; color: #000; margin: 0; padding: 0; line-height: 1.35; }
-                    /* Preserve the compact inline sizes in the document so the BHLĐ
-                       handover record, including signatures, remains on one A4 page. */
-                    body * { color: #000 !important; }
-                    body .document-title { font-size: 16pt !important; }
-                    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
-                    .header-left { width: 55%; display: flex; align-items: center; gap: 10px; }
-                    .header-right { width: 45%; text-align: center; }
-                    .logo-box { width: 55px; height: 55px; background: #cc0000; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14pt; border-radius: 4px; flex-shrink: 0; }
-                    .company-name, .company-sub, .republic, .motto { font-size: 13pt; font-weight: bold; text-align: center; }
-                    .motto { text-decoration: underline; }
-                    .date-line { text-align: right; font-style: italic; font-size: 13pt; margin: 10px 0 6px; }
-                    .title { text-align: center; font-size: 16pt; font-weight: bold; color: #000; margin: 14px 0 18px; text-transform: uppercase; }
-                    .section-label { font-weight: bold; font-size: 13pt; margin: 6px 0 2px; }
-                    .person-row { display: flex; font-size: 13pt; margin: 3px 0; align-items: center; }
-                    .person-label { width: 120px; font-weight: bold; }
-                    .person-name { width: 200px; flex: 0 0 200px; font-weight: bold; text-transform: uppercase; }
-                    .person-right { display: flex; flex: 1; align-items: center; }
-                    .person-title-label { font-weight: bold; width: 75px; }
-                    .person-title-val { flex: 1; }
-                    .person-phone { width: 110px; text-align: right; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13pt; }
-                    th { background: #fff; border: 1px solid #000; padding: 5px 4px; text-align: center; font-weight: bold; }
-                    td { border: 1px solid #000; padding: 4px; vertical-align: middle; word-wrap: break-word; overflow-wrap: break-word; }
-                    td.note-cell { font-size: 8.5pt; line-height: 1.35; vertical-align: top; }
-                    .footer-note { font-style: italic; font-size: 13pt; margin-top: 8px; border-top: 1px solid #000; padding-top: 6px; text-align: justify; }
-                    .signatures { display: flex; justify-content: space-between; margin-top: 30px; text-align: center; break-inside: avoid; page-break-inside: avoid; }
-                    .sig-block { width: 30%; }
-                    .sig-title, .sig-sub { font-size: 13pt; }
-                    .sig-title { font-weight: bold; }
-                    .sig-sub { font-style: italic; margin-top: 2px; }
-                    .sig-space { height: 55px; }
-                </style>
-            </head>
-            <body>
-                ${content}
-                <script>
-                    window.onload = function() { window.print(); window.close(); }
-                </script>
-            </body>
-            </html>
-        `);
-        w.document.close();
+
+        // Ưu tiên in qua iframe ẩn để hộp thoại in hiện ngay lập tức, không bị trình duyệt chặn popup sau async
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        iframe.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(iframe);
+
+        const frameDoc = iframe.contentWindow?.document || iframe.contentDocument;
+        if (!frameDoc) {
+            if (document.body.contains(iframe)) document.body.removeChild(iframe);
+            // Fallback sang window.open nếu môi trường không cho phép truy cập iframe
+            const w = window.open('', '_blank', 'width=1000,height=800');
+            if (w) {
+                w.document.write(buildPrintHtml(content));
+                w.document.close();
+                setTimeout(() => {
+                    w.focus();
+                    w.print();
+                    w.close();
+                }, 300);
+            }
+            return;
+        }
+
+        frameDoc.open();
+        frameDoc.write(buildPrintHtml(content));
+        frameDoc.close();
+
+        setTimeout(() => {
+            try {
+                iframe.contentWindow?.focus();
+                iframe.contentWindow?.print();
+            } catch (err) {
+                console.error('Lỗi khi kích hoạt in:', err);
+            } finally {
+                setTimeout(() => {
+                    if (document.body.contains(iframe)) {
+                        document.body.removeChild(iframe);
+                    }
+                }, 60000);
+            }
+        }, 150);
     };
 
     return (
@@ -463,10 +525,10 @@ const AssetHandoverBhl: React.FC = () => {
 
                     <Button
                         variant="contained"
-                        startIcon={<PrintIcon />}
+                        startIcon={isPrinting ? <CircularProgress size={18} color="inherit" /> : <PrintIcon />}
                         onClick={handleSaveAndPrint}
                         size="medium"
-                        disabled={templateType === 'default' ? employeeAssets.length === 0 : activeBhlItems.length === 0}
+                        disabled={isPrinting || (templateType === 'default' ? employeeAssets.length === 0 : activeBhlItems.length === 0)}
                         sx={{
                             background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
                             boxShadow: '0 4px 12px rgba(37,99,235,0.2)',
@@ -476,10 +538,14 @@ const AssetHandoverBhl: React.FC = () => {
                             fontWeight: 700,
                             '&:hover': {
                                 background: 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)',
+                            },
+                            '&.Mui-disabled': {
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                background: 'linear-gradient(135deg, #93c5fd 0%, #60a5fa 100%)',
                             }
                         }}
                     >
-                        In biên bản
+                        {isPrinting ? 'Đang chuẩn bị in...' : 'In biên bản'}
                     </Button>
                 </Stack>
             </Box>
