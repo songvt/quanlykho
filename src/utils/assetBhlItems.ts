@@ -24,3 +24,38 @@ export const createDefaultBhlItems = (): BhlItem[] => [
     { stt: 11, name: 'Áo sơ mi', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo sơ mi đồng phục', serial: '', note: '' },
     { stt: 12, name: 'Găng tay', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Găng tay bảo hộ lao động', serial: '', note: '' },
 ];
+
+/**
+ * Renders or formats the note for a safety equipment item (CCDC-BHLĐ).
+ * Automatically prepends employee size for clothes, shoes, or Dép rọ,
+ * and strips any duplicate size prefixes (e.g. from history reloads or repeated saves).
+ */
+export const formatBhlItemNote = (
+    item: BhlItem,
+    uniformSize?: string,
+    shoeSize?: string
+): string => {
+    const isClothes = item.name.toLowerCase().includes('quần áo');
+    const isShoe = item.name.toLowerCase().includes('giày');
+    const isDepRo = item.name.toLowerCase().includes('dép');
+
+    if (isClothes) {
+        if (uniformSize && uniformSize.trim()) {
+            const sizeStr = `Size: ${uniformSize.trim()}`;
+            const cleaned = item.note ? item.note.replace(/^(?:size\s*:?\s*[a-z0-9]*\s*[-–\n\s]*)+/i, '').trim() : '';
+            return cleaned ? `${sizeStr} - ${cleaned}` : sizeStr;
+        }
+        return item.note || '';
+    }
+
+    if (isShoe || isDepRo) {
+        if (shoeSize && shoeSize.trim()) {
+            const sizeStr = `Size: ${shoeSize.trim()}`;
+            const cleaned = item.note ? item.note.replace(/^(?:size\s*:?\s*\d*\s*[-–\n\s]*)+/i, '').trim() : '';
+            return cleaned ? `${sizeStr} - ${cleaned}` : sizeStr;
+        }
+        return item.note || '';
+    }
+
+    return item.note || '';
+};

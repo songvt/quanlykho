@@ -1,5 +1,5 @@
 ﻿import React, { useRef, useState, useMemo } from 'react';
-import { createDefaultBhlItems, type BhlItem } from '../../utils/assetBhlItems';
+import { createDefaultBhlItems, formatBhlItemNote, type BhlItem } from '../../utils/assetBhlItems';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     Button, Box, Typography, Stack, Divider,
@@ -80,33 +80,7 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
     }, [handoverInfo.shoeSize, bhlItems]);
 
     const getRenderedItemNote = (item: BhlItem) => {
-        const isClothes = item.name.toLowerCase().includes('quần áo');
-        const isShoe = item.name.toLowerCase().includes('giày');
-        const isDepRo = item.name.toLowerCase().includes('dép');
-
-        if (isClothes && handoverInfo.uniformSize) {
-            const sizeStr = `Size: ${handoverInfo.uniformSize}`;
-            if (!item.note) return sizeStr;
-            if (item.note.toLowerCase().includes('size:')) return item.note;
-            return `${sizeStr} - ${item.note}`;
-        }
-
-        if (isShoe && giayShoeSize) {
-            const sizeStr = `Size: ${giayShoeSize}`;
-            if (!item.note) return sizeStr;
-            if (item.note.toLowerCase().includes('size:')) return item.note;
-            return `${sizeStr} - ${item.note}`;
-        }
-
-        if (isDepRo) {
-            if (giayShoeSize) {
-                const sizeStr = `Size: ${giayShoeSize}`;
-                return item.note ? `${sizeStr}\n${item.note}` : sizeStr;
-            }
-            return item.note || '';
-        }
-
-        return item.note || '';
+        return formatBhlItemNote(item, handoverInfo.uniformSize, giayShoeSize);
     };
 
     const totalQty = templateType === 'default'

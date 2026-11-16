@@ -26,7 +26,7 @@ import { formatPhone } from '../../utils/format';
 import { exportEmployeeHandoverSummary, exportHandoverHistory } from '../../utils/excelUtils';
 import { saveAssetHandoverHistory } from '../../services/assetHandoverHistory';
 import { getDefaultSecondGiver } from '../../utils/assetHandoverGiver';
-import { createDefaultBhlItems, type BhlItem } from '../../utils/assetBhlItems';
+import { createDefaultBhlItems, formatBhlItemNote, type BhlItem } from '../../utils/assetBhlItems';
 
 const AssetHandoverBhl: React.FC = () => {
     const theme = useTheme();
@@ -298,33 +298,7 @@ const AssetHandoverBhl: React.FC = () => {
     }, [selectedEmployee, bhlItems]);
 
     const getRenderedItemNote = (item: BhlItem) => {
-        const isClothes = item.name.toLowerCase().includes('quần áo');
-        const isShoe = item.name.toLowerCase().includes('giày');
-        const isDepRo = item.name.toLowerCase().includes('dép');
-
-        if (isClothes && selectedEmployee?.uniform_size) {
-            const sizeStr = `Size: ${selectedEmployee.uniform_size}`;
-            if (!item.note) return sizeStr;
-            if (item.note.toLowerCase().includes('size:')) return item.note;
-            return `${sizeStr} - ${item.note}`;
-        }
-
-           if (isShoe && giayShoeSize) {
-            const sizeStr = `Size: ${giayShoeSize}`;
-            if (!item.note) return sizeStr;
-            if (item.note.toLowerCase().includes('size:')) return item.note;
-            return `${sizeStr} - ${item.note}`;
-        }
-
-        if (isDepRo) {
-            if (giayShoeSize) {
-                const sizeStr = `Size: ${giayShoeSize}`;
-                return item.note ? `${sizeStr}\n${item.note}` : sizeStr;
-            }
-            return item.note || '';
-        }
-
-        return item.note || '';
+        return formatBhlItemNote(item, selectedEmployee?.uniform_size, giayShoeSize);
     };
 
     const totalQty = templateType === 'default'
