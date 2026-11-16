@@ -524,7 +524,7 @@ hasPermission(code):
 - Bên giao 2: Tên, Chức vụ, SĐT (default: VÕ THANH SONG / NV QLTS-KHO) [không bắt buộc]
 
 **Panel 3 — Danh sách BHLĐ** (chỉ hiển thị khi templateType='bhl'):
-Bảng 6 loại trang thiết bị bảo hộ mặc định:
+Bảng trang thiết bị bảo hộ mặc định:
 
 | STT | Tên | Đơn vị | Định mức hợp đồng | Định mức (NV) | Mặc định SL |
 |---|---|---|---|---|---|
@@ -534,8 +534,9 @@ Bảng 6 loại trang thiết bị bảo hộ mặc định:
 | 4 | Quần áo bảo hộ lao động | Bộ | ≥ 1 | 3 Bộ/1 NV | 1 |
 | 5 | Áo bảo hộ mùa đông | Chiếc | ≥ 1 | 1 Chiếc/1 NV | 0 |
 | 6 | Giày Bảo Hộ Lao Động | Đôi | ≥ 1 | 1 Đôi/1 NV | 1 |
+| 7 | Dép rọ | Đôi | ≥ 1 | 1 Đôi/1 NV | 0 |
 
-Mỗi dòng: Nhập Số lượng (min=0), Số Serial, Ghi chú
+Mỗi dòng: Nhập Số lượng (min=0), Số Serial, Ghi chú. Size của Dép rọ tự động lấy từ size Giày Bảo Hộ Lao Động phiên qua.
 
 **Panel 4 — Lịch sử bàn giao:**
 - Hiển thị danh sách biên bản đã lưu (từ `asset_handovers`)

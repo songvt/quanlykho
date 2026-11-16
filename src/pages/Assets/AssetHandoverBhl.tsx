@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+﻿import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
     Box, Paper, Typography, Button, TextField, Grid, Stack, Divider,
@@ -26,18 +26,7 @@ import { formatPhone } from '../../utils/format';
 import { exportEmployeeHandoverSummary, exportHandoverHistory } from '../../utils/excelUtils';
 import { saveAssetHandoverHistory } from '../../services/assetHandoverHistory';
 import { getDefaultSecondGiver } from '../../utils/assetHandoverGiver';
-
-interface BhlItem {
-    stt: number;
-    name: string;
-    unit: string;
-    contract: string;
-    quota: string;
-    quantity: number;
-    spec: string;
-    serial: string;
-    note: string;
-}
+import { createDefaultBhlItems, type BhlItem } from '../../utils/assetBhlItems';
 
 const AssetHandoverBhl: React.FC = () => {
     const theme = useTheme();
@@ -69,20 +58,8 @@ const AssetHandoverBhl: React.FC = () => {
         ...getDefaultSecondGiver([]),
     });
 
-    // 11 Safety Protective Equipment (CCDC-BHLĐ) Items State
-    const [bhlItems, setBhlItems] = useState<BhlItem[]>([
-        { stt: 1, name: 'Dây đai bảo hiểm', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Dây đai 1 móc', serial: '', note: '' },
-        { stt: 2, name: 'Dây đai bảo hiểm (2 móc)', unit: 'Chiếc', contract: '0', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Bổ sung cho lực lượng trạm viễn thông thực hiện công việc trên cao.', serial: '', note: '' },
-        { stt: 3, name: 'Mũ cứng bảo hộ', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Màu Trắng, có khả năng chống nóng, cách điện, tăng tính an toàn, thấm hút mồ hôi, chịu va đập cực tốt', serial: '', note: '' },
-        { stt: 4, name: 'Quần áo bảo hộ lao động', unit: 'Bộ', contract: '≥ 1', quota: '3 Bộ/1 NV', quantity: 0, spec: 'Đồng phục công ty ACT', serial: '', note: '' },
-        { stt: 5, name: 'Áo bảo hộ mùa đông', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo gió', serial: '', note: '' },
-        { stt: 6, name: 'Giày Bảo Hộ Lao Động', unit: 'Đôi', contract: '≥ 1', quota: '1 Đôi/1 NV', quantity: 0, spec: 'Giày bảo hộ chống đinh, chống va đập', serial: '', note: '' },
-        { stt: 7, name: 'Bảng tên nhân viên', unit: 'Cái', contract: '≥ 1', quota: '1 Cái/1 NV', quantity: 0, spec: 'Bảng tên nhân viên', serial: '', note: '' },
-        { stt: 8, name: 'Áo gió', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo gió', serial: '', note: '' },
-        { stt: 9, name: 'Áo thun ACT', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo thun đồng phục ACT', serial: '', note: '' },
-        { stt: 10, name: 'Áo sơ mi', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo sơ mi đồng phục', serial: '', note: '' },
-        { stt: 11, name: 'Găng tay', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Găng tay bảo hộ lao động', serial: '', note: '' },
-    ]);
+    // 12 Safety Protective Equipment (CCDC-BHLĐ) Items State (including Dép rọ)
+    const [bhlItems, setBhlItems] = useState<BhlItem[]>(createDefaultBhlItems());
 
     // History logs State
     const [history, setHistory] = useState<any[]>([]);
@@ -202,19 +179,7 @@ const AssetHandoverBhl: React.FC = () => {
         setGiverInfo(h.giver_info);
         
         if (h.template_type === 'bhl') {
-            const defaultBhl = [
-                { stt: 1, name: 'Dây đai bảo hiểm', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Dây đai 1 móc', serial: '', note: '' },
-                { stt: 2, name: 'Dây đai bảo hiểm (2 móc)', unit: 'Chiếc', contract: '0', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Bổ sung cho lực lượng trạm viễn thông thực hiện công việc trên cao.', serial: '', note: '' },
-                { stt: 3, name: 'Mũ cứng bảo hộ', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Màu Trắng, có khả năng chống nóng, cách điện, tăng tính an toàn, thấm hút mồ hôi, chịu va đập cực tốt', serial: '', note: '' },
-                { stt: 4, name: 'Quần áo bảo hộ lao động', unit: 'Bộ', contract: '≥ 1', quota: '3 Bộ/1 NV', quantity: 0, spec: 'Đồng phục công ty ACT', serial: '', note: '' },
-                { stt: 5, name: 'Áo bảo hộ mùa đông', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo gió', serial: '', note: '' },
-                { stt: 6, name: 'Giày Bảo Hộ Lao Động', unit: 'Đôi', contract: '≥ 1', quota: '1 Đôi/1 NV', quantity: 0, spec: 'Giày bảo hộ chống đinh, chống va đập', serial: '', note: '' },
-                { stt: 7, name: 'Bảng tên nhân viên', unit: 'Cái', contract: '≥ 1', quota: '1 Cái/1 NV', quantity: 0, spec: 'Bảng tên nhân viên', serial: '', note: '' },
-                { stt: 8, name: 'Áo gió', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo gió', serial: '', note: '' },
-                { stt: 9, name: 'Áo thun ACT', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo thun đồng phục ACT', serial: '', note: '' },
-                { stt: 10, name: 'Áo sơ mi', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo sơ mi đồng phục', serial: '', note: '' },
-                { stt: 11, name: 'Găng tay', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Găng tay bảo hộ lao động', serial: '', note: '' },
-            ];
+            const defaultBhl = createDefaultBhlItems();
             const restored = defaultBhl.map(def => {
                 const found = h.items.find((item: any) => item.name === def.name);
                 if (found) {
@@ -234,6 +199,13 @@ const AssetHandoverBhl: React.FC = () => {
         }
 
         try {
+            const itemsToSave = templateType === 'default'
+                ? employeeAssets
+                : activeBhlItems.map(item => ({
+                    ...item,
+                    note: getRenderedItemNote(item)
+                }));
+
             const payload = {
                 employee_id: selectedEmployee?.id || null,
                 receiver_name: receiverName,
@@ -242,7 +214,7 @@ const AssetHandoverBhl: React.FC = () => {
                 giver_info: giverInfo,
                 template_type: templateType,
                 action_type: actionType,
-                items: templateType === 'default' ? employeeAssets : activeBhlItems,
+                items: itemsToSave,
                 total_quantity: totalQty,
                 created_by: giverInfo.giverName2 || 'Hệ thống'
             };
@@ -307,6 +279,54 @@ const AssetHandoverBhl: React.FC = () => {
     const activeBhlItems = bhlItems.filter(item => item.quantity > 0);
     const qtyLabel = actionType === 'revoke' ? 'SL thu hồi' : actionType === 'transfer' ? 'SL điều chuyển' : 'SL bàn giao';
 
+    // Derive shoe size from employee profile or manually entered size in Giày Bảo Hộ row
+    const giayShoeSize = useMemo(() => {
+        if (selectedEmployee?.shoe_size && selectedEmployee.shoe_size.trim()) {
+            return selectedEmployee.shoe_size.trim();
+        }
+        const giay = bhlItems.find(i => i.name.toLowerCase().includes('giày'));
+        if (giay?.note) {
+            const match = giay.note.match(/(?:size\s*:?\s*)?(\d{2})/i);
+            if (match) return match[1];
+            if (giay.note.trim()) return giay.note.trim();
+        }
+        if (giay?.serial) {
+            const match = giay.serial.match(/(?:size\s*:?\s*)?(\d{2})/i);
+            if (match) return match[1];
+        }
+        return '';
+    }, [selectedEmployee, bhlItems]);
+
+    const getRenderedItemNote = (item: BhlItem) => {
+        const isClothes = item.name.toLowerCase().includes('quần áo');
+        const isShoe = item.name.toLowerCase().includes('giày');
+        const isDepRo = item.name.toLowerCase().includes('dép');
+
+        if (isClothes && selectedEmployee?.uniform_size) {
+            const sizeStr = `Size: ${selectedEmployee.uniform_size}`;
+            if (!item.note) return sizeStr;
+            if (item.note.toLowerCase().includes('size:')) return item.note;
+            return `${sizeStr} - ${item.note}`;
+        }
+
+           if (isShoe && giayShoeSize) {
+            const sizeStr = `Size: ${giayShoeSize}`;
+            if (!item.note) return sizeStr;
+            if (item.note.toLowerCase().includes('size:')) return item.note;
+            return `${sizeStr} - ${item.note}`;
+        }
+
+        if (isDepRo) {
+            if (giayShoeSize) {
+                const sizeStr = `Size: ${giayShoeSize}`;
+                return item.note ? `${sizeStr}\n${item.note}` : sizeStr;
+            }
+            return item.note || '';
+        }
+
+        return item.note || '';
+    };
+
     const totalQty = templateType === 'default'
         ? employeeAssets.reduce((sum, a) => sum + (a.quantity || 1), 0)
         : activeBhlItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -330,19 +350,7 @@ const AssetHandoverBhl: React.FC = () => {
     const isRevoke = actionType === 'revoke';
 
     const resetBhlItems = () => {
-        setBhlItems([
-            { stt: 1, name: 'Dây đai bảo hiểm', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Dây đai 1 móc', serial: '', note: '' },
-            { stt: 2, name: 'Dây đai bảo hiểm (2 móc)', unit: 'Chiếc', contract: '0', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Bổ sung cho lực lượng trạm viễn thông thực hiện công việc trên cao.', serial: '', note: '' },
-            { stt: 3, name: 'Mũ cứng bảo hộ', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Màu Trắng, có khả năng chống nóng, cách điện, tăng tính an toàn, thấm hút mồ hôi, chịu va đập cực tốt', serial: '', note: '' },
-            { stt: 4, name: 'Quần áo bảo hộ lao động', unit: 'Bộ', contract: '≥ 1', quota: '3 Bộ/1 NV', quantity: 0, spec: 'Đồng phục công ty ACT', serial: '', note: '' },
-            { stt: 5, name: 'Áo bảo hộ mùa đông', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo gió', serial: '', note: '' },
-            { stt: 6, name: 'Giày Bảo Hộ Lao Động', unit: 'Đôi', contract: '≥ 1', quota: '1 Đôi/1 NV', quantity: 0, spec: 'Giày bảo hộ chống đinh, chống va đập', serial: '', note: '' },
-            { stt: 7, name: 'Bảng tên nhân viên', unit: 'Cái', contract: '≥ 1', quota: '1 Cái/1 NV', quantity: 0, spec: 'Bảng tên nhân viên', serial: '', note: '' },
-            { stt: 8, name: 'Áo gió', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo gió', serial: '', note: '' },
-            { stt: 9, name: 'Áo thun ACT', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo thun đồng phục ACT', serial: '', note: '' },
-            { stt: 10, name: 'Áo sơ mi', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo sơ mi đồng phục', serial: '', note: '' },
-            { stt: 11, name: 'Găng tay', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Găng tay bảo hộ lao động', serial: '', note: '' },
-        ]);
+        setBhlItems(createDefaultBhlItems());
         success('Đã đặt lại cấu hình mặc định.');
     };
 
@@ -375,14 +383,15 @@ const AssetHandoverBhl: React.FC = () => {
                     .section-label { font-weight: bold; font-size: 13pt; margin: 6px 0 2px; }
                     .person-row { display: flex; font-size: 13pt; margin: 3px 0; align-items: center; }
                     .person-label { width: 120px; font-weight: bold; }
-                    .person-name { flex: 1; font-weight: bold; text-transform: uppercase; }
+                    .person-name { width: 200px; flex: 0 0 200px; font-weight: bold; text-transform: uppercase; }
                     .person-right { display: flex; flex: 1; align-items: center; }
                     .person-title-label { font-weight: bold; width: 75px; }
                     .person-title-val { flex: 1; }
                     .person-phone { width: 110px; text-align: right; }
                     table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13pt; }
                     th { background: #fff; border: 1px solid #000; padding: 5px 4px; text-align: center; font-weight: bold; }
-                    td { border: 1px solid #000; padding: 4px; vertical-align: middle; }
+                    td { border: 1px solid #000; padding: 4px; vertical-align: middle; word-wrap: break-word; overflow-wrap: break-word; }
+                    td.note-cell { font-size: 8.5pt; line-height: 1.35; vertical-align: top; }
                     .footer-note { font-style: italic; font-size: 13pt; margin-top: 8px; border-top: 1px solid #000; padding-top: 6px; text-align: justify; }
                     .signatures { display: flex; justify-content: space-between; margin-top: 30px; text-align: center; break-inside: avoid; page-break-inside: avoid; }
                     .sig-block { width: 30%; }
@@ -598,6 +607,16 @@ const AssetHandoverBhl: React.FC = () => {
                                                     <TableRow key={idx} hover>
                                                         <TableCell sx={{ py: 1, fontWeight: 500, fontSize: '0.8rem' }}>
                                                             {item.name} <Typography variant="caption" sx={{ color: 'text.secondary' }}>({item.unit})</Typography>
+                                                            {item.name.toLowerCase().includes('giày') && giayShoeSize && (
+                                                                <Typography variant="caption" sx={{ display: 'block', color: '#2563eb', fontWeight: 600, fontSize: '0.72rem' }}>
+                                                                    Size: {giayShoeSize}
+                                                                </Typography>
+                                                            )}
+                                                            {item.name.toLowerCase().includes('dép') && giayShoeSize && (
+                                                                <Typography variant="caption" sx={{ display: 'block', color: '#16a34a', fontWeight: 600, fontSize: '0.72rem' }}>
+                                                                    Size: {giayShoeSize} (tự động theo giày)
+                                                                </Typography>
+                                                            )}
                                                         </TableCell>
                                                         <TableCell sx={{ py: 1 }}>
                                                             <TextField
@@ -629,7 +648,15 @@ const AssetHandoverBhl: React.FC = () => {
                                                         <TableCell sx={{ py: 1 }}>
                                                             <TextField
                                                                 size="small"
-                                                                placeholder="Ghi chú..."
+                                                                placeholder={
+                                                                    item.name.toLowerCase().includes('quần áo') && selectedEmployee?.uniform_size
+                                                                        ? `Size: ${selectedEmployee.uniform_size}`
+                                                                        : item.name.toLowerCase().includes('giày') && giayShoeSize
+                                                                        ? `Size: ${giayShoeSize}`
+                                                                        : item.name.toLowerCase().includes('dép') && giayShoeSize
+                                                                        ? `Size: ${giayShoeSize} (theo giày)`
+                                                                        : "Ghi chú..."
+                                                                }
                                                                 value={item.note}
                                                                 onChange={(e) => {
                                                                     const newItems = [...bhlItems];
@@ -881,9 +908,10 @@ const AssetHandoverBhl: React.FC = () => {
                                         <div style={{ fontWeight: 'bold', fontSize: '10.5pt', color: '#003087', margin: '6px 0 2px' }}>BÊN GIAO :</div>
                                         <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}>
                                             <span style={{ fontWeight: 'bold', width: 120 }}>Họ và tên:</span>
-                                            <span style={{ flex: '0 0 150px', minWidth: 0, fontWeight: 'bold', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{receiverName || '........................................................'}</span>
+                                            <span style={{ width: 200, flex: '0 0 200px', minWidth: 0, fontWeight: 'bold', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{receiverName || '........................................................'}</span>
                                             <span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span>
                                             <span style={{ flex: 1 }}>{receiverTitle || '......................................'}</span>
+                                            <span style={{ width: 110, textAlign: 'right' }}></span>
                                         </div>
                                         <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}>
                                             <span style={{ fontWeight: 'bold', width: 120 }}>Đơn vị:</span>
@@ -893,7 +921,7 @@ const AssetHandoverBhl: React.FC = () => {
                                         {[['giverName', 'giverTitle', 'giverPhone'], ['giverName2', 'giverTitle2', 'giverPhone2']].map(([nameKey, titleKey, phoneKey]) => giverInfo[nameKey as keyof typeof giverInfo] ? (
                                             <div key={nameKey} style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}>
                                                 <span style={{ fontWeight: 'bold', width: 120 }}>Họ và tên:</span>
-                                                <span style={{ flex: 1, fontWeight: 'bold', textTransform: 'uppercase' }}>{giverInfo[nameKey as keyof typeof giverInfo] as string}</span>
+                                                <span style={{ width: 200, flex: '0 0 200px', fontWeight: 'bold', textTransform: 'uppercase' }}>{giverInfo[nameKey as keyof typeof giverInfo] as string}</span>
                                                 <span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span>
                                                 <span style={{ flex: 1 }}>{giverInfo[titleKey as keyof typeof giverInfo] as string}</span>
                                                 <span style={{ width: 110, textAlign: 'right' }}>{formatPhone(giverInfo[phoneKey as keyof typeof giverInfo] as string)}</span>
@@ -903,10 +931,10 @@ const AssetHandoverBhl: React.FC = () => {
                                 ) : (
                                     <>
                                         <div style={{ fontWeight: 'bold', fontSize: '10.5pt', color: '#003087', margin: '6px 0 2px' }}>BÊN GIAO :</div>
-                                        {giverInfo.giverName && <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}><span style={{ fontWeight: 'bold', width: 120 }}>Họ và tên:</span><span style={{ flex: 1, fontWeight: 'bold', textTransform: 'uppercase' }}>{giverInfo.giverName}</span><span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span><span style={{ flex: 1 }}>{giverInfo.giverTitle}</span><span style={{ width: 110, textAlign: 'right' }}>{formatPhone(giverInfo.giverPhone)}</span></div>}
-                                        {giverInfo.giverName2 && <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}><span style={{ fontWeight: 'bold', width: 120 }}>Họ và tên:</span><span style={{ flex: 1, fontWeight: 'bold', textTransform: 'uppercase' }}>{giverInfo.giverName2}</span><span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span><span style={{ flex: 1 }}>{giverInfo.giverTitle2}</span><span style={{ width: 110, textAlign: 'right' }}>{formatPhone(giverInfo.giverPhone2)}</span></div>}
+                                        {giverInfo.giverName && <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}><span style={{ fontWeight: 'bold', width: 120 }}>Họ và tên:</span><span style={{ width: 200, flex: '0 0 200px', fontWeight: 'bold', textTransform: 'uppercase' }}>{giverInfo.giverName}</span><span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span><span style={{ flex: 1 }}>{giverInfo.giverTitle}</span><span style={{ width: 110, textAlign: 'right' }}>{formatPhone(giverInfo.giverPhone)}</span></div>}
+                                        {giverInfo.giverName2 && <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}><span style={{ fontWeight: 'bold', width: 120 }}>Họ và tên:</span><span style={{ width: 200, flex: '0 0 200px', fontWeight: 'bold', textTransform: 'uppercase' }}>{giverInfo.giverName2}</span><span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span><span style={{ flex: 1 }}>{giverInfo.giverTitle2}</span><span style={{ width: 110, textAlign: 'right' }}>{formatPhone(giverInfo.giverPhone2)}</span></div>}
                                         <div style={{ fontWeight: 'bold', fontSize: '10.5pt', color: '#003087', margin: '8px 0 2px' }}>BÊN NHẬN :</div>
-                                        <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}><span style={{ fontWeight: 'bold', width: 120 }}>Họ và tên:</span><span style={{ flex: '0 0 150px', minWidth: 0, fontWeight: 'bold', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{receiverName || '........................................................'}</span><span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span><span style={{ flex: 1 }}>{receiverTitle || '......................................'}</span></div>
+                                        <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}><span style={{ fontWeight: 'bold', width: 120 }}>Họ và tên:</span><span style={{ width: 200, flex: '0 0 200px', minWidth: 0, fontWeight: 'bold', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{receiverName || '........................................................'}</span><span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span><span style={{ flex: 1 }}>{receiverTitle || '......................................'}</span><span style={{ width: 110, textAlign: 'right' }}></span></div>
                                         <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}><span style={{ fontWeight: 'bold', width: 120 }}>Đơn vị:</span><span style={{ flex: 1 }}>{receiverDept || '........................................................................................................................'}</span></div>
                                     </>
                                 )}
@@ -931,12 +959,12 @@ const AssetHandoverBhl: React.FC = () => {
                                             <tr>
                                                 {[
                                                     { label: 'STT', w: '5%' },
-                                                    { label: 'Nội dung yêu cầu', w: '28%' },
-                                                    { label: 'Đơn vị', w: '8%' },
-                                                    { label: 'Số lượng định mức', w: '14%' },
-                                                    { label: qtyLabel, w: '10%' },
-                                                    { label: 'Quy cách, TCKT', w: '23%' },
-                                                    { label: 'Ghi chú', w: '12%' },
+                                                    { label: 'Nội dung yêu cầu', w: '20%' },
+                                                    { label: 'Đơn vị', w: '7%' },
+                                                    { label: 'Số lượng định mức', w: '12%' },
+                                                    { label: qtyLabel, w: '8%' },
+                                                    { label: 'Quy cách, TCKT', w: '15%' },
+                                                    { label: 'Ghi chú', w: '33%' },
                                                 ].map((h, i) => (
                                                     <th key={i} style={{ width: h.w, background: '#f2f2f2', color: '#000', border: '1px solid #000', padding: '5px 4px', textAlign: 'center', fontWeight: 'bold' }}>{h.label}</th>
                                                 ))}
@@ -968,19 +996,15 @@ const AssetHandoverBhl: React.FC = () => {
                                                 activeBhlItems.map((item, i) => (
                                                     <tr key={i}>
                                                         <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center', verticalAlign: 'middle' }}>{i + 1}</td>
-                                                        <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center', verticalAlign: 'middle' }}>{item.name}</td>
+                                                        <td style={{ border: '1px solid #888', padding: '4px 8px', textAlign: 'left', verticalAlign: 'middle' }}>{item.name}</td>
                                                         <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center', verticalAlign: 'middle' }}>{item.unit}</td>
                                                         <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center', verticalAlign: 'middle' }}>{item.quota}</td>
                                                         <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold' }}>{item.quantity}</td>
                                                         <td style={{ border: '1px solid #888', padding: '4px', verticalAlign: 'middle', fontSize: '9pt', lineHeight: 1.2 }}>
                                                             {item.spec} {item.serial ? `(Serial: ${item.serial})` : ''}
                                                         </td>
-                                                        <td style={{ border: '1px solid #888', padding: '4px', verticalAlign: 'middle' }}>
-                                                            {item.name.toLowerCase().includes('quần áo') && selectedEmployee?.uniform_size
-                                                                ? `Size: ${selectedEmployee.uniform_size}${item.note ? ' - ' + item.note : ''}`
-                                                                : item.name.toLowerCase().includes('giày') && selectedEmployee?.shoe_size
-                                                                ? `Size: ${selectedEmployee.shoe_size}${item.note ? ' - ' + item.note : ''}`
-                                                                : item.note || ''}
+                                                        <td style={{ border: '1px solid #888', padding: '5px', verticalAlign: 'top', fontSize: '8.5pt', lineHeight: 1.35, wordWrap: 'break-word' }}>
+                                                            {getRenderedItemNote(item)}
                                                         </td>
                                                     </tr>
                                                 ))

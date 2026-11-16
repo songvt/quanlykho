@@ -1,4 +1,5 @@
-import React, { useRef, useState } from 'react';
+﻿import React, { useRef, useState, useMemo } from 'react';
+import { createDefaultBhlItems, type BhlItem } from '../../utils/assetBhlItems';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     Button, Box, Typography, Stack, Divider,
@@ -34,17 +35,6 @@ interface Props {
     onPrint?: (metadata: { templateType: 'default' | 'bhl'; totalQuantity: number }) => void | Promise<void>;
 }
 
-interface BhlItem {
-    stt: number;
-    name: string;
-    unit: string;
-    contract: string;
-    quota: string;
-    quantity: number;
-    spec: string;
-    serial: string;
-    note: string;
-}
 
 const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets, handoverInfo, onPrint }) => {
     const printRef = useRef<HTMLDivElement>(null);
@@ -52,19 +42,7 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
     const sortedAssets = sortAssetsByNameAndUser(assets);
 
     // State for the 10 protective equipment items
-    const [bhlItems, setBhlItems] = useState<BhlItem[]>([
-        { stt: 1, name: 'Dây đai bảo hiểm', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Dây đai 1 móc', serial: '', note: '' },
-        { stt: 2, name: 'Dây đai bảo hiểm (2 móc)', unit: 'Chiếc', contract: '0', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Bổ sung cho lực lượng trạm viễn thông thực hiện công việc trên cao.', serial: '', note: '' },
-        { stt: 3, name: 'Mũ cứng bảo hộ', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Màu Trắng, có khả năng chống nóng, cách điện, tăng tính an toàn, thấm hút mồ hôi, chịu va đập cực tốt', serial: '', note: '' },
-        { stt: 4, name: 'Quần áo bảo hộ lao động', unit: 'Bộ', contract: '≥ 1', quota: '3 Bộ/1 NV', quantity: 0, spec: 'Đồng phục công ty ACT', serial: '', note: '' },
-        { stt: 5, name: 'Áo bảo hộ mùa đông', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo gió', serial: '', note: '' },
-        { stt: 6, name: 'Giày Bảo Hộ Lao Động', unit: 'Đôi', contract: '≥ 1', quota: '1 Đôi/1 NV', quantity: 0, spec: 'Giày bảo hộ chống đinh, chống va đập', serial: '', note: '' },
-        { stt: 7, name: 'Bảng tên nhân viên', unit: 'Cái', contract: '≥ 1', quota: '1 Cái/1 NV', quantity: 0, spec: 'Bảng tên nhân viên', serial: '', note: '' },
-        { stt: 8, name: 'Áo gió', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo gió', serial: '', note: '' },
-        { stt: 9, name: 'Áo thun ACT', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo thun đồng phục ACT', serial: '', note: '' },
-        { stt: 10, name: 'Áo sơ mi', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Áo sơ mi đồng phục', serial: '', note: '' },
-        { stt: 11, name: 'Găng tay', unit: 'Chiếc', contract: '≥ 1', quota: '1 Chiếc/1 NV', quantity: 0, spec: 'Găng tay bảo hộ lao động', serial: '', note: '' },
-    ]);
+    const [bhlItems, setBhlItems] = useState<BhlItem[]>(createDefaultBhlItems());
 
     const now = new Date();
     const dateStr = `TPHCM, Ngày ${now.getDate().toString().padStart(2, '0')} tháng ${(now.getMonth() + 1).toString().padStart(2, '0')} năm ${now.getFullYear()}`;
@@ -83,6 +61,53 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
 
     const activeBhlItems = bhlItems.filter(item => item.quantity > 0);
     const qtyLabel = actionType === 'revoke' ? 'SL thu hồi' : actionType === 'transfer' ? 'SL điều chuyển' : 'SL bàn giao';
+
+    const giayShoeSize = useMemo(() => {
+        if (handoverInfo.shoeSize && handoverInfo.shoeSize.trim()) {
+            return handoverInfo.shoeSize.trim();
+        }
+        const giay = bhlItems.find(i => i.name.toLowerCase().includes('giày'));
+        if (giay?.note) {
+            const match = giay.note.match(/(?:size\s*:?\s*)?(\d{2})/i);
+            if (match) return match[1];
+            if (giay.note.trim()) return giay.note.trim();
+        }
+        if (giay?.serial) {
+            const match = giay.serial.match(/(?:size\s*:?\s*)?(\d{2})/i);
+            if (match) return match[1];
+        }
+        return '';
+    }, [handoverInfo.shoeSize, bhlItems]);
+
+    const getRenderedItemNote = (item: BhlItem) => {
+        const isClothes = item.name.toLowerCase().includes('quần áo');
+        const isShoe = item.name.toLowerCase().includes('giày');
+        const isDepRo = item.name.toLowerCase().includes('dép');
+
+        if (isClothes && handoverInfo.uniformSize) {
+            const sizeStr = `Size: ${handoverInfo.uniformSize}`;
+            if (!item.note) return sizeStr;
+            if (item.note.toLowerCase().includes('size:')) return item.note;
+            return `${sizeStr} - ${item.note}`;
+        }
+
+        if (isShoe && giayShoeSize) {
+            const sizeStr = `Size: ${giayShoeSize}`;
+            if (!item.note) return sizeStr;
+            if (item.note.toLowerCase().includes('size:')) return item.note;
+            return `${sizeStr} - ${item.note}`;
+        }
+
+        if (isDepRo) {
+            if (giayShoeSize) {
+                const sizeStr = `Size: ${giayShoeSize}`;
+                return item.note ? `${sizeStr}\n${item.note}` : sizeStr;
+            }
+            return item.note || '';
+        }
+
+        return item.note || '';
+    };
 
     const totalQty = templateType === 'default'
         ? sortedAssets.reduce((sum, a) => sum + (a.quantity || 1), 0)
@@ -117,7 +142,7 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                     .section-label { font-weight: bold; font-size: 13pt; margin: 6px 0 2px; }
                     .person-row { display: flex; font-size: 13pt; margin: 3px 0; }
                     .person-label { width: 120px; font-weight: bold; }
-                    .person-name { flex: 1; }
+                    .person-name { width: 200px; flex: 0 0 200px; font-weight: bold; text-transform: uppercase; }
                     .person-right { width: 250px; display: flex; gap: 12px; }
                     .person-title-label { font-weight: bold; width: 70px; }
                     .person-title-val { flex: 1; }
@@ -126,7 +151,8 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                     thead { display: table-header-group; }
                     tr { break-inside: avoid; page-break-inside: avoid; }
                     th { background: #fff; border: 1px solid #000; padding: 5px 4px; text-align: center; font-weight: bold; }
-                    td { border: 1px solid #000; padding: 4px; vertical-align: middle; }
+                    td { border: 1px solid #000; padding: 4px; vertical-align: middle; word-wrap: break-word; overflow-wrap: break-word; }
+                    td.note-cell { font-size: 8.5pt; line-height: 1.3; vertical-align: top; padding: 4px 5px; }
                     td.center { text-align: center; }
                     tr.total-row td { font-weight: bold; background: #f0f0f0; }
                     .note-row { font-style: italic; font-size: 13pt; margin-top: 8px; border-top: 1px solid #000; padding-top: 6px; text-align: justify; }
@@ -205,7 +231,19 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                                         {bhlItems.map((item, idx) => (
                                             <TableRow key={item.stt} hover sx={{ '&:last-child td': { borderBottom: 0 } }}>
                                                 <TableCell sx={{ py: 0.5 }}>{item.stt}</TableCell>
-                                                <TableCell sx={{ fontWeight: 600, py: 0.5, color: '#334155' }}>{item.name}</TableCell>
+                                                <TableCell sx={{ fontWeight: 600, py: 0.5, color: '#334155' }}>
+                                                    {item.name}
+                                                    {item.name.toLowerCase().includes('giày') && giayShoeSize && (
+                                                        <Typography variant="caption" sx={{ display: 'block', color: '#2563eb', fontWeight: 600, fontSize: '0.72rem' }}>
+                                                            Size: {giayShoeSize}
+                                                        </Typography>
+                                                    )}
+                                                    {item.name.toLowerCase().includes('dép') && giayShoeSize && (
+                                                        <Typography variant="caption" sx={{ display: 'block', color: '#16a34a', fontWeight: 600, fontSize: '0.72rem' }}>
+                                                            Size: {giayShoeSize} (tự động theo giày)
+                                                        </Typography>
+                                                    )}
+                                                </TableCell>
                                                 <TableCell sx={{ py: 0.5 }}>{item.unit}</TableCell>
                                                 <TableCell sx={{ py: 0.5 }}>
                                                     <TextField
@@ -238,7 +276,15 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                                                 <TableCell sx={{ py: 0.5 }}>
                                                     <TextField
                                                         size="small"
-                                                        placeholder="Ghi chú..."
+                                                        placeholder={
+                                                            item.name.toLowerCase().includes('quần áo') && handoverInfo.uniformSize
+                                                                ? `Size: ${handoverInfo.uniformSize}`
+                                                                : item.name.toLowerCase().includes('giày') && giayShoeSize
+                                                                ? `Size: ${giayShoeSize}`
+                                                                : item.name.toLowerCase().includes('dép') && giayShoeSize
+                                                                ? `Size: ${giayShoeSize} (theo giày)`
+                                                                : "Ghi chú..."
+                                                        }
                                                         value={item.note}
                                                         onChange={(e) => {
                                                             const newItems = [...bhlItems];
@@ -290,7 +336,7 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                         {handoverInfo.giverName && (
                             <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}>
                                 <span style={{ fontWeight: 'bold', width: 120 }}>Họ và tên:</span>
-                                <span style={{ flex: 1, fontWeight: 'bold', textTransform: 'uppercase' }}>{handoverInfo.giverName}</span>
+                                <span style={{ width: 200, flex: '0 0 200px', fontWeight: 'bold', textTransform: 'uppercase' }}>{handoverInfo.giverName}</span>
                                 <span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span>
                                 <span style={{ flex: 1 }}>{handoverInfo.giverTitle}</span>
                                 <span style={{ width: 110, textAlign: 'right' }}>{formatPhone(handoverInfo.giverPhone)}</span>
@@ -299,7 +345,7 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                         {handoverInfo.giverName2 && (
                             <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}>
                                 <span style={{ fontWeight: 'bold', width: 120 }}>Họ và tên:</span>
-                                <span style={{ flex: 1, fontWeight: 'bold', textTransform: 'uppercase' }}>{handoverInfo.giverName2}</span>
+                                <span style={{ width: 200, flex: '0 0 200px', fontWeight: 'bold', textTransform: 'uppercase' }}>{handoverInfo.giverName2}</span>
                                 <span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span>
                                 <span style={{ flex: 1 }}>{handoverInfo.giverTitle2}</span>
                                 <span style={{ width: 110, textAlign: 'right' }}>{formatPhone(handoverInfo.giverPhone2)}</span>
@@ -310,7 +356,7 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                         <div style={{ fontWeight: 'bold', fontSize: '10.5pt', color: '#003087', margin: '8px 0 2px' }}>BÊN NHẬN :</div>
                         <div style={{ display: 'flex', fontSize: '10.5pt', margin: '3px 0', alignItems: 'center' }}>
                             <span style={{ fontWeight: 'bold', width: 120 }}>Họ và tên:</span>
-                            <span style={{ flex: 1, fontWeight: 'bold' }}>{handoverInfo.receiverName}</span>
+                            <span style={{ width: 200, flex: '0 0 200px', fontWeight: 'bold', textTransform: 'uppercase' }}>{handoverInfo.receiverName}</span>
                             <span style={{ fontWeight: 'bold', width: 75 }}>Chức vụ:</span>
                             <span style={{ flex: 1 }}>{handoverInfo.receiverTitle || ''}</span>
                             <span style={{ width: 110, textAlign: 'right' }}></span>
@@ -342,12 +388,12 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                                     <tr>
                                         {[
                                             { label: 'STT', w: '5%' },
-                                            { label: 'Nội dung yêu cầu', w: '28%' },
-                                            { label: 'Đơn vị', w: '8%' },
-                                            { label: 'Số lượng định mức', w: '14%' },
-                                            { label: qtyLabel, w: '10%' },
-                                            { label: 'Quy cách, TCKT', w: '23%' },
-                                            { label: 'Ghi chú', w: '12%', className: 'handover-note-header' },
+                                            { label: 'Nội dung yêu cầu', w: '20%' },
+                                            { label: 'Đơn vị', w: '7%' },
+                                            { label: 'Số lượng định mức', w: '12%' },
+                                            { label: qtyLabel, w: '8%' },
+                                            { label: 'Quy cách, TCKT', w: '15%' },
+                                            { label: 'Ghi chú', w: '33%', className: 'handover-note-header' },
                                         ].map((h, i) => (
                                             <th key={i} className={h.className} style={{ width: h.w, background: '#f2f2f2', color: '#000', border: '1px solid #000', padding: '5px 4px', textAlign: 'center', fontWeight: 'bold' }}>{h.label}</th>
                                         ))}
@@ -379,19 +425,15 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                                         activeBhlItems.map((item, i) => (
                                             <tr key={i}>
                                                 <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center', verticalAlign: 'middle' }}>{i + 1}</td>
-                                                <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center', verticalAlign: 'middle' }}>{item.name}</td>
+                                                <td style={{ border: '1px solid #888', padding: '4px 8px', textAlign: 'left', verticalAlign: 'middle' }}>{item.name}</td>
                                                 <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center', verticalAlign: 'middle' }}>{item.unit}</td>
                                                 <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center', verticalAlign: 'middle' }}>{item.quota}</td>
                                                 <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center', verticalAlign: 'middle', fontWeight: 'bold' }}>{item.quantity}</td>
                                                 <td style={{ border: '1px solid #888', padding: '4px', verticalAlign: 'middle', fontSize: '9pt', lineHeight: 1.2 }}>
                                                     {item.spec} {item.serial ? `(Serial: ${item.serial})` : ''}
                                                 </td>
-                                                <td style={{ border: '1px solid #888', padding: '4px', verticalAlign: 'middle' }}>
-                                                    {item.name.toLowerCase().includes('quần áo') && handoverInfo.uniformSize
-                                                        ? `Size: ${handoverInfo.uniformSize}${item.note ? ' - ' + item.note : ''}`
-                                                        : item.name.toLowerCase().includes('giày') && handoverInfo.shoeSize
-                                                        ? `Size: ${handoverInfo.shoeSize}${item.note ? ' - ' + item.note : ''}`
-                                                        : item.note || ''}
+                                                <td className="note-cell" style={{ border: '1px solid #888', padding: '5px', verticalAlign: 'top', fontSize: '8.5pt', lineHeight: 1.35, wordWrap: 'break-word' }}>
+                                                    {getRenderedItemNote(item)}
                                                 </td>
                                             </tr>
                                         ))
