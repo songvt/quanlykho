@@ -127,24 +127,6 @@ export const generateBhlHandoverTemplate = async () => {
         };
     });
 
-    // ── Row 2: Explanatory / Instruction Subheader ──
-    const hintRow = sheet.addRow([
-        '1', '2', '3', '4', '5', '6', '7',
-        '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20'
-    ]);
-    hintRow.height = 18;
-    hintRow.eachCell((cell) => {
-        cell.font = { name: 'Times New Roman', size: 8, italic: true, color: { argb: 'FF475569' } };
-        cell.alignment = { vertical: 'middle', horizontal: 'center' };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
-        cell.border = {
-            top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-            bottom: { style: 'thin', color: { argb: 'FF94A3B8' } },
-            left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-            right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
-        };
-    });
-
     // ── Sample Rows ──
     const sampleData = [
         [
@@ -303,12 +285,28 @@ export const parseBhlHandoverExcel = async (
         // Ignore empty rows
         if (!rawFullName && !rawId) return;
 
+        // Ignore summary or footer rows (e.g. "Tổng", "Tổng cộng", "Total")
+        const normName = normalizeText(rawFullName);
+        const normId = normalizeText(rawId);
+        if (normName.startsWith('tong') || normName === 'total' || normId.startsWith('tong')) {
+            return;
+        }
+
         // Cross reference with HR profiles if available
         const matchedProfile = hrProfiles.find(p => {
             if (rawId && p.id && p.id.trim().toUpperCase() === rawId.toUpperCase()) return true;
             if (rawFullName && p.full_name && normalizeText(p.full_name) === normalizeText(rawFullName)) return true;
             return false;
         });
+
+        // Ignore instruction/numbering rows like: (1), (2), (3) or 1, 2, 3, 4, 5...
+        const hasLetterInName = /[a-zA-ZÀ-ỹ]/.test(rawFullName);
+        const isNumericIndexName = /^\(?\d+\)?$/.test(rawFullName.trim());
+        const isNumericIndexId = /^\(?\d+\)?$/.test(rawId.trim());
+
+        if (!matchedProfile && (!hasLetterInName || isNumericIndexName || (isNumericIndexId && Number(rawId.replace(/\D/g, '')) <= 30 && !rawFullName))) {
+            return;
+        }
 
         const employeeId = rawId || matchedProfile?.id || '';
         const fullName = (rawFullName || matchedProfile?.full_name || '').toUpperCase();
