@@ -1,5 +1,5 @@
 ﻿import React, { useRef, useState, useMemo } from 'react';
-import { createDefaultBhlItems, formatBhlItemNote, type BhlItem } from '../../utils/assetBhlItems';
+import { createDefaultBhlItems, formatBhlItemNote, splitBhlItemNote, type BhlItem } from '../../utils/assetBhlItems';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     Button, Box, Typography, Stack, Divider,
@@ -79,8 +79,19 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
         return '';
     }, [handoverInfo.shoeSize, bhlItems]);
 
-    const getRenderedItemNote = (item: BhlItem) => {
-        return formatBhlItemNote(item, handoverInfo.uniformSize, giayShoeSize);
+    const renderBhlItemNote = (item: BhlItem) => {
+        const text = formatBhlItemNote(item, handoverInfo.uniformSize, giayShoeSize);
+        const parsed = splitBhlItemNote(text);
+        if (parsed) {
+            return (
+                <>
+                    <strong>{parsed.sizePart}</strong>
+                    {parsed.separator}
+                    {parsed.rest}
+                </>
+            );
+        }
+        return text;
     };
 
     const totalQty = templateType === 'default'
@@ -407,7 +418,7 @@ const AssetHandoverPrint: React.FC<Props> = ({ open, onClose, actionType, assets
                                                     {item.spec} {item.serial ? `(Serial: ${item.serial})` : ''}
                                                 </td>
                                                 <td className="note-cell" style={{ border: '1px solid #888', padding: '5px', verticalAlign: 'top', fontSize: '8.5pt', lineHeight: 1.35, wordWrap: 'break-word' }}>
-                                                    {getRenderedItemNote(item)}
+                                                    {renderBhlItemNote(item)}
                                                 </td>
                                             </tr>
                                         ))

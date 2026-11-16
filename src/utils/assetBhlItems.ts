@@ -59,3 +59,22 @@ export const formatBhlItemNote = (
 
     return item.note || '';
 };
+
+/**
+ * Splits a formatted note into size part (e.g. "Size: 42") and the rest of the text,
+ * allowing the size portion to be styled or rendered in bold.
+ */
+export const splitBhlItemNote = (
+    note: string
+): { sizePart: string; separator: string; rest: string } | null => {
+    if (!note) return null;
+    const match = note.match(/^(size:\s*[a-zA-Z0-9]+)(\s*[-–]\s*|\s+)(.*)$/is);
+    if (match) {
+        return { sizePart: match[1], separator: match[2], rest: match[3] };
+    }
+    const matchOnlySize = note.match(/^(size:\s*[a-zA-Z0-9]+)$/i);
+    if (matchOnlySize) {
+        return { sizePart: matchOnlySize[1], separator: '', rest: '' };
+    }
+    return null;
+};

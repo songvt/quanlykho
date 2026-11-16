@@ -26,7 +26,7 @@ import { formatPhone } from '../../utils/format';
 import { exportEmployeeHandoverSummary, exportHandoverHistory } from '../../utils/excelUtils';
 import { saveAssetHandoverHistory } from '../../services/assetHandoverHistory';
 import { getDefaultSecondGiver } from '../../utils/assetHandoverGiver';
-import { createDefaultBhlItems, formatBhlItemNote, type BhlItem } from '../../utils/assetBhlItems';
+import { createDefaultBhlItems, formatBhlItemNote, splitBhlItemNote, type BhlItem } from '../../utils/assetBhlItems';
 
 const AssetHandoverBhl: React.FC = () => {
     const theme = useTheme();
@@ -203,7 +203,7 @@ const AssetHandoverBhl: React.FC = () => {
                 ? employeeAssets
                 : activeBhlItems.map(item => ({
                     ...item,
-                    note: getRenderedItemNote(item)
+                    note: formatBhlItemNote(item, selectedEmployee?.uniform_size, giayShoeSize)
                 }));
 
             const payload = {
@@ -297,8 +297,19 @@ const AssetHandoverBhl: React.FC = () => {
         return '';
     }, [selectedEmployee, bhlItems]);
 
-    const getRenderedItemNote = (item: BhlItem) => {
-        return formatBhlItemNote(item, selectedEmployee?.uniform_size, giayShoeSize);
+    const renderBhlItemNote = (item: BhlItem) => {
+        const text = formatBhlItemNote(item, selectedEmployee?.uniform_size, giayShoeSize);
+        const parsed = splitBhlItemNote(text);
+        if (parsed) {
+            return (
+                <>
+                    <strong>{parsed.sizePart}</strong>
+                    {parsed.separator}
+                    {parsed.rest}
+                </>
+            );
+        }
+        return text;
     };
 
     const totalQty = templateType === 'default'
@@ -978,7 +989,7 @@ const AssetHandoverBhl: React.FC = () => {
                                                             {item.spec} {item.serial ? `(Serial: ${item.serial})` : ''}
                                                         </td>
                                                         <td style={{ border: '1px solid #888', padding: '5px', verticalAlign: 'top', fontSize: '8.5pt', lineHeight: 1.35, wordWrap: 'break-word' }}>
-                                                            {getRenderedItemNote(item)}
+                                                            {renderBhlItemNote(item)}
                                                         </td>
                                                     </tr>
                                                 ))
