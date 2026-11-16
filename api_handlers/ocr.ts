@@ -549,8 +549,7 @@ Hãy trả về kết quả ĐÚNG ĐỊNH DẠNG JSON với cấu trúc sau:
                             });
                             
                             // Trả text rendering mode về bình thường (0 Tr - Fill text)
-                            // @ts-expect-error: write is not typed in jspdf
-                            doc.internal.write('0 Tr\n');
+                            (doc as any).internal.write('0 Tr\n');
                         }
                     }
                 }

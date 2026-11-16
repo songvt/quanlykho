@@ -108,9 +108,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         }
                         const authenticatedUser = { ...user, permissions: typeof data.permissions === 'string' ? JSON.parse(data.permissions) : data.permissions };
                         const sessionSecret = process.env.APP_SESSION_SECRET;
+                        const sessionUser: AppSession = {
+                            id: String(data.id),
+                            email: String(data.email || email),
+                            role: data.role ? String(data.role) : undefined,
+                            permissions: authenticatedUser.permissions
+                        };
                         return res.status(200).json({
                             ...authenticatedUser,
-                            ...(sessionSecret ? { session_token: createAppSession(authenticatedUser, sessionSecret) } : {})
+                            ...(sessionSecret ? { session_token: createAppSession(sessionUser, sessionSecret) } : {})
                         });
                     }
                     
