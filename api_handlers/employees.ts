@@ -2,7 +2,7 @@ import { VercelRequest, VercelResponse } from '@vercel/node';
 import { getGoogleSheet, getSheetByTitle } from './_utils/googleSheets.js';
 import { supabase } from './_utils/supabase.js';
 import crypto from 'crypto';
-import { createAppSession } from './_utils/appSession.js';
+import { createAppSession, type AppSession } from './_utils/appSession.js';
 
 import hrProfilesHandler from './hr_profiles.js';
 import kpiInfractionsHandler from './kpi_infractions.js';
@@ -162,9 +162,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         }
                         const authenticatedUser = { ...user, permissions: typeof user.permissions === 'string' ? JSON.parse(user.permissions) : user.permissions };
                         const sessionSecret = process.env.APP_SESSION_SECRET;
+                        const sessionUser: AppSession = {
+                            id: String(user.id || userRow.get('id') || ''),
+                            email: String(user.email || email),
+                            role: user.role ? String(user.role) : undefined,
+                            permissions: authenticatedUser.permissions
+                        };
                         return res.status(200).json({
                             ...authenticatedUser,
-                            ...(sessionSecret ? { session_token: createAppSession(authenticatedUser, sessionSecret) } : {})
+                            ...(sessionSecret ? { session_token: createAppSession(sessionUser, sessionSecret) } : {})
                         });
                     } catch (gsErr: any) {
                         console.error('Google Sheets login fallback failed:', gsErr.message);

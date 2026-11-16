@@ -162,7 +162,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     }
 
                     if (rowsToAdd.length > 0) {
-                        await sheet.addRows(rowsToAdd);
+                        await sheet.addRows(rowsToAdd as any);
                     }
 
                     if (rowsToUpdate.length > 0 && rowCount > 0) {
@@ -179,12 +179,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                                 const key = colKeys[c];
                                 if (key in item) {
                                     const cell = sheet.getCell(rowIndex + 1, c);
-                                    let val = item[key];
-                                    if (typeof val === 'boolean') val = val ? 'TRUE' : 'FALSE';
-                                    else if (val === null || val === undefined) val = '';
-                                    else val = String(val);
+                                    let val: string = '';
+                                    const rawVal = item[key];
+                                    if (typeof rawVal === 'boolean') val = rawVal ? 'TRUE' : 'FALSE';
+                                    else if (rawVal !== null && rawVal !== undefined) val = String(rawVal);
 
-                                    if (String(cell.value ?? '') !== String(val)) {
+                                    if (String(cell.value ?? '') !== val) {
                                         cell.value = val;
                                         cellChanged = true;
                                     }

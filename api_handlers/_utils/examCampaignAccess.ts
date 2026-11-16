@@ -1,6 +1,9 @@
-import type { AppSession } from './appSession';
+import type { AppSession } from './appSession.js';
 
-type SessionLike = Pick<AppSession, 'role' | 'permissions'>;
+type SessionLike = {
+    role?: string;
+    permissions?: unknown;
+};
 
 function hasPermission(session: SessionLike, permission: string) {
     return Array.isArray(session.permissions) && (session.permissions.includes('*') || session.permissions.includes(permission));
