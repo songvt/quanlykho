@@ -18,6 +18,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import SearchIcon from '@mui/icons-material/Search';
+import ClearIcon from '@mui/icons-material/Clear';
 
 import { fetchAssets } from '../../store/slices/assetsSlice';
 import { fetchHRProfiles } from '../../store/slices/hrProfilesSlice';
@@ -73,6 +75,7 @@ const AssetHandoverBhl: React.FC = () => {
     // History logs State
     const [history, setHistory] = useState<any[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
+    const [historySearch, setHistorySearch] = useState('');
     const [reportStartDate, setReportStartDate] = useState('');
     const [reportEndDate, setReportEndDate] = useState('');
 
@@ -80,6 +83,20 @@ const AssetHandoverBhl: React.FC = () => {
         () => history.filter(record => record.action_type === actionType),
         [history, actionType]
     );
+
+    const filteredActionHistory = useMemo(() => {
+        if (!historySearch.trim()) return actionHistory;
+        const keyword = historySearch.trim().toLowerCase();
+        return actionHistory.filter(h => {
+            const name = (h.receiver_name || '').toLowerCase();
+            const dept = (h.receiver_dept || '').toLowerCase();
+            const date = new Date(h.created_at).toLocaleString('vi-VN', {
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+            return name.includes(keyword) || dept.includes(keyword) || date.includes(keyword);
+        });
+    }, [actionHistory, historySearch]);
 
     const actionHistoryLabel = actionType === 'revoke'
         ? 'Lịch sử thu hồi'
@@ -798,17 +815,56 @@ const AssetHandoverBhl: React.FC = () => {
                                     )}
                                 </Box>
 
+                                {/* Search box */}
+                                {actionHistory.length > 0 && (
+                                    <TextField
+                                        size="small"
+                                        placeholder="Tìm theo tên, phòng ban, ngày..."
+                                        value={historySearch}
+                                        onChange={(e) => setHistorySearch(e.target.value)}
+                                        fullWidth
+                                        sx={{
+                                            mb: 1.5,
+                                            '& .MuiInputBase-root': {
+                                                borderRadius: 2,
+                                                bgcolor: 'rgba(255,255,255,0.03)',
+                                            },
+                                            '& .MuiInputBase-input': {
+                                                py: 0.8,
+                                                fontSize: '0.85rem',
+                                            }
+                                        }}
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <SearchIcon fontSize="small" sx={{ color: '#64748b' }} />
+                                                </InputAdornment>
+                                            ),
+                                            endAdornment: historySearch ? (
+                                                <InputAdornment position="end">
+                                                    <IconButton size="small" onClick={() => setHistorySearch('')} edge="end">
+                                                        <ClearIcon fontSize="small" sx={{ color: '#94a3b8' }} />
+                                                    </IconButton>
+                                                </InputAdornment>
+                                            ) : null,
+                                        }}
+                                    />
+                                )}
+
                                 {historyLoading ? (
                                     <Typography variant="body2" sx={{ color: '#64748b', textAlign: 'center', py: 2 }}>
                                         Đang tải lịch sử...
                                     </Typography>
-                                ) : actionHistory.length === 0 ? (
+                                ) : filteredActionHistory.length === 0 ? (
                                     <Typography variant="body2" sx={{ color: '#64748b', textAlign: 'center', py: 2, fontStyle: 'italic' }}>
-                                        Chưa có {actionType === 'revoke' ? 'lịch sử thu hồi' : actionType === 'transfer' ? 'lịch sử điều chuyển' : 'lịch sử bàn giao'} nào được lưu.
+                                        {historySearch.trim()
+                                            ? `Không tìm thấy kết quả cho "${historySearch}".`
+                                            : `Chưa có ${actionType === 'revoke' ? 'lịch sử thu hồi' : actionType === 'transfer' ? 'lịch sử điều chuyển' : 'lịch sử bàn giao'} nào được lưu.`
+                                        }
                                     </Typography>
                                 ) : (
                                     <Stack spacing={1.5} sx={{ maxHeight: 300, overflowY: 'auto', pr: 0.5 }}>
-                                        {actionHistory.map((h) => {
+                                        {filteredActionHistory.map((h) => {
                                             const formattedDate = new Date(h.created_at).toLocaleString('vi-VN', {
                                                 day: '2-digit',
                                                 month: '2-digit',
