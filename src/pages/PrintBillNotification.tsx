@@ -4,7 +4,9 @@ import {
     TableCell, TableContainer, TableHead, TableRow, 
     Stack, Alert, CircularProgress, IconButton, TextField, 
     InputAdornment, Tooltip, Card, CardContent, Divider,
-    useMediaQuery, useTheme, Chip
+    useMediaQuery, useTheme, Chip, TablePagination,
+    Dialog, DialogTitle, DialogContent, DialogActions,
+    LinearProgress, Menu, MenuItem
 } from '@mui/material';
 import { 
     Download as DownloadIcon, 
@@ -14,12 +16,14 @@ import {
     Search as SearchIcon,
     Share as ShareIcon,
     PictureAsPdf as PictureAsPdfIcon,
-    Person as PersonIcon,
     Phone as PhoneIcon,
     LocationOn as LocationIcon,
     Payment as PaymentIcon,
-    CloudSync as CloudSyncIcon,
-    Refresh as RefreshIcon
+    Refresh as RefreshIcon,
+    NavigateBefore as PrevIcon,
+    NavigateNext as NextIcon,
+    CheckCircle as SuccessIcon,
+    ArrowDropDown as ArrowDropDownIcon
 } from '@mui/icons-material';
 import ExcelJS from 'exceljs';
 import { useReactToPrint } from 'react-to-print';
@@ -35,11 +39,27 @@ import { supabase } from '../config/supabase';
 const STORAGE_KEY = 'PRINT_BILL_NOTIFICATION_DATA';
 const DB_STATUS_TAG = 'bill_notification_item';
 
+// Giới hạn lưu cache local an toàn chống tràn bộ nhớ (QuotaExceededError) trên mobile
+const safeSaveLocalStorage = (key: string, list: BillData[]) => {
+    try {
+        if (!list || list.length === 0) {
+            localStorage.removeItem(key);
+            return;
+        }
+        // Chỉ lưu tối đa 50 item để làm preview offline, tránh tràn hạn mức 5MB của trình duyệt
+        const previewList = list.slice(0, 50);
+        localStorage.setItem(key, JSON.stringify(previewList));
+    } catch (e) {
+        console.warn('LocalStorage đã đầy hoặc không được phép ghi:', e);
+        try { localStorage.removeItem(key); } catch (_) {}
+    }
+};
+
 const PrintBillNotification: React.FC = () => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
-    // Khởi tạo state data từ localStorage (để hiển thị tức thì nếu có cache)
+    // Khởi tạo state data từ cache an toàn
     const [data, setData] = useState<BillData[]>(() => {
         try {
             const saved = localStorage.getItem(STORAGE_KEY);
@@ -52,45 +72,102 @@ const PrintBillNotification: React.FC = () => {
         }
         return [];
     });
+
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(false);
     const [syncingDb, setSyncingDb] = useState(false);
-    const [exportingPdf, setExportingPdf] = useState(false);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    // Tiến trình import Excel lên đám mây
+    const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number; message: string } | null>(null);
+
+    // Phân trang
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(50);
+
+    // Thao tác đơn lẻ (Render On-Demand, KHÔNG render ngầm hàng ngàn bản ghi)
     const [exportingSingleId, setExportingSingleId] = useState<string | null>(null);
     const [sharingId, setSharingId] = useState<string | null>(null);
-    const [error, setError] = useState<string | null>(null);
-    const printRef = useRef<HTMLDivElement>(null);
-    const qrCardRef = useRef<HTMLDivElement>(null);
+    const [activeQrItem, setActiveQrItem] = useState<BillData | null>(null);
+    const [activePdfItem, setActivePdfItem] = useState<BillData | null>(null);
 
-    // Tải dữ liệu từ Database Supabase về (đồng bộ giữa Web và Mobile)
+    // In ấn & Xuất PDF hàng loạt
+    const [itemsToPrint, setItemsToPrint] = useState<BillData[]>([]);
+    const [printMenuAnchor, setPrintMenuAnchor] = useState<null | HTMLElement>(null);
+    const [pdfMenuAnchor, setPdfMenuAnchor] = useState<null | HTMLElement>(null);
+    
+    // Tiến trình xuất PDF
+    const [exportingPdf, setExportingPdf] = useState(false);
+    const [pdfExportProgress, setPdfExportProgress] = useState<{ current: number; total: number } | null>(null);
+    const cancelPdfExportRef = useRef(false);
+
+    // Refs
+    const printRef = useRef<HTMLDivElement>(null);
+    const singleQrContainerRef = useRef<HTMLDivElement>(null);
+    const singlePdfContainerRef = useRef<HTMLDivElement>(null);
+    const qrImageCacheRef = useRef<Map<string, { blob: Blob; fileName: string }>>(new Map());
+
+    // Mẫu branch config mặc định
+    const branchConfig = useMemo(() => ({
+        branchName: 'VIETTEL QUẬN 12',
+        branchAddress: '50 TRƯƠNG THỊ HOA PHƯỜNG TÂN THỚI HIỆP Q12',
+        branchContact: 'ĐT- ZALO 0979 092 604 – 0987 268 794',
+        branchServices: 'THU CƯỚC –LẮP ĐẶT INTERNET – SIM SỐ ĐẸP'
+    }), []);
+
+    // Tải toàn bộ dữ liệu từ Database Supabase (Hỗ trợ phân trang vượt qua giới hạn 1,000 dòng mặc định)
     const fetchBillsFromDatabase = useCallback(async (silent = false) => {
         try {
             if (!silent) setSyncingDb(true);
-            const { data: records, error: dbError } = await supabase
-                .from('zalo_notification_logs')
-                .select('*')
-                .eq('status', DB_STATUS_TAG)
-                .order('created_at', { ascending: true });
+            setError(null);
 
-            if (dbError) {
-                console.error('Lỗi khi tải danh sách từ database:', dbError);
-                return;
+            let allRecords: any[] = [];
+            let from = 0;
+            const PAGE_SIZE = 1000;
+            let hasMore = true;
+
+            // Vòng lặp tải từng đợt 1000 dòng cho tới khi hết sạch toàn bộ dữ liệu
+            while (hasMore) {
+                const { data: records, error: dbError } = await supabase
+                    .from('zalo_notification_logs')
+                    .select('params, error_message, created_at')
+                    .eq('status', DB_STATUS_TAG)
+                    .order('created_at', { ascending: true })
+                    .range(from, from + PAGE_SIZE - 1);
+
+                if (dbError) {
+                    console.error('Lỗi khi tải danh sách từ database:', dbError);
+                    setError('Không thể kết nối cơ sở dữ liệu để tải danh sách: ' + dbError.message);
+                    break;
+                }
+
+                if (records && records.length > 0) {
+                    allRecords = allRecords.concat(records);
+                    if (records.length < PAGE_SIZE) {
+                        hasMore = false;
+                    } else {
+                        from += PAGE_SIZE;
+                    }
+                } else {
+                    hasMore = false;
+                }
             }
 
-            if (records) {
-                const loadedBills: BillData[] = records
+            if (allRecords.length > 0) {
+                const loadedBills: BillData[] = allRecords
                     .map(r => r.params as BillData)
                     .filter((item): item is BillData => !!item && !!item.customerName);
 
                 setData(loadedBills);
-                if (loadedBills.length > 0) {
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(loadedBills));
-                } else {
-                    localStorage.removeItem(STORAGE_KEY);
-                }
+                safeSaveLocalStorage(STORAGE_KEY, loadedBills);
+            } else {
+                setData([]);
+                safeSaveLocalStorage(STORAGE_KEY, []);
             }
         } catch (err: any) {
             console.error('Lỗi khi kết nối database:', err);
+            setError('Lỗi khi tải dữ liệu từ máy chủ.');
         } finally {
             if (!silent) setSyncingDb(false);
         }
@@ -101,14 +178,7 @@ const PrintBillNotification: React.FC = () => {
         fetchBillsFromDatabase();
     }, [fetchBillsFromDatabase]);
 
-    // Mẫu branch config (có thể thay đổi nếu cần)
-    const branchConfig = {
-        branchName: 'VIETTEL QUẬN 12',
-        branchAddress: '50 TRƯƠNG THỊ HOA PHƯỜNG TÂN THỚI HIỆP Q12',
-        branchContact: 'ĐT- ZALO 0979 092 604 – 0987 268 794',
-        branchServices: 'THU CƯỚC –LẮP ĐẶT INTERNET – SIM SỐ ĐẸP'
-    };
-
+    // Tải file Excel mẫu
     const handleDownloadTemplate = async () => {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Mau_In_Thong_Bao');
@@ -124,7 +194,6 @@ const PrintBillNotification: React.FC = () => {
             { header: 'SĐT NV', key: 'collectorPhone', width: 15 },
         ];
 
-        // Add dummy data
         worksheet.addRow({
             customerName: 'Nguyễn Lê Nin Đa',
             address: '23H Nguyễn ảnh Thủ, Khu phố 3, P. Hiệp Thành',
@@ -146,12 +215,15 @@ const PrintBillNotification: React.FC = () => {
         window.URL.revokeObjectURL(url);
     };
 
+    // Nhập file Excel (Đã tối ưu chia batch 100 dòng & an toàn chống tràn bộ nhớ)
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         setLoading(true);
         setError(null);
+        setSuccessMessage(null);
+        setUploadProgress({ current: 0, total: 0, message: 'Đang đọc và phân tích file Excel...' });
 
         try {
             const buffer = await file.arrayBuffer();
@@ -179,7 +251,7 @@ const PrintBillNotification: React.FC = () => {
                 const parsedAmountNum = parseExcelNumber(rawAmount);
 
                 parsedData.push({
-                    id: Math.random().toString(36).substr(2, 9),
+                    id: Math.random().toString(36).substring(2, 11),
                     customerName: toTitleCase(getVal(1)),
                     address: getVal(2),
                     phone: getVal(3),
@@ -193,43 +265,73 @@ const PrintBillNotification: React.FC = () => {
                 });
             });
 
-            setData(parsedData);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(parsedData));
-
-            // Lưu đồng bộ lên Database Supabase để máy tính và điện thoại đều có chung dữ liệu
-            try {
-                // Xóa danh sách cũ trên DB trước khi chèn danh sách mới
-                await supabase.from('zalo_notification_logs').delete().eq('status', DB_STATUS_TAG);
-
-                if (parsedData.length > 0) {
-                    const dbPayload = parsedData.map(item => ({
-                        id: crypto.randomUUID ? crypto.randomUUID() : (Math.random().toString(36).substring(2) + Date.now().toString(36)),
-                        recipient_phone: item.phone || '',
-                        status: DB_STATUS_TAG,
-                        error_message: item.id, // Lưu bill ID
-                        params: item
-                    }));
-
-                    const { error: insertErr } = await supabase.from('zalo_notification_logs').insert(dbPayload);
-                    if (insertErr) {
-                        console.error('Lỗi khi lưu danh sách vào Database:', insertErr);
-                    }
-                }
-            } catch (dbErr) {
-                console.error('Không thể đồng bộ vào database:', dbErr);
+            if (parsedData.length === 0) {
+                throw new Error('File Excel không có dữ liệu khách hàng hợp lệ.');
             }
+
+            // Cập nhật State giao diện ngay lập tức
+            setData(parsedData);
+            setPage(0);
+            safeSaveLocalStorage(STORAGE_KEY, parsedData);
+            qrImageCacheRef.current.clear(); // Xóa cache ảnh cũ
+
+            // Đồng bộ lên Supabase Database theo từng batch 100 bản ghi
+            setUploadProgress({
+                current: 0,
+                total: parsedData.length,
+                message: `Đã đọc ${parsedData.length} khách hàng. Đang chuẩn bị đồng bộ lên đám mây...`
+            });
+
+            // Xóa dữ liệu cũ
+            const { error: delErr } = await supabase.from('zalo_notification_logs').delete().eq('status', DB_STATUS_TAG);
+            if (delErr) {
+                console.warn('Lỗi khi dọn dữ liệu cũ:', delErr);
+            }
+
+            const dbPayload = parsedData.map(item => ({
+                id: crypto.randomUUID ? crypto.randomUUID() : (Math.random().toString(36).substring(2) + Date.now().toString(36)),
+                recipient_phone: item.phone || '',
+                status: DB_STATUS_TAG,
+                error_message: item.id,
+                params: item
+            }));
+
+            const BATCH_SIZE = 100;
+            for (let i = 0; i < dbPayload.length; i += BATCH_SIZE) {
+                const chunk = dbPayload.slice(i, i + BATCH_SIZE);
+                const { error: insertErr } = await supabase.from('zalo_notification_logs').insert(chunk);
+                if (insertErr) {
+                    throw new Error(`Lỗi đồng bộ đám mây tại dòng ${i + 1}: ${insertErr.message}`);
+                }
+                const processed = Math.min(i + BATCH_SIZE, dbPayload.length);
+                setUploadProgress({
+                    current: processed,
+                    total: dbPayload.length,
+                    message: `Đang đồng bộ cơ sở dữ liệu: ${processed} / ${dbPayload.length} khách hàng...`
+                });
+            }
+
+            setSuccessMessage(`Nhập thành công ${parsedData.length} khách hàng và đã đồng bộ lên hệ thống!`);
         } catch (err: any) {
-            console.error('Excel parse error:', err);
-            setError('Lỗi khi đọc file Excel. Vui lòng đảm bảo đúng định dạng mẫu.');
+            console.error('Lỗi khi import file Excel:', err);
+            setError(err.message || 'Lỗi khi đọc file Excel. Vui lòng đảm bảo đúng định dạng mẫu.');
         } finally {
             setLoading(false);
+            setUploadProgress(null);
             e.target.value = '';
         }
     };
 
-    const handlePrint = useReactToPrint({
+    // react-to-print hook cấu hình chuẩn
+    const reactToPrintFn = useReactToPrint({
         contentRef: printRef,
         documentTitle: 'In_Thong_Bao_Cuoc',
+        onAfterPrint: () => {
+            setItemsToPrint([]);
+        },
+        onPrintError: () => {
+            setItemsToPrint([]);
+        },
         pageStyle: `
             @page {
                 size: 210mm 148mm !important;
@@ -271,61 +373,49 @@ const PrintBillNotification: React.FC = () => {
         `
     });
 
-    // Xuất tất cả các hóa đơn thành 1 file PDF A5
-    const handleExportPdf = async () => {
-        if (!printRef.current || data.length === 0) return;
-        setExportingPdf(true);
-        setError(null);
-        try {
-            const bills = Array.from(printRef.current.querySelectorAll<HTMLElement>('[data-bill-page]'));
-            if (!bills.length) throw new Error('Không tìm thấy nội dung thông báo để xuất PDF.');
-
-            const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a5', compress: true });
-            for (const [index, bill] of bills.entries()) {
-                const canvas = await html2canvas(bill, {
-                    scale: 2,
-                    useCORS: true,
-                    backgroundColor: '#ffffff',
-                    logging: false,
-                    windowWidth: bill.scrollWidth,
-                    windowHeight: bill.scrollHeight,
-                });
-                if (index > 0) pdf.addPage('a5', 'landscape');
-                pdf.addImage(canvas.toDataURL('image/jpeg', 0.94), 'JPEG', 0, 0, 210, 148.5, undefined, 'FAST');
-            }
-            pdf.save(`Thong_bao_cuoc_A5_${new Date().toISOString().slice(0, 10)}.pdf`);
-        } catch (err: any) {
-            console.error('PDF export error:', err);
-            setError(err.message || 'Không thể xuất file PDF. Vui lòng thử lại.');
-        } finally {
-            setExportingPdf(false);
-        }
+    // Kích hoạt In ấn
+    const startPrint = (list: BillData[]) => {
+        setPrintMenuAnchor(null);
+        if (!list || list.length === 0) return;
+        setItemsToPrint(list);
+        setTimeout(() => {
+            reactToPrintFn();
+        }, 120);
     };
 
-    // Tạo file PDF cho 1 khách hàng cụ thể với tốc độ tối ưu
+    // Tạo file PDF cho 1 khách hàng cụ thể (On-Demand, chỉ mount 1 element duy nhất)
     const generateSinglePdf = async (billItem: BillData): Promise<{ blob: Blob; fileName: string }> => {
-        if (!printRef.current) throw new Error('Không tìm thấy vùng in.');
-        const billEl = printRef.current.querySelector<HTMLElement>(`[data-bill-id="${billItem.id}"]`);
-        if (!billEl) throw new Error('Không tìm thấy phần tử hóa đơn của khách hàng này.');
+        setActivePdfItem(billItem);
+        // Chờ DOM mount và vẽ xong
+        await new Promise(r => setTimeout(r, 80));
 
-        // Tối ưu tốc độ: scale: 1.5, tắt logging và các tùy chọn nặng nề để render siêu tốc
-        const canvas = await html2canvas(billEl, {
-            scale: 1.5,
-            useCORS: true,
-            backgroundColor: '#ffffff',
-            logging: false,
-            removeContainer: true,
-            windowWidth: billEl.scrollWidth,
-            windowHeight: billEl.scrollHeight,
-        });
+        const billEl = singlePdfContainerRef.current;
+        if (!billEl) {
+            setActivePdfItem(null);
+            throw new Error('Không thể khởi tạo vùng in hóa đơn.');
+        }
 
-        const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a5', compress: false });
-        pdf.addImage(canvas.toDataURL('image/jpeg', 0.85), 'JPEG', 0, 0, 210, 148.5, undefined, 'FAST');
-        
-        const cleanName = (billItem.customerName || 'KH').trim().replace(/[^a-zA-Z0-9\u00C0-\u1EF9]/g, '_');
-        const fileName = `Thong_Bao_Cuoc_${cleanName}_${billItem.phone || ''}.pdf`;
-        const blob = pdf.output('blob');
-        return { blob, fileName };
+        try {
+            const canvas = await html2canvas(billEl, {
+                scale: 1.5,
+                useCORS: true,
+                backgroundColor: '#ffffff',
+                logging: false,
+                removeContainer: true,
+                windowWidth: billEl.scrollWidth || 794,
+                windowHeight: billEl.scrollHeight || 559,
+            });
+
+            const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a5', compress: false });
+            pdf.addImage(canvas.toDataURL('image/jpeg', 0.85), 'JPEG', 0, 0, 210, 148.5, undefined, 'FAST');
+            
+            const cleanName = (billItem.customerName || 'KH').trim().replace(/[^a-zA-Z0-9\u00C0-\u1EF9]/g, '_');
+            const fileName = `Thong_Bao_Cuoc_${cleanName}_${billItem.phone || ''}.pdf`;
+            const blob = pdf.output('blob');
+            return { blob, fileName };
+        } finally {
+            setActivePdfItem(null); // Giải phóng RAM ngay
+        }
     };
 
     // Tải file PDF đơn lẻ của 1 khách hàng
@@ -348,64 +438,66 @@ const PrintBillNotification: React.FC = () => {
         }
     };
 
-    // Bộ nhớ đệm lưu ảnh thẻ QR đã sinh để chia sẻ tức thì (<10ms)
-    const qrImageCacheRef = useRef<Map<string, { blob: Blob; fileName: string }>>(new Map());
-
-    // Tạo file ảnh thẻ QR Ngân Hàng siêu nét với tốc độ cực nhanh (để Zalo tự nhận diện hiện nút "Chuyển tiền / Chuyển khoản")
+    // Tạo file ảnh thẻ QR Ngân Hàng sắc nét (On-Demand, chỉ mount 1 canvas duy nhất khi bấm)
     const generateQrCardImage = async (billItem: BillData): Promise<{ blob: Blob; fileName: string }> => {
-        // Nếu đã có trong cache thì trả về ngay lập tức không cần render lại
+        // Kiểm tra bộ nhớ cache
         const cached = qrImageCacheRef.current.get(billItem.id);
         if (cached) return cached;
 
-        if (!qrCardRef.current) throw new Error('Không tìm thấy vùng thẻ QR.');
-        const cardEl = qrCardRef.current.querySelector<HTMLElement>(`[data-qr-card-id="${billItem.id}"]`);
-        if (!cardEl) throw new Error('Không tìm thấy phần tử thẻ QR của khách hàng này.');
+        setActiveQrItem(billItem);
+        // Chờ canvas QR code render xong
+        await new Promise(r => setTimeout(r, 80));
 
-        // Scale 2x trên kích thước 420x264 cho ra ảnh 840x528 pixel sắc nét hoàn hảo
-        const canvas = await html2canvas(cardEl, {
-            scale: 2,
-            useCORS: true,
-            backgroundColor: null,
-            logging: false,
-            removeContainer: true,
-            windowWidth: 420,
-            windowHeight: 264,
-        });
+        const cardEl = singleQrContainerRef.current;
+        if (!cardEl) {
+            setActiveQrItem(null);
+            throw new Error('Không thể khởi tạo phần tử thẻ QR.');
+        }
 
-        const cleanName = (billItem.customerName || 'KH').trim().replace(/[^a-zA-Z0-9\u00C0-\u1EF9]/g, '_');
-        const fileName = `MBBank_QR_${cleanName}_${billItem.phone || ''}.png`;
+        try {
+            const canvas = await html2canvas(cardEl, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: null,
+                logging: false,
+                removeContainer: true,
+                windowWidth: 420,
+                windowHeight: 264,
+            });
 
-        const blob = await new Promise<Blob>((resolve, reject) => {
-            canvas.toBlob((b) => {
-                if (b) resolve(b);
-                else reject(new Error('Không thể tạo file ảnh QR.'));
-            }, 'image/png');
-        });
+            const cleanName = (billItem.customerName || 'KH').trim().replace(/[^a-zA-Z0-9\u00C0-\u1EF9]/g, '_');
+            const fileName = `MBBank_QR_${cleanName}_${billItem.phone || ''}.png`;
 
-        const result = { blob, fileName };
-        qrImageCacheRef.current.set(billItem.id, result);
-        return result;
+            const blob = await new Promise<Blob>((resolve, reject) => {
+                canvas.toBlob((b) => {
+                    if (b) resolve(b);
+                    else reject(new Error('Không thể tạo file ảnh QR.'));
+                }, 'image/png');
+            });
+
+            const result = { blob, fileName };
+            qrImageCacheRef.current.set(billItem.id, result);
+            return result;
+        } finally {
+            setActiveQrItem(null); // Giải phóng canvas khỏi RAM ngay lập tức
+        }
     };
 
-    // Chia sẻ thông báo cước + ảnh thẻ mã QR qua Zalo (hiện nút Chuyển tiền / Chuyển khoản)
+    // Chia sẻ thông báo cước + ảnh thẻ mã QR qua Zalo
     const handleShareZalo = async (billItem: BillData) => {
         setSharingId(billItem.id);
         setError(null);
 
-        // Chuẩn hóa nội dung tin nhắn gửi kèm
         const shareText = `Kính gửi Quý khách ${toTitleCase(billItem.customerName)},\nViettel xin gửi Thông báo cước dịch vụ:\n- Thuê bao: ${billItem.phone}\n- Kỳ cước: ${toTitleCase(billItem.serviceMonth)}\n- Số tiền cần thanh toán: ${billItem.amount} đ\nTrân trọng cảm ơn Quý khách!`;
 
-        // Tự động sao chép sẵn vào Clipboard ngay lập tức
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(shareText).catch(() => {});
         }
 
         try {
-            // Tạo file ảnh thẻ QR Ngân hàng MB Bank (Zalo sẽ tự động nhận diện và hiện nút "Chuyển tiền / Chuyển khoản" trực tiếp trên ảnh)
             const { blob, fileName } = await generateQrCardImage(billItem);
             const imageFile = new File([blob], fileName, { type: 'image/png' });
 
-            // Popup Web Share Sheet hệ thống ngay trong cùng gesture tương tác của người dùng
             if (navigator.canShare && navigator.canShare({ files: [imageFile] })) {
                 try {
                     await navigator.share({
@@ -420,7 +512,6 @@ const PrintBillNotification: React.FC = () => {
                 }
             }
 
-            // Fallback chỉ share Text nếu thiết bị không hỗ trợ chia sẻ tệp ảnh trực tiếp
             if (navigator.share) {
                 try {
                     await navigator.share({
@@ -433,7 +524,6 @@ const PrintBillNotification: React.FC = () => {
                 }
             }
 
-            // Fallback mở Zalo Web trên máy tính
             window.open('https://chat.zalo.me', '_blank');
         } catch (err: any) {
             if (err.name !== 'AbortError') {
@@ -445,12 +535,74 @@ const PrintBillNotification: React.FC = () => {
         }
     };
 
+    // Xuất PDF hàng loạt an toàn theo từng trang với thanh tiến trình
+    const exportBatchPdf = async (listToExport: BillData[]) => {
+        setPdfMenuAnchor(null);
+        if (!listToExport || listToExport.length === 0) return;
+
+        setExportingPdf(true);
+        setError(null);
+        cancelPdfExportRef.current = false;
+        setPdfExportProgress({ current: 0, total: listToExport.length });
+
+        try {
+            const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a5', compress: true });
+
+            for (let i = 0; i < listToExport.length; i++) {
+                if (cancelPdfExportRef.current) {
+                    throw new Error('Đã hủy xuất PDF.');
+                }
+
+                const item = listToExport[i];
+                setActivePdfItem(item);
+                await new Promise(r => setTimeout(r, 60));
+
+                const billEl = singlePdfContainerRef.current;
+                if (!billEl) continue;
+
+                const canvas = await html2canvas(billEl, {
+                    scale: 1.3,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    logging: false,
+                    removeContainer: true,
+                    windowWidth: billEl.scrollWidth || 794,
+                    windowHeight: billEl.scrollHeight || 559,
+                });
+
+                if (i > 0) pdf.addPage('a5', 'landscape');
+                pdf.addImage(canvas.toDataURL('image/jpeg', 0.8), 'JPEG', 0, 0, 210, 148.5, undefined, 'FAST');
+
+                setPdfExportProgress({ current: i + 1, total: listToExport.length });
+
+                // Nhường luồng cho UI thở
+                await new Promise(r => setTimeout(r, 10));
+            }
+
+            setActivePdfItem(null);
+            pdf.save(`Thong_bao_cuoc_${listToExport.length}_khach_hang_${new Date().toISOString().slice(0, 10)}.pdf`);
+            setSuccessMessage(`Đã xuất thành công file PDF gồm ${listToExport.length} thông báo cước!`);
+        } catch (err: any) {
+            setActivePdfItem(null);
+            if (err.message !== 'Đã hủy xuất PDF.') {
+                console.error('Lỗi xuất PDF:', err);
+                setError(err.message || 'Không thể xuất file PDF.');
+            }
+        } finally {
+            setExportingPdf(false);
+            setPdfExportProgress(null);
+        }
+    };
+
+    // Xóa toàn bộ danh sách
     const clearData = async () => {
         if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ danh sách? Thao tác này sẽ xóa dữ liệu trên cả máy tính và điện thoại.')) {
             setData([]);
-            localStorage.removeItem(STORAGE_KEY);
+            safeSaveLocalStorage(STORAGE_KEY, []);
+            qrImageCacheRef.current.clear();
             try {
                 await supabase.from('zalo_notification_logs').delete().eq('status', DB_STATUS_TAG);
+                setSuccessMessage('Đã xóa toàn bộ dữ liệu thành công.');
             } catch (err) {
                 console.error('Lỗi khi xóa danh sách trên Database:', err);
             }
@@ -462,15 +614,11 @@ const PrintBillNotification: React.FC = () => {
         if (window.confirm(`Bạn có chắc muốn xóa khách hàng "${billItem.customerName}" khỏi danh sách?`)) {
             setData(prev => {
                 const next = prev.filter(item => item.id !== billItem.id);
-                if (next.length === 0) {
-                    localStorage.removeItem(STORAGE_KEY);
-                } else {
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-                }
+                safeSaveLocalStorage(STORAGE_KEY, next);
                 return next;
             });
+            qrImageCacheRef.current.delete(billItem.id);
 
-            // Đồng bộ xóa trên Database
             try {
                 await supabase.from('zalo_notification_logs').delete().match({
                     status: DB_STATUS_TAG,
@@ -482,7 +630,7 @@ const PrintBillNotification: React.FC = () => {
         }
     };
 
-    // Lọc danh sách theo thanh tìm kiếm
+    // Lọc danh sách theo từ khóa tìm kiếm
     const filteredData = useMemo(() => {
         if (!searchTerm.trim()) return data;
         const term = searchTerm.toLowerCase().trim();
@@ -495,6 +643,14 @@ const PrintBillNotification: React.FC = () => {
             (item.collectorName || '').toLowerCase().includes(term)
         );
     }, [data, searchTerm]);
+
+    // Dữ liệu cho trang hiện tại (Tránh render ngàn phần tử vào DOM)
+    const paginatedData = useMemo(() => {
+        const start = page * rowsPerPage;
+        return filteredData.slice(start, start + rowsPerPage);
+    }, [filteredData, page, rowsPerPage]);
+
+    const totalPages = Math.ceil(filteredData.length / rowsPerPage) || 1;
 
     return (
         <Box sx={{ p: { xs: 1.5, sm: 2.5, md: 3 } }}>
@@ -566,29 +722,57 @@ const PrintBillNotification: React.FC = () => {
                         />
                     </Button>
                     
+                    {/* Menu In ấn */}
                     <Button
                         variant="contained"
                         color="secondary"
                         size={isMobile ? "small" : "medium"}
                         startIcon={<PrintIcon />}
+                        endIcon={<ArrowDropDownIcon />}
                         disabled={data.length === 0}
-                        onClick={() => handlePrint()}
+                        onClick={(e) => setPrintMenuAnchor(e.currentTarget)}
                         sx={{ fontSize: { xs: '12px', sm: '14px' }, py: { xs: 0.8, sm: 0.7 } }}
                     >
                         In {data.length > 0 ? `(${data.length})` : ''}
                     </Button>
+                    <Menu
+                        anchorEl={printMenuAnchor}
+                        open={Boolean(printMenuAnchor)}
+                        onClose={() => setPrintMenuAnchor(null)}
+                    >
+                        <MenuItem onClick={() => startPrint(paginatedData)}>
+                            In trang hiện tại ({paginatedData.length} khách hàng)
+                        </MenuItem>
+                        <MenuItem onClick={() => startPrint(filteredData)}>
+                            In tất cả ({filteredData.length} khách hàng)
+                        </MenuItem>
+                    </Menu>
 
+                    {/* Menu Xuất PDF */}
                     <Button
                         variant="contained"
                         color="error"
                         size={isMobile ? "small" : "medium"}
                         startIcon={exportingPdf ? <CircularProgress size={18} color="inherit" /> : <PictureAsPdfIcon />}
+                        endIcon={<ArrowDropDownIcon />}
                         disabled={data.length === 0 || exportingPdf}
-                        onClick={handleExportPdf}
+                        onClick={(e) => setPdfMenuAnchor(e.currentTarget)}
                         sx={{ fontSize: { xs: '12px', sm: '14px' }, py: { xs: 0.8, sm: 0.7 } }}
                     >
-                        {exportingPdf ? 'Đang xuất...' : `Xuất PDF${data.length > 0 ? ` (${data.length})` : ''}`}
+                        {exportingPdf ? 'Đang xuất...' : `Xuất PDF (${data.length})`}
                     </Button>
+                    <Menu
+                        anchorEl={pdfMenuAnchor}
+                        open={Boolean(pdfMenuAnchor)}
+                        onClose={() => setPdfMenuAnchor(null)}
+                    >
+                        <MenuItem onClick={() => exportBatchPdf(paginatedData)}>
+                            Xuất PDF trang hiện tại ({paginatedData.length} khách hàng)
+                        </MenuItem>
+                        <MenuItem onClick={() => exportBatchPdf(filteredData)}>
+                            Xuất PDF tất cả ({filteredData.length} khách hàng)
+                        </MenuItem>
+                    </Menu>
                     
                     {data.length > 0 && !isMobile && (
                         <IconButton color="error" onClick={clearData} title="Xóa toàn bộ danh sách">
@@ -598,9 +782,39 @@ const PrintBillNotification: React.FC = () => {
                 </Box>
             </Box>
 
+            {/* Thông báo tiến trình Import Excel */}
+            {uploadProgress && (
+                <Paper sx={{ p: 2, mb: 2, bgcolor: 'background.paper', borderRadius: 2 }}>
+                    <Stack spacing={1}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {uploadProgress.message}
+                            </Typography>
+                            {uploadProgress.total > 0 && (
+                                <Typography variant="body2" color="primary" sx={{ fontWeight: 700 }}>
+                                    {Math.round((uploadProgress.current / uploadProgress.total) * 100)}%
+                                </Typography>
+                            )}
+                        </Box>
+                        <LinearProgress 
+                            variant={uploadProgress.total > 0 ? "determinate" : "indeterminate"} 
+                            value={uploadProgress.total > 0 ? (uploadProgress.current / uploadProgress.total) * 100 : 0} 
+                            sx={{ height: 8, borderRadius: 4 }}
+                        />
+                    </Stack>
+                </Paper>
+            )}
+
+            {/* Thông báo Lỗi / Thành công */}
             {error && (
-                <Alert severity="error" sx={{ mb: 2 }}>
+                <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
                     {error}
+                </Alert>
+            )}
+
+            {successMessage && (
+                <Alert severity="success" icon={<SuccessIcon />} sx={{ mb: 2 }} onClose={() => setSuccessMessage(null)}>
+                    {successMessage}
                 </Alert>
             )}
 
@@ -619,7 +833,10 @@ const PrintBillNotification: React.FC = () => {
                         fullWidth={isMobile}
                         placeholder="Tìm tên khách hàng, thuê bao, số tiền..."
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={(e) => {
+                            setSearchTerm(e.target.value);
+                            setPage(0);
+                        }}
                         sx={{ 
                             width: { xs: '100%', sm: 380 },
                             bgcolor: 'background.paper',
@@ -635,11 +852,14 @@ const PrintBillNotification: React.FC = () => {
                     />
                     <Typography variant="body2" color="text.secondary" sx={{ textAlign: { xs: 'right', sm: 'left' } }}>
                         Tìm thấy: <b>{filteredData.length}</b> / {data.length} khách hàng
+                        {filteredData.length > rowsPerPage && (
+                            <span> (Trang {page + 1}/{totalPages})</span>
+                        )}
                     </Typography>
                 </Box>
             )}
 
-            {/* GIAO DIỆN MOBILE: Card List (Dễ nhìn, bấm thao tác tiện dụng trên điện thoại) */}
+            {/* GIAO DIỆN MOBILE: Card List phân trang mượt mà (Chỉ render 25-50 card/trang, tuyệt đối không crash) */}
             {isMobile ? (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                     {filteredData.length === 0 ? (
@@ -651,105 +871,133 @@ const PrintBillNotification: React.FC = () => {
                             </Typography>
                         </Paper>
                     ) : (
-                        filteredData.map((row, index) => (
-                            <Card key={row.id} variant="outlined" sx={{ borderRadius: 2, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-                                <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-                                    {/* Hàng trên: STT + Tên KH + Số tiền */}
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <Chip label={index + 1} size="small" sx={{ height: 20, fontSize: '11px', fontWeight: 'bold' }} />
-                                            <Typography sx={{ fontWeight: 'bold', fontSize: '15px' }}>
-                                                {toTitleCase(row.customerName)}
+                        paginatedData.map((row, index) => {
+                            const globalIndex = page * rowsPerPage + index + 1;
+                            return (
+                                <Card key={row.id} variant="outlined" sx={{ borderRadius: 2, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+                                    <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                                        {/* Hàng trên: STT + Tên KH + Số tiền */}
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <Chip label={globalIndex} size="small" sx={{ height: 20, fontSize: '11px', fontWeight: 'bold' }} />
+                                                <Typography sx={{ fontWeight: 'bold', fontSize: '15px' }}>
+                                                    {toTitleCase(row.customerName)}
+                                                </Typography>
+                                            </Box>
+                                            <Typography sx={{ fontWeight: 800, color: '#ee0033', fontSize: '16px' }}>
+                                                {row.amount} đ
                                             </Typography>
                                         </Box>
-                                        <Typography sx={{ fontWeight: 800, color: '#ee0033', fontSize: '16px' }}>
-                                            {row.amount} đ
-                                        </Typography>
-                                    </Box>
 
-                                    {/* Thông tin chi tiết */}
-                                    <Stack spacing={0.6} sx={{ fontSize: '13px', color: 'text.secondary', mb: 1.5 }}>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <PhoneIcon sx={{ fontSize: 15, color: '#3b82f6' }} />
-                                            <span>Thuê bao (Account): <Box component="span" sx={{ color: 'text.primary', fontWeight: 600, fontSize: '14px' }}>{row.phone}</Box></span>
-                                        </Box>
-                                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                                            <LocationIcon sx={{ fontSize: 15, color: 'text.secondary', mt: 0.3 }} />
-                                            <span style={{ lineHeight: 1.25 }}>{row.address}</span>
-                                        </Box>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <PaymentIcon sx={{ fontSize: 15, color: '#10b981' }} />
-                                            <span>{toTitleCase(row.serviceMonth)}</span>
-                                        </Box>
-                                    </Stack>
-
-                                    <Divider sx={{ mb: 1 }} />
-
-                                    {/* Hàng dưới: Các nút bấm thao tác lớn dễ chạm trên màn hình cảm ứng */}
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <Typography variant="caption" color="text.secondary">
-                                            NV: {toTitleCase(row.collectorName)}
-                                        </Typography>
-
-                                        <Stack direction="row" spacing={1}>
-                                            <Button
-                                                variant="outlined"
-                                                size="small"
-                                                color="primary"
-                                                startIcon={exportingSingleId === row.id ? <CircularProgress size={14} /> : <PictureAsPdfIcon fontSize="small" />}
-                                                disabled={exportingSingleId === row.id}
-                                                onClick={() => handleDownloadSinglePdf(row)}
-                                                sx={{ py: 0.4, px: 1, fontSize: '12px' }}
-                                            >
-                                                Tải PDF
-                                            </Button>
-
-                                            <Button
-                                                variant="contained"
-                                                size="small"
-                                                startIcon={sharingId === row.id ? <CircularProgress size={14} color="inherit" /> : <ShareIcon fontSize="small" />}
-                                                disabled={sharingId === row.id}
-                                                onClick={() => handleShareZalo(row)}
-                                                sx={{ 
-                                                    bgcolor: '#0068ff', 
-                                                    '&:hover': { bgcolor: '#0055d4' }, 
-                                                    py: 0.6, 
-                                                    px: 1.5, 
-                                                    fontSize: '12.5px',
-                                                    fontWeight: 600,
-                                                    touchAction: 'manipulation',
-                                                    minHeight: '36px',
-                                                    boxShadow: '0 2px 6px rgba(0, 104, 255, 0.3)'
-                                                }}
-                                            >
-                                                Zalo
-                                            </Button>
-
-                                            <IconButton 
-                                                size="small" 
-                                                color="error"
-                                                onClick={() => handleDeleteSingle(row)}
-                                                title="Xóa khách hàng"
-                                            >
-                                                <DeleteIcon fontSize="small" />
-                                            </IconButton>
+                                        {/* Thông tin chi tiết */}
+                                        <Stack spacing={0.6} sx={{ fontSize: '13px', color: 'text.secondary', mb: 1.5 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <PhoneIcon sx={{ fontSize: 15, color: '#3b82f6' }} />
+                                                <span>Thuê bao: <Box component="span" sx={{ color: 'text.primary', fontWeight: 600, fontSize: '14px' }}>{row.phone}</Box></span>
+                                            </Box>
+                                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                                                <LocationIcon sx={{ fontSize: 15, color: 'text.secondary', mt: 0.3 }} />
+                                                <span style={{ lineHeight: 1.25 }}>{row.address}</span>
+                                            </Box>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <PaymentIcon sx={{ fontSize: 15, color: '#10b981' }} />
+                                                <span>{toTitleCase(row.serviceMonth)}</span>
+                                            </Box>
                                         </Stack>
-                                    </Box>
-                                </CardContent>
-                            </Card>
-                        ))
+
+                                        <Divider sx={{ mb: 1 }} />
+
+                                        {/* Hàng dưới: Nút bấm lớn dễ chạm */}
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Typography variant="caption" color="text.secondary">
+                                                NV: {toTitleCase(row.collectorName)}
+                                            </Typography>
+
+                                            <Stack direction="row" spacing={1}>
+                                                <Button
+                                                    variant="outlined"
+                                                    size="small"
+                                                    color="primary"
+                                                    startIcon={exportingSingleId === row.id ? <CircularProgress size={14} /> : <PictureAsPdfIcon fontSize="small" />}
+                                                    disabled={exportingSingleId === row.id}
+                                                    onClick={() => handleDownloadSinglePdf(row)}
+                                                    sx={{ py: 0.4, px: 1, fontSize: '12px' }}
+                                                >
+                                                    Tải PDF
+                                                </Button>
+
+                                                <Button
+                                                    variant="contained"
+                                                    size="small"
+                                                    startIcon={sharingId === row.id ? <CircularProgress size={14} color="inherit" /> : <ShareIcon fontSize="small" />}
+                                                    disabled={sharingId === row.id}
+                                                    onClick={() => handleShareZalo(row)}
+                                                    sx={{ 
+                                                        bgcolor: '#0068ff', 
+                                                        '&:hover': { bgcolor: '#0055d4' }, 
+                                                        py: 0.6, 
+                                                        px: 1.5, 
+                                                        fontSize: '12.5px',
+                                                        fontWeight: 600,
+                                                        touchAction: 'manipulation',
+                                                        minHeight: '36px',
+                                                        boxShadow: '0 2px 6px rgba(0, 104, 255, 0.3)'
+                                                    }}
+                                                >
+                                                    Zalo
+                                                </Button>
+
+                                                <IconButton 
+                                                    size="small" 
+                                                    color="error"
+                                                    onClick={() => handleDeleteSingle(row)}
+                                                    title="Xóa khách hàng"
+                                                >
+                                                    <DeleteIcon fontSize="small" />
+                                                </IconButton>
+                                            </Stack>
+                                        </Box>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })
+                    )}
+
+                    {/* Thanh điều hướng phân trang Mobile */}
+                    {filteredData.length > rowsPerPage && (
+                        <Paper sx={{ p: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: 2 }}>
+                            <Button 
+                                size="small" 
+                                startIcon={<PrevIcon />}
+                                disabled={page === 0}
+                                onClick={() => setPage(p => Math.max(0, p - 1))}
+                            >
+                                Trước
+                            </Button>
+                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                Trang {page + 1} / {totalPages}
+                            </Typography>
+                            <Button 
+                                size="small" 
+                                endIcon={<NextIcon />}
+                                disabled={page >= totalPages - 1}
+                                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                            >
+                                Sau
+                            </Button>
+                        </Paper>
                     )}
                 </Box>
             ) : (
-                /* GIAO DIỆN DESKTOP: Bảng chi tiết */
+                /* GIAO DIỆN DESKTOP: Bảng phân trang mượt mà */
                 <Paper sx={{ width: '100%', mb: 2, overflow: 'hidden' }}>
-                    <TableContainer sx={{ maxHeight: 'calc(100vh - 270px)' }}>
+                    <TableContainer sx={{ maxHeight: 'calc(100vh - 320px)' }}>
                         <Table stickyHeader size="small">
                             <TableHead>
                                 <TableRow>
-                                    <TableCell align="center" sx={{ width: 50 }}><b>STT</b></TableCell>
+                                    <TableCell align="center" sx={{ width: 60 }}><b>STT</b></TableCell>
                                     <TableCell sx={{ minWidth: 160, whiteSpace: 'nowrap' }}><b>Khách Hàng</b></TableCell>
-                                    <TableCell sx={{ minWidth: 170, whiteSpace: 'nowrap' }}><b>Thuê Bao</b></TableCell>
+                                    <TableCell sx={{ minWidth: 160, whiteSpace: 'nowrap' }}><b>Thuê Bao</b></TableCell>
                                     <TableCell sx={{ minWidth: 240 }}><b>Địa Chỉ</b></TableCell>
                                     <TableCell sx={{ minWidth: 190, whiteSpace: 'nowrap' }}><b>Dịch Vụ & Tháng</b></TableCell>
                                     <TableCell align="right" sx={{ minWidth: 110, whiteSpace: 'nowrap' }}><b>Số Tiền</b></TableCell>
@@ -768,82 +1016,135 @@ const PrintBillNotification: React.FC = () => {
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    filteredData.map((row, index) => (
-                                        <TableRow hover key={row.id}>
-                                            <TableCell align="center">{index + 1}</TableCell>
-                                            <TableCell sx={{ fontWeight: 600, fontSize: '14px', whiteSpace: 'nowrap' }}>{toTitleCase(row.customerName)}</TableCell>
-                                            <TableCell sx={{ fontSize: '14px', fontWeight: 500, whiteSpace: 'nowrap' }}>{row.phone}</TableCell>
-                                            <TableCell sx={{ maxWidth: 300, fontSize: '14px' }}>{row.address}</TableCell>
-                                            <TableCell sx={{ fontSize: '14px' }}>{toTitleCase(row.serviceMonth)}</TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 700, color: '#ee0033', fontSize: '14.5px', whiteSpace: 'nowrap' }}>
-                                                {row.amount} đ
-                                            </TableCell>
-                                            <TableCell sx={{ fontStyle: 'italic', fontSize: '13.5px' }}>{row.amountInWords}</TableCell>
-                                            <TableCell sx={{ fontSize: '14px', whiteSpace: 'nowrap' }}>{toTitleCase(row.collectorName)}</TableCell>
-                                            <TableCell align="center">
-                                                <Stack direction="row" spacing={0.5} justifyContent="center">
-                                                    {/* Nút tải PDF đơn lẻ */}
-                                                    <Tooltip title="Tải file PDF đơn lẻ" arrow>
-                                                        <span>
+                                    paginatedData.map((row, index) => {
+                                        const globalIndex = page * rowsPerPage + index + 1;
+                                        return (
+                                            <TableRow hover key={row.id}>
+                                                <TableCell align="center">{globalIndex}</TableCell>
+                                                <TableCell sx={{ fontWeight: 600, fontSize: '14px', whiteSpace: 'nowrap' }}>
+                                                    {toTitleCase(row.customerName)}
+                                                </TableCell>
+                                                <TableCell sx={{ fontSize: '14px', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                                    {row.phone}
+                                                </TableCell>
+                                                <TableCell sx={{ maxWidth: 300, fontSize: '14px' }}>
+                                                    {row.address}
+                                                </TableCell>
+                                                <TableCell sx={{ fontSize: '14px' }}>
+                                                    {toTitleCase(row.serviceMonth)}
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: 700, color: '#ee0033', fontSize: '14.5px', whiteSpace: 'nowrap' }}>
+                                                    {row.amount} đ
+                                                </TableCell>
+                                                <TableCell sx={{ fontStyle: 'italic', fontSize: '13.5px' }}>
+                                                    {row.amountInWords}
+                                                </TableCell>
+                                                <TableCell sx={{ fontSize: '14px', whiteSpace: 'nowrap' }}>
+                                                    {toTitleCase(row.collectorName)}
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                    <Stack direction="row" spacing={0.5} justifyContent="center">
+                                                        <Tooltip title="Tải file PDF đơn lẻ" arrow>
+                                                            <span>
+                                                                <IconButton 
+                                                                    size="small" 
+                                                                    color="primary"
+                                                                    disabled={exportingSingleId === row.id}
+                                                                    onClick={() => handleDownloadSinglePdf(row)}
+                                                                >
+                                                                    {exportingSingleId === row.id ? (
+                                                                        <CircularProgress size={18} />
+                                                                    ) : (
+                                                                        <PictureAsPdfIcon fontSize="small" />
+                                                                    )}
+                                                                </IconButton>
+                                                            </span>
+                                                        </Tooltip>
+
+                                                        <Tooltip title="Chia sẻ thông báo cước qua Zalo" arrow>
+                                                            <span>
+                                                                <IconButton 
+                                                                    size="small" 
+                                                                    sx={{ color: '#0068ff' }}
+                                                                    disabled={sharingId === row.id}
+                                                                    onClick={() => handleShareZalo(row)}
+                                                                >
+                                                                    {sharingId === row.id ? (
+                                                                        <CircularProgress size={18} />
+                                                                    ) : (
+                                                                        <ShareIcon fontSize="small" />
+                                                                    )}
+                                                                </IconButton>
+                                                            </span>
+                                                        </Tooltip>
+
+                                                        <Tooltip title="Xóa khách hàng này" arrow>
                                                             <IconButton 
                                                                 size="small" 
-                                                                color="primary"
-                                                                disabled={exportingSingleId === row.id}
-                                                                onClick={() => handleDownloadSinglePdf(row)}
+                                                                color="error"
+                                                                onClick={() => handleDeleteSingle(row)}
                                                             >
-                                                                {exportingSingleId === row.id ? (
-                                                                    <CircularProgress size={18} />
-                                                                ) : (
-                                                                    <PictureAsPdfIcon fontSize="small" />
-                                                                )}
+                                                                <DeleteIcon fontSize="small" />
                                                             </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-
-                                                    {/* Nút chia sẻ qua Zalo */}
-                                                    <Tooltip title="Chia sẻ thông báo cước qua Zalo" arrow>
-                                                        <span>
-                                                            <IconButton 
-                                                                size="small" 
-                                                                sx={{ color: '#0068ff' }}
-                                                                disabled={sharingId === row.id}
-                                                                onClick={() => handleShareZalo(row)}
-                                                            >
-                                                                {sharingId === row.id ? (
-                                                                    <CircularProgress size={18} />
-                                                                ) : (
-                                                                    <ShareIcon fontSize="small" />
-                                                                )}
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-
-                                                    {/* Nút xóa đơn lẻ khách hàng */}
-                                                    <Tooltip title="Xóa khách hàng này" arrow>
-                                                        <IconButton 
-                                                            size="small" 
-                                                            color="error"
-                                                            onClick={() => handleDeleteSingle(row)}
-                                                        >
-                                                            <DeleteIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                </Stack>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
+                                                        </Tooltip>
+                                                    </Stack>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })
                                 )}
                             </TableBody>
                         </Table>
                     </TableContainer>
+
+                    {/* Pagination Bar Desktop */}
+                    <TablePagination
+                        rowsPerPageOptions={[25, 50, 100, 200]}
+                        component="div"
+                        count={filteredData.length}
+                        rowsPerPage={rowsPerPage}
+                        page={page}
+                        onPageChange={(_, newPage) => setPage(newPage)}
+                        onRowsPerPageChange={(e) => {
+                            setRowsPerPage(parseInt(e.target.value, 10));
+                            setPage(0);
+                        }}
+                        labelRowsPerPage="Số dòng/trang:"
+                        labelDisplayedRows={({ from, to, count }) => `${from}–${to} trên ${count !== -1 ? count : `hơn ${to}`}`}
+                    />
                 </Paper>
             )}
 
-            {/* Kept offscreen rather than display:none so html2canvas can create an A5 PDF and QR Card Image. */}
+            {/* Dialog Tiến trình Xuất PDF */}
+            <Dialog open={exportingPdf} disableEscapeKeyDown>
+                <DialogTitle sx={{ fontWeight: 'bold' }}>Đang tạo file PDF...</DialogTitle>
+                <DialogContent sx={{ minWidth: { xs: 280, sm: 380 } }}>
+                    <Stack spacing={2} sx={{ mt: 1 }}>
+                        <Typography variant="body2" color="text.secondary">
+                            Đang xử lý trang {pdfExportProgress?.current || 0} / {pdfExportProgress?.total || 0}...
+                        </Typography>
+                        <LinearProgress 
+                            variant="determinate" 
+                            value={pdfExportProgress?.total ? ((pdfExportProgress.current / pdfExportProgress.total) * 100) : 0} 
+                        />
+                    </Stack>
+                </DialogContent>
+                <DialogActions>
+                    <Button 
+                        color="error" 
+                        onClick={() => {
+                            cancelPdfExportRef.current = true;
+                        }}
+                    >
+                        Hủy
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* VÙNG RENDER ẨN TỐI ƯU SIÊU NHẸ (Chỉ mount khi người dùng thao tác, KHÔNG BAO GIỜ mount 1500 items ngầm) */}
             <div 
-                className="bill-print-container" 
                 style={{ 
-                    position: 'absolute', 
+                    position: 'fixed', 
                     left: '-9999px', 
                     top: '-9999px', 
                     width: '1px', 
@@ -854,20 +1155,30 @@ const PrintBillNotification: React.FC = () => {
                     zIndex: -9999 
                 }}
             >
-                <div ref={printRef}>
-                    {data.map((item) => (
-                        <div key={item.id} data-bill-page="true" data-bill-id={item.id} className="bill-page-item" style={{ width: '210mm', height: '148mm', overflow: 'hidden', background: '#fff', boxSizing: 'border-box' }}>
-                            <BillTemplateA5 data={item} />
-                        </div>
-                    ))}
-                </div>
-                <div ref={qrCardRef}>
-                    {data.map((item) => (
-                        <div key={item.id} data-qr-card-id={item.id} style={{ width: '420px', height: '264px', background: 'transparent', display: 'inline-block' }}>
-                            <BankQrCard data={item} />
-                        </div>
-                    ))}
-                </div>
+                {/* 1. Thẻ QR Ngân hàng MBBank đơn lẻ: Chỉ mount 1 canvas duy nhất khi bấm nút Zalo */}
+                {activeQrItem && (
+                    <div ref={singleQrContainerRef} style={{ width: '420px', height: '264px', background: 'transparent', display: 'inline-block' }}>
+                        <BankQrCard data={activeQrItem} />
+                    </div>
+                )}
+
+                {/* 2. Hóa đơn A5 đơn lẻ: Chỉ mount 1 element duy nhất khi bấm tải PDF đơn lẻ */}
+                {activePdfItem && (
+                    <div ref={singlePdfContainerRef} style={{ width: '210mm', height: '148mm', overflow: 'hidden', background: '#fff', boxSizing: 'border-box' }}>
+                        <BillTemplateA5 data={activePdfItem} />
+                    </div>
+                )}
+
+                {/* 3. Vùng In ấn: Chỉ mount khi người dùng bấm xác nhận In */}
+                {itemsToPrint.length > 0 && (
+                    <div ref={printRef} className="bill-print-container">
+                        {itemsToPrint.map((item) => (
+                            <div key={item.id} data-bill-page="true" className="bill-page-item" style={{ width: '210mm', height: '148mm', overflow: 'hidden', background: '#fff', boxSizing: 'border-box' }}>
+                                <BillTemplateA5 data={item} />
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </Box>
     );
