@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+﻿import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { 
     Box, Typography, Button, Paper, Table, TableBody, 
     TableCell, TableContainer, TableHead, TableRow, 
@@ -1287,20 +1287,16 @@ const PrintBillNotification: React.FC = () => {
                                                 <LocationIcon sx={{ fontSize: 15, color: 'text.secondary', mt: 0.3 }} />
                                                 <span style={{ lineHeight: 1.25 }}>{row.address}</span>
                                             </Box>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                <PaymentIcon sx={{ fontSize: 15, color: '#10b981' }} />
-                                                <span>{toTitleCase(row.serviceMonth)}</span>
+                                            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                                                <PaymentIcon sx={{ fontSize: 15, color: '#10b981', mt: 0.3 }} />
+                                                <span style={{ lineHeight: 1.35, wordBreak: 'break-word' }}>{toTitleCase(row.serviceMonth)}</span>
                                             </Box>
                                         </Stack>
 
                                         <Divider sx={{ mb: 1 }} />
 
                                         {/* Hàng dưới: Nút bấm lớn dễ chạm */}
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-                                            <Typography variant="caption" color="text.secondary">
-                                                NV: {toTitleCase(row.collectorName)}
-                                            </Typography>
-
+                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                                             <Stack direction="row" spacing={0.8} alignItems="center">
                                                 <Button
                                                     variant="outlined"
@@ -1426,10 +1422,10 @@ const PrintBillNotification: React.FC = () => {
                                     <TableCell sx={{ width: 155, minWidth: 140, fontSize: '13px', fontWeight: 700, py: 1.2, whiteSpace: 'nowrap' }}>Thuê Bao</TableCell>
                                     <TableCell sx={{ width: 125, minWidth: 110, fontSize: '13px', fontWeight: 700, py: 1.2, whiteSpace: 'nowrap' }}>Số Liên Hệ</TableCell>
                                     <TableCell sx={{ minWidth: 220, fontSize: '13px', fontWeight: 700, py: 1.2 }}>Địa Chỉ</TableCell>
-                                    <TableCell sx={{ width: 180, minWidth: 160, fontSize: '13px', fontWeight: 700, py: 1.2, whiteSpace: 'nowrap' }}>Dịch Vụ & Tháng</TableCell>
+                                    <TableCell sx={{ width: 160, minWidth: 140, fontSize: "13px", fontWeight: 700, py: 1.2, whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.35 }}>Dịch Vụ & Tháng</TableCell>
                                     <TableCell align="right" sx={{ width: 105, minWidth: 95, fontSize: '13px', fontWeight: 700, py: 1.2, whiteSpace: 'nowrap' }}>Số Tiền</TableCell>
                                     <TableCell sx={{ minWidth: 180, fontSize: '13px', fontWeight: 700, py: 1.2 }}>Bằng Chữ</TableCell>
-                                    <TableCell sx={{ width: 140, minWidth: 130, fontSize: '13px', fontWeight: 700, py: 1.2, whiteSpace: 'nowrap' }}>Nhân Viên</TableCell>
+                                    <TableCell sx={{ width: 140, minWidth: 130, fontSize: '13px', fontWeight: 700, py: 1.2, whiteSpace: 'nowrap', display: { xs: 'none', lg: 'table-cell' } }}>Nhân Viên</TableCell>
                                     <TableCell align="center" sx={{ width: 145, minWidth: 140, fontSize: '13px', fontWeight: 700, py: 1.2 }}>Thao Tác</TableCell>
                                 </TableRow>
                             </TableHead>
@@ -1470,7 +1466,13 @@ const PrintBillNotification: React.FC = () => {
                                                 <TableCell sx={{ maxWidth: 300, fontSize: '13.5px', lineHeight: 1.35 }}>
                                                     {row.address}
                                                 </TableCell>
-                                                <TableCell sx={{ fontSize: '13.5px', whiteSpace: 'nowrap' }}>
+                                                <TableCell sx={{ 
+                                                    maxWidth: 180, 
+                                                    fontSize: '13.5px', 
+                                                    lineHeight: 1.35,
+                                                    whiteSpace: 'normal',
+                                                    wordBreak: 'break-word'
+                                                }}>
                                                     {toTitleCase(row.serviceMonth)}
                                                 </TableCell>
                                                 <TableCell align="right" sx={{ fontWeight: 700, color: '#ee0033', fontSize: '13.5px', whiteSpace: 'nowrap' }}>
@@ -1479,7 +1481,11 @@ const PrintBillNotification: React.FC = () => {
                                                 <TableCell sx={{ fontStyle: 'italic', fontSize: '13.5px', color: 'text.secondary', lineHeight: 1.35 }}>
                                                     {row.amountInWords}
                                                 </TableCell>
-                                                <TableCell sx={{ fontSize: '13.5px', whiteSpace: 'nowrap' }}>
+                                                <TableCell sx={{ 
+                                                    fontSize: '13.5px', 
+                                                    whiteSpace: 'nowrap',
+                                                    display: { xs: 'none', lg: 'table-cell' }
+                                                }}>
                                                     {toTitleCase(row.collectorName)}
                                                 </TableCell>
                                                 <TableCell align="center">
