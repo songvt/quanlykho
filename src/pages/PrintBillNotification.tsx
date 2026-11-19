@@ -9,10 +9,10 @@ import {
     LinearProgress, Menu, MenuItem, TableSortLabel,
     FormControl, Select, InputLabel
 } from '@mui/material';
-import { 
-    Download as DownloadIcon, 
-    Upload as UploadIcon, 
-    Print as PrintIcon, 
+import {
+    Download as DownloadIcon,
+    Upload as UploadIcon,
+    Print as PrintIcon,
     Delete as DeleteIcon,
     Search as SearchIcon,
     Share as ShareIcon,
@@ -29,6 +29,70 @@ import {
     ArrowDropDown as ArrowDropDownIcon,
     FileDownload as FileDownloadIcon
 } from '@mui/icons-material';
+
+// Additional professional icons for toolbar & actions
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import TableChartIcon from '@mui/icons-material/TableChart';
+import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+
+// Bộ Icon SVG chuyên nghiệp chuẩn Brand & UI hiện đại
+const TemplateExcelIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+        <path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" fill="#107C41" fillOpacity="0.16" stroke="#107C41" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M14 2V8H20" stroke="#107C41" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M12 11V17M12 17L9.5 14.5M12 17L14.5 14.5" stroke="#107C41" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+);
+
+const CloudUploadCustomIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+        <path d="M6.5 18C4.01472 18 2 15.9853 2 13.5C2 11.2338 3.67667 9.35987 5.88562 9.04943C6.41724 6.16709 8.9568 4 12 4C15.4093 4 18.2327 6.6438 18.4842 10.0076C20.4851 10.4705 22 12.2606 22 14.4C22 16.9405 19.9405 19 17.4 19H17" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M12 11V21M12 11L8.5 14.5M12 11L15.5 14.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+);
+
+const ExcelBrandIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+        <rect x="2.5" y="2.5" width="19" height="19" rx="3.5" fill="#107C41" />
+        <path d="M7 7.5L10.5 12L7 16.5H9.2L11.5 13.2L13.8 16.5H16L12.5 12L16 7.5H13.8L11.5 10.8L9.2 7.5H7Z" fill="white" />
+    </svg>
+);
+
+const PrinterModernIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+        <path d="M6.5 9V3.5H17.5V9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M6 18H4.5C3.39543 18 2.5 17.1046 2.5 16V11.5C2.5 10.3954 3.39543 9.5 4.5 9.5H19.5C20.6046 9.5 21.5 10.3954 21.5 11.5V16C21.5 17.1046 20.6046 18 19.5 18H18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <rect x="6.5" y="14" width="11" height="6.5" rx="1.5" fill="currentColor" fillOpacity="0.25" stroke="currentColor" strokeWidth="1.8"/>
+        <circle cx="18" cy="12.5" r="1" fill="currentColor"/>
+    </svg>
+);
+
+const PdfBrandIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+        <rect x="2.5" y="2.5" width="19" height="19" rx="3.5" fill="#E11D48" />
+        <path d="M6.5 8.5H9C9.8 8.5 10.5 9.2 10.5 10C10.5 10.8 9.8 11.5 9 11.5H7.8V15.5H6.5V8.5ZM7.8 10.3H8.9C9.1 10.3 9.3 10.1 9.3 10C9.3 9.9 9.1 9.7 8.9 9.7H7.8V10.3Z" fill="white" />
+        <path d="M11.5 8.5H13.2C14.5 8.5 15.5 9.5 15.5 10.8V13.2C15.5 14.5 14.5 15.5 13.2 15.5H11.5V8.5ZM12.8 14.3H13.2C13.8 14.3 14.3 13.8 14.3 13.2V10.8C14.3 10.2 13.8 9.7 13.2 9.7H12.8V14.3Z" fill="white" />
+        <path d="M16.5 8.5H19.5V9.7H17.8V11.2H19.2V12.4H17.8V15.5H16.5V8.5Z" fill="white" />
+    </svg>
+);
+
+const TrashCustomIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+        <path d="M3 6H21" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V20C19 20.5523 18.5523 21 18 21H6C5.44772 21 5 20.5523 5 20V6H19Z" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M10 11V16M14 11V16" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+);
+
+const ZaloBrandIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+        <rect width="24" height="24" rx="5.5" fill="#0068FF" />
+        <path d="M5.5 8.5H11.5L6.5 14.8C6.2 15.2 6.5 15.8 7 15.8H12.5V14.3H8L13 8C13.3 7.6 13 7 12.5 7H5.5V8.5Z" fill="white" />
+        <path d="M14.5 11C14.5 9.9 15.4 9 16.5 9C17.6 9 18.5 9.9 18.5 11V15.8H17V11.2C17 10.9 16.8 10.7 16.5 10.7C16.2 10.7 16 10.9 16 11.2V15.8H14.5V11Z" fill="white" />
+    </svg>
+);
 import ExcelJS from 'exceljs';
 import { useReactToPrint } from 'react-to-print';
 import html2canvas from 'html2canvas';
@@ -1146,20 +1210,23 @@ Trân trọng cảm ơn Quý khách!`;
                         fontSize: { xs: '12.5px', sm: '13.5px' },
                         px: { xs: 1.2, sm: 1.8 },
                         whiteSpace: 'nowrap',
-                        boxShadow: 'none',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                        transition: 'all 0.2s ease',
                     }
                 }}>
                     <Button
                         variant="outlined"
-                        startIcon={<DownloadIcon sx={{ fontSize: 18 }} />}
+                        startIcon={<TemplateExcelIcon size={18} />}
                         onClick={handleDownloadTemplate}
                         sx={{
-                            borderColor: 'divider',
+                            borderColor: '#cbd5e1',
                             color: 'text.primary',
                             bgcolor: 'background.paper',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
                             '&:hover': {
                                 bgcolor: 'action.hover',
-                                borderColor: 'text.secondary'
+                                borderColor: '#94a3b8',
+                                boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
                             }
                         }}
                     >
@@ -1170,11 +1237,16 @@ Trân trọng cảm ơn Quý khách!`;
                         variant="contained"
                         component="label"
                         disabled={loading}
-                        startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <UploadIcon sx={{ fontSize: 18 }} />}
+                        startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <CloudUploadCustomIcon size={18} />}
                         sx={{
                             bgcolor: '#2563eb',
+                            backgroundImage: 'linear-gradient(180deg, #3b82f6 0%, #2563eb 100%)',
                             color: '#fff',
-                            '&:hover': { bgcolor: '#1d4ed8' }
+                            boxShadow: '0 2px 6px rgba(37, 99, 235, 0.35)',
+                            '&:hover': { 
+                                backgroundImage: 'linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%)',
+                                boxShadow: '0 4px 10px rgba(37, 99, 235, 0.45)' 
+                            }
                         }}
                     >
                         Nhập Excel
@@ -1190,13 +1262,18 @@ Trân trọng cảm ơn Quý khách!`;
                     <Button
                         variant="contained"
                         disabled={data.length === 0 || exportingExcel}
-                        startIcon={exportingExcel ? <CircularProgress size={16} color="inherit" /> : <FileDownloadIcon sx={{ fontSize: 18 }} />}
+                        startIcon={exportingExcel ? <CircularProgress size={16} color="inherit" /> : <ExcelBrandIcon size={18} />}
                         endIcon={<ArrowDropDownIcon sx={{ fontSize: 18 }} />}
                         onClick={(e) => setExcelMenuAnchor(e.currentTarget)}
                         sx={{ 
                             bgcolor: '#107c41', 
+                            backgroundImage: 'linear-gradient(180deg, #16a34a 0%, #107c41 100%)',
                             color: '#fff',
-                            '&:hover': { bgcolor: '#0e6937' }
+                            boxShadow: '0 2px 6px rgba(16, 124, 65, 0.35)',
+                            '&:hover': { 
+                                backgroundImage: 'linear-gradient(180deg, #107c41 0%, #0d6535 100%)',
+                                boxShadow: '0 4px 10px rgba(16, 124, 65, 0.45)' 
+                            }
                         }}
                     >
                         {exportingExcel ? 'Đang xuất...' : `Xuất Excel ${data.length > 0 ? `(${data.length})` : ''}`}
@@ -1218,13 +1295,18 @@ Trân trọng cảm ơn Quý khách!`;
                     <Button
                         variant="contained"
                         disabled={data.length === 0}
-                        startIcon={<PrintIcon sx={{ fontSize: 18 }} />}
+                        startIcon={<PrinterModernIcon size={18} />}
                         endIcon={<ArrowDropDownIcon sx={{ fontSize: 18 }} />}
                         onClick={(e) => setPrintMenuAnchor(e.currentTarget)}
                         sx={{ 
                             bgcolor: '#475569',
+                            backgroundImage: 'linear-gradient(180deg, #64748b 0%, #475569 100%)',
                             color: '#fff',
-                            '&:hover': { bgcolor: '#334155' }
+                            boxShadow: '0 2px 6px rgba(71, 85, 105, 0.35)',
+                            '&:hover': { 
+                                backgroundImage: 'linear-gradient(180deg, #475569 0%, #334155 100%)',
+                                boxShadow: '0 4px 10px rgba(71, 85, 105, 0.45)' 
+                            }
                         }}
                     >
                         In {data.length > 0 ? `(${data.length})` : ''}
@@ -1246,13 +1328,18 @@ Trân trọng cảm ơn Quý khách!`;
                     <Button
                         variant="contained"
                         disabled={data.length === 0 || exportingPdf}
-                        startIcon={exportingPdf ? <CircularProgress size={16} color="inherit" /> : <PictureAsPdfIcon sx={{ fontSize: 18 }} />}
+                        startIcon={exportingPdf ? <CircularProgress size={16} color="inherit" /> : <PdfBrandIcon size={18} />}
                         endIcon={<ArrowDropDownIcon sx={{ fontSize: 18 }} />}
                         onClick={(e) => setPdfMenuAnchor(e.currentTarget)}
                         sx={{ 
                             bgcolor: '#ee0033',
+                            backgroundImage: 'linear-gradient(180deg, #f43f5e 0%, #ee0033 100%)',
                             color: '#fff',
-                            '&:hover': { bgcolor: '#cc002d' }
+                            boxShadow: '0 2px 6px rgba(238, 0, 51, 0.35)',
+                            '&:hover': { 
+                                backgroundImage: 'linear-gradient(180deg, #e11d48 0%, #be123c 100%)',
+                                boxShadow: '0 4px 10px rgba(238, 0, 51, 0.45)' 
+                            }
                         }}
                     >
                         {exportingPdf ? 'Đang xuất...' : `Xuất PDF ${data.length > 0 ? `(${data.length})` : ''}`}
@@ -1281,13 +1368,17 @@ Trân trọng cảm ơn Quý khách!`;
                                     color: '#ef4444',
                                     border: '1px solid rgba(239, 68, 68, 0.3)',
                                     bgcolor: 'rgba(239, 68, 68, 0.08)',
+                                    boxShadow: '0 1px 3px rgba(239, 68, 68, 0.1)',
+                                    transition: 'all 0.2s ease',
                                     '&:hover': {
                                         bgcolor: 'rgba(239, 68, 68, 0.18)',
-                                        borderColor: '#ef4444'
+                                        borderColor: '#ef4444',
+                                        boxShadow: '0 2px 6px rgba(239, 68, 68, 0.25)',
+                                        transform: 'scale(1.04)'
                                     }
                                 }}
                             >
-                                <DeleteIcon sx={{ fontSize: 19 }} />
+                                <TrashCustomIcon size={19} />
                             </IconButton>
                         </Tooltip>
                     )}
@@ -1560,7 +1651,7 @@ Trân trọng cảm ơn Quý khách!`;
                                                     variant="outlined"
                                                     size="small"
                                                     color="primary"
-                                                    startIcon={exportingSingleId === row.id ? <CircularProgress size={14} /> : <PictureAsPdfIcon fontSize="small" />}
+                                                    startIcon={exportingSingleId === row.id ? <CircularProgress size={14} /> : <PdfBrandIcon size={14} />}
                                                     disabled={exportingSingleId === row.id}
                                                     onClick={() => handleDownloadSinglePdf(row)}
                                                     sx={{ py: 0.4, px: 0.9, fontSize: '11.5px' }}
@@ -1571,7 +1662,7 @@ Trân trọng cảm ơn Quý khách!`;
                                                 <Button
                                                     variant="contained"
                                                     size="small"
-                                                    startIcon={sharingId === row.id ? <CircularProgress size={14} color="inherit" /> : <ShareIcon fontSize="small" />}
+                                                    startIcon={sharingId === row.id ? <CircularProgress size={14} color="inherit" /> : <ZaloBrandIcon size={14} />}
                                                     disabled={sharingId === row.id}
                                                     onClick={() => handleShareZalo(row)}
                                                     sx={{ 
@@ -1592,7 +1683,7 @@ Trân trọng cảm ơn Quý khách!`;
                                                 <Button
                                                     variant="contained"
                                                     size="small"
-                                                    startIcon={<SmsIcon fontSize="small" />}
+                                                    startIcon={<SmsIcon sx={{ fontSize: 15 }} />}
                                                     onClick={() => handleSendSms(row)}
                                                     sx={{ 
                                                         bgcolor: '#10b981', 
@@ -1611,11 +1702,15 @@ Trân trọng cảm ơn Quý khách!`;
 
                                                 <IconButton 
                                                     size="small" 
-                                                    color="error"
                                                     onClick={() => handleDeleteSingle(row)}
                                                     title="Xóa khách hàng"
+                                                    sx={{
+                                                        p: 0.5,
+                                                        color: '#ef4444',
+                                                        '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' }
+                                                    }}
                                                 >
-                                                    <DeleteIcon fontSize="small" />
+                                                    <TrashCustomIcon size={16} />
                                                 </IconButton>
                                             </Stack>
                                         </Box>
@@ -1819,19 +1914,23 @@ Trân trọng cảm ơn Quý khách!`;
                                                     {toTitleCase(row.collectorName)}
                                                 </TableCell>
                                                 <TableCell align="center">
-                                                    <Stack direction="row" spacing={0.5} justifyContent="center">
+                                                    <Stack direction="row" spacing={0.5} justifyContent="center" alignItems="center">
                                                         <Tooltip title="Tải file PDF đơn lẻ" arrow>
                                                             <span>
                                                                 <IconButton 
                                                                     size="small" 
-                                                                    color="primary"
                                                                     disabled={exportingSingleId === row.id}
                                                                     onClick={() => handleDownloadSinglePdf(row)}
+                                                                    sx={{
+                                                                        p: 0.6,
+                                                                        transition: 'all 0.15s ease',
+                                                                        '&:hover': { bgcolor: 'rgba(225, 29, 72, 0.12)', transform: 'scale(1.08)' }
+                                                                    }}
                                                                 >
                                                                     {exportingSingleId === row.id ? (
-                                                                        <CircularProgress size={18} />
+                                                                        <CircularProgress size={16} />
                                                                     ) : (
-                                                                        <PictureAsPdfIcon fontSize="small" />
+                                                                        <PdfBrandIcon size={17} />
                                                                     )}
                                                                 </IconButton>
                                                             </span>
@@ -1841,14 +1940,18 @@ Trân trọng cảm ơn Quý khách!`;
                                                             <span>
                                                                 <IconButton 
                                                                     size="small" 
-                                                                    sx={{ color: '#0068ff' }}
                                                                     disabled={sharingId === row.id}
                                                                     onClick={() => handleShareZalo(row)}
+                                                                    sx={{
+                                                                        p: 0.6,
+                                                                        transition: 'all 0.15s ease',
+                                                                        '&:hover': { bgcolor: 'rgba(0, 104, 255, 0.12)', transform: 'scale(1.08)' }
+                                                                    }}
                                                                 >
                                                                     {sharingId === row.id ? (
-                                                                        <CircularProgress size={18} />
+                                                                        <CircularProgress size={16} />
                                                                     ) : (
-                                                                        <ShareIcon fontSize="small" />
+                                                                        <ZaloBrandIcon size={17} />
                                                                     )}
                                                                 </IconButton>
                                                             </span>
@@ -1858,10 +1961,15 @@ Trân trọng cảm ơn Quý khách!`;
                                                             <span>
                                                                 <IconButton 
                                                                     size="small" 
-                                                                    sx={{ color: '#10b981' }}
                                                                     onClick={() => handleSendSms(row)}
+                                                                    sx={{
+                                                                        p: 0.6,
+                                                                        color: '#10b981',
+                                                                        transition: 'all 0.15s ease',
+                                                                        '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.12)', transform: 'scale(1.08)' }
+                                                                    }}
                                                                 >
-                                                                    <SmsIcon fontSize="small" />
+                                                                    <SmsIcon sx={{ fontSize: 18 }} />
                                                                 </IconButton>
                                                             </span>
                                                         </Tooltip>
@@ -1869,10 +1977,15 @@ Trân trọng cảm ơn Quý khách!`;
                                                         <Tooltip title="Xóa khách hàng này" arrow>
                                                             <IconButton 
                                                                 size="small" 
-                                                                color="error"
                                                                 onClick={() => handleDeleteSingle(row)}
+                                                                sx={{
+                                                                    p: 0.6,
+                                                                    color: '#ef4444',
+                                                                    transition: 'all 0.15s ease',
+                                                                    '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.12)', transform: 'scale(1.08)' }
+                                                                }}
                                                             >
-                                                                <DeleteIcon fontSize="small" />
+                                                                <TrashCustomIcon size={17} />
                                                             </IconButton>
                                                         </Tooltip>
                                                     </Stack>
