@@ -13,6 +13,8 @@ export interface BillData {
     address: string;
     phone: string;
     contactPhone?: string;
+    isNewCustomer?: string; // Khách hàng mới (Có, Mới, x, 1...)
+    debtAge?: string; // Tuổi nợ (N0, N1, N2, 1 tháng,...)
     serviceMonth: string;
     amount: string;
     amountInWords?: string;

@@ -6,7 +6,8 @@ import {
     InputAdornment, Tooltip, Card, CardContent, Divider,
     useMediaQuery, useTheme, Chip, TablePagination,
     Dialog, DialogTitle, DialogContent, DialogActions,
-    LinearProgress, Menu, MenuItem, TableSortLabel
+    LinearProgress, Menu, MenuItem, TableSortLabel,
+    FormControl, Select, InputLabel
 } from '@mui/material';
 import { 
     Download as DownloadIcon, 
@@ -85,10 +86,12 @@ const PrintBillNotification: React.FC = () => {
     // Tiến trình import Excel lên đám mây
     const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number; message: string } | null>(null);
 
-    // Phân trang & Sắp xếp
+    // Phân trang & Sắp xếp & Bộ lọc
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(50);
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+    const [filterNewCustomer, setFilterNewCustomer] = useState<'all' | 'new' | 'old'>('all');
+    const [filterDebtAge, setFilterDebtAge] = useState<string>('all');
 
     // Thao tác đơn lẻ (Render On-Demand, KHÔNG render ngầm hàng ngàn bản ghi)
     const [exportingSingleId, setExportingSingleId] = useState<string | null>(null);
@@ -193,6 +196,8 @@ const PrintBillNotification: React.FC = () => {
             { header: 'Khách Hàng', key: 'customerName', width: 25 },
             { header: 'Thuê Bao', key: 'phone', width: 22 },
             { header: 'Số Liên Hệ', key: 'contactPhone', width: 18 },
+            { header: 'KH Mới', key: 'isNewCustomer', width: 14 },
+            { header: 'Tuổi Nợ', key: 'debtAge', width: 14 },
             { header: 'Địa Chỉ', key: 'address', width: 40 },
             { header: 'Dịch Vụ & Tháng', key: 'serviceMonth', width: 30 },
             { header: 'Số Tiền', key: 'amount', width: 15 },
@@ -205,9 +210,25 @@ const PrintBillNotification: React.FC = () => {
             customerName: 'Nguyễn Thụy Ngọc Thanh',
             phone: 't008_gftth_thanhntn232',
             contactPhone: '0979092604',
+            isNewCustomer: 'Mới',
+            debtAge: 'N1',
             address: '118/8 HT43 P. Hiệp Thành Q.12 TPHCM',
             serviceMonth: 'Dịch Vụ Viễn Thông Tháng 10/2026',
             amount: '250.000 đ',
+            dateString: 'TP. HCM, ngày 10 tháng 10 năm 2026',
+            collectorName: 'ĐỖ THỊ NGỌC MAI',
+            collectorPhone: '0979092604'
+        });
+
+        worksheet.addRow({
+            customerName: 'Trần Văn Thành',
+            phone: 't008_gmts2_thanhtv200',
+            contactPhone: '0862302407',
+            isNewCustomer: '',
+            debtAge: 'N0',
+            address: '551/319/4 Lê Văn Khương Khu Phố 7 P. Hiệp Thành Q.12 TPHCM',
+            serviceMonth: 'Dịch Vụ Viễn Thông Tháng 10/2026',
+            amount: '230.000 đ',
             dateString: 'TP. HCM, ngày 10 tháng 10 năm 2026',
             collectorName: 'ĐỖ THỊ NGỌC MAI',
             collectorPhone: '0979092604'
@@ -261,9 +282,17 @@ const PrintBillNotification: React.FC = () => {
                 const headerVal = normalizeHeader(cell.value ? cell.value.toString() : '');
                 if (!headerVal) return;
 
-                // 1. Tên Khách Hàng
-                if (headerVal.includes('khachhang') || headerVal.includes('tenkh') || headerVal.includes('hoten') || (headerVal.includes('khach') && !isPhoneKeyword(headerVal))) {
+                // 1. Tên Khách Hàng (tránh nhầm với KH Mới)
+                if ((headerVal.includes('khachhang') || headerVal.includes('tenkh') || headerVal.includes('hoten') || (headerVal.includes('khach') && !isPhoneKeyword(headerVal))) && !headerVal.includes('moi') && !headerVal.includes('new')) {
                     headerMap.customerName = colNumber;
+                } 
+                // 1.1 Khách Hàng Mới
+                else if (headerVal.includes('khmoi') || headerVal.includes('khachmoi') || headerVal.includes('khachhangmoi') || headerVal.includes('newcustomer') || headerVal === 'moi' || headerVal.includes('loaikh')) {
+                    headerMap.isNewCustomer = colNumber;
+                }
+                // 1.2 Tuổi Nợ
+                else if (headerVal.includes('tuoino') || headerVal.includes('tuoi') || headerVal === 'tn' || headerVal.includes('debt') || headerVal.includes('kycuocno')) {
+                    headerMap.debtAge = colNumber;
                 } 
                 // 2. Thuê Bao (Mã thuê bao / tài khoản đường truyền)
                 else if (headerVal.includes('thuebao') || headerVal.includes('mathuebao') || headerVal.includes('taikhoan') || headerVal.includes('account')) {
@@ -331,6 +360,8 @@ const PrintBillNotification: React.FC = () => {
                 let address = '';
                 let phone = '';
                 let contactPhone = '';
+                let isNewCustomer = '';
+                let debtAge = '';
                 let serviceMonth = '';
                 let rawAmount = '';
                 let dateString = '';
@@ -341,6 +372,8 @@ const PrintBillNotification: React.FC = () => {
                     address = headerMap.address ? getVal(headerMap.address) : '';
                     phone = headerMap.phone ? getVal(headerMap.phone) : '';
                     contactPhone = headerMap.contactPhone ? getVal(headerMap.contactPhone) : '';
+                    isNewCustomer = headerMap.isNewCustomer ? getVal(headerMap.isNewCustomer) : '';
+                    debtAge = headerMap.debtAge ? getVal(headerMap.debtAge) : '';
                     serviceMonth = headerMap.serviceMonth ? getVal(headerMap.serviceMonth) : '';
                     rawAmount = headerMap.amount ? getVal(headerMap.amount) : '';
                     dateString = headerMap.dateString ? getVal(headerMap.dateString) : '';
@@ -405,6 +438,8 @@ const PrintBillNotification: React.FC = () => {
                     address: address,
                     phone: phone,
                     contactPhone: contactPhone,
+                    isNewCustomer: isNewCustomer,
+                    debtAge: debtAge,
                     serviceMonth: toTitleCase(serviceMonth),
                     amount: formatNumber(parsedAmountNum),
                     amountInWords: numberToWordsVN(parsedAmountNum),
@@ -824,6 +859,8 @@ Trân trọng cảm ơn Quý khách!`;
                 { header: 'Khách Hàng', key: 'customerName', width: 26 },
                 { header: 'Thuê Bao', key: 'phone', width: 22 },
                 { header: 'Số Liên Hệ', key: 'contactPhone', width: 16 },
+                { header: 'KH Mới', key: 'isNewCustomer', width: 14 },
+                { header: 'Tuổi Nợ', key: 'debtAge', width: 14 },
                 { header: 'Địa Chỉ', key: 'address', width: 40 },
                 { header: 'Dịch Vụ & Tháng', key: 'serviceMonth', width: 28 },
                 { header: 'Số Tiền', key: 'amount', width: 16 },
@@ -859,6 +896,8 @@ Trân trọng cảm ơn Quý khách!`;
                     customerName: toTitleCase(item.customerName || ''),
                     phone: item.phone || '',
                     contactPhone: item.contactPhone || '',
+                    isNewCustomer: item.isNewCustomer || '',
+                    debtAge: item.debtAge || '',
                     address: item.address || '',
                     serviceMonth: toTitleCase(item.serviceMonth || ''),
                     amount: item.amount ? (item.amount.toLowerCase().includes('đ') ? item.amount : `${item.amount} đ`) : '',
@@ -876,8 +915,10 @@ Trân trọng cảm ơn Quý khách!`;
                 row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
                 row.getCell(3).alignment = { vertical: 'middle', horizontal: 'center' };
                 row.getCell(4).alignment = { vertical: 'middle', horizontal: 'center' };
-                row.getCell(7).alignment = { vertical: 'middle', horizontal: 'right' };
-                row.getCell(11).alignment = { vertical: 'middle', horizontal: 'center' };
+                row.getCell(5).alignment = { vertical: 'middle', horizontal: 'center' };
+                row.getCell(6).alignment = { vertical: 'middle', horizontal: 'center' };
+                row.getCell(9).alignment = { vertical: 'middle', horizontal: 'right' };
+                row.getCell(13).alignment = { vertical: 'middle', horizontal: 'center' };
 
                 row.eachCell((cell) => {
                     cell.border = {
@@ -944,15 +985,54 @@ Trân trọng cảm ơn Quý khách!`;
         }
     };
 
-    // Lọc danh sách theo từ khóa tìm kiếm & Sắp xếp theo tên khách hàng
+    // Helper nhận diện Khách Hàng Mới
+    const isNewCustomerVal = (val?: string) => {
+        if (!val) return false;
+        const v = val.toLowerCase().trim();
+        return v === 'mới' || v === 'moi' || v === 'có' || v === 'co' || v === 'x' || v === '1' || v === 'yes' || v === 'true' || v.includes('mới') || v.includes('moi');
+    };
+
+    // Danh sách các tuổi nợ có trong dữ liệu
+    const debtAgeOptions = useMemo(() => {
+        const set = new Set<string>();
+        data.forEach(item => {
+            const age = (item.debtAge || '').trim();
+            if (age) {
+                set.add(age);
+            }
+        });
+        return Array.from(set).sort();
+    }, [data]);
+
+    // Lọc danh sách theo KH Mới, Tuổi nợ, từ khóa tìm kiếm & Sắp xếp theo tên khách hàng
     const filteredData = useMemo(() => {
         let result = data;
+
+        // 1. Lọc theo KH Mới
+        if (filterNewCustomer === 'new') {
+            result = result.filter(item => isNewCustomerVal(item.isNewCustomer));
+        } else if (filterNewCustomer === 'old') {
+            result = result.filter(item => !isNewCustomerVal(item.isNewCustomer));
+        }
+
+        // 2. Lọc theo Tuổi nợ
+        if (filterDebtAge !== 'all') {
+            if (filterDebtAge === 'empty') {
+                result = result.filter(item => !(item.debtAge || '').trim());
+            } else {
+                result = result.filter(item => (item.debtAge || '').trim().toLowerCase() === filterDebtAge.toLowerCase());
+            }
+        }
+
+        // 3. Lọc theo từ khóa tìm kiếm
         if (searchTerm.trim()) {
             const term = searchTerm.toLowerCase().trim();
             result = result.filter(item => 
                 (item.customerName || '').toLowerCase().includes(term) ||
                 (item.phone || '').toLowerCase().includes(term) ||
                 (item.contactPhone || '').toLowerCase().includes(term) ||
+                (item.isNewCustomer || '').toLowerCase().includes(term) ||
+                (item.debtAge || '').toLowerCase().includes(term) ||
                 (item.address || '').toLowerCase().includes(term) ||
                 (item.serviceMonth || '').toLowerCase().includes(term) ||
                 (item.amount || '').toLowerCase().includes(term) ||
@@ -970,7 +1050,7 @@ Trân trọng cảm ơn Quý khách!`;
         }
 
         return result;
-    }, [data, searchTerm, sortOrder]);
+    }, [data, filterNewCustomer, filterDebtAge, searchTerm, sortOrder]);
 
     // Dữ liệu cho trang hiện tại (Tránh render ngàn phần tử vào DOM)
     const paginatedData = useMemo(() => {
@@ -1220,34 +1300,91 @@ Trân trọng cảm ơn Quý khách!`;
                 <Box sx={{ 
                     mb: 2, 
                     display: 'flex', 
-                    flexDirection: { xs: 'column', sm: 'row' },
+                    flexDirection: { xs: 'column', md: 'row' },
                     justifyContent: 'space-between', 
-                    alignItems: { xs: 'stretch', sm: 'center' },
-                    gap: 1
+                    alignItems: { xs: 'stretch', md: 'center' },
+                    gap: 1.5,
+                    flexWrap: 'wrap'
                 }}>
-                    <TextField
-                        size="small"
-                        fullWidth={isMobile}
-                        placeholder="Tìm tên khách hàng, thuê bao, số liên hệ, số tiền..."
-                        value={searchTerm}
-                        onChange={(e) => {
-                            setSearchTerm(e.target.value);
-                            setPage(0);
-                        }}
-                        sx={{ 
-                            width: { xs: '100%', sm: 380 },
-                            bgcolor: 'background.paper',
-                            borderRadius: 1
-                        }}
-                        InputProps={{
-                            startAdornment: (
-                                <InputAdornment position="start">
-                                    <SearchIcon color="action" fontSize="small" />
-                                </InputAdornment>
-                            ),
-                        }}
-                    />
-                    <Typography variant="body2" color="text.secondary" sx={{ textAlign: { xs: 'right', sm: 'left' } }}>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ flex: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <TextField
+                            size="small"
+                            placeholder="Tìm tên khách hàng, thuê bao, số liên hệ..."
+                            value={searchTerm}
+                            onChange={(e) => {
+                                setSearchTerm(e.target.value);
+                                setPage(0);
+                            }}
+                            sx={{ 
+                                width: { xs: '100%', sm: 280 },
+                                bgcolor: 'background.paper',
+                                borderRadius: 1
+                            }}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon color="action" fontSize="small" />
+                                    </InputAdornment>
+                                ),
+                            }}
+                        />
+
+                        {/* Bộ lọc KH Mới */}
+                        <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 135 }, bgcolor: 'background.paper', borderRadius: 1 }}>
+                            <Select
+                                value={filterNewCustomer}
+                                onChange={(e) => {
+                                    setFilterNewCustomer(e.target.value as any);
+                                    setPage(0);
+                                }}
+                                displayEmpty
+                                sx={{ height: 40, fontSize: '13px' }}
+                            >
+                                <MenuItem value="all">Tất cả KH</MenuItem>
+                                <MenuItem value="new">🌟 KH Mới</MenuItem>
+                                <MenuItem value="old">KH Hiện hữu / Cũ</MenuItem>
+                            </Select>
+                        </FormControl>
+
+                        {/* Bộ lọc Tuổi Nợ */}
+                        <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 145 }, bgcolor: 'background.paper', borderRadius: 1 }}>
+                            <Select
+                                value={filterDebtAge}
+                                onChange={(e) => {
+                                    setFilterDebtAge(e.target.value);
+                                    setPage(0);
+                                }}
+                                displayEmpty
+                                sx={{ height: 40, fontSize: '13px' }}
+                            >
+                                <MenuItem value="all">Tất cả Tuổi nợ</MenuItem>
+                                {debtAgeOptions.map(age => (
+                                    <MenuItem key={age} value={age}>
+                                        Tuổi nợ: {age}
+                                    </MenuItem>
+                                ))}
+                                <MenuItem value="empty">Chưa có tuổi nợ</MenuItem>
+                            </Select>
+                        </FormControl>
+
+                        {(filterNewCustomer !== 'all' || filterDebtAge !== 'all' || searchTerm) && (
+                            <Button 
+                                size="small" 
+                                color="inherit"
+                                onClick={() => {
+                                    setFilterNewCustomer('all');
+                                    setFilterDebtAge('all');
+                                    setSearchTerm('');
+                                    setPage(0);
+                                }}
+                                sx={{ fontSize: '12px', textTransform: 'none', height: 38 }}
+                            >
+                                Xóa bộ lọc
+                            </Button>
+                        )}
+                    </Stack>
+
+                    <Typography variant="body2" color="text.secondary" sx={{ textAlign: { xs: 'right', md: 'left' } }}>
                         Tìm thấy: <b>{filteredData.length}</b> / {data.length} khách hàng
                         {filteredData.length > rowsPerPage && (
                             <span> (Trang {page + 1}/{totalPages})</span>
@@ -1273,15 +1410,42 @@ Trân trọng cảm ơn Quý khách!`;
                             return (
                                 <Card key={row.id} variant="outlined" sx={{ borderRadius: 2, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
                                     <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-                                        {/* Hàng trên: STT + Tên KH + Số tiền */}
+                                        {/* Hàng trên: STT + Tên KH + Tag KH Mới / Tuổi Nợ + Số tiền */}
                                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, flexWrap: 'wrap' }}>
                                                 <Chip label={globalIndex} size="small" sx={{ height: 20, fontSize: '11px', fontWeight: 'bold' }} />
+                                                {isNewCustomerVal(row.isNewCustomer) && (
+                                                    <Chip 
+                                                        label="MỚI" 
+                                                        size="small" 
+                                                        sx={{ 
+                                                            height: 20, 
+                                                            fontSize: '10px', 
+                                                            fontWeight: 700, 
+                                                            bgcolor: '#2563eb', 
+                                                            color: '#fff' 
+                                                        }} 
+                                                    />
+                                                )}
+                                                {row.debtAge && (
+                                                    <Chip 
+                                                        label={`Nợ: ${row.debtAge}`} 
+                                                        size="small" 
+                                                        sx={{ 
+                                                            height: 20, 
+                                                            fontSize: '10.5px', 
+                                                            fontWeight: 600, 
+                                                            bgcolor: 'rgba(245, 158, 11, 0.2)', 
+                                                            color: '#fbbf24',
+                                                            border: '1px solid rgba(251, 191, 36, 0.4)'
+                                                        }} 
+                                                    />
+                                                )}
                                                 <Typography sx={{ fontWeight: 'bold', fontSize: '15px' }}>
                                                     {toTitleCase(row.customerName)}
                                                 </Typography>
                                             </Box>
-                                            <Typography sx={{ fontWeight: 800, color: '#ee0033', fontSize: '16px' }}>
+                                            <Typography sx={{ fontWeight: 800, color: '#ee0033', fontSize: '16px', whiteSpace: 'nowrap' }}>
                                                 {row.amount} đ
                                             </Typography>
                                         </Box>
@@ -1454,7 +1618,9 @@ Trân trọng cảm ơn Quý khách!`;
                                     </TableCell>
                                     <TableCell sx={{ width: 155, minWidth: 140, fontSize: '13px', fontWeight: 700, py: 1.2, whiteSpace: 'nowrap' }}>Thuê Bao</TableCell>
                                     <TableCell sx={{ width: 125, minWidth: 110, fontSize: '13px', fontWeight: 700, py: 1.2, whiteSpace: 'nowrap' }}>Số Liên Hệ</TableCell>
-                                    <TableCell sx={{ minWidth: 220, fontSize: '13px', fontWeight: 700, py: 1.2 }}>Địa Chỉ</TableCell>
+                                    <TableCell align="center" sx={{ width: 90, minWidth: 80, fontSize: '13px', fontWeight: 700, py: 1.2, whiteSpace: 'nowrap' }}>KH Mới</TableCell>
+                                    <TableCell align="center" sx={{ width: 95, minWidth: 85, fontSize: '13px', fontWeight: 700, py: 1.2, whiteSpace: 'nowrap' }}>Tuổi Nợ</TableCell>
+                                    <TableCell sx={{ minWidth: 200, fontSize: '13px', fontWeight: 700, py: 1.2 }}>Địa Chỉ</TableCell>
                                     <TableCell sx={{ width: 160, minWidth: 140, fontSize: "13px", fontWeight: 700, py: 1.2, whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.35 }}>Dịch Vụ & Tháng</TableCell>
                                     <TableCell align="right" sx={{ width: 105, minWidth: 95, fontSize: '13px', fontWeight: 700, py: 1.2, whiteSpace: 'nowrap' }}>Số Tiền</TableCell>
                                     <TableCell sx={{ minWidth: 180, fontSize: '13px', fontWeight: 700, py: 1.2 }}>Bằng Chữ</TableCell>
@@ -1465,7 +1631,7 @@ Trân trọng cảm ơn Quý khách!`;
                             <TableBody>
                                 {filteredData.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
+                                        <TableCell colSpan={12} align="center" sx={{ py: 4 }}>
                                             {data.length === 0 
                                                 ? 'Chưa có dữ liệu. Vui lòng tải file mẫu và nhập liệu từ Excel.' 
                                                 : 'Không tìm thấy khách hàng nào khớp với từ khóa tìm kiếm.'}
@@ -1516,6 +1682,50 @@ Trân trọng cảm ơn Quý khách!`;
                                                         >
                                                             {row.contactPhone}
                                                         </Box>
+                                                    ) : (
+                                                        <Box component="span" sx={{ color: 'text.disabled' }}>-</Box>
+                                                    )}
+                                                </TableCell>
+                                                {/* KH Mới */}
+                                                <TableCell align="center" sx={{ fontSize: '13px', whiteSpace: 'nowrap' }}>
+                                                    {isNewCustomerVal(row.isNewCustomer) ? (
+                                                        <Chip 
+                                                            label="MỚI" 
+                                                            size="small" 
+                                                            sx={{ 
+                                                                height: 22, 
+                                                                fontSize: '11px', 
+                                                                fontWeight: 700, 
+                                                                bgcolor: 'rgba(37, 99, 235, 0.2)', 
+                                                                color: '#60a5fa',
+                                                                border: '1px solid rgba(96, 165, 250, 0.4)'
+                                                            }} 
+                                                        />
+                                                    ) : (
+                                                        <Box component="span" sx={{ color: 'text.disabled' }}>-</Box>
+                                                    )}
+                                                </TableCell>
+                                                {/* Tuổi Nợ */}
+                                                <TableCell align="center" sx={{ fontSize: '13px', whiteSpace: 'nowrap' }}>
+                                                    {row.debtAge ? (
+                                                        <Chip 
+                                                            label={row.debtAge} 
+                                                            size="small" 
+                                                            sx={{ 
+                                                                height: 22, 
+                                                                fontSize: '11.5px', 
+                                                                fontWeight: 600,
+                                                                bgcolor: row.debtAge.toLowerCase().includes('n0') 
+                                                                    ? 'rgba(16, 185, 129, 0.2)' 
+                                                                    : 'rgba(245, 158, 11, 0.2)',
+                                                                color: row.debtAge.toLowerCase().includes('n0') 
+                                                                    ? '#34d399' 
+                                                                    : '#fbbf24',
+                                                                border: row.debtAge.toLowerCase().includes('n0')
+                                                                    ? '1px solid rgba(52, 211, 153, 0.4)'
+                                                                    : '1px solid rgba(251, 191, 36, 0.4)'
+                                                            }} 
+                                                        />
                                                     ) : (
                                                         <Box component="span" sx={{ color: 'text.disabled' }}>-</Box>
                                                     )}
