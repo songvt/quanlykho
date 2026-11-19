@@ -26,6 +26,10 @@ import QRScanner from '../components/QRScanner';
 import { sendTelegramNotification } from './Outbound/outboundTelegram';
 import PageHeader from '../components/Common/PageHeader';
 import { AppButton } from '../components/Common/AppButton';
+import {
+    PrinterModernIcon,
+    CloudUploadCustomIcon
+} from '../components/Common/BrandIcons';
 import OutboxIcon from '@mui/icons-material/Outbox';
 import { parseSerialInput } from '../utils/serialParser';
 
@@ -250,7 +254,7 @@ export const Outbound = () => {
                             }}
                             icon={
                                 <Badge badgeContent={selectedPrintIds.length} color="error" overlap="circular">
-                                    <PrintIcon sx={{ fontSize: 24 }} />
+                                    <PrinterModernIcon size={22} color="white" />
                                 </Badge>
                             }
                             title={`In Biên Bản (${selectedPrintIds.length})`}
@@ -266,7 +270,7 @@ export const Outbound = () => {
                                 height: 46,
                                 '&:hover': { bgcolor: '#f8fafc', transform: 'translateY(-1px)' }
                             }}
-                            icon={<CloudUploadIcon />}
+                            icon={<CloudUploadCustomIcon size={22} color="#2563eb" />}
                             title="Nhập Excel"
                         >
                             <input type="file" hidden accept=".xlsx, .xls" onChange={async (e) => {
@@ -349,7 +353,7 @@ export const Outbound = () => {
                 </DialogContent>
                 <DialogActions sx={{ gap: 1 }}>
                     <AppButton onClick={() => setOpenPrintPreview(false)} icon={<CloseIcon />} title="Đóng" />
-                    <AppButton variant="contained" color="primary" onClick={() => window.print()} icon={<PrintIcon />} title="In Biên Bản" />
+                    <AppButton variant="contained" color="primary" onClick={() => window.print()} icon={<PrinterModernIcon size={20} />} title="In Biên Bản" />
                 </DialogActions>
             </Dialog>
 

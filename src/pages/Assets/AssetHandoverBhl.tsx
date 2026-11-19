@@ -17,7 +17,13 @@ import HistoryIcon from '@mui/icons-material/History';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
+import {
+    TemplateExcelIcon,
+    CloudUploadCustomIcon,
+    PrinterModernIcon,
+    ViewCustomIcon,
+    TrashCustomIcon
+} from '../../components/Common/BrandIcons';
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 
@@ -507,18 +513,23 @@ const AssetHandoverBhl: React.FC = () => {
                 <Stack direction="row" spacing={1.5} flexWrap="wrap">
                     <Button
                         variant="outlined"
-                        startIcon={<FileDownloadIcon />}
+                        startIcon={<TemplateExcelIcon size={18} />}
                         onClick={handleDownloadTemplate}
                         size="medium"
                         sx={{
-                            borderRadius: 2,
+                            borderRadius: '8px',
                             textTransform: 'none',
                             fontWeight: 600,
                             borderColor: '#cbd5e1',
+                            bgcolor: 'background.paper',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
                             color: 'var(--text-primary)',
+                            transition: 'all 0.2s ease',
                             '&:hover': {
-                                borderColor: '#0284c7',
-                                bgcolor: 'rgba(2, 132, 199, 0.05)',
+                                borderColor: '#107c41',
+                                bgcolor: 'rgba(16, 124, 65, 0.05)',
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
                             }
                         }}
                     >
@@ -527,14 +538,21 @@ const AssetHandoverBhl: React.FC = () => {
 
                     <Button
                         variant="outlined"
-                        startIcon={<UploadFileIcon />}
+                        startIcon={<CloudUploadCustomIcon size={18} />}
                         onClick={() => setBatchModalOpen(true)}
                         size="medium"
                         color="primary"
                         sx={{
-                            borderRadius: 2,
+                            borderRadius: '8px',
                             textTransform: 'none',
                             fontWeight: 600,
+                            bgcolor: 'background.paper',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+                            }
                         }}
                     >
                         Import Excel in hàng loạt
@@ -542,19 +560,22 @@ const AssetHandoverBhl: React.FC = () => {
 
                     <Button
                         variant="contained"
-                        startIcon={isPrinting ? <CircularProgress size={18} color="inherit" /> : <PrintIcon />}
+                        startIcon={isPrinting ? <CircularProgress size={18} color="inherit" /> : <PrinterModernIcon size={18} />}
                         onClick={handleSaveAndPrint}
                         size="medium"
                         disabled={isPrinting || (templateType === 'default' ? employeeAssets.length === 0 : activeBhlItems.length === 0)}
                         sx={{
                             background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                            boxShadow: '0 4px 12px rgba(37,99,235,0.2)',
+                            boxShadow: '0 3px 8px rgba(37,99,235,0.3)',
                             textTransform: 'none',
                             px: 2.5,
-                            borderRadius: 2,
+                            borderRadius: '8px',
                             fontWeight: 700,
+                            transition: 'all 0.2s ease',
                             '&:hover': {
                                 background: 'linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%)',
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 5px 14px rgba(37,99,235,0.4)',
                             },
                             '&.Mui-disabled': {
                                 color: 'rgba(255, 255, 255, 0.7)',
@@ -909,17 +930,27 @@ const AssetHandoverBhl: React.FC = () => {
                                                             size="small" 
                                                             onClick={() => handleReprint(h)} 
                                                             title="Xem lại và in"
-                                                            sx={{ color: '#2563eb', '&:hover': { bgcolor: '#2563eb10' } }}
+                                                            sx={{ 
+                                                                p: 0.6,
+                                                                color: '#2563eb', 
+                                                                transition: 'all 0.15s ease',
+                                                                '&:hover': { bgcolor: 'rgba(37, 99, 235, 0.1)', transform: 'scale(1.1)' } 
+                                                            }}
                                                         >
-                                                            <VisibilityIcon fontSize="small" />
+                                                            <ViewCustomIcon size={17} />
                                                         </IconButton>
                                                         <IconButton 
                                                             size="small" 
                                                             onClick={() => handleDeleteHistory(h.id)} 
                                                             title="Xóa lịch sử"
-                                                            sx={{ color: '#ef4444', '&:hover': { bgcolor: '#ef444410' } }}
+                                                            sx={{ 
+                                                                p: 0.6,
+                                                                color: '#ef4444', 
+                                                                transition: 'all 0.15s ease',
+                                                                '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)', transform: 'scale(1.1)' } 
+                                                            }}
                                                         >
-                                                            <DeleteIcon fontSize="small" />
+                                                            <TrashCustomIcon size={17} />
                                                         </IconButton>
                                                     </Stack>
                                                 </Box>

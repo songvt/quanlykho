@@ -30,69 +30,15 @@ import {
     FileDownload as FileDownloadIcon
 } from '@mui/icons-material';
 
-// Additional professional icons for toolbar & actions
-import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import TableChartIcon from '@mui/icons-material/TableChart';
-import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-
-// Bộ Icon SVG chuyên nghiệp chuẩn Brand & UI hiện đại
-const TemplateExcelIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
-        <path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" fill="#107C41" fillOpacity="0.16" stroke="#107C41" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M14 2V8H20" stroke="#107C41" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M12 11V17M12 17L9.5 14.5M12 17L14.5 14.5" stroke="#107C41" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-);
-
-const CloudUploadCustomIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
-        <path d="M6.5 18C4.01472 18 2 15.9853 2 13.5C2 11.2338 3.67667 9.35987 5.88562 9.04943C6.41724 6.16709 8.9568 4 12 4C15.4093 4 18.2327 6.6438 18.4842 10.0076C20.4851 10.4705 22 12.2606 22 14.4C22 16.9405 19.9405 19 17.4 19H17" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M12 11V21M12 11L8.5 14.5M12 11L15.5 14.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-);
-
-const ExcelBrandIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
-        <rect x="2.5" y="2.5" width="19" height="19" rx="3.5" fill="#107C41" />
-        <path d="M7 7.5L10.5 12L7 16.5H9.2L11.5 13.2L13.8 16.5H16L12.5 12L16 7.5H13.8L11.5 10.8L9.2 7.5H7Z" fill="white" />
-    </svg>
-);
-
-const PrinterModernIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
-        <path d="M6.5 9V3.5H17.5V9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M6 18H4.5C3.39543 18 2.5 17.1046 2.5 16V11.5C2.5 10.3954 3.39543 9.5 4.5 9.5H19.5C20.6046 9.5 21.5 10.3954 21.5 11.5V16C21.5 17.1046 20.6046 18 19.5 18H18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <rect x="6.5" y="14" width="11" height="6.5" rx="1.5" fill="currentColor" fillOpacity="0.25" stroke="currentColor" strokeWidth="1.8"/>
-        <circle cx="18" cy="12.5" r="1" fill="currentColor"/>
-    </svg>
-);
-
-const PdfBrandIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
-        <rect x="2.5" y="2.5" width="19" height="19" rx="3.5" fill="#E11D48" />
-        <path d="M6.5 8.5H9C9.8 8.5 10.5 9.2 10.5 10C10.5 10.8 9.8 11.5 9 11.5H7.8V15.5H6.5V8.5ZM7.8 10.3H8.9C9.1 10.3 9.3 10.1 9.3 10C9.3 9.9 9.1 9.7 8.9 9.7H7.8V10.3Z" fill="white" />
-        <path d="M11.5 8.5H13.2C14.5 8.5 15.5 9.5 15.5 10.8V13.2C15.5 14.5 14.5 15.5 13.2 15.5H11.5V8.5ZM12.8 14.3H13.2C13.8 14.3 14.3 13.8 14.3 13.2V10.8C14.3 10.2 13.8 9.7 13.2 9.7H12.8V14.3Z" fill="white" />
-        <path d="M16.5 8.5H19.5V9.7H17.8V11.2H19.2V12.4H17.8V15.5H16.5V8.5Z" fill="white" />
-    </svg>
-);
-
-const TrashCustomIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
-        <path d="M3 6H21" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M8 6V4C8 3.44772 8.44772 3 9 3H15C15.5523 3 16 3.44772 16 4V6M19 6V20C19 20.5523 18.5523 21 18 21H6C5.44772 21 5 20.5523 5 20V6H19Z" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M10 11V16M14 11V16" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-);
-
-const ZaloBrandIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
-        <rect width="24" height="24" rx="5.5" fill="#0068FF" />
-        <path d="M5.5 8.5H11.5L6.5 14.8C6.2 15.2 6.5 15.8 7 15.8H12.5V14.3H8L13 8C13.3 7.6 13 7 12.5 7H5.5V8.5Z" fill="white" />
-        <path d="M14.5 11C14.5 9.9 15.4 9 16.5 9C17.6 9 18.5 9.9 18.5 11V15.8H17V11.2C17 10.9 16.8 10.7 16.5 10.7C16.2 10.7 16 10.9 16 11.2V15.8H14.5V11Z" fill="white" />
-    </svg>
-);
+import {
+    ExcelBrandIcon,
+    TemplateExcelIcon,
+    PdfBrandIcon,
+    PrinterModernIcon,
+    CloudUploadCustomIcon,
+    TrashCustomIcon,
+    ZaloBrandIcon
+} from '../components/Common/BrandIcons';
 import ExcelJS from 'exceljs';
 import { useReactToPrint } from 'react-to-print';
 import html2canvas from 'html2canvas';

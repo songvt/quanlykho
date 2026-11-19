@@ -12,6 +12,12 @@ import {
     FilterList as FilterListIcon,
     DeleteSweep as DeleteSweepIcon
 } from '@mui/icons-material';
+import {
+    ExcelBrandIcon,
+    TemplateExcelIcon,
+    CloudUploadCustomIcon,
+    TrashCustomIcon
+} from '../../components/Common/BrandIcons';
 import { useNotification } from '../../contexts/NotificationContext';
 import { readExcelFile, exportToExcel } from '../../utils/excelUtils';
 import * as ExcelJS from 'exceljs';
@@ -302,27 +308,55 @@ const InventoryReport: React.FC = () => {
                         <Button
                             variant="outlined"
                             color="error"
-                            startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : <DeleteSweepIcon />}
+                            startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : <TrashCustomIcon size={18} />}
                             onClick={handleClearAll}
                             disabled={isLoading}
-                            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
+                            sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 600, transition: 'all 0.2s ease', '&:hover': { transform: 'translateY(-1px)' } }}
                         >
                             {isLoading ? 'Đang xóa...' : 'Xóa tất cả'}
                         </Button>
                     )}
                     <Button
                         variant="outlined"
-                        startIcon={<FileDownloadIcon />}
+                        startIcon={<TemplateExcelIcon size={18} />}
                         onClick={downloadTemplate}
-                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
+                        sx={{ 
+                            borderRadius: '8px', 
+                            textTransform: 'none', 
+                            fontWeight: 600,
+                            borderColor: '#cbd5e1',
+                            bgcolor: 'background.paper',
+                            color: 'text.primary',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': { 
+                                borderColor: '#107c41',
+                                bgcolor: 'rgba(16, 124, 65, 0.05)',
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+                            } 
+                        }}
                     >
                         Tải Template
                     </Button>
                     <Button
                         variant="contained"
                         component="label"
-                        startIcon={<CloudUploadIcon />}
-                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, bgcolor: '#2563eb' }}
+                        startIcon={<CloudUploadCustomIcon size={18} />}
+                        sx={{ 
+                            borderRadius: '8px', 
+                            textTransform: 'none', 
+                            fontWeight: 600, 
+                            bgcolor: '#2563eb',
+                            backgroundImage: 'linear-gradient(180deg, #3b82f6 0%, #2563eb 100%)',
+                            boxShadow: '0 2px 6px rgba(37, 99, 235, 0.35)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': { 
+                                backgroundImage: 'linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%)',
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 4px 10px rgba(37, 99, 235, 0.45)' 
+                            }
+                        }}
                     >
                         Import Excel
                         <input type="file" hidden accept=".xlsx, .xls" onChange={handleImportExcel} />

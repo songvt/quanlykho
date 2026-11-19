@@ -35,6 +35,12 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '../store';
 import { GoogleSheetService } from '../services/GoogleSheetService';
 import { AppButton } from '../components/Common/AppButton';
+import {
+    TemplateExcelIcon,
+    PdfBrandIcon,
+    PrinterModernIcon,
+    TrashCustomIcon
+} from '../components/Common/BrandIcons';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface QRDataRow {
@@ -635,7 +641,7 @@ const QRGenerator = () => {
                             <AppButton 
                                 variant="contained" 
                                 onClick={downloadTemplate}
-                                icon={<DownloadIcon />}
+                                icon={<TemplateExcelIcon size={22} color="white" />}
                                 title="File Mẫu Chuẩn"
                                 sx={{ 
                                     bgcolor: 'rgba(255, 255, 255, 0.2)',
@@ -654,7 +660,7 @@ const QRGenerator = () => {
                                     variant="contained" 
                                     color="error" 
                                     onClick={() => { setDataRows([]); success('Đã xóa toàn bộ dữ liệu'); }}
-                                    icon={<DeleteOutlineIcon />}
+                                    icon={<TrashCustomIcon size={22} color="white" />}
                                     title="Xóa Toàn Bộ"
                                     sx={{ 
                                         boxShadow: '0 8px 20px -6px rgba(239, 68, 68, 0.5)',
@@ -1228,7 +1234,7 @@ const QRGenerator = () => {
                                 variant="contained" 
                                 onClick={handleExportPDF} 
                                 disabled={isExporting}
-                                icon={isExporting ? <CircularProgress size={18} color="inherit" /> : <PictureAsPdfIcon />}
+                                icon={isExporting ? <CircularProgress size={18} color="inherit" /> : <PdfBrandIcon size={20} />}
                                 title={isExporting ? 'Đang tạo PDF...' : 'Xuất File PDF'}
                                 sx={{ 
                                     bgcolor: '#d97706', 
@@ -1242,7 +1248,7 @@ const QRGenerator = () => {
                                 variant="contained"
                                 onClick={handlePrint} 
                                 disabled={isExporting || isPrinting}
-                                icon={isPrinting ? <CircularProgress size={18} color="inherit" /> : <PrintIcon />}
+                                icon={isPrinting ? <CircularProgress size={18} color="inherit" /> : <PrinterModernIcon size={20} color="white" />}
                                 title={isPrinting ? 'Đang chuẩn bị...' : `In Ngay (${totalQRCodes} QR)`}
                                 sx={{ 
                                     background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',

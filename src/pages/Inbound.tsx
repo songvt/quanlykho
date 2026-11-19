@@ -17,6 +17,10 @@ import CloseIcon from '@mui/icons-material/Close';
 import SaveIcon from '@mui/icons-material/Save';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { AppButton } from '../components/Common/AppButton';
+import {
+    TemplateExcelIcon,
+    CloudUploadCustomIcon
+} from '../components/Common/BrandIcons';
 import { generateInboundTemplate, readExcelFile } from '../utils/excelUtils';
 import { useNotification } from '../contexts/NotificationContext';
 import InboundForm from '../components/Inbound/InboundForm';
@@ -144,7 +148,7 @@ export const Inbound = () => {
                             <AppButton 
                                 variant="contained" 
                                 onClick={generateInboundTemplate} 
-                                icon={<FileDownloadIcon />}
+                                icon={<TemplateExcelIcon size={22} color="white" />}
                                 sx={{ 
                                     borderRadius: '12px', 
                                     bgcolor: 'rgba(255, 255, 255, 0.2)',
@@ -160,7 +164,7 @@ export const Inbound = () => {
                             <AppButton 
                                 variant="contained" 
                                 component="label" 
-                                icon={<CloudUploadIcon />}
+                                icon={<CloudUploadCustomIcon size={22} color="#2563eb" />}
                                 sx={{ 
                                     borderRadius: '12px', 
                                     bgcolor: '#ffffff',

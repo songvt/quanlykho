@@ -46,6 +46,11 @@ import { formatCurrency, getLocalYYYYMMDD, matchDistrict, formatPhone } from '..
 import { formatDate, parseDate } from '../../utils/dateUtils';
 import PageHeader from '../../components/Common/PageHeader';
 import { AppButton } from '../../components/Common/AppButton';
+import {
+    ExcelBrandIcon,
+    PdfBrandIcon,
+    PrinterModernIcon
+} from '../../components/Common/BrandIcons';
 
 const Reports = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -1794,13 +1799,20 @@ const Reports = () => {
                     <Button
                         onClick={handleExportHandover}
                         variant="contained"
-                        color="info"
-                        startIcon={<DownloadIcon />}
+                        startIcon={<ExcelBrandIcon size={18} />}
                         sx={{
-                            borderRadius: 2.5, px: 3, py: 1,
+                            borderRadius: '8px', px: 3, py: 1,
                             fontWeight: 700, textTransform: 'none',
                             minWidth: 150, fontSize: '0.875rem',
-                            boxShadow: '0 4px 12px rgba(2, 136, 209, 0.25)',
+                            bgcolor: '#107c41',
+                            backgroundImage: 'linear-gradient(180deg, #16a34a 0%, #107c41 100%)',
+                            boxShadow: '0 3px 8px rgba(16, 124, 65, 0.3)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                backgroundImage: 'linear-gradient(180deg, #107c41 0%, #0d6535 100%)',
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 5px 14px rgba(16, 124, 65, 0.4)'
+                            }
                         }}
                     >
                         Xuất File Excel
@@ -1808,13 +1820,20 @@ const Reports = () => {
                     <Button
                         onClick={handleExportPDF}
                         variant="contained"
-                        color="error"
-                        startIcon={<PictureAsPdfIcon />}
+                        startIcon={<PdfBrandIcon size={18} />}
                         sx={{
-                            borderRadius: 2.5, px: 3, py: 1,
+                            borderRadius: '8px', px: 3, py: 1,
                             fontWeight: 700, textTransform: 'none',
                             minWidth: 120, fontSize: '0.875rem',
-                            boxShadow: '0 4px 12px rgba(211, 47, 47, 0.25)',
+                            bgcolor: '#e11d48',
+                            backgroundImage: 'linear-gradient(180deg, #f43f5e 0%, #e11d48 100%)',
+                            boxShadow: '0 3px 8px rgba(225, 29, 72, 0.3)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                backgroundImage: 'linear-gradient(180deg, #e11d48 0%, #be123c 100%)',
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 5px 14px rgba(225, 29, 72, 0.4)'
+                            }
                         }}
                     >
                         Xuất File PDF
@@ -1823,11 +1842,17 @@ const Reports = () => {
                         onClick={() => handlePreviewHandover(false)}
                         variant="outlined"
                         color="primary"
-                        startIcon={<PrintIcon />}
+                        startIcon={<PrinterModernIcon size={18} />}
                         sx={{
-                            borderRadius: 2.5, px: 3, py: 1,
+                            borderRadius: '8px', px: 3, py: 1,
                             fontWeight: 700, textTransform: 'none',
                             minWidth: 120, fontSize: '0.875rem',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                                transform: 'translateY(-1px)',
+                                boxShadow: '0 3px 8px rgba(0,0,0,0.1)'
+                            }
                         }}
                     >
                         Xem Trước & In

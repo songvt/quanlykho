@@ -33,6 +33,15 @@ import PermissionDialog from '../../components/PermissionDialog';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import VoiceSearchButton from '../../components/VoiceSearchButton';
 import { AppButton } from '../../components/Common/AppButton';
+import {
+    ExcelBrandIcon,
+    TemplateExcelIcon,
+    CloudUploadCustomIcon,
+    EditCustomIcon,
+    TrashCustomIcon,
+    KeyCustomIcon,
+    AddCustomIcon
+} from '../../components/Common/BrandIcons';
 import { normalizeImportedDate } from '../../utils/dateUtils';
 
 // Dynamic Seniority (Thâm niên) Calculator
@@ -642,13 +651,13 @@ const EmployeeList = () => {
                                         <AppButton
                                             variant="outlined"
                                             onClick={generateEmployeeTemplate}
-                                            icon={<FileDownloadIcon />}
+                                            icon={<TemplateExcelIcon size={20} />}
                                             title="Tải mẫu Excel"
                                         />
                                         <AppButton
                                             variant="outlined"
                                             component="label"
-                                            icon={<CloudUploadIcon />}
+                                            icon={<CloudUploadCustomIcon size={20} />}
                                             title="Nhập Excel"
                                         >
                                             <input
@@ -737,14 +746,14 @@ const EmployeeList = () => {
                                 color="success"
                                 onClick={handleExportPersonnel}
                                 sx={{ bgcolor: '#10b981', '&:hover': { bgcolor: '#059669' } }}
-                                icon={<FileDownloadIcon />}
+                                icon={<ExcelBrandIcon size={20} />}
                                 title="Xuất Excel"
                             />
                         )}
 
                         <AppButton
                             variant="contained"
-                            icon={<AddIcon />}
+                            icon={<AddCustomIcon size={20} />}
                             onClick={() => handleOpen()}
                             title={viewMode === 'personnel' ? 'Thêm Hồ Sơ' : 'Tạo Tài Khoản'}
                         />
@@ -820,9 +829,9 @@ const EmployeeList = () => {
                                             <Typography variant="body2" color="text.secondary" mb={1}>Email: {employee.email}</Typography>
                                             <Typography variant="body2" color="text.secondary" mb={1}>Tên Đăng Nhập: {employee.username || '-'}</Typography>
                                             <Stack direction="row" spacing={1} alignItems="center" justifyContent="flex-end" mt={2}>
-                                                <AppButton variant="outlined" icon={<VpnKeyIcon />} onClick={() => handleOpenPermissions(employee)} title="Phân quyền" />
-                                                <IconButton size="small" onClick={() => handleOpen(employee)} color="primary"><EditIcon fontSize="small" /></IconButton>
-                                                <IconButton size="small" onClick={() => handleDelete(employee.id, employee.full_name)} color="error"><DeleteIcon fontSize="small" /></IconButton>
+                                                <AppButton variant="outlined" icon={<KeyCustomIcon size={18} />} onClick={() => handleOpenPermissions(employee)} title="Phân quyền" />
+                                                <IconButton size="small" onClick={() => handleOpen(employee)} color="primary" sx={{ p: 0.6, transition: 'all 0.15s ease', '&:hover': { bgcolor: 'rgba(37, 99, 235, 0.1)', transform: 'scale(1.1)' } }}><EditCustomIcon size={17} /></IconButton>
+                                                <IconButton size="small" onClick={() => handleDelete(employee.id, employee.full_name)} color="error" sx={{ p: 0.6, transition: 'all 0.15s ease', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)', transform: 'scale(1.1)' } }}><TrashCustomIcon size={17} /></IconButton>
                                             </Stack>
                                         </CardContent>
                                     </Card>
@@ -960,9 +969,9 @@ const EmployeeList = () => {
                                                 <TableCell>{employee.district || '-'}</TableCell>
                                                 <TableCell align="right">
                                                     <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                                                        <IconButton size="small" onClick={() => handleOpenPermissions(employee)} color="secondary" title="Phân quyền"><VpnKeyIcon fontSize="small" /></IconButton>
-                                                        <IconButton size="small" onClick={() => handleOpen(employee)} color="primary" title="Sửa"><EditIcon fontSize="small" /></IconButton>
-                                                        <IconButton size="small" onClick={() => handleDelete(employee.id, employee.full_name)} color="error" title="Xóa"><DeleteIcon fontSize="small" /></IconButton>
+                                                        <IconButton size="small" onClick={() => handleOpenPermissions(employee)} title="Phân quyền" sx={{ p: 0.6, color: '#8b5cf6', transition: 'all 0.15s ease', '&:hover': { bgcolor: 'rgba(139, 92, 246, 0.1)', transform: 'scale(1.1)' } }}><KeyCustomIcon size={17} /></IconButton>
+                                                        <IconButton size="small" onClick={() => handleOpen(employee)} color="primary" title="Sửa" sx={{ p: 0.6, transition: 'all 0.15s ease', '&:hover': { bgcolor: 'rgba(37, 99, 235, 0.1)', transform: 'scale(1.1)' } }}><EditCustomIcon size={17} /></IconButton>
+                                                        <IconButton size="small" onClick={() => handleDelete(employee.id, employee.full_name)} color="error" title="Xóa" sx={{ p: 0.6, transition: 'all 0.15s ease', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)', transform: 'scale(1.1)' } }}><TrashCustomIcon size={17} /></IconButton>
                                                     </Stack>
                                                 </TableCell>
                                             </TableRow>

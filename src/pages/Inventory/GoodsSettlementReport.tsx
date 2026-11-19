@@ -24,6 +24,12 @@ import { readExcelFile } from '../../utils/excelUtils';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import * as ExcelJS from 'exceljs';
 import { AppButton } from '../../components/Common/AppButton';
+import {
+    ExcelBrandIcon,
+    PdfBrandIcon,
+    PrinterModernIcon,
+    TrashCustomIcon
+} from '../../components/Common/BrandIcons';
 import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -1018,10 +1024,10 @@ const GoodsSettlementReport: React.FC = () => {
                         title="Chốt & Lưu tháng"
                     />
 
-                    <AppButton variant="outlined" color="error" icon={<DeleteSweepIcon />} onClick={handleClearData} disabled={isLoading} title="Xóa dữ liệu" />
-                    <AppButton variant="outlined" color="success" icon={<FileDownloadIcon />} onClick={handleExportExcel} title="Xuất Excel" />
-                    <AppButton variant="outlined" color="primary" icon={<FileDownloadIcon />} onClick={handleExportPDF} title="Xuất PDF" />
-                    <AppButton variant="contained" icon={<PrintIcon />} onClick={handlePrint} title="In Biên bản (A4)" />
+                    <AppButton variant="outlined" color="error" icon={<TrashCustomIcon size={20} />} onClick={handleClearData} disabled={isLoading} title="Xóa dữ liệu" />
+                    <AppButton variant="outlined" color="success" icon={<ExcelBrandIcon size={20} />} onClick={handleExportExcel} title="Xuất Excel" />
+                    <AppButton variant="outlined" color="primary" icon={<PdfBrandIcon size={20} />} onClick={handleExportPDF} title="Xuất PDF" />
+                    <AppButton variant="contained" icon={<PrinterModernIcon size={20} />} onClick={handlePrint} title="In Biên bản (A4)" />
                 </Box>
             </Paper>
 

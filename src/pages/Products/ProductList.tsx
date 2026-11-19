@@ -30,6 +30,13 @@ import VoiceSearchButton from '../../components/VoiceSearchButton';
 import PageHeader from '../../components/Common/PageHeader';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import { AppButton } from '../../components/Common/AppButton';
+import {
+    TemplateExcelIcon,
+    CloudUploadCustomIcon,
+    EditCustomIcon,
+    TrashCustomIcon,
+    AddCustomIcon
+} from '../../components/Common/BrandIcons';
 
 const ProductList = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -238,7 +245,7 @@ const ProductList = () => {
                                 <AppButton
                                     variant="outlined"
                                     onClick={generateProductTemplate}
-                                    icon={<FileDownloadIcon />}
+                                    icon={<TemplateExcelIcon size={20} color="#1d4ed8" />}
                                     title="Tải mẫu Excel"
                                     sx={{ 
                                         color: '#1d4ed8',
@@ -249,7 +256,7 @@ const ProductList = () => {
                                 <AppButton
                                     variant="outlined"
                                     component="label"
-                                    icon={<UploadFileIcon />}
+                                    icon={<CloudUploadCustomIcon size={20} color="#047857" />}
                                     title="Nhập Excel"
                                     sx={{ 
                                         color: '#047857',
@@ -300,7 +307,7 @@ const ProductList = () => {
                         )}
                         <AppButton
                             variant="contained"
-                            icon={<AddIcon />}
+                            icon={<AddCustomIcon size={20} color="#2563eb" />}
                             onClick={handleOpenAdd}
                             title="Thêm mới"
                             sx={{ 
@@ -621,14 +628,14 @@ const ProductList = () => {
                                                         onClick={() => handleOpenEdit(product)}
                                                         sx={{ color: '#2563eb', bgcolor: '#f8fafc', '&:hover': { bgcolor: '#eff6ff' } }}
                                                     >
-                                                        <EditIcon fontSize="small" />
+                                                        <EditCustomIcon size={17} />
                                                     </IconButton>
                                                     <IconButton
                                                         size="small"
                                                         onClick={() => handleDelete(product.id, product.name)}
                                                         sx={{ color: '#ef4444', bgcolor: '#f8fafc', '&:hover': { bgcolor: '#fef2f2' } }}
                                                     >
-                                                        <DeleteIcon fontSize="small" />
+                                                        <TrashCustomIcon size={17} />
                                                     </IconButton>
                                                 </Stack>
                                             </TableCell>

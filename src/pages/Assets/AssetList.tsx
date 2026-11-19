@@ -20,6 +20,14 @@ import CheckIcon from '@mui/icons-material/Check';
 import TableChartIcon from '@mui/icons-material/TableChart';
 
 import { AppButton } from '../../components/Common/AppButton';
+import {
+    ExcelBrandIcon,
+    TemplateExcelIcon,
+    CloudUploadCustomIcon,
+    PrinterModernIcon,
+    EditCustomIcon,
+    TrashCustomIcon
+} from '../../components/Common/BrandIcons';
 import { fetchAssets, deleteAsset, importAssets, updateAsset } from '../../store/slices/assetsSlice';
 import { fetchHRProfiles } from '../../store/slices/hrProfilesSlice';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -486,27 +494,24 @@ const AssetList = () => {
                         variant="outlined"
                         color="primary"
                         component="label"
-                        icon={<UploadFileIcon />}
+                        icon={<CloudUploadCustomIcon size={20} />}
                         title="Nhập Excel"
-                        sx={{ '& .MuiSvgIcon-root': { fontSize: 22 } }}
                     >
                         <input type="file" hidden accept=".xlsx, .xls" onChange={handleImportExcel} />
                     </AppButton>
                     <AppButton
                         variant="outlined"
                         color="success"
-                        icon={<FileDownloadIcon />}
+                        icon={<TemplateExcelIcon size={20} />}
                         onClick={() => generateAssetTemplate()}
                         title="Tải mẫu Excel"
-                        sx={{ '& .MuiSvgIcon-root': { fontSize: 22 } }}
                     />
                     <AppButton
                         variant="outlined"
                         color="info"
-                        icon={<TableChartIcon />}
+                        icon={<ExcelBrandIcon size={20} />}
                         onClick={() => exportAssetReport(filteredAssets, profile?.full_name || 'Admin')}
                         title="Xuất Excel"
-                        sx={{ '& .MuiSvgIcon-root': { fontSize: 22 } }}
                     />
                     {selectedIds.length > 0 && (
                         <>
@@ -536,7 +541,7 @@ const AssetList = () => {
                     <AppButton
                         variant="contained"
                         color="primary"
-                        icon={<PrintIcon />}
+                        icon={<PrinterModernIcon size={20} />}
                         onClick={handlePrintByEmployee}
                         disabled={!searchEmployee.trim()}
                         title="In biên bản (Nhân viên)"
@@ -648,15 +653,17 @@ const AssetList = () => {
                                             size="small"
                                             color="primary"
                                             onClick={() => openAssetEditor(asset)}
+                                            sx={{ p: 0.6, transition: 'all 0.15s ease', '&:hover': { bgcolor: 'rgba(37, 99, 235, 0.1)', transform: 'scale(1.1)' } }}
                                         >
-                                            <EditIcon fontSize="small" />
+                                            <EditCustomIcon size={17} />
                                         </IconButton>
                                         <IconButton
                                             size="small"
                                             color="error"
                                             onClick={() => setDeleteConfirm({ open: true, id: asset.id, reason: '' })}
+                                            sx={{ p: 0.6, transition: 'all 0.15s ease', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)', transform: 'scale(1.1)' } }}
                                         >
-                                            <DeleteIcon fontSize="small" />
+                                            <TrashCustomIcon size={17} />
                                         </IconButton>
                                     </Stack>
                                 </Box>
@@ -755,15 +762,17 @@ const AssetList = () => {
                                                 size="small" 
                                                 color="primary" 
                                                 onClick={() => openAssetEditor(asset)}
+                                                sx={{ p: 0.6, transition: 'all 0.15s ease', '&:hover': { bgcolor: 'rgba(37, 99, 235, 0.1)', transform: 'scale(1.1)' } }}
                                             >
-                                                <EditIcon fontSize="small" />
+                                                <EditCustomIcon size={17} />
                                             </IconButton>
                                             <IconButton 
                                                 size="small" 
                                                 color="error" 
                                                 onClick={() => setDeleteConfirm({ open: true, id: asset.id, reason: '' })}
+                                                sx={{ p: 0.6, transition: 'all 0.15s ease', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)', transform: 'scale(1.1)' } }}
                                             >
-                                                <DeleteIcon fontSize="small" />
+                                                <TrashCustomIcon size={17} />
                                             </IconButton>
                                         </Stack>
                                     </TableCell>
