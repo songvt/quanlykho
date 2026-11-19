@@ -92,6 +92,7 @@ const PrintBillNotification: React.FC = () => {
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const [filterNewCustomer, setFilterNewCustomer] = useState<'all' | 'new' | 'old'>('all');
     const [filterDebtAge, setFilterDebtAge] = useState<string>('all');
+    const [filterServiceType, setFilterServiceType] = useState<'all' | 'internet' | 'tv' | 'mobile'>('all');
 
     // Thao tác đơn lẻ (Render On-Demand, KHÔNG render ngầm hàng ngàn bản ghi)
     const [exportingSingleId, setExportingSingleId] = useState<string | null>(null);
@@ -1004,7 +1005,36 @@ Trân trọng cảm ơn Quý khách!`;
         return Array.from(set).sort();
     }, [data]);
 
-    // Lọc danh sách theo KH Mới, Tuổi nợ, từ khóa tìm kiếm & Sắp xếp theo tên khách hàng
+    // Phân loại dịch vụ dựa theo các ký tự đầu tiên của cột Thuê Bao:
+    // - t008_gftth, hcm_gftth => Dịch vụ Internet
+    // - vt, t008_gmts => Dịch vụ truyền hình
+    // - còn lại => Dịch vụ di động khác
+    const getServiceType = (phone?: string): 'internet' | 'tv' | 'mobile' => {
+        if (!phone) return 'mobile';
+        const p = phone.toLowerCase().trim();
+        if (p.startsWith('t008_gftth') || p.startsWith('hcm_gftth') || p.includes('gftth')) {
+            return 'internet';
+        }
+        if (p.startsWith('vt') || p.startsWith('t008_gmts') || p.includes('gmts')) {
+            return 'tv';
+        }
+        return 'mobile';
+    };
+
+    const getServiceTypeName = (phone?: string): string => {
+        const type = getServiceType(phone);
+        switch (type) {
+            case 'internet':
+                return 'Dịch vụ Internet';
+            case 'tv':
+                return 'Dịch vụ truyền hình';
+            case 'mobile':
+            default:
+                return 'Dịch vụ di động khác';
+        }
+    };
+
+    // Lọc danh sách theo KH Mới, Tuổi nợ, loại dịch vụ, từ khóa tìm kiếm & Sắp xếp theo tên khách hàng
     const filteredData = useMemo(() => {
         let result = data;
 
@@ -1022,6 +1052,11 @@ Trân trọng cảm ơn Quý khách!`;
             } else {
                 result = result.filter(item => (item.debtAge || '').trim().toLowerCase() === filterDebtAge.toLowerCase());
             }
+        }
+
+        // 3. Lọc theo Loại Dịch Vụ (dựa theo ký tự đầu Thuê Bao)
+        if (filterServiceType !== 'all') {
+            result = result.filter(item => getServiceType(item.phone) === filterServiceType);
         }
 
         // 3. Lọc theo từ khóa tìm kiếm
@@ -1050,7 +1085,7 @@ Trân trọng cảm ơn Quý khách!`;
         }
 
         return result;
-    }, [data, filterNewCustomer, filterDebtAge, searchTerm, sortOrder]);
+    }, [data, filterNewCustomer, filterDebtAge, filterServiceType, searchTerm, sortOrder]);
 
     // Dữ liệu cho trang hiện tại (Tránh render ngàn phần tử vào DOM)
     const paginatedData = useMemo(() => {
@@ -1367,13 +1402,32 @@ Trân trọng cảm ơn Quý khách!`;
                             </Select>
                         </FormControl>
 
-                        {(filterNewCustomer !== 'all' || filterDebtAge !== 'all' || searchTerm) && (
+                        {/* Bộ lọc Loại Dịch Vụ */}
+                        <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 165 }, bgcolor: 'background.paper', borderRadius: 1 }}>
+                            <Select
+                                value={filterServiceType}
+                                onChange={(e) => {
+                                    setFilterServiceType(e.target.value as any);
+                                    setPage(0);
+                                }}
+                                displayEmpty
+                                sx={{ height: 40, fontSize: '13px' }}
+                            >
+                                <MenuItem value="all">Tất cả Dịch vụ</MenuItem>
+                                <MenuItem value="internet">🌐 Dịch vụ Internet</MenuItem>
+                                <MenuItem value="tv">📺 Dịch vụ truyền hình</MenuItem>
+                                <MenuItem value="mobile">📱 Dịch vụ di động khác</MenuItem>
+                            </Select>
+                        </FormControl>
+
+                        {(filterNewCustomer !== 'all' || filterDebtAge !== 'all' || filterServiceType !== 'all' || searchTerm) && (
                             <Button 
                                 size="small" 
                                 color="inherit"
                                 onClick={() => {
                                     setFilterNewCustomer('all');
                                     setFilterDebtAge('all');
+                                    setFilterServiceType('all');
                                     setSearchTerm('');
                                     setPage(0);
                                 }}
@@ -1454,7 +1508,14 @@ Trân trọng cảm ơn Quý khách!`;
                                         <Stack spacing={0.6} sx={{ fontSize: '13px', color: 'text.secondary', mb: 1.5 }}>
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                 <PhoneIcon sx={{ fontSize: 15, color: '#3b82f6' }} />
-                                                <span>Thuê bao: <Box component="span" sx={{ color: 'text.primary', fontWeight: 600, fontSize: '14px' }}>{row.phone}</Box></span>
+                                                <span>
+                                                    Thuê bao: <Box component="span" sx={{ color: 'text.primary', fontWeight: 600, fontSize: '14px' }}>{row.phone}</Box>
+                                                    <Chip 
+                                                        label={getServiceType(row.phone) === 'internet' ? 'Internet' : getServiceType(row.phone) === 'tv' ? 'Truyền hình' : 'Di động'} 
+                                                        size="small" 
+                                                        sx={{ ml: 1, height: 18, fontSize: '10px', fontWeight: 600, bgcolor: 'action.hover' }} 
+                                                    />
+                                                </span>
                                             </Box>
                                             {row.contactPhone && (
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -1657,7 +1718,9 @@ Trân trọng cảm ơn Quý khách!`;
                                                     {toTitleCase(row.customerName)}
                                                 </TableCell>
                                                 <TableCell sx={{ fontSize: '13.5px', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                                                    {row.phone}
+                                                    <Tooltip title={getServiceTypeName(row.phone)} arrow>
+                                                        <span>{row.phone}</span>
+                                                    </Tooltip>
                                                 </TableCell>
                                                 <TableCell sx={{ fontSize: '13.5px', fontWeight: 500, whiteSpace: 'nowrap' }}>
                                                     {row.contactPhone ? (
