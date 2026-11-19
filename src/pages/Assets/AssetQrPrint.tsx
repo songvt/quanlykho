@@ -6,12 +6,15 @@ import {
 } from '@mui/material';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import DownloadIcon from '@mui/icons-material/Download';
-import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import PersonSearchIcon from '@mui/icons-material/PersonSearch';
-import PrintIcon from '@mui/icons-material/Print';
-import AddIcon from '@mui/icons-material/Add';
 import { QRCodeSVG } from 'qrcode.react';
+import {
+    PrinterModernIcon,
+    TemplateExcelIcon,
+    TrashCustomIcon,
+    CloudUploadCustomIcon,
+    AddCustomIcon,
+} from '../../components/Common/BrandIcons';
 
 import type { AppDispatch, RootState } from '../../store';
 import type { Asset } from '../../types';
@@ -142,7 +145,7 @@ const AssetQrPrint = () => {
                     <Typography variant="h4" fontWeight={900} color="primary">IN MÃ QR TÀI SẢN</Typography>
                     <Typography color="text.secondary">Chọn lẻ, nhập Excel mã tài sản hoặc lập danh sách theo nhân viên để in.</Typography>
                 </Box>
-                <Button variant="contained" startIcon={<PrintIcon />} onClick={handlePrint} disabled={!selectedAssets.length}>
+                <Button variant="contained" startIcon={<PrinterModernIcon size={20} color="#ffffff" />} onClick={handlePrint} disabled={!selectedAssets.length}>
                     In {selectedAssets.length || ''} mã QR
                 </Button>
             </Stack>
@@ -160,18 +163,18 @@ const AssetQrPrint = () => {
                             sx={{ flex: 1 }}
                             loading={status === 'loading'}
                         />
-                        <Button variant="contained" startIcon={<AddIcon />} onClick={addSingleAsset}>Thêm vào danh sách in</Button>
+                        <Button variant="contained" startIcon={<AddCustomIcon size={18} />} onClick={addSingleAsset}>Thêm vào danh sách in</Button>
                     </Stack>
                 </Paper>
 
                 <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
                     <Typography fontWeight={800} mb={1.5}><CloudUploadIcon sx={{ verticalAlign: 'middle', mr: 1 }} />Nhập danh sách từ Excel</Typography>
                     <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} spacing={1.5}>
-                        <Button component="label" variant="outlined" startIcon={<CloudUploadIcon />}>
+                        <Button component="label" variant="outlined" startIcon={<CloudUploadCustomIcon size={18} />}>
                             Chọn file Excel
                             <input hidden type="file" accept=".xlsx,.xls" onChange={handleImport} />
                         </Button>
-                        <Button variant="text" startIcon={<DownloadIcon />} onClick={generateQrPrintTemplate}>
+                        <Button variant="text" startIcon={<TemplateExcelIcon size={18} />} onClick={generateQrPrintTemplate}>
                             Tải file mẫu
                         </Button>
                         <Typography variant="body2" color="text.secondary">File cần có cột <b>Mã tài sản</b>; mỗi dòng là một mã cần in.</Typography>
@@ -185,7 +188,7 @@ const AssetQrPrint = () => {
                         <TextField select label="Loại CCDC - TBVP" value={assetType} onChange={event => setAssetType(event.target.value as typeof assetType)} SelectProps={{ native: true }} sx={{ minWidth: 210 }}>
                             <option value="all">Tất cả</option><option value="ccdc">CCDC</option><option value="tbvp">TBVP</option>
                         </TextField>
-                        <Button variant="contained" color="secondary" startIcon={<AddIcon />} onClick={addAssetsByEmployee}>Thêm tài sản nhân viên</Button>
+                        <Button variant="contained" color="secondary" startIcon={<AddCustomIcon size={18} />} onClick={addAssetsByEmployee}>Thêm tài sản nhân viên</Button>
                     </Stack>
                 </Paper>
             </Stack>
@@ -193,7 +196,7 @@ const AssetQrPrint = () => {
             <Paper variant="outlined" sx={{ mt: 3, p: 2.5, borderRadius: 2 }}>
                 <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'center' }} spacing={1} mb={2}>
                     <Typography fontWeight={800}>Danh sách chờ in ({selectedAssets.length})</Typography>
-                    <Button color="error" startIcon={<DeleteSweepIcon />} onClick={() => setPrintAssetIds([])} disabled={!selectedAssets.length}>Xóa danh sách</Button>
+                    <Button color="error" startIcon={<TrashCustomIcon size={18} />} onClick={() => setPrintAssetIds([])} disabled={!selectedAssets.length}>Xóa danh sách</Button>
                 </Stack>
                 {!selectedAssets.length ? <Alert severity="info">Chưa có tài sản nào trong danh sách in.</Alert> : (
                     <Stack direction="row" flexWrap="wrap" gap={1}>

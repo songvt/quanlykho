@@ -3,6 +3,7 @@ import { Box, Button, CircularProgress, Paper, Stack, Table, TableBody, TableCel
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { useNotification } from '../../contexts/NotificationContext';
 import { exportPeriodicAssetAuditReport } from '../../utils/excelUtils';
+import { ExcelBrandIcon } from '../../components/Common/BrandIcons';
 
 const PeriodicAssetAuditDetails = () => {
     const { error } = useNotification();
@@ -16,7 +17,7 @@ const PeriodicAssetAuditDetails = () => {
         <Typography color="text.secondary" mb={2}>Lịch sử các lần quét và xác nhận kiểm kê định kỳ.</Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }} mb={2}>
             <TextField size="small" fullWidth sx={{ maxWidth: 440 }} label="Tìm mã, tên tài sản hoặc người kiểm kê" value={keyword} onChange={e => setKeyword(e.target.value)} />
-            <Button variant="contained" startIcon={<FileDownloadIcon />} disabled={!filtered.length} onClick={() => exportPeriodicAssetAuditReport(filtered)}>Xuất Excel</Button>
+            <Button variant="contained" color="success" startIcon={<ExcelBrandIcon size={18} />} disabled={!filtered.length} onClick={() => exportPeriodicAssetAuditReport(filtered)}>Xuất Excel</Button>
         </Stack>
         <TableContainer component={Paper} sx={{ borderRadius: 3 }}><Table size="small">
             <TableHead><TableRow><TableCell><b>THỜI GIAN</b></TableCell><TableCell><b>MÃ TÀI SẢN</b></TableCell><TableCell><b>TÊN TÀI SẢN</b></TableCell><TableCell><b>NGƯỜI SỬ DỤNG</b></TableCell><TableCell><b>NGƯỜI QUẢN LÝ</b></TableCell><TableCell><b>NGƯỜI KIỂM KÊ</b></TableCell><TableCell><b>GHI CHÚ</b></TableCell></TableRow></TableHead>

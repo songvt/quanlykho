@@ -15,6 +15,7 @@ import EventNoteIcon from '@mui/icons-material/EventNote';
 import PersonIcon from '@mui/icons-material/Person';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import { ExcelBrandIcon } from '../../components/Common/BrandIcons';
 import { GoogleSheetService } from '../../services/GoogleSheetService';
 import PageHeader from '../../components/Common/PageHeader';
 import ExcelJS from 'exceljs';
@@ -232,7 +233,7 @@ const ActionHistory: React.FC = () => {
                 icon={<HistoryIcon sx={{ fontSize: 32, color: 'white' }} />}
                 gradientType="dark" 
                 actions={<Stack direction="row" spacing={1}>
-                    {tabValue === 1 && <Button onClick={exportAssetLogs} startIcon={<FileDownloadIcon />} disabled={!assetLogs.length} variant="contained">Xuất Excel</Button>}
+                    {tabValue === 1 && <Button onClick={exportAssetLogs} startIcon={<ExcelBrandIcon size={18} />} disabled={!assetLogs.length} variant="contained">Xuất Excel</Button>}
                     <IconButton 
                         onClick={fetchData} 
                         disabled={loading} 

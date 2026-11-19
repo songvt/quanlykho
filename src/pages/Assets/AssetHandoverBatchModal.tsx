@@ -13,6 +13,12 @@ import PrintIcon from '@mui/icons-material/Print';
 import SearchIcon from '@mui/icons-material/Search';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import {
+    TemplateExcelIcon,
+    CloudUploadCustomIcon,
+    PrinterModernIcon,
+    TrashCustomIcon,
+} from '../../components/Common/BrandIcons';
 
 import type { HRProfile } from '../../types';
 import {
@@ -211,7 +217,7 @@ export const AssetHandoverBatchModal: React.FC<AssetHandoverBatchModalProps> = (
                             <Button
                                 variant="outlined"
                                 color="primary"
-                                startIcon={<FileDownloadIcon />}
+                                startIcon={<TemplateExcelIcon size={18} />}
                                 onClick={handleDownloadTemplate}
                                 size="small"
                                 sx={{ borderRadius: 1.5, fontWeight: 700, textTransform: 'none', whiteSpace: 'nowrap' }}
@@ -230,7 +236,7 @@ export const AssetHandoverBatchModal: React.FC<AssetHandoverBatchModalProps> = (
                             <Button
                                 variant="contained"
                                 color="success"
-                                startIcon={<UploadFileIcon />}
+                                startIcon={<CloudUploadCustomIcon size={18} />}
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={loading}
                                 size="small"
@@ -410,7 +416,7 @@ export const AssetHandoverBatchModal: React.FC<AssetHandoverBatchModalProps> = (
                     <Button
                         variant="contained"
                         color="primary"
-                        startIcon={<PrintIcon />}
+                        startIcon={<PrinterModernIcon size={18} color="#ffffff" />}
                         disabled={selectedEmployees.length === 0}
                         onClick={handlePrintBatch}
                         sx={{

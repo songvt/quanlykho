@@ -13,6 +13,7 @@ import {
     Search as SearchIcon,
     Warehouse as WarehouseIcon,
 } from '@mui/icons-material';
+import { ExcelBrandIcon, RefreshCustomIcon } from '../../components/Common/BrandIcons';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -242,7 +243,7 @@ const StockMap: React.FC = () => {
                     <Button
                         variant="outlined"
                         onClick={exportSummary}
-                        startIcon={isExporting ? <CircularProgress size={16} /> : <FileDownloadIcon />}
+                        startIcon={isExporting ? <CircularProgress size={16} /> : <ExcelBrandIcon size={18} />}
                         disabled={isLoading || isExporting || !filteredRows.length}
                         sx={{
                             color: '#1D4ED8',
@@ -251,7 +252,7 @@ const StockMap: React.FC = () => {
                             '&.Mui-disabled': { bgcolor: '#E2E8F0 !important', color: '#64748B !important', borderColor: '#CBD5E1 !important' },
                         }}
                     >Xuất Excel tổng</Button>
-                    <Button variant="contained" onClick={refreshData} startIcon={<RefreshIcon />} disabled={isLoading || isExporting}>Làm mới dữ liệu</Button>
+                    <Button variant="contained" onClick={refreshData} startIcon={<RefreshCustomIcon size={18} />} disabled={isLoading || isExporting}>Làm mới dữ liệu</Button>
                 </>}
             />
 
@@ -370,7 +371,7 @@ const StockMap: React.FC = () => {
                     <Typography variant="h6" fontWeight={800}>{selectedRow?.product.item_code} — {selectedRow?.product.name}</Typography>
                     <Typography variant="body2" color="text.secondary">Mã kho: <strong>{selectedRow?.warehouseType}</strong> · Tồn khả dụng: <strong>{formatNumber(selectedRow?.availableQuantity || 0)} {selectedRow?.product.unit || 'Cái'}</strong></Typography>
                     <Stack direction="row" spacing={0.5} sx={{ position: 'absolute', right: 12, top: 12 }}>
-                        <Tooltip title="Xuất Excel chi tiết mã hàng"><span><IconButton aria-label="Xuất Excel chi tiết" onClick={exportDetail} disabled={isExporting || !selectedTransactions.length} color="primary"><FileDownloadIcon /></IconButton></span></Tooltip>
+                        <Tooltip title="Xuất Excel chi tiết mã hàng"><span><IconButton aria-label="Xuất Excel chi tiết" onClick={exportDetail} disabled={isExporting || !selectedTransactions.length} color="primary"><ExcelBrandIcon size={20} /></IconButton></span></Tooltip>
                         <IconButton aria-label="Đóng" onClick={() => setSelectedRow(null)}><CloseIcon /></IconButton>
                     </Stack>
                 </DialogTitle>

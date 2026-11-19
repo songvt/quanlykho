@@ -6,10 +6,11 @@ import {
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
-import { Camera, Image as ImageIcon, Search } from 'lucide-react';
+import { Camera, Image as ImageIcon, Search, Sparkles } from 'lucide-react';
 import type { RootState } from '../store';
 import { enqueueImageUpload, imageUploadQueueEvent, processImageUploadQueue } from '../services/imageUploadQueue';
 import { exportToExcel } from '../utils/excelUtils';
+import { ExcelBrandIcon } from '../components/Common/BrandIcons';
 
 type ImageType = 'before' | 'after' | 'appointment';
 type ControlRow = {
@@ -261,14 +262,21 @@ export default function ImageControl() {
                     <MenuItem value="all">Tất cả</MenuItem><MenuItem value="uploaded">Đã up</MenuItem><MenuItem value="pending">Chưa up</MenuItem>
                 </TextField>}
                 <Button variant="contained" startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <Search size={18} />} onClick={() => search(1)} disabled={loading} sx={{ minWidth: 130, height: 56 }}>Tìm kiếm</Button>
-                {isAdmin && <Button variant="outlined" onClick={exportFailedImages} disabled={exporting} sx={{ minWidth: 160, height: 56, whiteSpace: 'nowrap' }}>
-                    {exporting ? <CircularProgress size={18} /> : 'Xuất Excel không đạt'}
+                {isAdmin && <Button 
+                    variant="outlined" 
+                    color="success"
+                    startIcon={exporting ? <CircularProgress size={18} /> : <ExcelBrandIcon size={20} />} 
+                    onClick={exportFailedImages} 
+                    disabled={exporting} 
+                    sx={{ minWidth: 180, height: 56, whiteSpace: 'nowrap', fontWeight: 700 }}
+                >
+                    Xuất Excel không đạt
                 </Button>}
             </Stack>
             {isAdmin && <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ md: 'center' }} sx={{ mt: 1.5 }}>
                 <TextField label="Tháng quét AI" type="month" value={scanMonth} onChange={(e) => setScanMonth(e.target.value)} slotProps={{ inputLabel: { shrink: true } }} sx={{ minWidth: 180 }} />
-                <Button variant="contained" color="secondary" onClick={runAiScan} disabled={scanning || !installerFilter} sx={{ minWidth: 180, height: 56 }}>
-                    {scanning ? <CircularProgress size={18} color="inherit" /> : 'Quét ảnh AI'}
+                <Button variant="contained" color="secondary" startIcon={scanning ? <CircularProgress size={18} color="inherit" /> : <Sparkles size={18} />} onClick={runAiScan} disabled={scanning || !installerFilter} sx={{ minWidth: 180, height: 56 }}>
+                    Quét ảnh AI
                 </Button>
                 <Typography variant="caption" color="text.secondary">Chọn một nhân viên để quét tối đa 50 biên bản chưa được AI đánh giá mỗi lần.</Typography>
                 {scanProgress && <Typography variant="body2" fontWeight={700}>Đã quét {scanProgress.completed}/{scanProgress.total} · Cần xử lý: {scanProgress.issues}</Typography>}

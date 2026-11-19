@@ -15,6 +15,7 @@ import {
     FilterAlt as FilterAltIcon,
     Refresh as RefreshIcon,
 } from '@mui/icons-material';
+import { ExcelBrandIcon, RefreshCustomIcon } from '../../components/Common/BrandIcons';
 import { useDispatch, useSelector } from 'react-redux';
 import type { RootState, AppDispatch } from '../../store';
 import { selectWarehouseDetailedStockMap } from '../../store/slices/inventorySlice';
@@ -573,12 +574,12 @@ const StockSummaryReport: React.FC = () => {
                             {allDistricts.map(d => <MenuItem key={d} value={d}>{d || 'Tất cả'}</MenuItem>)}
                         </Select>
                     </FormControl>
-                    <Button variant="outlined" size="small" startIcon={<RefreshIcon />} onClick={handleRefresh}
+                    <Button variant="outlined" size="small" startIcon={<RefreshCustomIcon size={16} />} onClick={handleRefresh}
                         disabled={isLoading} sx={{ borderRadius: 2, textTransform: 'none' }}>
                         Làm mới
                     </Button>
                     <Button variant="contained" size="small"
-                        startIcon={isExporting ? <CircularProgress size={14} color="inherit" /> : <FileDownloadIcon />}
+                        startIcon={isExporting ? <CircularProgress size={14} color="inherit" /> : <ExcelBrandIcon size={16} />}
                         onClick={handleExportExcel}
                         disabled={filteredRows.length === 0 || isExporting}
                         sx={{ borderRadius: 2, textTransform: 'none', bgcolor: '#16a34a', '&:hover': { bgcolor: '#15803d' } }}>

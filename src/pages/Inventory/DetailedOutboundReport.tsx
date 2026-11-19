@@ -12,6 +12,11 @@ import {
     FilterList as FilterListIcon,
     DeleteSweep as DeleteSweepIcon
 } from '@mui/icons-material';
+import {
+    TemplateExcelIcon,
+    CloudUploadCustomIcon,
+    TrashCustomIcon,
+} from '../../components/Common/BrandIcons';
 import { useNotification } from '../../contexts/NotificationContext';
 import { readExcelFile } from '../../utils/excelUtils';
 import * as ExcelJS from 'exceljs';
@@ -320,7 +325,7 @@ const DetailedOutboundReport: React.FC = () => {
                         <Button
                             variant="outlined"
                             color="error"
-                            startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : <DeleteSweepIcon />}
+                            startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : <TrashCustomIcon size={18} />}
                             onClick={handleClearAll}
                             disabled={isLoading}
                             sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
@@ -328,10 +333,10 @@ const DetailedOutboundReport: React.FC = () => {
                             {isLoading ? 'Đang xóa...' : 'Xóa tất cả'}
                         </Button>
                     )}
-                    <Button variant="outlined" startIcon={<FileDownloadIcon />} onClick={downloadTemplate} sx={{ borderRadius: 2 }}>
+                    <Button variant="outlined" startIcon={<TemplateExcelIcon size={18} />} onClick={downloadTemplate} sx={{ borderRadius: 2 }}>
                         Tải Template
                     </Button>
-                    <Button variant="contained" component="label" startIcon={<CloudUploadIcon />} sx={{ borderRadius: 2, bgcolor: '#2563eb' }}>
+                    <Button variant="contained" component="label" startIcon={<CloudUploadCustomIcon size={18} />} sx={{ borderRadius: 2, bgcolor: '#2563eb' }}>
                         Import Excel
                         <input type="file" hidden accept=".xlsx, .xls" onChange={handleImportExcel} />
                     </Button>

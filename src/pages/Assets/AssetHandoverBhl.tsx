@@ -18,6 +18,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import {
+    ExcelBrandIcon,
     TemplateExcelIcon,
     CloudUploadCustomIcon,
     PrinterModernIcon,
@@ -975,7 +976,7 @@ const AssetHandoverBhl: React.FC = () => {
                                     <Button
                                         variant="contained"
                                         size="small"
-                                        startIcon={<FileDownloadIcon />}
+                                        startIcon={<ExcelBrandIcon size={18} />}
                                         onClick={handleExportEmployeeSummary}
                                         disabled={employeeSummary.length === 0}
                                         sx={{ whiteSpace: 'nowrap' }}

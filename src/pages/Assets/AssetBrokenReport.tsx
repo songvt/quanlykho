@@ -17,6 +17,7 @@ import { exportStandardReport } from '../../utils/excelUtils';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { useNotification } from '../../contexts/NotificationContext';
 import { sortAssetsByNameAndUser } from '../../utils/assetSorting';
+import { ExcelBrandIcon, PrinterModernIcon } from '../../components/Common/BrandIcons';
 
 const AssetBrokenReport = () => {
     const theme = useTheme();
@@ -154,7 +155,7 @@ const AssetBrokenReport = () => {
                             onClick={handleExportExcel}
                             sx={{ minWidth: 40, width: 40, height: 40, borderRadius: '10px', p: 0 }}
                         >
-                            <FileDownloadIcon sx={{ fontSize: 24 }} />
+                            <ExcelBrandIcon size={24} />
                         </Button>
                     </Tooltip>
                     <Tooltip title={`In (${selectedIds.length})`} arrow>
@@ -167,7 +168,7 @@ const AssetBrokenReport = () => {
                                 sx={{ minWidth: 40, width: 40, height: 40, borderRadius: '10px', p: 0 }}
                             >
                                 <Badge badgeContent={selectedIds.length} color="error" overlap="circular">
-                                    <PrintIcon sx={{ fontSize: 24 }} />
+                                    <PrinterModernIcon size={24} color="#ffffff" />
                                 </Badge>
                             </Button>
                         </span>

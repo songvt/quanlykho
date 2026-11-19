@@ -21,6 +21,14 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { exportStandardReport } from '../../utils/excelUtils';
 import { supabase } from '../../config/supabase';
+import {
+    ExcelBrandIcon,
+    PrinterModernIcon,
+    TrashCustomIcon,
+    EditCustomIcon,
+    AddCustomIcon,
+    PdfBrandIcon,
+} from '../../components/Common/BrandIcons';
 
 import { fetchHRProfiles } from '../../store/slices/hrProfilesSlice';
 import { fetchEmployees } from '../../store/slices/employeesSlice';
@@ -1489,7 +1497,7 @@ const KpiGrades = () => {
                                 <Button
                                     variant="outlined"
                                     color="success"
-                                    startIcon={<FileDownloadIcon />}
+                                    startIcon={<ExcelBrandIcon size={18} />}
                                     onClick={handleExportExcel}
                                     sx={{ borderRadius: '10px', px: 3, height: 40, fontWeight: 'bold', whiteSpace: 'nowrap' }}
                                 >
@@ -1499,7 +1507,7 @@ const KpiGrades = () => {
                                 <Button
                                     variant="contained"
                                     color="success"
-                                    startIcon={<AddIcon />}
+                                    startIcon={<AddCustomIcon size={18} />}
                                     onClick={() => handleOpenForm()}
                                     sx={{ borderRadius: '10px', px: 3, height: 40, fontWeight: 'bold', whiteSpace: 'nowrap' }}
                                 >
@@ -1558,13 +1566,13 @@ const KpiGrades = () => {
                                                 </Typography>
                                                 <Stack direction="row" spacing={1}>
                                                     <IconButton size="small" color="primary" onClick={() => handlePrint(report)} sx={{ bgcolor: '#f8fafc' }}>
-                                                        <PrintIcon fontSize="small" />
+                                                        <PrinterModernIcon size={18} />
                                                     </IconButton>
                                                     <IconButton size="small" color="info" onClick={() => handleOpenForm(report)} sx={{ bgcolor: '#f8fafc' }}>
-                                                        <EditIcon fontSize="small" />
+                                                        <EditCustomIcon size={18} />
                                                     </IconButton>
                                                     <IconButton size="small" color="error" onClick={() => handleDeleteReport(report.id, report.violatorName)} sx={{ bgcolor: '#f8fafc' }}>
-                                                        <DeleteIcon fontSize="small" />
+                                                        <TrashCustomIcon size={18} />
                                                     </IconButton>
                                                 </Stack>
                                             </Stack>
@@ -1621,17 +1629,17 @@ const KpiGrades = () => {
                                                 <TableCell align="right" sx={{ pr: 2 }}>
                                                     <Tooltip title="Xem & In Biên Bản (A4)" TransitionComponent={Zoom}>
                                                         <IconButton size="small" color="primary" onClick={() => handlePrint(report)} sx={{ mr: 0.5 }}>
-                                                            <PrintIcon fontSize="small" />
+                                                            <PrinterModernIcon size={18} />
                                                         </IconButton>
                                                     </Tooltip>
                                                     <Tooltip title="Chỉnh sửa">
                                                         <IconButton size="small" color="info" onClick={() => handleOpenForm(report)} sx={{ mr: 0.5 }}>
-                                                            <EditIcon fontSize="small" />
+                                                            <EditCustomIcon size={18} />
                                                         </IconButton>
                                                     </Tooltip>
                                                     <Tooltip title="Xóa">
                                                         <IconButton size="small" color="error" onClick={() => handleDeleteReport(report.id, report.violatorName)}>
-                                                            <DeleteIcon fontSize="small" />
+                                                            <TrashCustomIcon size={18} />
                                                         </IconButton>
                                                     </Tooltip>
                                                 </TableCell>
@@ -2074,7 +2082,7 @@ const KpiGrades = () => {
                         <Button
                             variant="contained"
                             color="primary"
-                            startIcon={<PrintIcon />}
+                            startIcon={<PrinterModernIcon size={18} />}
                             onClick={triggerBrowserPrint}
                             sx={{ borderRadius: '8px', textTransform: 'none' }}
                         >
@@ -2346,7 +2354,7 @@ const KpiGrades = () => {
                         <Button
                             variant="contained"
                             color="error"
-                            startIcon={<FileDownloadIcon />}
+                            startIcon={<PdfBrandIcon size={18} />}
                             onClick={handleExportPDF}
                             disabled={isExportingPDF}
                             sx={{ borderRadius: '8px', textTransform: 'none', bgcolor: '#ef4444', '&:hover': { bgcolor: '#dc2626' } }}
@@ -2356,7 +2364,7 @@ const KpiGrades = () => {
                         <Button
                             variant="contained"
                             color="primary"
-                            startIcon={<PrintIcon />}
+                            startIcon={<PrinterModernIcon size={18} />}
                             onClick={triggerBrowserPrint}
                             sx={{ borderRadius: '8px', textTransform: 'none' }}
                         >
