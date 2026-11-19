@@ -701,11 +701,26 @@ const PrintBillNotification: React.FC = () => {
             targetPhone = fallbackPhone.replace(/[^0-9+]/g, '');
         }
 
-        const displayAmount = billItem.amount?.toLowerCase().includes('đ')
-            ? billItem.amount
-            : `${billItem.amount} đ`;
+        const cleanAmount = (billItem.amount || '')
+            .replace(/[đĐ]/g, '')
+            .replace(/đồng/gi, '')
+            .trim();
 
-        const smsContent = `Kính gửi Quý khách ${toTitleCase(billItem.customerName)},\nViettel xin gửi Thông báo cước dịch vụ:\n- Thuê bao: ${billItem.phone}\n- Kỳ cước: ${toTitleCase(billItem.serviceMonth)}\n- Số tiền cần thanh toán: ${displayAmount}\nTrân trọng cảm ơn Quý khách!`;
+        const supportPhone = (billItem.collectorPhone || '').trim() || '0979092604';
+
+        const smsContent = `Kính gửi Quý khách ${toTitleCase(billItem.customerName)},
+
+Viettel trân trọng thông báo cước dịch vụ:
+
+- Thuê bao: ${billItem.phone}
+- Kỳ cước: ${toTitleCase(billItem.serviceMonth)}
+- Số tiền thanh toán: ${cleanAmount} đồng.
+
+Quý khách vui lòng thanh toán đúng hạn để đảm bảo dịch vụ được duy trì liên tục.
+
+Mọi thắc mắc vui lòng liên hệ: ${supportPhone}.
+
+Trân trọng cảm ơn Quý khách!`;
 
         // 1. Luôn sao chép nội dung tin nhắn vào clipboard
         if (navigator.clipboard && navigator.clipboard.writeText) {
