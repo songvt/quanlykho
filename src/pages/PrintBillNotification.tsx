@@ -6,7 +6,7 @@ import {
     InputAdornment, Tooltip, Card, CardContent, Divider,
     useMediaQuery, useTheme, Chip, TablePagination,
     Dialog, DialogTitle, DialogContent, DialogActions,
-    LinearProgress, Menu, MenuItem
+    LinearProgress, Menu, MenuItem, TableSortLabel
 } from '@mui/material';
 import { 
     Download as DownloadIcon, 
@@ -17,13 +17,16 @@ import {
     Share as ShareIcon,
     PictureAsPdf as PictureAsPdfIcon,
     Phone as PhoneIcon,
+    ContactPhone as ContactPhoneIcon,
+    Sms as SmsIcon,
     LocationOn as LocationIcon,
     Payment as PaymentIcon,
     Refresh as RefreshIcon,
     NavigateBefore as PrevIcon,
     NavigateNext as NextIcon,
     CheckCircle as SuccessIcon,
-    ArrowDropDown as ArrowDropDownIcon
+    ArrowDropDown as ArrowDropDownIcon,
+    FileDownload as FileDownloadIcon
 } from '@mui/icons-material';
 import ExcelJS from 'exceljs';
 import { useReactToPrint } from 'react-to-print';
@@ -82,9 +85,10 @@ const PrintBillNotification: React.FC = () => {
     // Tiến trình import Excel lên đám mây
     const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number; message: string } | null>(null);
 
-    // Phân trang
+    // Phân trang & Sắp xếp
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(50);
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
     // Thao tác đơn lẻ (Render On-Demand, KHÔNG render ngầm hàng ngàn bản ghi)
     const [exportingSingleId, setExportingSingleId] = useState<string | null>(null);
@@ -92,10 +96,12 @@ const PrintBillNotification: React.FC = () => {
     const [activeQrItem, setActiveQrItem] = useState<BillData | null>(null);
     const [activePdfItem, setActivePdfItem] = useState<BillData | null>(null);
 
-    // In ấn & Xuất PDF hàng loạt
+    // In ấn, Xuất PDF & Xuất Excel hàng loạt
     const [itemsToPrint, setItemsToPrint] = useState<BillData[]>([]);
     const [printMenuAnchor, setPrintMenuAnchor] = useState<null | HTMLElement>(null);
     const [pdfMenuAnchor, setPdfMenuAnchor] = useState<null | HTMLElement>(null);
+    const [excelMenuAnchor, setExcelMenuAnchor] = useState<null | HTMLElement>(null);
+    const [exportingExcel, setExportingExcel] = useState(false);
     
     // Tiến trình xuất PDF
     const [exportingPdf, setExportingPdf] = useState(false);
@@ -185,8 +191,9 @@ const PrintBillNotification: React.FC = () => {
 
         worksheet.columns = [
             { header: 'Khách Hàng', key: 'customerName', width: 25 },
+            { header: 'Thuê Bao', key: 'phone', width: 22 },
+            { header: 'Số Liên Hệ', key: 'contactPhone', width: 18 },
             { header: 'Địa Chỉ', key: 'address', width: 40 },
-            { header: 'Thuê Bao', key: 'phone', width: 15 },
             { header: 'Dịch Vụ & Tháng', key: 'serviceMonth', width: 30 },
             { header: 'Số Tiền', key: 'amount', width: 15 },
             { header: 'Ngày In', key: 'dateString', width: 25 },
@@ -195,12 +202,13 @@ const PrintBillNotification: React.FC = () => {
         ];
 
         worksheet.addRow({
-            customerName: 'Nguyễn Lê Nin Đa',
-            address: '23H Nguyễn ảnh Thủ, Khu phố 3, P. Hiệp Thành',
-            phone: '977719919',
-            serviceMonth: 'INTERNET TRẢ SAU THÁNG 06/2026',
-            amount: '400,000Đ',
-            dateString: 'TP. HCM, ngày 10 tháng 07 năm 2026',
+            customerName: 'Nguyễn Thụy Ngọc Thanh',
+            phone: 't008_gftth_thanhntn232',
+            contactPhone: '0979092604',
+            address: '118/8 HT43 P. Hiệp Thành Q.12 TPHCM',
+            serviceMonth: 'Dịch Vụ Viễn Thông Tháng 10/2026',
+            amount: '250.000 đ',
+            dateString: 'TP. HCM, ngày 10 tháng 10 năm 2026',
             collectorName: 'ĐỖ THỊ NGỌC MAI',
             collectorPhone: '0979092604'
         });
@@ -215,7 +223,7 @@ const PrintBillNotification: React.FC = () => {
         window.URL.revokeObjectURL(url);
     };
 
-    // Nhập file Excel (Đã tối ưu chia batch 100 dòng & an toàn chống tràn bộ nhớ)
+    // Nhập file Excel (Hỗ trợ tự động nhận diện cột linh hoạt & chia batch 100 dòng an toàn)
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -233,34 +241,176 @@ const PrintBillNotification: React.FC = () => {
             
             const parsedData: BillData[] = [];
             
+            // Quét tìm vị trí cột dựa trên tiêu đề ở dòng 1
+            const normalizeHeader = (str: string) => {
+                return (str || '')
+                    .toLowerCase()
+                    .replace(/đ/g, 'd')
+                    .replace(/Đ/g, 'd')
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-z0-9]/g, '');
+            };
+
+            const isPhoneKeyword = (h: string) => 
+                h.includes('sdt') || h.includes('dienthoai') || h.includes('phone') || h.includes('mobile') || h.includes('tel');
+
+            const headerMap: { [key: string]: number } = {};
+            const firstRow = worksheet.getRow(1);
+            firstRow.eachCell((cell, colNumber) => {
+                const headerVal = normalizeHeader(cell.value ? cell.value.toString() : '');
+                if (!headerVal) return;
+
+                // 1. Tên Khách Hàng
+                if (headerVal.includes('khachhang') || headerVal.includes('tenkh') || headerVal.includes('hoten') || (headerVal.includes('khach') && !isPhoneKeyword(headerVal))) {
+                    headerMap.customerName = colNumber;
+                } 
+                // 2. Thuê Bao (Mã thuê bao / tài khoản đường truyền)
+                else if (headerVal.includes('thuebao') || headerVal.includes('mathuebao') || headerVal.includes('taikhoan') || headerVal.includes('account')) {
+                    headerMap.phone = colNumber;
+                } 
+                // 3. Nhân Viên (Phân tách rõ Tên nhân viên vs SĐT nhân viên)
+                else if (headerVal.includes('nhanvien') || headerVal.includes('thungan') || headerVal === 'nv' || headerVal.includes('nvthu')) {
+                    if (isPhoneKeyword(headerVal)) {
+                        headerMap.collectorPhone = colNumber;
+                    } else {
+                        headerMap.collectorName = colNumber;
+                    }
+                }
+                // 4. SĐT NV khi viết tắt sdtnv, phonenv, dtnv...
+                else if (headerVal.includes('sdtnv') || headerVal.includes('dtnv') || headerVal.includes('phonenv') || headerVal.includes('dienthoainv')) {
+                    headerMap.collectorPhone = colNumber;
+                }
+                // 5. Số liên hệ của khách hàng
+                else if (headerVal.includes('lienhe') || headerVal.includes('sdtkh') || headerVal.includes('dienthoaikh') || headerVal.includes('contact')) {
+                    headerMap.contactPhone = colNumber;
+                } 
+                // 6. Địa Chỉ
+                else if (headerVal.includes('diachi') || headerVal.includes('iachi') || headerVal.includes('address') || headerVal.includes('noio') || headerVal === 'dc' || headerVal === 'dia') {
+                    headerMap.address = colNumber;
+                } 
+                // 7. Dịch Vụ & Kỳ Cước Tháng
+                else if (headerVal.includes('dichvu') || headerVal.includes('thang') || headerVal.includes('kycuoc')) {
+                    headerMap.serviceMonth = colNumber;
+                } 
+                // 8. Số Tiền
+                else if (headerVal.includes('sotien') || headerVal.includes('tien') || headerVal.includes('cuoc')) {
+                    headerMap.amount = colNumber;
+                } 
+                // 9. Ngày In
+                else if (headerVal.includes('ngayin') || headerVal.includes('ngay')) {
+                    headerMap.dateString = colNumber;
+                } 
+                // 10. Bắt trường hợp cột điện thoại dự phòng
+                else if (isPhoneKeyword(headerVal)) {
+                    if (!headerMap.contactPhone) {
+                        headerMap.contactPhone = colNumber;
+                    }
+                }
+            });
+
+            const hasHeaderMapping = !!(headerMap.customerName && (headerMap.amount || headerMap.phone));
+
             worksheet.eachRow((row, rowNumber) => {
                 if (rowNumber === 1) return; // Skip header
 
                 const getVal = (col: number) => {
+                    if (col <= 0) return '';
                     const val = row.getCell(col).value;
                     if (val && typeof val === 'object' && 'richText' in val) {
-                        return val.richText.map((rt: any) => rt.text).join('');
+                        return val.richText.map((rt: any) => rt.text).join('').trim();
                     }
-                    return val ? val.toString() : '';
+                    return val ? val.toString().trim() : '';
                 };
 
-                const customerName = getVal(1);
+                const customerName = hasHeaderMapping && headerMap.customerName 
+                    ? getVal(headerMap.customerName) 
+                    : getVal(1);
                 if (!customerName) return; // Bỏ qua dòng trống
 
-                const rawAmount = getVal(5);
+                let address = '';
+                let phone = '';
+                let contactPhone = '';
+                let serviceMonth = '';
+                let rawAmount = '';
+                let dateString = '';
+                let collectorName = '';
+                let collectorPhone = '';
+
+                if (hasHeaderMapping) {
+                    address = headerMap.address ? getVal(headerMap.address) : '';
+                    phone = headerMap.phone ? getVal(headerMap.phone) : '';
+                    contactPhone = headerMap.contactPhone ? getVal(headerMap.contactPhone) : '';
+                    serviceMonth = headerMap.serviceMonth ? getVal(headerMap.serviceMonth) : '';
+                    rawAmount = headerMap.amount ? getVal(headerMap.amount) : '';
+                    dateString = headerMap.dateString ? getVal(headerMap.dateString) : '';
+                    collectorName = headerMap.collectorName ? getVal(headerMap.collectorName) : '';
+                    collectorPhone = headerMap.collectorPhone ? getVal(headerMap.collectorPhone) : '';
+                } else {
+                    // Fallback theo mẫu cột nếu không nhận diện được tiêu đề
+                    const col2 = getVal(2);
+                    const looksLikeAddress = (s: string) => /đường|phường|quận|kp|khu phố|ấp|thành phố|tphcm|hcm|p\.|q\./i.test(s);
+
+                    if (looksLikeAddress(col2)) {
+                        // Mẫu cũ: 1: Khách Hàng, 2: Địa Chỉ, 3: Thuê Bao...
+                        address = col2;
+                        phone = getVal(3);
+                        if (row.actualCellCount >= 9) {
+                            contactPhone = getVal(4);
+                            serviceMonth = getVal(5);
+                            rawAmount = getVal(6);
+                            dateString = getVal(7);
+                            collectorName = getVal(8);
+                            collectorPhone = getVal(9);
+                        } else {
+                            contactPhone = '';
+                            serviceMonth = getVal(4);
+                            rawAmount = getVal(5);
+                            dateString = getVal(6);
+                            collectorName = getVal(7);
+                            collectorPhone = getVal(8);
+                        }
+                    } else {
+                        // Mẫu mới: 1: Khách Hàng, 2: Thuê Bao, 3: Số Liên Hệ, 4: Địa Chỉ...
+                        phone = col2;
+                        contactPhone = getVal(3);
+                        address = getVal(4);
+                        serviceMonth = getVal(5);
+                        rawAmount = getVal(6);
+                        dateString = getVal(7);
+                        collectorName = getVal(8);
+                        collectorPhone = getVal(9);
+                    }
+                }
+
+                // Tự động kiểm tra và hoán đổi nếu collectorName nhận nhầm số điện thoại (ví dụ: '0979092604')
+                const phonePattern = /^[0-9+() -]{8,15}$/;
+                const nameLooksLikePhone = phonePattern.test((collectorName || '').trim());
+                const phoneLooksLikeName = (collectorPhone || '').trim().length > 0 && !phonePattern.test((collectorPhone || '').trim());
+
+                if (nameLooksLikePhone && phoneLooksLikeName) {
+                    const temp = collectorName;
+                    collectorName = collectorPhone;
+                    collectorPhone = temp;
+                } else if (nameLooksLikePhone && !collectorPhone) {
+                    collectorPhone = collectorName;
+                    collectorName = '';
+                }
+
                 const parsedAmountNum = parseExcelNumber(rawAmount);
 
                 parsedData.push({
                     id: Math.random().toString(36).substring(2, 11),
-                    customerName: toTitleCase(getVal(1)),
-                    address: getVal(2),
-                    phone: getVal(3),
-                    serviceMonth: toTitleCase(getVal(4)),
+                    customerName: toTitleCase(customerName),
+                    address: address,
+                    phone: phone,
+                    contactPhone: contactPhone,
+                    serviceMonth: toTitleCase(serviceMonth),
                     amount: formatNumber(parsedAmountNum),
                     amountInWords: numberToWordsVN(parsedAmountNum),
-                    dateString: getVal(6),
-                    collectorName: toTitleCase(getVal(7)),
-                    collectorPhone: getVal(8),
+                    dateString: dateString,
+                    collectorName: toTitleCase(collectorName),
+                    collectorPhone: collectorPhone,
                     ...branchConfig
                 });
             });
@@ -290,7 +440,7 @@ const PrintBillNotification: React.FC = () => {
 
             const dbPayload = parsedData.map(item => ({
                 id: crypto.randomUUID ? crypto.randomUUID() : (Math.random().toString(36).substring(2) + Date.now().toString(36)),
-                recipient_phone: item.phone || '',
+                recipient_phone: item.contactPhone || item.phone || '',
                 status: DB_STATUS_TAG,
                 error_message: item.id,
                 params: item
@@ -535,6 +685,53 @@ const PrintBillNotification: React.FC = () => {
         }
     };
 
+    // Gửi tin nhắn SMS tới Số liên hệ của khách hàng
+    const handleSendSms = (billItem: BillData) => {
+        setError(null);
+        const contact = (billItem.contactPhone || '').trim();
+        const fallbackPhone = (billItem.phone || '').trim();
+        
+        // Kiểm tra xem chuỗi có phải số điện thoại thuần túy không (tránh lấy mã thuê bao dạng chữ)
+        const isPhoneNumber = (val: string) => /^[0-9+() -]{6,15}$/.test(val) && !/[a-zA-Z_]/.test(val);
+        
+        let targetPhone = '';
+        if (contact) {
+            targetPhone = contact.replace(/[^0-9+]/g, '');
+        } else if (isPhoneNumber(fallbackPhone)) {
+            targetPhone = fallbackPhone.replace(/[^0-9+]/g, '');
+        }
+
+        const displayAmount = billItem.amount?.toLowerCase().includes('đ')
+            ? billItem.amount
+            : `${billItem.amount} đ`;
+
+        const smsContent = `Kính gửi Quý khách ${toTitleCase(billItem.customerName)},\nViettel xin gửi Thông báo cước dịch vụ:\n- Thuê bao: ${billItem.phone}\n- Kỳ cước: ${toTitleCase(billItem.serviceMonth)}\n- Số tiền cần thanh toán: ${displayAmount}\nTrân trọng cảm ơn Quý khách!`;
+
+        // 1. Luôn sao chép nội dung tin nhắn vào clipboard
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(smsContent).catch(() => {});
+        }
+
+        if (!targetPhone) {
+            setSuccessMessage(`Đã sao chép nội dung tin nhắn của "${toTitleCase(billItem.customerName)}" vào bộ nhớ tạm! (Khách hàng chưa có Số liên hệ)`);
+            return;
+        }
+
+        // 2. Mở ứng dụng SMS của thiết bị
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        const smsUrl = isIOS 
+            ? `sms:${targetPhone}&body=${encodeURIComponent(smsContent)}`
+            : `sms:${targetPhone}?body=${encodeURIComponent(smsContent)}`;
+
+        try {
+            window.location.href = smsUrl;
+        } catch (_) {
+            window.open(smsUrl, '_self');
+        }
+
+        setSuccessMessage(`Đã sao chép nội dung và mở SMS gửi đến ${targetPhone}!`);
+    };
+
     // Xuất PDF hàng loạt an toàn theo từng trang với thanh tiến trình
     const exportBatchPdf = async (listToExport: BillData[]) => {
         setPdfMenuAnchor(null);
@@ -594,6 +791,108 @@ const PrintBillNotification: React.FC = () => {
         }
     };
 
+    // Xuất dữ liệu ra file Excel chuyên nghiệp
+    const handleExportExcel = async (listToExport: BillData[]) => {
+        setExcelMenuAnchor(null);
+        if (!listToExport || listToExport.length === 0) return;
+
+        setExportingExcel(true);
+        setError(null);
+
+        try {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet('Danh_Sach_Cuoc');
+
+            // Định nghĩa cột
+            worksheet.columns = [
+                { header: 'STT', key: 'stt', width: 8 },
+                { header: 'Khách Hàng', key: 'customerName', width: 26 },
+                { header: 'Thuê Bao', key: 'phone', width: 22 },
+                { header: 'Số Liên Hệ', key: 'contactPhone', width: 16 },
+                { header: 'Địa Chỉ', key: 'address', width: 40 },
+                { header: 'Dịch Vụ & Tháng', key: 'serviceMonth', width: 28 },
+                { header: 'Số Tiền', key: 'amount', width: 16 },
+                { header: 'Bằng Chữ', key: 'amountInWords', width: 36 },
+                { header: 'Ngày In', key: 'dateString', width: 25 },
+                { header: 'Nhân Viên', key: 'collectorName', width: 22 },
+                { header: 'SĐT NV', key: 'collectorPhone', width: 16 },
+            ];
+
+            // Style dòng tiêu đề
+            const headerRow = worksheet.getRow(1);
+            headerRow.height = 28;
+            headerRow.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+            headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+            headerRow.eachCell((cell) => {
+                cell.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FF107C41' } // Màu xanh Excel
+                };
+                cell.border = {
+                    top: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+                    bottom: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+                    left: { style: 'thin', color: { argb: 'FFD1D5DB' } },
+                    right: { style: 'thin', color: { argb: 'FFD1D5DB' } }
+                };
+            });
+
+            // Thêm từng dòng dữ liệu
+            listToExport.forEach((item, idx) => {
+                const row = worksheet.addRow({
+                    stt: idx + 1,
+                    customerName: toTitleCase(item.customerName || ''),
+                    phone: item.phone || '',
+                    contactPhone: item.contactPhone || '',
+                    address: item.address || '',
+                    serviceMonth: toTitleCase(item.serviceMonth || ''),
+                    amount: item.amount ? (item.amount.toLowerCase().includes('đ') ? item.amount : `${item.amount} đ`) : '',
+                    amountInWords: item.amountInWords || '',
+                    dateString: item.dateString || '',
+                    collectorName: toTitleCase(item.collectorName || ''),
+                    collectorPhone: item.collectorPhone || ''
+                });
+
+                row.height = 22;
+                row.font = { name: 'Arial', size: 10 };
+                row.alignment = { vertical: 'middle' };
+
+                // Căn lề từng cột
+                row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
+                row.getCell(3).alignment = { vertical: 'middle', horizontal: 'center' };
+                row.getCell(4).alignment = { vertical: 'middle', horizontal: 'center' };
+                row.getCell(7).alignment = { vertical: 'middle', horizontal: 'right' };
+                row.getCell(11).alignment = { vertical: 'middle', horizontal: 'center' };
+
+                row.eachCell((cell) => {
+                    cell.border = {
+                        top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+                        bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+                        left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+                        right: { style: 'thin', color: { argb: 'FFE5E7EB' } }
+                    };
+                });
+            });
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            const dateStr = new Date().toISOString().slice(0, 10);
+            link.download = `Danh_Sach_Cuoc_${listToExport.length}_KH_${dateStr}.xlsx`;
+            link.click();
+            window.URL.revokeObjectURL(url);
+
+            setSuccessMessage(`Đã xuất thành công file Excel gồm ${listToExport.length} khách hàng!`);
+        } catch (err: any) {
+            console.error('Lỗi khi xuất file Excel:', err);
+            setError(err.message || 'Không thể xuất file Excel.');
+        } finally {
+            setExportingExcel(false);
+        }
+    };
+
     // Xóa toàn bộ danh sách
     const clearData = async () => {
         if (window.confirm('Bạn có chắc chắn muốn xóa toàn bộ danh sách? Thao tác này sẽ xóa dữ liệu trên cả máy tính và điện thoại.')) {
@@ -630,19 +929,33 @@ const PrintBillNotification: React.FC = () => {
         }
     };
 
-    // Lọc danh sách theo từ khóa tìm kiếm
+    // Lọc danh sách theo từ khóa tìm kiếm & Sắp xếp theo tên khách hàng
     const filteredData = useMemo(() => {
-        if (!searchTerm.trim()) return data;
-        const term = searchTerm.toLowerCase().trim();
-        return data.filter(item => 
-            (item.customerName || '').toLowerCase().includes(term) ||
-            (item.phone || '').toLowerCase().includes(term) ||
-            (item.address || '').toLowerCase().includes(term) ||
-            (item.serviceMonth || '').toLowerCase().includes(term) ||
-            (item.amount || '').toLowerCase().includes(term) ||
-            (item.collectorName || '').toLowerCase().includes(term)
-        );
-    }, [data, searchTerm]);
+        let result = data;
+        if (searchTerm.trim()) {
+            const term = searchTerm.toLowerCase().trim();
+            result = result.filter(item => 
+                (item.customerName || '').toLowerCase().includes(term) ||
+                (item.phone || '').toLowerCase().includes(term) ||
+                (item.contactPhone || '').toLowerCase().includes(term) ||
+                (item.address || '').toLowerCase().includes(term) ||
+                (item.serviceMonth || '').toLowerCase().includes(term) ||
+                (item.amount || '').toLowerCase().includes(term) ||
+                (item.collectorName || '').toLowerCase().includes(term)
+            );
+        }
+
+        if (sortOrder) {
+            result = [...result].sort((a, b) => {
+                const nameA = (a.customerName || '').trim();
+                const nameB = (b.customerName || '').trim();
+                const cmp = nameA.localeCompare(nameB, 'vi', { sensitivity: 'base' });
+                return sortOrder === 'asc' ? cmp : -cmp;
+            });
+        }
+
+        return result;
+    }, [data, searchTerm, sortOrder]);
 
     // Dữ liệu cho trang hiện tại (Tránh render ngàn phần tử vào DOM)
     const paginatedData = useMemo(() => {
@@ -690,17 +1003,35 @@ const PrintBillNotification: React.FC = () => {
                 
                 {/* Nút hành động toolbar */}
                 <Box sx={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'auto auto auto auto auto' }, 
+                    display: 'flex', 
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
                     gap: 1,
-                    alignItems: 'center'
+                    justifyContent: { xs: 'stretch', sm: 'flex-end' },
+                    '& .MuiButton-root': {
+                        height: 38,
+                        borderRadius: '8px',
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        fontSize: { xs: '12.5px', sm: '13.5px' },
+                        px: { xs: 1.2, sm: 1.8 },
+                        whiteSpace: 'nowrap',
+                        boxShadow: 'none',
+                    }
                 }}>
                     <Button
                         variant="outlined"
-                        size={isMobile ? "small" : "medium"}
-                        startIcon={<DownloadIcon />}
+                        startIcon={<DownloadIcon sx={{ fontSize: 18 }} />}
                         onClick={handleDownloadTemplate}
-                        sx={{ fontSize: { xs: '12px', sm: '14px' }, py: { xs: 0.8, sm: 0.7 } }}
+                        sx={{
+                            borderColor: 'divider',
+                            color: 'text.primary',
+                            bgcolor: 'background.paper',
+                            '&:hover': {
+                                bgcolor: 'action.hover',
+                                borderColor: 'text.secondary'
+                            }
+                        }}
                     >
                         Tải File Mẫu
                     </Button>
@@ -708,10 +1039,13 @@ const PrintBillNotification: React.FC = () => {
                     <Button
                         variant="contained"
                         component="label"
-                        size={isMobile ? "small" : "medium"}
-                        startIcon={loading ? <CircularProgress size={18} color="inherit" /> : <UploadIcon />}
                         disabled={loading}
-                        sx={{ fontSize: { xs: '12px', sm: '14px' }, py: { xs: 0.8, sm: 0.7 } }}
+                        startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <UploadIcon sx={{ fontSize: 18 }} />}
+                        sx={{
+                            bgcolor: '#2563eb',
+                            color: '#fff',
+                            '&:hover': { bgcolor: '#1d4ed8' }
+                        }}
                     >
                         Nhập Excel
                         <input
@@ -721,17 +1055,47 @@ const PrintBillNotification: React.FC = () => {
                             onChange={handleFileUpload}
                         />
                     </Button>
+
+                    {/* Menu Xuất Excel */}
+                    <Button
+                        variant="contained"
+                        disabled={data.length === 0 || exportingExcel}
+                        startIcon={exportingExcel ? <CircularProgress size={16} color="inherit" /> : <FileDownloadIcon sx={{ fontSize: 18 }} />}
+                        endIcon={<ArrowDropDownIcon sx={{ fontSize: 18 }} />}
+                        onClick={(e) => setExcelMenuAnchor(e.currentTarget)}
+                        sx={{ 
+                            bgcolor: '#107c41', 
+                            color: '#fff',
+                            '&:hover': { bgcolor: '#0e6937' }
+                        }}
+                    >
+                        {exportingExcel ? 'Đang xuất...' : `Xuất Excel ${data.length > 0 ? `(${data.length})` : ''}`}
+                    </Button>
+                    <Menu
+                        anchorEl={excelMenuAnchor}
+                        open={Boolean(excelMenuAnchor)}
+                        onClose={() => setExcelMenuAnchor(null)}
+                    >
+                        <MenuItem onClick={() => handleExportExcel(paginatedData)}>
+                            Xuất Excel trang hiện tại ({paginatedData.length} khách hàng)
+                        </MenuItem>
+                        <MenuItem onClick={() => handleExportExcel(filteredData)}>
+                            Xuất Excel tất cả ({filteredData.length} khách hàng)
+                        </MenuItem>
+                    </Menu>
                     
                     {/* Menu In ấn */}
                     <Button
                         variant="contained"
-                        color="secondary"
-                        size={isMobile ? "small" : "medium"}
-                        startIcon={<PrintIcon />}
-                        endIcon={<ArrowDropDownIcon />}
                         disabled={data.length === 0}
+                        startIcon={<PrintIcon sx={{ fontSize: 18 }} />}
+                        endIcon={<ArrowDropDownIcon sx={{ fontSize: 18 }} />}
                         onClick={(e) => setPrintMenuAnchor(e.currentTarget)}
-                        sx={{ fontSize: { xs: '12px', sm: '14px' }, py: { xs: 0.8, sm: 0.7 } }}
+                        sx={{ 
+                            bgcolor: '#475569',
+                            color: '#fff',
+                            '&:hover': { bgcolor: '#334155' }
+                        }}
                     >
                         In {data.length > 0 ? `(${data.length})` : ''}
                     </Button>
@@ -751,15 +1115,17 @@ const PrintBillNotification: React.FC = () => {
                     {/* Menu Xuất PDF */}
                     <Button
                         variant="contained"
-                        color="error"
-                        size={isMobile ? "small" : "medium"}
-                        startIcon={exportingPdf ? <CircularProgress size={18} color="inherit" /> : <PictureAsPdfIcon />}
-                        endIcon={<ArrowDropDownIcon />}
                         disabled={data.length === 0 || exportingPdf}
+                        startIcon={exportingPdf ? <CircularProgress size={16} color="inherit" /> : <PictureAsPdfIcon sx={{ fontSize: 18 }} />}
+                        endIcon={<ArrowDropDownIcon sx={{ fontSize: 18 }} />}
                         onClick={(e) => setPdfMenuAnchor(e.currentTarget)}
-                        sx={{ fontSize: { xs: '12px', sm: '14px' }, py: { xs: 0.8, sm: 0.7 } }}
+                        sx={{ 
+                            bgcolor: '#ee0033',
+                            color: '#fff',
+                            '&:hover': { bgcolor: '#cc002d' }
+                        }}
                     >
-                        {exportingPdf ? 'Đang xuất...' : `Xuất PDF (${data.length})`}
+                        {exportingPdf ? 'Đang xuất...' : `Xuất PDF ${data.length > 0 ? `(${data.length})` : ''}`}
                     </Button>
                     <Menu
                         anchorEl={pdfMenuAnchor}
@@ -775,9 +1141,25 @@ const PrintBillNotification: React.FC = () => {
                     </Menu>
                     
                     {data.length > 0 && !isMobile && (
-                        <IconButton color="error" onClick={clearData} title="Xóa toàn bộ danh sách">
-                            <DeleteIcon />
-                        </IconButton>
+                        <Tooltip title="Xóa toàn bộ danh sách" arrow>
+                            <IconButton 
+                                onClick={clearData}
+                                sx={{ 
+                                    height: 38,
+                                    width: 38,
+                                    borderRadius: '8px',
+                                    color: '#ef4444',
+                                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                                    bgcolor: 'rgba(239, 68, 68, 0.08)',
+                                    '&:hover': {
+                                        bgcolor: 'rgba(239, 68, 68, 0.18)',
+                                        borderColor: '#ef4444'
+                                    }
+                                }}
+                            >
+                                <DeleteIcon sx={{ fontSize: 19 }} />
+                            </IconButton>
+                        </Tooltip>
                     )}
                 </Box>
             </Box>
@@ -831,7 +1213,7 @@ const PrintBillNotification: React.FC = () => {
                     <TextField
                         size="small"
                         fullWidth={isMobile}
-                        placeholder="Tìm tên khách hàng, thuê bao, số tiền..."
+                        placeholder="Tìm tên khách hàng, thuê bao, số liên hệ, số tiền..."
                         value={searchTerm}
                         onChange={(e) => {
                             setSearchTerm(e.target.value);
@@ -895,6 +1277,12 @@ const PrintBillNotification: React.FC = () => {
                                                 <PhoneIcon sx={{ fontSize: 15, color: '#3b82f6' }} />
                                                 <span>Thuê bao: <Box component="span" sx={{ color: 'text.primary', fontWeight: 600, fontSize: '14px' }}>{row.phone}</Box></span>
                                             </Box>
+                                            {row.contactPhone && (
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <ContactPhoneIcon sx={{ fontSize: 15, color: '#0284c7' }} />
+                                                    <span>Số liên hệ: <Box component="span" sx={{ color: 'text.primary', fontWeight: 600, fontSize: '14px' }}>{row.contactPhone}</Box></span>
+                                                </Box>
+                                            )}
                                             <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                                                 <LocationIcon sx={{ fontSize: 15, color: 'text.secondary', mt: 0.3 }} />
                                                 <span style={{ lineHeight: 1.25 }}>{row.address}</span>
@@ -908,12 +1296,12 @@ const PrintBillNotification: React.FC = () => {
                                         <Divider sx={{ mb: 1 }} />
 
                                         {/* Hàng dưới: Nút bấm lớn dễ chạm */}
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                                             <Typography variant="caption" color="text.secondary">
                                                 NV: {toTitleCase(row.collectorName)}
                                             </Typography>
 
-                                            <Stack direction="row" spacing={1}>
+                                            <Stack direction="row" spacing={0.8} alignItems="center">
                                                 <Button
                                                     variant="outlined"
                                                     size="small"
@@ -921,9 +1309,9 @@ const PrintBillNotification: React.FC = () => {
                                                     startIcon={exportingSingleId === row.id ? <CircularProgress size={14} /> : <PictureAsPdfIcon fontSize="small" />}
                                                     disabled={exportingSingleId === row.id}
                                                     onClick={() => handleDownloadSinglePdf(row)}
-                                                    sx={{ py: 0.4, px: 1, fontSize: '12px' }}
+                                                    sx={{ py: 0.4, px: 0.9, fontSize: '11.5px' }}
                                                 >
-                                                    Tải PDF
+                                                    PDF
                                                 </Button>
 
                                                 <Button
@@ -935,16 +1323,36 @@ const PrintBillNotification: React.FC = () => {
                                                     sx={{ 
                                                         bgcolor: '#0068ff', 
                                                         '&:hover': { bgcolor: '#0055d4' }, 
-                                                        py: 0.6, 
-                                                        px: 1.5, 
-                                                        fontSize: '12.5px',
+                                                        py: 0.5, 
+                                                        px: 1.1, 
+                                                        fontSize: '11.5px',
                                                         fontWeight: 600,
                                                         touchAction: 'manipulation',
-                                                        minHeight: '36px',
+                                                        minHeight: '34px',
                                                         boxShadow: '0 2px 6px rgba(0, 104, 255, 0.3)'
                                                     }}
                                                 >
                                                     Zalo
+                                                </Button>
+
+                                                <Button
+                                                    variant="contained"
+                                                    size="small"
+                                                    startIcon={<SmsIcon fontSize="small" />}
+                                                    onClick={() => handleSendSms(row)}
+                                                    sx={{ 
+                                                        bgcolor: '#10b981', 
+                                                        '&:hover': { bgcolor: '#059669' }, 
+                                                        py: 0.5, 
+                                                        px: 1.1, 
+                                                        fontSize: '11.5px',
+                                                        fontWeight: 600,
+                                                        touchAction: 'manipulation',
+                                                        minHeight: '34px',
+                                                        boxShadow: '0 2px 6px rgba(16, 185, 129, 0.3)'
+                                                    }}
+                                                >
+                                                    SMS
                                                 </Button>
 
                                                 <IconButton 
@@ -994,22 +1402,41 @@ const PrintBillNotification: React.FC = () => {
                     <TableContainer sx={{ maxHeight: 'calc(100vh - 320px)' }}>
                         <Table stickyHeader size="small">
                             <TableHead>
-                                <TableRow>
-                                    <TableCell align="center" sx={{ width: 60 }}><b>STT</b></TableCell>
-                                    <TableCell sx={{ minWidth: 160, whiteSpace: 'nowrap' }}><b>Khách Hàng</b></TableCell>
-                                    <TableCell sx={{ minWidth: 160, whiteSpace: 'nowrap' }}><b>Thuê Bao</b></TableCell>
-                                    <TableCell sx={{ minWidth: 240 }}><b>Địa Chỉ</b></TableCell>
-                                    <TableCell sx={{ minWidth: 190, whiteSpace: 'nowrap' }}><b>Dịch Vụ & Tháng</b></TableCell>
-                                    <TableCell align="right" sx={{ minWidth: 110, whiteSpace: 'nowrap' }}><b>Số Tiền</b></TableCell>
-                                    <TableCell sx={{ minWidth: 200 }}><b>Bằng Chữ</b></TableCell>
-                                    <TableCell sx={{ minWidth: 150, whiteSpace: 'nowrap' }}><b>Nhân Viên</b></TableCell>
-                                    <TableCell align="center" sx={{ minWidth: 120 }}><b>Thao Tác</b></TableCell>
+                                <TableRow sx={{ bgcolor: 'action.hover' }}>
+                                    <TableCell align="center" sx={{ width: 50, minWidth: 50, fontSize: '13px', fontWeight: 700, py: 1.2 }}>STT</TableCell>
+                                    <TableCell sx={{ width: 140, minWidth: 120, maxWidth: 160, py: 1.2 }}>
+                                        <TableSortLabel
+                                            active={true}
+                                            direction={sortOrder}
+                                            onClick={() => {
+                                                setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+                                                setPage(0);
+                                            }}
+                                            sx={{
+                                                fontSize: '13px',
+                                                fontWeight: 700,
+                                                '&.MuiTableSortLabel-root': { color: 'inherit' },
+                                                '&.MuiTableSortLabel-root:hover': { color: 'primary.main' },
+                                                '& .MuiTableSortLabel-icon': { color: 'primary.main !important' }
+                                            }}
+                                        >
+                                            Khách Hàng
+                                        </TableSortLabel>
+                                    </TableCell>
+                                    <TableCell sx={{ width: 155, minWidth: 140, fontSize: '13px', fontWeight: 700, py: 1.2, whiteSpace: 'nowrap' }}>Thuê Bao</TableCell>
+                                    <TableCell sx={{ width: 125, minWidth: 110, fontSize: '13px', fontWeight: 700, py: 1.2, whiteSpace: 'nowrap' }}>Số Liên Hệ</TableCell>
+                                    <TableCell sx={{ minWidth: 220, fontSize: '13px', fontWeight: 700, py: 1.2 }}>Địa Chỉ</TableCell>
+                                    <TableCell sx={{ width: 180, minWidth: 160, fontSize: '13px', fontWeight: 700, py: 1.2, whiteSpace: 'nowrap' }}>Dịch Vụ & Tháng</TableCell>
+                                    <TableCell align="right" sx={{ width: 105, minWidth: 95, fontSize: '13px', fontWeight: 700, py: 1.2, whiteSpace: 'nowrap' }}>Số Tiền</TableCell>
+                                    <TableCell sx={{ minWidth: 180, fontSize: '13px', fontWeight: 700, py: 1.2 }}>Bằng Chữ</TableCell>
+                                    <TableCell sx={{ width: 140, minWidth: 130, fontSize: '13px', fontWeight: 700, py: 1.2, whiteSpace: 'nowrap' }}>Nhân Viên</TableCell>
+                                    <TableCell align="center" sx={{ width: 145, minWidth: 140, fontSize: '13px', fontWeight: 700, py: 1.2 }}>Thao Tác</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {filteredData.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
+                                        <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
                                             {data.length === 0 
                                                 ? 'Chưa có dữ liệu. Vui lòng tải file mẫu và nhập liệu từ Excel.' 
                                                 : 'Không tìm thấy khách hàng nào khớp với từ khóa tìm kiếm.'}
@@ -1020,26 +1447,39 @@ const PrintBillNotification: React.FC = () => {
                                         const globalIndex = page * rowsPerPage + index + 1;
                                         return (
                                             <TableRow hover key={row.id}>
-                                                <TableCell align="center">{globalIndex}</TableCell>
-                                                <TableCell sx={{ fontWeight: 600, fontSize: '14px', whiteSpace: 'nowrap' }}>
+                                                <TableCell align="center" sx={{ fontSize: '13.5px', color: 'text.secondary' }}>{globalIndex}</TableCell>
+                                                <TableCell sx={{ 
+                                                    width: 140, 
+                                                    minWidth: 120, 
+                                                    maxWidth: 160, 
+                                                    fontWeight: 600, 
+                                                    fontSize: '13.5px', 
+                                                    lineHeight: 1.35,
+                                                    whiteSpace: 'normal',
+                                                    wordBreak: 'break-word',
+                                                    pr: 1
+                                                }}>
                                                     {toTitleCase(row.customerName)}
                                                 </TableCell>
-                                                <TableCell sx={{ fontSize: '14px', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                                <TableCell sx={{ fontSize: '13.5px', fontWeight: 500, whiteSpace: 'nowrap' }}>
                                                     {row.phone}
                                                 </TableCell>
-                                                <TableCell sx={{ maxWidth: 300, fontSize: '14px' }}>
+                                                <TableCell sx={{ fontSize: '13.5px', fontWeight: 500, color: row.contactPhone ? '#0284c7' : 'text.disabled', whiteSpace: 'nowrap' }}>
+                                                    {row.contactPhone || '-'}
+                                                </TableCell>
+                                                <TableCell sx={{ maxWidth: 300, fontSize: '13.5px', lineHeight: 1.35 }}>
                                                     {row.address}
                                                 </TableCell>
-                                                <TableCell sx={{ fontSize: '14px' }}>
+                                                <TableCell sx={{ fontSize: '13.5px', whiteSpace: 'nowrap' }}>
                                                     {toTitleCase(row.serviceMonth)}
                                                 </TableCell>
-                                                <TableCell align="right" sx={{ fontWeight: 700, color: '#ee0033', fontSize: '14.5px', whiteSpace: 'nowrap' }}>
+                                                <TableCell align="right" sx={{ fontWeight: 700, color: '#ee0033', fontSize: '13.5px', whiteSpace: 'nowrap' }}>
                                                     {row.amount} đ
                                                 </TableCell>
-                                                <TableCell sx={{ fontStyle: 'italic', fontSize: '13.5px' }}>
+                                                <TableCell sx={{ fontStyle: 'italic', fontSize: '13.5px', color: 'text.secondary', lineHeight: 1.35 }}>
                                                     {row.amountInWords}
                                                 </TableCell>
-                                                <TableCell sx={{ fontSize: '14px', whiteSpace: 'nowrap' }}>
+                                                <TableCell sx={{ fontSize: '13.5px', whiteSpace: 'nowrap' }}>
                                                     {toTitleCase(row.collectorName)}
                                                 </TableCell>
                                                 <TableCell align="center">
@@ -1074,6 +1514,18 @@ const PrintBillNotification: React.FC = () => {
                                                                     ) : (
                                                                         <ShareIcon fontSize="small" />
                                                                     )}
+                                                                </IconButton>
+                                                            </span>
+                                                        </Tooltip>
+
+                                                        <Tooltip title={row.contactPhone ? `Gửi SMS đến ${row.contactPhone}` : 'Gửi tin nhắn SMS'} arrow>
+                                                            <span>
+                                                                <IconButton 
+                                                                    size="small" 
+                                                                    sx={{ color: '#10b981' }}
+                                                                    onClick={() => handleSendSms(row)}
+                                                                >
+                                                                    <SmsIcon fontSize="small" />
                                                                 </IconButton>
                                                             </span>
                                                         </Tooltip>

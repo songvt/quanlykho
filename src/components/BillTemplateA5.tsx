@@ -12,6 +12,7 @@ export interface BillData {
     customerName: string;
     address: string;
     phone: string;
+    contactPhone?: string;
     serviceMonth: string;
     amount: string;
     amountInWords?: string;
@@ -149,9 +150,16 @@ const BillTemplateA5: React.FC<BillTemplateA5Props> = ({ data }) => {
                         <Typography sx={{ fontWeight: 'bold', fontSize: '16px', color: '#000' }}>
                             Thuê Bao:
                         </Typography>
-                        <Typography sx={{ fontSize: '18px', fontWeight: 700, color: '#000', letterSpacing: '0.3px' }}>
-                            {data.phone}
-                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+                            <Typography sx={{ fontSize: '18px', fontWeight: 700, color: '#000', letterSpacing: '0.3px' }}>
+                                {data.phone}
+                            </Typography>
+                            {data.contactPhone && (
+                                <Typography sx={{ fontSize: '14.5px', color: '#555', fontWeight: 600 }}>
+                                    (LH: {data.contactPhone})
+                                </Typography>
+                            )}
+                        </Box>
                     </Box>
 
                     {/* Dịch vụ / kỳ cước */}
