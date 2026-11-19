@@ -27,8 +27,6 @@ import {
 } from '@mui/material';
 import {
     DeleteOutline as DeleteIcon,
-    UploadFile as UploadFileIcon,
-    Download as DownloadIcon,
     Description as DescriptionIcon,
     Send as SendIcon,
     Add as AddIcon,
@@ -39,6 +37,11 @@ import {
 import * as ExcelJS from 'exceljs';
 import { supabase } from '../../config/supabase';
 import { AppButton } from '../../components/Common/AppButton';
+import {
+    ExcelBrandIcon,
+    TemplateExcelIcon,
+    CloudUploadCustomIcon,
+} from '../../components/Common/BrandIcons';
 
 interface ZaloBotToken {
     id: string;
@@ -676,11 +679,11 @@ const ZaloBotManager: React.FC = () => {
                 </Grid>
 
                 <Box sx={{ display: 'flex', gap: 2 }}>
-                    <AppButton variant="outlined" component="label" icon={importing ? <CircularProgress size={16}/> : <UploadFileIcon />} disabled={importing} title="Nhập Excel danh bạ">
+                    <AppButton variant="outlined" component="label" icon={importing ? <CircularProgress size={16}/> : <CloudUploadCustomIcon size={20} />} disabled={importing} title="Nhập Excel danh bạ">
                         <input type="file" hidden accept=".xlsx,.xls,.csv" onChange={handleImportExcel} />
                     </AppButton>
-                    <AppButton variant="outlined" icon={<DownloadIcon />} onClick={handleExportExcel} title="Xuất danh bạ Excel" />
-                    <AppButton variant="outlined" icon={<DescriptionIcon />} onClick={handleDownloadTemplate} title="Tải mẫu Excel import" />
+                    <AppButton variant="outlined" icon={<ExcelBrandIcon size={20} />} onClick={handleExportExcel} title="Xuất danh bạ Excel" />
+                    <AppButton variant="outlined" icon={<TemplateExcelIcon size={20} />} onClick={handleDownloadTemplate} title="Tải mẫu Excel import" />
                 </Box>
 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, mt: 3 }}>
@@ -743,7 +746,7 @@ const ZaloBotManager: React.FC = () => {
                         <Typography variant="h5" sx={{ fontWeight: 800, color: 'var(--brand-primary)', letterSpacing: '-0.5px' }}>Hộp thư đến (Inbox)</Typography>
                         <Typography variant="body2" sx={{ color: 'var(--text-secondary)' }}>Tin nhắn nhận được từ Zalo Bot trong quá trình đồng bộ.</Typography>
                     </Box>
-                    <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExportInbox}>Export Excel</Button>
+                    <Button variant="outlined" startIcon={<ExcelBrandIcon size={18} />} onClick={handleExportInbox}>Export Excel</Button>
                 </Box>
 
                 <TableContainer sx={{ maxHeight: 400 }}>

@@ -8,8 +8,6 @@ import {
 import { alpha } from '@mui/material/styles';
 import { QRCodeSVG } from 'qrcode.react';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
-import PrintIcon from '@mui/icons-material/Print';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import QrCode2Icon from '@mui/icons-material/QrCode2';
 import DownloadIcon from '@mui/icons-material/Download';
 import PreviewIcon from '@mui/icons-material/Preview';
@@ -17,13 +15,18 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import InventoryIcon from '@mui/icons-material/Inventory2Outlined';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import KeyboardIcon from '@mui/icons-material/KeyboardOutlined';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import ListAltIcon from '@mui/icons-material/ListAlt';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import InfoIcon from '@mui/icons-material/InfoOutlined';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+import {
+    PdfBrandIcon,
+    PrinterModernIcon,
+    TrashCustomIcon,
+    TemplateExcelIcon,
+} from '../components/Common/BrandIcons';
 
 import { readExcelFile } from '../utils/excelUtils';
 import { useNotification } from '../contexts/NotificationContext';
@@ -576,7 +579,7 @@ const QRGeneratorHCM = () => {
                         <Stack direction="row" spacing={1.5} flexWrap="wrap" gap={1}>
                             <Button 
                                 variant="contained" 
-                                startIcon={<DownloadIcon />} 
+                                startIcon={<TemplateExcelIcon size={18} />} 
                                 onClick={downloadTemplate}
                                 sx={{ 
                                     borderRadius: '12px', 
@@ -601,7 +604,7 @@ const QRGeneratorHCM = () => {
                                 <Button 
                                     variant="contained" 
                                     color="error" 
-                                    startIcon={<DeleteOutlineIcon />}
+                                    startIcon={<TrashCustomIcon size={18} />}
                                     onClick={() => { setDataRows([]); success('Đã xóa dữ liệu'); }}
                                     sx={{ 
                                         borderRadius: '12px', 
@@ -993,7 +996,7 @@ const QRGeneratorHCM = () => {
                                 variant="contained" 
                                 onClick={handleExportPDF} 
                                 disabled={isExporting} 
-                                icon={<PictureAsPdfIcon />}
+                                icon={<PdfBrandIcon size={20} />}
                                 title="Xuất File PDF"
                                 sx={{ 
                                     bgcolor: '#d97706',
@@ -1007,7 +1010,7 @@ const QRGeneratorHCM = () => {
                                 variant="contained" 
                                 onClick={handlePrint} 
                                 disabled={isPrinting} 
-                                icon={<PrintIcon />}
+                                icon={<PrinterModernIcon size={20} />}
                                 title="In Tem Ngay"
                                 sx={{ 
                                     bgcolor: '#0f172a',
@@ -1258,7 +1261,7 @@ const QRGeneratorHCM = () => {
                                             </TableCell>
                                             <TableCell sx={{ textAlign: 'center' }}>
                                                 <IconButton size="small" color="error" onClick={() => setDataRows(prev => prev.filter((_, i) => i !== (currentPage * rowsPerPage + idx)))}>
-                                                    <DeleteOutlineIcon fontSize="small" />
+                                                    <TrashCustomIcon size={18} />
                                                 </IconButton>
                                             </TableCell>
                                         </TableRow>

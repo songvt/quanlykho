@@ -13,6 +13,7 @@ import PrintIcon from '@mui/icons-material/Print';
 import PageHeader from '../../components/Common/PageHeader';
 import OutboxIcon from '@mui/icons-material/Outbox';
 import { AppButton } from '../../components/Common/AppButton';
+import { PrinterModernIcon } from '../../components/Common/BrandIcons';
 
 interface StaffOutboundViewProps {
     approvedOrders: Order[];
@@ -212,7 +213,7 @@ const StaffOutboundView = ({
                 <AppButton
                     variant="contained" 
                     color="secondary" 
-                    icon={<PrintIcon />}
+                    icon={<PrinterModernIcon size={20} />}
                     disabled={selectedPrintIds.length === 0}
                     onClick={onPrint}
                     title={`In Biên Bản (${selectedPrintIds.length})`}

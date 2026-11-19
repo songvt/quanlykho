@@ -6,16 +6,19 @@ import {
     Card, CardContent, Tooltip, CircularProgress, MenuItem
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import PrintIcon from '@mui/icons-material/Print';
 import SearchIcon from '@mui/icons-material/Search';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
-import DeleteIcon from '@mui/icons-material/Delete';
-import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import PrintIcon from '@mui/icons-material/Print';
 import CloseIcon from '@mui/icons-material/Close';
 import SaveIcon from '@mui/icons-material/Save';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { AppButton } from '../../components/Common/AppButton';
+import {
+    ExcelBrandIcon,
+    PrinterModernIcon,
+    TrashCustomIcon,
+} from '../../components/Common/BrandIcons';
 
 import { fetchReturns, addReturns, deleteReturns } from '../../store/slices/returnsSlice';
 import { fetchProducts } from '../../store/slices/productsSlice';
@@ -433,15 +436,15 @@ const EmployeeReturns = () => {
                         <>
                             <AppButton
                                 variant="contained"
-                                color="success" // Excel color
-                                icon={<FileDownloadIcon />}
+                                color="success"
+                                icon={<ExcelBrandIcon size={20} />}
                                 onClick={handleExportExcel}
                                 title="Xuất Excel"
                             />
                             <AppButton
                                 variant="contained"
                                 color="error"
-                                icon={<DeleteIcon />}
+                                icon={<TrashCustomIcon size={20} />}
                                 disabled={selectedIds.length === 0}
                                 onClick={handleDelete}
                                 title={`Xóa ${selectedIds.length} phiếu`}
@@ -450,7 +453,7 @@ const EmployeeReturns = () => {
                     )}
                     <AppButton
                         variant="outlined"
-                        icon={<PrintIcon />}
+                        icon={<PrinterModernIcon size={20} />}
                         disabled={selectedIds.length === 0}
                         onClick={async () => {
                             let rName = 'Võ Thanh Song';
@@ -776,7 +779,7 @@ const EmployeeReturns = () => {
                         icon={isUploadingDrive ? <CircularProgress size={20} color="inherit" /> : <CloudUploadIcon />}
                         title={isUploadingDrive ? 'Đang lưu...' : 'Lưu Drive (PDF)'}
                     />
-                    <AppButton variant="contained" color="info" onClick={() => window.print()} icon={<PrintIcon />} title="In Ngay" />
+                    <AppButton variant="contained" color="info" onClick={() => window.print()} icon={<PrinterModernIcon size={20} />} title="In Ngay" />
                     <AppButton onClick={() => setOpenPreview(false)} icon={<CloseIcon />} title="Đóng" />
                 </DialogActions>
             </Dialog>

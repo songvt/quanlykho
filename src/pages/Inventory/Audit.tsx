@@ -5,11 +5,15 @@ import {
     Chip, Alert, Snackbar, CircularProgress, IconButton, TablePagination, Autocomplete, Grid, Dialog, DialogTitle, DialogContent, DialogActions,
     useTheme, useMediaQuery, Card, CardContent, Divider, Stack
 } from '@mui/material';
-import { Save as SaveIcon, Print as PrintIcon, FileDownload as FileDownloadIcon, PlaylistRemove as PlaylistRemoveIcon } from '@mui/icons-material';
+import { Save as SaveIcon, PlaylistRemove as PlaylistRemoveIcon } from '@mui/icons-material';
 import QrCodeScannerIcon from '@mui/icons-material/QrCodeScanner';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import CloseIcon from '@mui/icons-material/Close';
 import { AppButton } from '../../components/Common/AppButton';
+import {
+    ExcelBrandIcon,
+    PrinterModernIcon,
+} from '../../components/Common/BrandIcons';
 import PageHeader from '../../components/Common/PageHeader';
 import QRScanner from '../../components/QRScanner';
 import { playBeep } from '../../utils/audio';
@@ -636,7 +640,7 @@ const Audit: React.FC = () => {
                                 '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.25)', transform: 'translateY(-2px)' },
                                 '&:active': { transform: 'scale(0.95)' }
                             }}
-                            icon={<FileDownloadIcon />}
+                            icon={<ExcelBrandIcon size={20} color="#ffffff" />}
                             title="Xuất Excel"
                         />
                         <AppButton 
@@ -656,7 +660,7 @@ const Audit: React.FC = () => {
                                 },
                                 '&:active': { transform: 'scale(0.95)' }
                             }}
-                            icon={<PrintIcon />}
+                            icon={<PrinterModernIcon size={22} color="#ffffff" />}
                             title="In Biên Bản"
                         />
                         <AppButton 
