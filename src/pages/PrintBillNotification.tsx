@@ -1295,7 +1295,25 @@ Trân trọng cảm ơn Quý khách!`;
                                             {row.contactPhone && (
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                     <ContactPhoneIcon sx={{ fontSize: 15, color: '#0284c7' }} />
-                                                    <span>Số liên hệ: <Box component="span" sx={{ color: 'text.primary', fontWeight: 600, fontSize: '14px' }}>{row.contactPhone}</Box></span>
+                                                    <span>
+                                                        Số liên hệ:{' '}
+                                                        <Box 
+                                                            component="a" 
+                                                            href={`tel:${row.contactPhone.replace(/[^0-9+]/g, '')}`}
+                                                            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                                                            sx={{ 
+                                                                color: '#38bdf8', 
+                                                                fontWeight: 700, 
+                                                                fontSize: '14px',
+                                                                textDecoration: 'none',
+                                                                cursor: 'pointer',
+                                                                '&:hover': { textDecoration: 'underline', color: '#60a5fa' }
+                                                            }}
+                                                            title={`Bấm để gọi: ${row.contactPhone}`}
+                                                        >
+                                                            {row.contactPhone}
+                                                        </Box>
+                                                    </span>
                                                 </Box>
                                             )}
                                             <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
@@ -1475,8 +1493,32 @@ Trân trọng cảm ơn Quý khách!`;
                                                 <TableCell sx={{ fontSize: '13.5px', fontWeight: 500, whiteSpace: 'nowrap' }}>
                                                     {row.phone}
                                                 </TableCell>
-                                                <TableCell sx={{ fontSize: '13.5px', fontWeight: 500, color: row.contactPhone ? '#0284c7' : 'text.disabled', whiteSpace: 'nowrap' }}>
-                                                    {row.contactPhone || '-'}
+                                                <TableCell sx={{ fontSize: '13.5px', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                                    {row.contactPhone ? (
+                                                        <Box
+                                                            component="a"
+                                                            href={`tel:${row.contactPhone.replace(/[^0-9+]/g, '')}`}
+                                                            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                                                            sx={{
+                                                                color: '#38bdf8',
+                                                                textDecoration: 'none',
+                                                                fontWeight: 600,
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                cursor: 'pointer',
+                                                                transition: 'color 0.15s ease',
+                                                                '&:hover': {
+                                                                    color: '#60a5fa',
+                                                                    textDecoration: 'underline'
+                                                                }
+                                                            }}
+                                                            title={`Bấm để gọi: ${row.contactPhone}`}
+                                                        >
+                                                            {row.contactPhone}
+                                                        </Box>
+                                                    ) : (
+                                                        <Box component="span" sx={{ color: 'text.disabled' }}>-</Box>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell sx={{ maxWidth: 300, fontSize: '13.5px', lineHeight: 1.35 }}>
                                                     {row.address}
