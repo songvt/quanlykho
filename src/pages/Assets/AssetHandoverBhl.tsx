@@ -1,11 +1,11 @@
-﻿import React, { useEffect, useState, useMemo, useRef } from 'react';
+﻿import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
     Box, Paper, Typography, Button, TextField, Grid, Stack, Divider,
     Radio, RadioGroup, FormControlLabel, FormControl, FormLabel,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Autocomplete, IconButton, Card, CardContent, InputAdornment, useTheme, useMediaQuery, Tooltip,
-    CircularProgress
+    CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Chip
 } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
 import RotateLeftIcon from '@mui/icons-material/RotateLeft';
@@ -17,6 +17,8 @@ import HistoryIcon from '@mui/icons-material/History';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import AddIcon from '@mui/icons-material/Add';
+import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import {
     ExcelBrandIcon,
     TemplateExcelIcon,
@@ -36,8 +38,15 @@ import type { Asset, HRProfile } from '../../types';
 import { formatPhone } from '../../utils/format';
 import { exportEmployeeHandoverSummary, exportHandoverHistory } from '../../utils/excelUtils';
 import { saveAssetHandoverHistory } from '../../services/assetHandoverHistory';
+import { GoogleSheetService } from '../../services/GoogleSheetService';
 import { getDefaultSecondGiver } from '../../utils/assetHandoverGiver';
 import { createDefaultBhlItems, formatBhlItemNote, splitBhlItemNote, type BhlItem } from '../../utils/assetBhlItems';
+import {
+    createCustomHandoverAsset,
+    prepareDefaultAssetsToSave,
+    restoreDefaultAssetsFromHistory,
+    type DefaultHandoverAsset
+} from '../../utils/assetHandoverDefault';
 import { AssetHandoverBatchModal } from './AssetHandoverBatchModal';
 import { generateBhlHandoverTemplate } from '../../utils/assetBhlBatch';
 
@@ -73,6 +82,19 @@ const AssetHandoverBhl: React.FC = () => {
 
     // 12 Safety Protective Equipment (CCDC-BHLĐ) Items State (including Dép rọ)
     const [bhlItems, setBhlItems] = useState<BhlItem[]>(createDefaultBhlItems());
+
+    // Default template assets state (supports employee assigned assets and manual assets outside catalog)
+    const [defaultAssets, setDefaultAssets] = useState<DefaultHandoverAsset[]>([]);
+    const [addAssetDialogOpen, setAddAssetDialogOpen] = useState(false);
+    const [selectedCatalogAsset, setSelectedCatalogAsset] = useState<Asset | null>(null);
+    const [newAssetForm, setNewAssetForm] = useState({
+        asset_code: '',
+        asset_name: '',
+        quantity: 1,
+        asset_type: 'CCDC',
+        serial_number: '',
+        note: ''
+    });
 
     // Batch import modal state
     const [batchModalOpen, setBatchModalOpen] = useState(false);
@@ -221,6 +243,9 @@ const AssetHandoverBhl: React.FC = () => {
                 return def;
             });
             setBhlItems(restored);
+        } else if (h.template_type === 'default') {
+            const restored = restoreDefaultAssetsFromHistory(h.items || []);
+            setDefaultAssets(restored);
         }
         success('Đã tải lại biên bản lịch sử lên màn hình xem trước.');
     };
@@ -253,7 +278,7 @@ const AssetHandoverBhl: React.FC = () => {
 
         try {
             const itemsToSave = templateType === 'default'
-                ? employeeAssets
+                ? prepareDefaultAssetsToSave(defaultAssets)
                 : activeBhlItems.map(item => ({
                     ...item,
                     note: formatBhlItemNote(item, selectedEmployee?.uniform_size, giayShoeSize)
@@ -269,11 +294,30 @@ const AssetHandoverBhl: React.FC = () => {
                 action_type: actionType,
                 items: itemsToSave,
                 total_quantity: totalQty,
-                created_by: giverInfo.giverName2 || 'Hệ thống'
+                created_by: giverInfo.giverName2 || giverInfo.giverName || 'Hệ thống'
             };
             
             const savedHandover = await saveAssetHandoverHistory(payload);
             setHistory(prev => [savedHandover, ...prev]);
+
+            // Ghi nhận bổ sung vào asset_logs cho từng tài sản để đồng bộ lịch sử
+            try {
+                for (const item of itemsToSave) {
+                    await GoogleSheetService.saveAssetLog({
+                        asset_code: (item as any).asset_code || 'NGOAI-DS',
+                        asset_name: (item as any).asset_name || (item as any).name || 'Tài sản bàn giao',
+                        action: actionType === 'revoke' ? 'Thu hồi (Biên bản)' : actionType === 'transfer' ? 'Điều chuyển (Biên bản)' : 'Bàn giao (Biên bản)',
+                        employee_name: receiverName,
+                        employee_code: selectedEmployee?.id || '',
+                        department: receiverDept,
+                        performed_by: giverInfo.giverName2 || giverInfo.giverName || 'Hệ thống',
+                        details: `Biên bản ${templateType === 'default' ? 'TBVP-CCDC' : 'CCDC-BHLĐ'} (${item.quantity || 1} món)${(item as any).serial_number || (item as any).serial ? ` - Serial: ${(item as any).serial_number || (item as any).serial}` : ''}${(item as any).note ? ` - Ghi chú: ${(item as any).note}` : ''}${(item as any).is_custom ? ' [Ngoài danh sách]' : ''}`
+                    }).catch(e => console.warn('Lỗi ghi asset_log phụ:', e));
+                }
+            } catch (logErr) {
+                console.warn('Lỗi lưu log bổ sung:', logErr);
+            }
+
             handlePrint();
         } catch (err) {
             console.error('Lỗi khi tự động lưu lịch sử:', err);
@@ -303,6 +347,22 @@ const AssetHandoverBhl: React.FC = () => {
         hasInitializedSecondGiver.current = true;
     }, [hrProfiles, hrProfilesStatus]);
 
+    const syncEmployeeAssets = useCallback((name: string): DefaultHandoverAsset[] => {
+        if (!name) return [];
+        return assets
+            .filter(a => (a.user_employee_name || '').toLowerCase() === name.toLowerCase())
+            .map(a => ({
+                id: a.id || `sys-${a.asset_code}-${Math.random()}`,
+                asset_code: a.asset_code || '',
+                asset_name: a.asset_name || '',
+                quantity: a.quantity || 1,
+                asset_type: a.asset_type || '',
+                serial_number: a.serial_number || '',
+                note: '',
+                is_custom: false
+            }));
+    }, [assets]);
+
     // Handle Employee selection changes
     const handleEmployeeChange = (employee: HRProfile | null) => {
         setSelectedEmployee(employee);
@@ -318,20 +378,85 @@ const AssetHandoverBhl: React.FC = () => {
             if (assignedAsset && assignedAsset.location_name) {
                 setReceiverDept(assignedAsset.location_name);
             }
+
+            const matched = syncEmployeeAssets(employee.full_name);
+            setDefaultAssets(matched);
         } else {
             setReceiverName('');
             setReceiverTitle('');
             setReceiverDept('');
+            setDefaultAssets([]);
         }
     };
 
-    // Filter assets for default template preview
-    const employeeAssets = useMemo(() => {
-        if (!receiverName) return [];
-        return assets.filter(a => 
-            (a.user_employee_name || '').toLowerCase() === receiverName.toLowerCase()
-        );
-    }, [assets, receiverName]);
+    // Auto populate defaultAssets when assets arrive if receiverName is set but defaultAssets is empty
+    useEffect(() => {
+        if (receiverName && defaultAssets.length === 0 && assets.length > 0) {
+            const matched = syncEmployeeAssets(receiverName);
+            if (matched.length > 0) {
+                setDefaultAssets(matched);
+            }
+        }
+    }, [assets, receiverName, defaultAssets.length, syncEmployeeAssets]);
+
+    // Handlers for manual assets in default template
+    const handleOpenAddAssetDialog = () => {
+        setSelectedCatalogAsset(null);
+        setNewAssetForm({
+            asset_code: '',
+            asset_name: '',
+            quantity: 1,
+            asset_type: 'CCDC',
+            serial_number: '',
+            note: ''
+        });
+        setAddAssetDialogOpen(true);
+    };
+
+    const handleSelectCatalogAsset = (catalogAsset: Asset | null) => {
+        setSelectedCatalogAsset(catalogAsset);
+        if (catalogAsset) {
+            setNewAssetForm(prev => ({
+                ...prev,
+                asset_code: catalogAsset.asset_code || '',
+                asset_name: catalogAsset.asset_name || '',
+                asset_type: catalogAsset.asset_type || prev.asset_type,
+                serial_number: catalogAsset.serial_number || prev.serial_number,
+                quantity: catalogAsset.quantity || 1
+            }));
+        }
+    };
+
+    const handleSaveNewAsset = () => {
+        if (!newAssetForm.asset_name.trim()) {
+            error('Vui lòng nhập tên tài sản!');
+            return;
+        }
+        const created = createCustomHandoverAsset({
+            asset_code: newAssetForm.asset_code,
+            asset_name: newAssetForm.asset_name,
+            quantity: newAssetForm.quantity,
+            asset_type: newAssetForm.asset_type,
+            serial_number: newAssetForm.serial_number,
+            note: newAssetForm.note,
+            is_custom: !selectedCatalogAsset
+        });
+        setDefaultAssets(prev => [...prev, created]);
+        setAddAssetDialogOpen(false);
+        success(`Đã thêm "${created.asset_name}" vào danh sách.`);
+    };
+
+    const handleUpdateDefaultAsset = (index: number, field: keyof DefaultHandoverAsset, value: any) => {
+        setDefaultAssets(prev => {
+            const next = [...prev];
+            next[index] = { ...next[index], [field]: value };
+            return next;
+        });
+    };
+
+    const handleDeleteDefaultAsset = (index: number) => {
+        setDefaultAssets(prev => prev.filter((_, i) => i !== index));
+    };
 
     // Filter active safety items
     const activeBhlItems = bhlItems.filter(item => item.quantity > 0);
@@ -371,7 +496,7 @@ const AssetHandoverBhl: React.FC = () => {
     };
 
     const totalQty = templateType === 'default'
-        ? employeeAssets.reduce((sum, a) => sum + (a.quantity || 1), 0)
+        ? defaultAssets.reduce((sum, a) => sum + (Number(a.quantity) || 1), 0)
         : activeBhlItems.reduce((sum, item) => sum + item.quantity, 0);
 
     const now = new Date();
@@ -564,7 +689,7 @@ const AssetHandoverBhl: React.FC = () => {
                         startIcon={isPrinting ? <CircularProgress size={18} color="inherit" /> : <PrinterModernIcon size={18} />}
                         onClick={handleSaveAndPrint}
                         size="medium"
-                        disabled={isPrinting || (templateType === 'default' ? employeeAssets.length === 0 : activeBhlItems.length === 0)}
+                        disabled={isPrinting || (templateType === 'default' ? defaultAssets.length === 0 : activeBhlItems.length === 0)}
                         sx={{
                             background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
                             boxShadow: '0 3px 8px rgba(37,99,235,0.3)',
@@ -812,6 +937,158 @@ const AssetHandoverBhl: React.FC = () => {
                                             </TableBody>
                                         </Table>
                                     </TableContainer>
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* 3b. Items Editor for Default Template */}
+                        {templateType === 'default' && (
+                            <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid var(--border-glass)', boxShadow: 'var(--shadow-glass)' }}>
+                                <CardContent sx={{ p: 3 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+                                        <Box>
+                                            <Typography variant="subtitle1" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1, color: 'var(--text-primary)' }}>
+                                                <Inventory2OutlinedIcon sx={{ color: '#2563eb' }} /> Danh sách tài sản (Mẫu mặc định)
+                                            </Typography>
+                                            <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                                                {defaultAssets.length > 0
+                                                    ? `Đang có ${defaultAssets.length} tài sản (Tổng SL: ${totalQty})`
+                                                    : 'Chưa có tài sản. Bạn có thể gõ tay tài sản ngoài danh sách.'}
+                                            </Typography>
+                                        </Box>
+                                        <Stack direction="row" spacing={1} flexWrap="wrap">
+                                            {receiverName && (
+                                                <Tooltip title="Nạp lại tài sản được gán cho nhân viên này từ hệ thống" arrow>
+                                                    <Button
+                                                        size="small"
+                                                        variant="outlined"
+                                                        startIcon={<RotateLeftIcon />}
+                                                        onClick={() => {
+                                                            const matched = syncEmployeeAssets(receiverName);
+                                                            setDefaultAssets(matched);
+                                                            if (matched.length > 0) {
+                                                                success(`Đã nạp ${matched.length} tài sản từ hệ thống cho ${receiverName}.`);
+                                                            } else {
+                                                                error(`Nhân viên ${receiverName} chưa được gán tài sản nào trong hệ thống.`);
+                                                            }
+                                                        }}
+                                                        sx={{ textTransform: 'none', fontSize: '0.8rem', borderRadius: 2 }}
+                                                    >
+                                                        Nạp từ hệ thống
+                                                    </Button>
+                                                </Tooltip>
+                                            )}
+                                            <Button
+                                                size="small"
+                                                variant="contained"
+                                                startIcon={<AddIcon />}
+                                                onClick={handleOpenAddAssetDialog}
+                                                sx={{
+                                                    textTransform: 'none',
+                                                    fontSize: '0.8rem',
+                                                    borderRadius: 2,
+                                                    fontWeight: 600,
+                                                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                                                    boxShadow: '0 2px 6px rgba(37,99,235,0.25)'
+                                                }}
+                                            >
+                                                Thêm tài sản ngoài danh sách
+                                            </Button>
+                                        </Stack>
+                                    </Box>
+
+                                    {defaultAssets.length === 0 ? (
+                                        <Box sx={{ p: 3, textAlign: 'center', bgcolor: 'rgba(255,255,255,0.02)', borderRadius: 2, border: '1px dashed #cbd5e1' }}>
+                                            <Typography variant="body2" sx={{ color: 'var(--text-secondary)', mb: 1.5 }}>
+                                                Chưa có tài sản nào trong danh sách biên bản.
+                                            </Typography>
+                                            <Button
+                                                size="small"
+                                                variant="outlined"
+                                                startIcon={<AddIcon />}
+                                                onClick={handleOpenAddAssetDialog}
+                                                sx={{ textTransform: 'none', borderRadius: 2 }}
+                                            >
+                                                + Gõ tay tài sản ngoài danh sách
+                                            </Button>
+                                        </Box>
+                                    ) : (
+                                        <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid var(--border-glass)' }}>
+                                            <Table size="small">
+                                                <TableHead sx={{ bgcolor: 'rgba(255, 255, 255, 0.02)' }}>
+                                                    <TableRow>
+                                                        <TableCell sx={{ fontWeight: 700 }}>Tên tài sản / Mã</TableCell>
+                                                        <TableCell sx={{ fontWeight: 700, width: 70, textAlign: 'center' }}>SL</TableCell>
+                                                        <TableCell sx={{ fontWeight: 700, width: 110 }}>Loại TS</TableCell>
+                                                        <TableCell sx={{ fontWeight: 700, width: 120 }}>Serial</TableCell>
+                                                        <TableCell sx={{ fontWeight: 700 }}>Ghi chú</TableCell>
+                                                        <TableCell sx={{ width: 40, textAlign: 'center' }}></TableCell>
+                                                    </TableRow>
+                                                </TableHead>
+                                                <TableBody>
+                                                    {defaultAssets.map((item, idx) => (
+                                                        <TableRow key={item.id || idx} hover>
+                                                            <TableCell sx={{ py: 1 }}>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                                                                    <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.82rem' }}>
+                                                                        {item.asset_name}
+                                                                    </Typography>
+                                                                    {item.is_custom && (
+                                                                        <Chip label="Ngoài DS" size="small" color="warning" sx={{ height: 18, fontSize: '0.65rem', fontWeight: 700 }} />
+                                                                    )}
+                                                                </Box>
+                                                                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', fontSize: '0.72rem' }}>
+                                                                    Mã: {item.asset_code || '(Chưa có)'}
+                                                                </Typography>
+                                                            </TableCell>
+                                                            <TableCell sx={{ py: 1 }}>
+                                                                <TextField
+                                                                    type="number"
+                                                                    size="small"
+                                                                    value={item.quantity}
+                                                                    onChange={(e) => handleUpdateDefaultAsset(idx, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
+                                                                    inputProps={{ min: 1 }}
+                                                                    sx={{ width: 55, '& .MuiInputBase-input': { py: 0.5, px: 0.5, textAlign: 'center', fontSize: '0.85rem' } }}
+                                                                />
+                                                            </TableCell>
+                                                            <TableCell sx={{ py: 1 }}>
+                                                                <TextField
+                                                                    size="small"
+                                                                    value={item.asset_type}
+                                                                    onChange={(e) => handleUpdateDefaultAsset(idx, 'asset_type', e.target.value)}
+                                                                    placeholder="Loại..."
+                                                                    sx={{ width: '100%', '& .MuiInputBase-input': { py: 0.5, px: 0.8, fontSize: '0.8rem' } }}
+                                                                />
+                                                            </TableCell>
+                                                            <TableCell sx={{ py: 1 }}>
+                                                                <TextField
+                                                                    size="small"
+                                                                    placeholder="Serial..."
+                                                                    value={item.serial_number}
+                                                                    onChange={(e) => handleUpdateDefaultAsset(idx, 'serial_number', e.target.value)}
+                                                                    sx={{ width: '100%', '& .MuiInputBase-input': { py: 0.5, px: 0.8, fontSize: '0.8rem' } }}
+                                                                />
+                                                            </TableCell>
+                                                            <TableCell sx={{ py: 1 }}>
+                                                                <TextField
+                                                                    size="small"
+                                                                    placeholder="Ghi chú..."
+                                                                    value={item.note}
+                                                                    onChange={(e) => handleUpdateDefaultAsset(idx, 'note', e.target.value)}
+                                                                    sx={{ width: '100%', '& .MuiInputBase-input': { py: 0.5, px: 0.8, fontSize: '0.8rem' } }}
+                                                                />
+                                                            </TableCell>
+                                                            <TableCell sx={{ py: 1, textAlign: 'center' }}>
+                                                                <IconButton size="small" color="error" onClick={() => handleDeleteDefaultAsset(idx)} title="Xóa tài sản này">
+                                                                    <DeleteIcon fontSize="small" />
+                                                                </IconButton>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </TableContainer>
+                                    )}
                                 </CardContent>
                             </Card>
                         )}
@@ -1163,21 +1440,21 @@ const AssetHandoverBhl: React.FC = () => {
                                     </thead>
                                     <tbody>
                                         {templateType === 'default' ? (
-                                            employeeAssets.length > 0 ? (
-                                                employeeAssets.map((a, i) => (
-                                                    <tr key={i}>
-                                                        <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center', verticalAlign: 'middle' }}>{a.asset_code}</td>
+                                            defaultAssets.length > 0 ? (
+                                                defaultAssets.map((a, i) => (
+                                                    <tr key={a.id || i}>
+                                                        <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center', verticalAlign: 'middle' }}>{a.asset_code || '—'}</td>
                                                         <td style={{ border: '1px solid #888', padding: '4px', verticalAlign: 'middle' }}>{a.asset_name}</td>
                                                         <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center', verticalAlign: 'middle' }}>{a.quantity || 1}</td>
                                                         <td style={{ border: '1px solid #888', padding: '4px', verticalAlign: 'middle' }}>{a.asset_type || ''}</td>
                                                         <td style={{ border: '1px solid #888', padding: '4px', textAlign: 'center', verticalAlign: 'middle' }}>{a.serial_number || ''}</td>
-                                                        <td style={{ border: '1px solid #888', padding: '4px' }}></td>
+                                                        <td style={{ border: '1px solid #888', padding: '4px', verticalAlign: 'middle', fontSize: '9pt' }}>{a.note || ''}</td>
                                                     </tr>
                                                 ))
                                             ) : (
                                                 <tr>
                                                     <td colSpan={6} style={{ border: '1px solid #888', padding: '8px', textAlign: 'center', fontStyle: 'italic', color: '#666' }}>
-                                                        Chưa gán tài sản nào cho nhân viên này trong danh sách.
+                                                        Chưa có tài sản nào trong danh sách. Bấm &quot;Thêm tài sản ngoài danh sách&quot; để thêm tài sản cần bàn giao.
                                                     </td>
                                                 </tr>
                                             )
@@ -1252,6 +1529,123 @@ const AssetHandoverBhl: React.FC = () => {
                 actionType={actionType}
                 onBatchCompleted={fetchHistory}
             />
+
+            {/* Modal Gõ tay tài sản ngoài danh sách */}
+            <Dialog
+                open={addAssetDialogOpen}
+                onClose={() => setAddAssetDialogOpen(false)}
+                maxWidth="sm"
+                fullWidth
+            >
+                <DialogTitle sx={{ fontWeight: 700, pb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <AddIcon sx={{ color: '#2563eb' }} /> Thêm tài sản ngoài danh sách (Mẫu mặc định)
+                </DialogTitle>
+                <DialogContent dividers>
+                    <Stack spacing={2.5} sx={{ pt: 1 }}>
+                        {assets.length > 0 && (
+                            <Autocomplete
+                                options={assets}
+                                getOptionLabel={(option) => `${option.asset_name} (${option.asset_code})${option.serial_number ? ` - SN: ${option.serial_number}` : ''}`}
+                                value={selectedCatalogAsset}
+                                onChange={(_, val) => handleSelectCatalogAsset(val)}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        label="Chọn nhanh từ danh mục tài sản kho (Không bắt buộc)"
+                                        placeholder="Tìm theo tên hoặc mã tài sản..."
+                                        size="small"
+                                        helperText="Bạn có thể chọn tài sản có sẵn hoặc tự gõ thông tin bên dưới"
+                                    />
+                                )}
+                            />
+                        )}
+
+                        <TextField
+                            label="Tên tài sản *"
+                            fullWidth
+                            size="small"
+                            required
+                            value={newAssetForm.asset_name}
+                            onChange={(e) => setNewAssetForm(prev => ({ ...prev, asset_name: e.target.value }))}
+                            placeholder="VD: Máy đo suy hao quang, Kìm bấm cáp, Laptop Dell..."
+                        />
+
+                        <Grid container spacing={2}>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <TextField
+                                    label="Mã tài sản"
+                                    fullWidth
+                                    size="small"
+                                    value={newAssetForm.asset_code}
+                                    onChange={(e) => setNewAssetForm(prev => ({ ...prev, asset_code: e.target.value }))}
+                                    placeholder="VD: TS-001, CCDC-123..."
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <TextField
+                                    label="Số lượng"
+                                    type="number"
+                                    fullWidth
+                                    size="small"
+                                    value={newAssetForm.quantity}
+                                    onChange={(e) => setNewAssetForm(prev => ({ ...prev, quantity: Math.max(1, parseInt(e.target.value) || 1) }))}
+                                    inputProps={{ min: 1 }}
+                                />
+                            </Grid>
+                        </Grid>
+
+                        <Grid container spacing={2}>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <TextField
+                                    label="Loại tài sản"
+                                    fullWidth
+                                    size="small"
+                                    value={newAssetForm.asset_type}
+                                    onChange={(e) => setNewAssetForm(prev => ({ ...prev, asset_type: e.target.value }))}
+                                    placeholder="VD: CCDC, TBVP, Thiết bị đo..."
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <TextField
+                                    label="Số Serial (nếu có)"
+                                    fullWidth
+                                    size="small"
+                                    value={newAssetForm.serial_number}
+                                    onChange={(e) => setNewAssetForm(prev => ({ ...prev, serial_number: e.target.value }))}
+                                    placeholder="VD: SN202409..."
+                                />
+                            </Grid>
+                        </Grid>
+
+                        <TextField
+                            label="Ghi chú"
+                            fullWidth
+                            size="small"
+                            value={newAssetForm.note}
+                            onChange={(e) => setNewAssetForm(prev => ({ ...prev, note: e.target.value }))}
+                            placeholder="VD: Kèm sạc, tình trạng mới 100%..."
+                        />
+                    </Stack>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, py: 2 }}>
+                    <Button onClick={() => setAddAssetDialogOpen(false)} color="inherit" sx={{ textTransform: 'none' }}>
+                        Hủy
+                    </Button>
+                    <Button
+                        variant="contained"
+                        onClick={handleSaveNewAsset}
+                        sx={{
+                            textTransform: 'none',
+                            fontWeight: 700,
+                            background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                            boxShadow: '0 2px 6px rgba(37,99,235,0.3)',
+                            px: 2.5
+                        }}
+                    >
+                        Thêm vào danh sách
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

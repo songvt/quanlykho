@@ -2,6 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { saveAssetHandoverHistory } from '../src/services/assetHandoverHistory.ts';
 import { createDefaultBhlItems, formatBhlItemNote, splitBhlItemNote } from '../src/utils/assetBhlItems.ts';
+import {
+    createCustomHandoverAsset,
+    prepareDefaultAssetsToSave,
+    restoreDefaultAssetsFromHistory
+} from '../src/utils/assetHandoverDefault.ts';
 
 test('persists a handover record before printing can continue', async () => {
     const payload = { receiver_name: 'Nguyễn Văn A', items: [{ name: 'Áo gió', quantity: 1 }] };
@@ -87,3 +92,48 @@ test('splitBhlItemNote correctly isolates the size segment for bold styling', ()
     const p4 = splitBhlItemNote('Ghi chú không có size');
     assert.equal(p4, null);
 });
+
+test('createCustomHandoverAsset constructs manual asset entry outside catalog', () => {
+    const item = createCustomHandoverAsset({
+        asset_name: 'Máy hàn quang Fujikura',
+        asset_code: 'HQ-001',
+        quantity: 2,
+        asset_type: 'TBVP-CCDC',
+        serial_number: 'SN998877',
+        note: 'Kèm dây nguồn và vali',
+    });
+    assert.equal(item.asset_name, 'Máy hàn quang Fujikura');
+    assert.equal(item.asset_code, 'HQ-001');
+    assert.equal(item.quantity, 2);
+    assert.equal(item.is_custom, true);
+    assert.equal(item.serial_number, 'SN998877');
+    assert.equal(item.note, 'Kèm dây nguồn và vali');
+});
+
+test('prepareDefaultAssetsToSave prepares both standard name and asset_name for storage and logs', () => {
+    const items = [
+        createCustomHandoverAsset({
+            asset_name: 'Bộ dụng cụ làm cáp',
+            asset_code: 'DC-01',
+            quantity: 1,
+        })
+    ];
+    const prepared = prepareDefaultAssetsToSave(items);
+    assert.equal(prepared.length, 1);
+    assert.equal(prepared[0].name, 'Bộ dụng cụ làm cáp');
+    assert.equal(prepared[0].asset_name, 'Bộ dụng cụ làm cáp');
+    assert.equal(prepared[0].is_custom, true);
+});
+
+test('restoreDefaultAssetsFromHistory correctly reconstructs manual assets on reprint', () => {
+    const historyItems = [
+        { asset_code: 'HQ-001', asset_name: 'Máy hàn cáp', quantity: 1, serial_number: 'SN123', is_custom: true, note: 'Tốt' }
+    ];
+    const restored = restoreDefaultAssetsFromHistory(historyItems);
+    assert.equal(restored.length, 1);
+    assert.equal(restored[0].asset_code, 'HQ-001');
+    assert.equal(restored[0].asset_name, 'Máy hàn cáp');
+    assert.equal(restored[0].serial_number, 'SN123');
+    assert.equal(restored[0].is_custom, true);
+});
+
