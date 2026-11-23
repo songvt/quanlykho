@@ -39,7 +39,7 @@ import { formatPhone } from '../../utils/format';
 import { exportEmployeeHandoverSummary, exportHandoverHistory } from '../../utils/excelUtils';
 import { saveAssetHandoverHistory } from '../../services/assetHandoverHistory';
 import { GoogleSheetService } from '../../services/GoogleSheetService';
-import { getDefaultSecondGiver } from '../../utils/assetHandoverGiver';
+import { getDefaultSecondGiver, findGiverProfile, filterGiverProfiles } from '../../utils/assetHandoverGiver';
 import { createDefaultBhlItems, formatBhlItemNote, splitBhlItemNote, type BhlItem } from '../../utils/assetBhlItems';
 import {
     createCustomHandoverAsset,
@@ -835,33 +835,82 @@ const AssetHandoverBhl: React.FC = () => {
                                             <Grid size={{ xs: 12, sm: 4 }}>
                                                 <Autocomplete
                                                     freeSolo
+                                                    openOnFocus
+                                                    forcePopupIcon
+                                                    autoHighlight
+                                                    selectOnFocus
+                                                    clearOnBlur={false}
                                                     options={hrProfiles}
                                                     getOptionLabel={(option) => typeof option === 'string' ? option : option.full_name || ''}
-                                                    filterOptions={(options, state) => {
-                                                        const input = (state.inputValue || '').toLowerCase().trim();
-                                                        if (!input) return options;
-                                                        return options.filter(opt =>
-                                                            (opt.full_name || '').toLowerCase().includes(input) ||
-                                                            (opt.id || '').toLowerCase().includes(input) ||
-                                                            (opt.job_position || '').toLowerCase().includes(input)
-                                                        );
-                                                    }}
-                                                    value={giverInfo.giverName}
-                                                    onInputChange={(_, newInputValue) => {
-                                                        setGiverInfo(prev => ({ ...prev, giverName: newInputValue.toUpperCase() }));
+                                                    filterOptions={(options, state) =>
+                                                        filterGiverProfiles(state.inputValue || '', options, giverInfo.giverName)
+                                                    }
+                                                    value={null}
+                                                    inputValue={giverInfo.giverName || ''}
+                                                    onInputChange={(_, newInputValue, reason) => {
+                                                        if (reason === 'input') {
+                                                            const upper = newInputValue.toUpperCase();
+                                                            const matched = findGiverProfile(newInputValue, hrProfiles);
+                                                            if (matched) {
+                                                                setGiverInfo(prev => ({
+                                                                    ...prev,
+                                                                    giverName: matched.full_name.toUpperCase(),
+                                                                    giverTitle: matched.job_position || prev.giverTitle,
+                                                                    giverPhone: matched.phone_number || prev.giverPhone
+                                                                }));
+                                                            } else {
+                                                                setGiverInfo(prev => ({ ...prev, giverName: upper }));
+                                                            }
+                                                        } else if (reason === 'clear') {
+                                                            setGiverInfo(prev => ({ ...prev, giverName: '', giverTitle: '', giverPhone: '' }));
+                                                        }
                                                     }}
                                                     onChange={(_, newValue) => {
-                                                        if (newValue && typeof newValue !== 'string') {
-                                                            setGiverInfo(prev => ({
-                                                                ...prev,
-                                                                giverName: newValue.full_name.toUpperCase(),
-                                                                giverTitle: newValue.job_position || prev.giverTitle,
-                                                                giverPhone: newValue.phone_number || prev.giverPhone
-                                                            }));
+                                                        if (newValue) {
+                                                            if (typeof newValue !== 'string') {
+                                                                setGiverInfo(prev => ({
+                                                                    ...prev,
+                                                                    giverName: (newValue.full_name || '').toUpperCase(),
+                                                                    giverTitle: newValue.job_position || '',
+                                                                    giverPhone: newValue.phone_number || ''
+                                                                }));
+                                                            } else {
+                                                                const matched = findGiverProfile(newValue, hrProfiles);
+                                                                if (matched) {
+                                                                    setGiverInfo(prev => ({
+                                                                        ...prev,
+                                                                        giverName: matched.full_name.toUpperCase(),
+                                                                        giverTitle: matched.job_position || prev.giverTitle,
+                                                                        giverPhone: matched.phone_number || prev.giverPhone
+                                                                    }));
+                                                                } else {
+                                                                    setGiverInfo(prev => ({ ...prev, giverName: newValue.toUpperCase() }));
+                                                                }
+                                                            }
                                                         }
                                                     }}
                                                     renderInput={(params) => (
-                                                        <TextField {...params} label="Họ tên" size="small" fullWidth placeholder="Chọn hoặc gõ tên..." />
+                                                        <TextField
+                                                            {...params}
+                                                            label="Họ tên"
+                                                            size="small"
+                                                            fullWidth
+                                                            placeholder="Chọn hoặc gõ tên..."
+                                                            onBlur={() => {
+                                                                const current = (giverInfo.giverName || '').trim();
+                                                                if (current) {
+                                                                    const matched = findGiverProfile(current, hrProfiles);
+                                                                    if (matched && (!giverInfo.giverTitle || !giverInfo.giverPhone)) {
+                                                                        setGiverInfo(prev => ({
+                                                                            ...prev,
+                                                                            giverName: matched.full_name.toUpperCase(),
+                                                                            giverTitle: matched.job_position || prev.giverTitle,
+                                                                            giverPhone: matched.phone_number || prev.giverPhone
+                                                                        }));
+                                                                    }
+                                                                }
+                                                            }}
+                                                        />
                                                     )}
                                                     renderOption={(props, option) => {
                                                         const { key, ...rest } = props;
@@ -908,33 +957,82 @@ const AssetHandoverBhl: React.FC = () => {
                                             <Grid size={{ xs: 12, sm: 4 }}>
                                                 <Autocomplete
                                                     freeSolo
+                                                    openOnFocus
+                                                    forcePopupIcon
+                                                    autoHighlight
+                                                    selectOnFocus
+                                                    clearOnBlur={false}
                                                     options={hrProfiles}
                                                     getOptionLabel={(option) => typeof option === 'string' ? option : option.full_name || ''}
-                                                    filterOptions={(options, state) => {
-                                                        const input = (state.inputValue || '').toLowerCase().trim();
-                                                        if (!input) return options;
-                                                        return options.filter(opt =>
-                                                            (opt.full_name || '').toLowerCase().includes(input) ||
-                                                            (opt.id || '').toLowerCase().includes(input) ||
-                                                            (opt.job_position || '').toLowerCase().includes(input)
-                                                        );
-                                                    }}
-                                                    value={giverInfo.giverName2}
-                                                    onInputChange={(_, newInputValue) => {
-                                                        setGiverInfo(prev => ({ ...prev, giverName2: newInputValue.toUpperCase() }));
+                                                    filterOptions={(options, state) =>
+                                                        filterGiverProfiles(state.inputValue || '', options, giverInfo.giverName2)
+                                                    }
+                                                    value={null}
+                                                    inputValue={giverInfo.giverName2 || ''}
+                                                    onInputChange={(_, newInputValue, reason) => {
+                                                        if (reason === 'input') {
+                                                            const upper = newInputValue.toUpperCase();
+                                                            const matched = findGiverProfile(newInputValue, hrProfiles);
+                                                            if (matched) {
+                                                                setGiverInfo(prev => ({
+                                                                    ...prev,
+                                                                    giverName2: matched.full_name.toUpperCase(),
+                                                                    giverTitle2: matched.job_position || prev.giverTitle2,
+                                                                    giverPhone2: matched.phone_number || prev.giverPhone2
+                                                                }));
+                                                            } else {
+                                                                setGiverInfo(prev => ({ ...prev, giverName2: upper }));
+                                                            }
+                                                        } else if (reason === 'clear') {
+                                                            setGiverInfo(prev => ({ ...prev, giverName2: '', giverTitle2: '', giverPhone2: '' }));
+                                                        }
                                                     }}
                                                     onChange={(_, newValue) => {
-                                                        if (newValue && typeof newValue !== 'string') {
-                                                            setGiverInfo(prev => ({
-                                                                ...prev,
-                                                                giverName2: newValue.full_name.toUpperCase(),
-                                                                giverTitle2: newValue.job_position || '',
-                                                                giverPhone2: newValue.phone_number || ''
-                                                            }));
+                                                        if (newValue) {
+                                                            if (typeof newValue !== 'string') {
+                                                                setGiverInfo(prev => ({
+                                                                    ...prev,
+                                                                    giverName2: (newValue.full_name || '').toUpperCase(),
+                                                                    giverTitle2: newValue.job_position || '',
+                                                                    giverPhone2: newValue.phone_number || ''
+                                                                }));
+                                                            } else {
+                                                                const matched = findGiverProfile(newValue, hrProfiles);
+                                                                if (matched) {
+                                                                    setGiverInfo(prev => ({
+                                                                        ...prev,
+                                                                        giverName2: matched.full_name.toUpperCase(),
+                                                                        giverTitle2: matched.job_position || prev.giverTitle2,
+                                                                        giverPhone2: matched.phone_number || prev.giverPhone2
+                                                                    }));
+                                                                } else {
+                                                                    setGiverInfo(prev => ({ ...prev, giverName2: newValue.toUpperCase() }));
+                                                                }
+                                                            }
                                                         }
                                                     }}
                                                     renderInput={(params) => (
-                                                        <TextField {...params} label="Họ tên" size="small" fullWidth placeholder="Chọn hoặc gõ tên..." />
+                                                        <TextField
+                                                            {...params}
+                                                            label="Họ tên"
+                                                            size="small"
+                                                            fullWidth
+                                                            placeholder="Chọn hoặc gõ tên..."
+                                                            onBlur={() => {
+                                                                const current = (giverInfo.giverName2 || '').trim();
+                                                                if (current) {
+                                                                    const matched = findGiverProfile(current, hrProfiles);
+                                                                    if (matched && (!giverInfo.giverTitle2 || !giverInfo.giverPhone2)) {
+                                                                        setGiverInfo(prev => ({
+                                                                            ...prev,
+                                                                            giverName2: matched.full_name.toUpperCase(),
+                                                                            giverTitle2: matched.job_position || prev.giverTitle2,
+                                                                            giverPhone2: matched.phone_number || prev.giverPhone2
+                                                                        }));
+                                                                    }
+                                                                }
+                                                            }}
+                                                        />
                                                     )}
                                                     renderOption={(props, option) => {
                                                         const { key, ...rest } = props;

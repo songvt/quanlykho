@@ -13,3 +13,28 @@ export const getDefaultSecondGiver = (profiles: HRProfile[]) => {
         giverPhone2: defaultGiver?.phone_number || '',
     };
 };
+
+export const findGiverProfile = (query: string, profiles: HRProfile[]): HRProfile | undefined => {
+    const clean = query.trim().toLowerCase();
+    if (!clean) return undefined;
+    return profiles.find(
+        (p) =>
+            (p.full_name || '').trim().toLowerCase() === clean ||
+            (p.id || '').trim().toLowerCase() === clean
+    );
+};
+
+export const filterGiverProfiles = (input: string, profiles: HRProfile[], currentSelectedName = ''): HRProfile[] => {
+    const clean = input.trim().toLowerCase();
+    const currentClean = currentSelectedName.trim().toLowerCase();
+    if (!clean || clean === currentClean) {
+        return profiles;
+    }
+    return profiles.filter((p) =>
+        (p.full_name || '').toLowerCase().includes(clean) ||
+        (p.id || '').toLowerCase().includes(clean) ||
+        (p.job_position || '').toLowerCase().includes(clean) ||
+        (p.phone_number || '').includes(clean)
+    );
+};
+
