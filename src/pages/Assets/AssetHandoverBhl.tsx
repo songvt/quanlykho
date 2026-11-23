@@ -813,10 +813,70 @@ const AssetHandoverBhl: React.FC = () => {
 
                                 <Stack spacing={2.5}>
                                     <Box>
-                                        <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-secondary)', mb: 1 }}>Bên giao 1:</Typography>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-secondary)' }}>Bên giao 1:</Typography>
+                                            <Button
+                                                size="small"
+                                                variant="text"
+                                                onClick={() => {
+                                                    setGiverInfo(prev => ({
+                                                        ...prev,
+                                                        giverName: 'NGUYỄN HẢI SƠN',
+                                                        giverTitle: 'GĐ TTKV BSG',
+                                                        giverPhone: '0988855186'
+                                                    }));
+                                                }}
+                                                sx={{ textTransform: 'none', fontSize: '0.75rem', p: 0, minWidth: 'auto', color: '#2563eb' }}
+                                            >
+                                                Đặt lại mặc định
+                                            </Button>
+                                        </Box>
                                         <Grid container spacing={2}>
                                             <Grid size={{ xs: 12, sm: 4 }}>
-                                                <TextField label="Họ tên" size="small" fullWidth value={giverInfo.giverName} onChange={(e) => setGiverInfo(prev => ({ ...prev, giverName: e.target.value.toUpperCase() }))} />
+                                                <Autocomplete
+                                                    freeSolo
+                                                    options={hrProfiles}
+                                                    getOptionLabel={(option) => typeof option === 'string' ? option : option.full_name || ''}
+                                                    filterOptions={(options, state) => {
+                                                        const input = (state.inputValue || '').toLowerCase().trim();
+                                                        if (!input) return options;
+                                                        return options.filter(opt =>
+                                                            (opt.full_name || '').toLowerCase().includes(input) ||
+                                                            (opt.id || '').toLowerCase().includes(input) ||
+                                                            (opt.job_position || '').toLowerCase().includes(input)
+                                                        );
+                                                    }}
+                                                    value={giverInfo.giverName}
+                                                    onInputChange={(_, newInputValue) => {
+                                                        setGiverInfo(prev => ({ ...prev, giverName: newInputValue.toUpperCase() }));
+                                                    }}
+                                                    onChange={(_, newValue) => {
+                                                        if (newValue && typeof newValue !== 'string') {
+                                                            setGiverInfo(prev => ({
+                                                                ...prev,
+                                                                giverName: newValue.full_name.toUpperCase(),
+                                                                giverTitle: newValue.job_position || prev.giverTitle,
+                                                                giverPhone: newValue.phone_number || prev.giverPhone
+                                                            }));
+                                                        }
+                                                    }}
+                                                    renderInput={(params) => (
+                                                        <TextField {...params} label="Họ tên" size="small" fullWidth placeholder="Chọn hoặc gõ tên..." />
+                                                    )}
+                                                    renderOption={(props, option) => {
+                                                        const { key, ...rest } = props;
+                                                        return (
+                                                            <li key={key || option.id} {...rest}>
+                                                                <Box>
+                                                                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{option.full_name}</Typography>
+                                                                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                                                        {option.job_position || 'Nhân viên'}{option.phone_number ? ` • ${option.phone_number}` : ''}
+                                                                    </Typography>
+                                                                </Box>
+                                                            </li>
+                                                        );
+                                                    }}
+                                                />
                                             </Grid>
                                             <Grid size={{ xs: 12, sm: 4 }}>
                                                 <TextField label="Chức vụ" size="small" fullWidth value={giverInfo.giverTitle} onChange={(e) => setGiverInfo(prev => ({ ...prev, giverTitle: e.target.value }))} />
@@ -828,10 +888,68 @@ const AssetHandoverBhl: React.FC = () => {
                                     </Box>
 
                                     <Box>
-                                        <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-secondary)', mb: 1 }}>Bên giao 2 (không bắt buộc):</Typography>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 700, color: 'var(--text-secondary)' }}>Bên giao 2 (không bắt buộc):</Typography>
+                                            <Button
+                                                size="small"
+                                                variant="text"
+                                                onClick={() => {
+                                                    setGiverInfo(prev => ({
+                                                        ...prev,
+                                                        ...getDefaultSecondGiver(hrProfiles)
+                                                    }));
+                                                }}
+                                                sx={{ textTransform: 'none', fontSize: '0.75rem', p: 0, minWidth: 'auto', color: '#2563eb' }}
+                                            >
+                                                Đặt lại mặc định
+                                            </Button>
+                                        </Box>
                                         <Grid container spacing={2}>
                                             <Grid size={{ xs: 12, sm: 4 }}>
-                                                <TextField label="Họ tên" size="small" fullWidth value={giverInfo.giverName2} onChange={(e) => setGiverInfo(prev => ({ ...prev, giverName2: e.target.value.toUpperCase() }))} />
+                                                <Autocomplete
+                                                    freeSolo
+                                                    options={hrProfiles}
+                                                    getOptionLabel={(option) => typeof option === 'string' ? option : option.full_name || ''}
+                                                    filterOptions={(options, state) => {
+                                                        const input = (state.inputValue || '').toLowerCase().trim();
+                                                        if (!input) return options;
+                                                        return options.filter(opt =>
+                                                            (opt.full_name || '').toLowerCase().includes(input) ||
+                                                            (opt.id || '').toLowerCase().includes(input) ||
+                                                            (opt.job_position || '').toLowerCase().includes(input)
+                                                        );
+                                                    }}
+                                                    value={giverInfo.giverName2}
+                                                    onInputChange={(_, newInputValue) => {
+                                                        setGiverInfo(prev => ({ ...prev, giverName2: newInputValue.toUpperCase() }));
+                                                    }}
+                                                    onChange={(_, newValue) => {
+                                                        if (newValue && typeof newValue !== 'string') {
+                                                            setGiverInfo(prev => ({
+                                                                ...prev,
+                                                                giverName2: newValue.full_name.toUpperCase(),
+                                                                giverTitle2: newValue.job_position || '',
+                                                                giverPhone2: newValue.phone_number || ''
+                                                            }));
+                                                        }
+                                                    }}
+                                                    renderInput={(params) => (
+                                                        <TextField {...params} label="Họ tên" size="small" fullWidth placeholder="Chọn hoặc gõ tên..." />
+                                                    )}
+                                                    renderOption={(props, option) => {
+                                                        const { key, ...rest } = props;
+                                                        return (
+                                                            <li key={key || option.id} {...rest}>
+                                                                <Box>
+                                                                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{option.full_name}</Typography>
+                                                                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                                                        {option.job_position || 'Nhân viên'}{option.phone_number ? ` • ${option.phone_number}` : ''}
+                                                                    </Typography>
+                                                                </Box>
+                                                            </li>
+                                                        );
+                                                    }}
+                                                />
                                             </Grid>
                                             <Grid size={{ xs: 12, sm: 4 }}>
                                                 <TextField label="Chức vụ" size="small" fullWidth value={giverInfo.giverTitle2} onChange={(e) => setGiverInfo(prev => ({ ...prev, giverTitle2: e.target.value }))} />
