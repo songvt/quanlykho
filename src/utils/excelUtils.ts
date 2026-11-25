@@ -1322,7 +1322,8 @@ export const exportHandoverHistory = async (
     // Set columns
     sheet.columns = [
         { key: 'stt', width: 6 },
-        { key: 'created_at', width: 20 },
+        { key: 'created_at', width: 22 },
+        { key: 'period', width: 16 },
         { key: 'template_type', width: 15 },
         { key: 'action_type', width: 15 },
         { key: 'receiver_name', width: 25 },
@@ -1342,7 +1343,7 @@ export const exportHandoverHistory = async (
             : 'BÀN GIAO';
 
     // Header Title
-    sheet.mergeCells(1, 1, 1, 12);
+    sheet.mergeCells(1, 1, 1, 13);
     const titleCell = sheet.getCell(1, 1);
     titleCell.value = `DANH SÁCH LỊCH SỬ ${actionLabel} CCDC - BHLĐ`;
     titleCell.font = fontHeader;
@@ -1350,7 +1351,7 @@ export const exportHandoverHistory = async (
     sheet.getRow(1).height = 30;
 
     // Time Exported
-    sheet.mergeCells(2, 1, 2, 12);
+    sheet.mergeCells(2, 1, 2, 13);
     const timeCell = sheet.getCell(2, 1);
     const now = new Date();
     timeCell.value = `Thời gian xuất báo cáo: ${now.toLocaleTimeString('vi-VN')} - ${now.toLocaleDateString('vi-VN')}`;
@@ -1361,7 +1362,7 @@ export const exportHandoverHistory = async (
 
     // Table Header Row
     const headers = [
-        'STT', 'Thời gian', 'Loại mẫu', 'Tác vụ', 'Người nhận', 
+        'STT', 'Thời gian', 'Kỳ cấp CCDC', 'Loại mẫu', 'Tác vụ', 'Người nhận', 
         'Chức vụ người nhận', 'Đơn vị người nhận', 
         'Người giao 1', 'Người giao 2', 'Tổng SL', 'Chi tiết trang bị', 'Người tạo'
     ];
@@ -1377,7 +1378,23 @@ export const exportHandoverHistory = async (
 
     // Populate Data
     history.forEach((h, index) => {
-        const dateVal = new Date(h.created_at).toLocaleString('vi-VN');
+        let dateVal = '';
+        let periodVal = '';
+        if (h.created_at) {
+            const d = new Date(h.created_at);
+            if (!isNaN(d.getTime())) {
+                const day = String(d.getDate()).padStart(2, '0');
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const year = d.getFullYear();
+                const hours = String(d.getHours()).padStart(2, '0');
+                const minutes = String(d.getMinutes()).padStart(2, '0');
+                const seconds = String(d.getSeconds()).padStart(2, '0');
+                dateVal = `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+                periodVal = `${month}/${year}`;
+            } else {
+                dateVal = String(h.created_at);
+            }
+        }
         const templateVal = h.template_type === 'bhl' ? 'Mẫu BHLĐ' : 'Mẫu TSCĐ';
         
         let actionVal = 'Bàn giao';
@@ -1401,6 +1418,7 @@ export const exportHandoverHistory = async (
         const rowValues = [
             index + 1,
             dateVal,
+            periodVal,
             templateVal,
             actionVal,
             h.receiver_name || '',
@@ -1414,17 +1432,17 @@ export const exportHandoverHistory = async (
         ];
 
         const row = sheet.addRow(rowValues);
-        for (let i = 1; i <= 12; i++) {
+        for (let i = 1; i <= 13; i++) {
             const cell = row.getCell(i);
             cell.font = fontTableBody;
             cell.border = borderThin;
             cell.alignment = { vertical: 'middle', wrapText: true };
-            if ([1, 2, 3, 4, 10, 12].includes(i)) {
+            if ([1, 2, 3, 4, 5, 11, 13].includes(i)) {
                 cell.alignment.horizontal = 'center';
             }
         }
         row.height = calculateRowHeight(row, [
-            { width: 6 }, { width: 20 }, { width: 15 }, { width: 15 },
+            { width: 6 }, { width: 22 }, { width: 16 }, { width: 15 }, { width: 15 },
             { width: 25 }, { width: 20 }, { width: 25 }, { width: 25 },
             { width: 25 }, { width: 12 }, { width: 50 }, { width: 20 }
         ], 22, 14);

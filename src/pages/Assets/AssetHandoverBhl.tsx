@@ -119,11 +119,20 @@ const AssetHandoverBhl: React.FC = () => {
         return actionHistory.filter(h => {
             const name = (h.receiver_name || '').toLowerCase();
             const dept = (h.receiver_dept || '').toLowerCase();
-            const date = new Date(h.created_at).toLocaleString('vi-VN', {
-                day: '2-digit', month: '2-digit', year: 'numeric',
-                hour: '2-digit', minute: '2-digit'
-            });
-            return name.includes(keyword) || dept.includes(keyword) || date.includes(keyword);
+            const d = new Date(h.created_at);
+            let dateStr = '';
+            let periodStr = '';
+            if (!isNaN(d.getTime())) {
+                const day = String(d.getDate()).padStart(2, '0');
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const year = d.getFullYear();
+                const hours = String(d.getHours()).padStart(2, '0');
+                const minutes = String(d.getMinutes()).padStart(2, '0');
+                const seconds = String(d.getSeconds()).padStart(2, '0');
+                dateStr = `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+                periodStr = `${month}/${year}`;
+            }
+            return name.includes(keyword) || dept.includes(keyword) || dateStr.includes(keyword) || periodStr.includes(keyword);
         });
     }, [actionHistory, historySearch]);
 
@@ -1380,13 +1389,21 @@ const AssetHandoverBhl: React.FC = () => {
                                 ) : (
                                     <Stack spacing={1.5} sx={{ maxHeight: 300, overflowY: 'auto', pr: 0.5 }}>
                                         {filteredActionHistory.map((h) => {
-                                            const formattedDate = new Date(h.created_at).toLocaleString('vi-VN', {
-                                                day: '2-digit',
-                                                month: '2-digit',
-                                                year: 'numeric',
-                                                hour: '2-digit',
-                                                minute: '2-digit'
-                                            });
+                                            const d = new Date(h.created_at);
+                                            let formattedDate = '';
+                                            let periodStr = '';
+                                            if (!isNaN(d.getTime())) {
+                                                const day = String(d.getDate()).padStart(2, '0');
+                                                const month = String(d.getMonth() + 1).padStart(2, '0');
+                                                const year = d.getFullYear();
+                                                const hours = String(d.getHours()).padStart(2, '0');
+                                                const minutes = String(d.getMinutes()).padStart(2, '0');
+                                                const seconds = String(d.getSeconds()).padStart(2, '0');
+                                                formattedDate = `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+                                                periodStr = `${month}/${year}`;
+                                            } else {
+                                                formattedDate = String(h.created_at || '');
+                                            }
                                             const actionLabel = h.action_type === 'revoke' ? 'Thu hồi' : h.action_type === 'transfer' ? 'Điều chuyển' : 'Bàn giao';
                                             const actionColor = h.action_type === 'revoke' ? '#ef4444' : h.action_type === 'transfer' ? '#8b5cf6' : '#10b981';
                                             
@@ -1410,7 +1427,7 @@ const AssetHandoverBhl: React.FC = () => {
                                                             {h.receiver_name}
                                                         </Typography>
                                                         <Typography className="handover-history-meta" variant="caption" sx={{ display: 'block', mt: 0.2 }}>
-                                                            {formattedDate} • {h.template_type === 'bhl' ? 'Mẫu BHLĐ' : 'Mẫu TSCĐ'} ({h.total_quantity} món)
+                                                            {formattedDate}{periodStr ? ` • Kỳ: ${periodStr}` : ''} • {h.template_type === 'bhl' ? 'Mẫu BHLĐ' : 'Mẫu TSCĐ'} ({h.total_quantity} món)
                                                         </Typography>
                                                         <Box sx={{ display: 'inline-block', mt: 0.5, px: 1, py: 0.25, borderRadius: 1, bgcolor: `${actionColor}15`, border: `1px solid ${actionColor}30` }}>
                                                             <Typography variant="caption" sx={{ color: actionColor, fontWeight: 700 }}>
@@ -1499,31 +1516,31 @@ const AssetHandoverBhl: React.FC = () => {
                                     />
                                 </Stack>
 
-                                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, maxHeight: 300 }}>
-                                    <Table size="small" stickyHeader>
+                                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, maxHeight: 300, overflowX: 'auto' }}>
+                                    <Table size="small" stickyHeader sx={{ minWidth: 650 }}>
                                         <TableHead>
                                             <TableRow>
-                                                <TableCell sx={{ fontWeight: 700 }}>Nhân viên</TableCell>
-                                                <TableCell sx={{ fontWeight: 700 }}>Đơn vị</TableCell>
-                                                <TableCell sx={{ fontWeight: 700 }}>Tên trang bị</TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#16a34a' }}>Cấp phát</TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#dc2626' }}>Thu hồi</TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#7c3aed' }}>Điều chuyển</TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 700 }}>Tổng</TableCell>
+                                                <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap', minWidth: 140 }}>Nhân viên</TableCell>
+                                                <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap', minWidth: 160 }}>Đơn vị</TableCell>
+                                                <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap', minWidth: 130 }}>Tên trang bị</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#16a34a', whiteSpace: 'nowrap', minWidth: 80 }}>Cấp phát</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#dc2626', whiteSpace: 'nowrap', minWidth: 80 }}>Thu hồi</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#7c3aed', whiteSpace: 'nowrap', minWidth: 90 }}>Điều chuyển</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 700, whiteSpace: 'nowrap', minWidth: 70 }}>Tổng</TableCell>
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
                                             {employeeSummary.length === 0 ? (
                                                 <TableRow><TableCell colSpan={7} align="center" sx={{ py: 3, color: 'text.secondary' }}>Chưa có dữ liệu trong khoảng thời gian đã chọn.</TableCell></TableRow>
                                             ) : employeeSummary.map(row => (
-                                                <TableRow key={`${row.employeeName}-${row.department}`} hover>
-                                                    <TableCell sx={{ fontWeight: 600 }}>{row.employeeName}</TableCell>
-                                                    <TableCell>{row.department}</TableCell>
-                                                    <TableCell>{row.equipmentName}</TableCell>
-                                                    <TableCell align="center">{row.allocated}</TableCell>
-                                                    <TableCell align="center">{row.revoked}</TableCell>
-                                                    <TableCell align="center">{row.transferred}</TableCell>
-                                                    <TableCell align="center" sx={{ fontWeight: 700 }}>{row.total}</TableCell>
+                                                <TableRow key={`${row.employeeName}-${row.department}-${row.equipmentName}`} hover>
+                                                    <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{row.employeeName}</TableCell>
+                                                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.department}</TableCell>
+                                                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.equipmentName}</TableCell>
+                                                    <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>{row.allocated}</TableCell>
+                                                    <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>{row.revoked}</TableCell>
+                                                    <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>{row.transferred}</TableCell>
+                                                    <TableCell align="center" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{row.total}</TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
