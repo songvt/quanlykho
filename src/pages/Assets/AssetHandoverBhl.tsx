@@ -1516,17 +1516,26 @@ const AssetHandoverBhl: React.FC = () => {
                                     />
                                 </Stack>
 
-                                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, maxHeight: 300, overflowX: 'auto' }}>
-                                    <Table size="small" stickyHeader sx={{ minWidth: 650 }}>
+                                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, maxHeight: 320, overflowX: 'auto', border: '1px solid #334155' }}>
+                                    <Table size="small" stickyHeader sx={{ minWidth: 920, width: '100%', tableLayout: 'fixed' }}>
+                                        <colgroup>
+                                            <col style={{ width: '190px' }} />
+                                            <col style={{ width: '250px' }} />
+                                            <col style={{ width: '180px' }} />
+                                            <col style={{ width: '75px' }} />
+                                            <col style={{ width: '75px' }} />
+                                            <col style={{ width: '85px' }} />
+                                            <col style={{ width: '65px' }} />
+                                        </colgroup>
                                         <TableHead>
                                             <TableRow>
-                                                <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap', minWidth: 140 }}>Nhân viên</TableCell>
-                                                <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap', minWidth: 160 }}>Đơn vị</TableCell>
-                                                <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap', minWidth: 130 }}>Tên trang bị</TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#16a34a', whiteSpace: 'nowrap', minWidth: 80 }}>Cấp phát</TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#dc2626', whiteSpace: 'nowrap', minWidth: 80 }}>Thu hồi</TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#7c3aed', whiteSpace: 'nowrap', minWidth: 90 }}>Điều chuyển</TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 700, whiteSpace: 'nowrap', minWidth: 70 }}>Tổng</TableCell>
+                                                <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap', width: 190 }}>Nhân viên</TableCell>
+                                                <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap', width: 250 }}>Đơn vị</TableCell>
+                                                <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap', width: 180 }}>Tên trang bị</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#16a34a', whiteSpace: 'nowrap', width: 75 }}>Cấp phát</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#dc2626', whiteSpace: 'nowrap', width: 75 }}>Thu hồi</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#7c3aed', whiteSpace: 'nowrap', width: 85 }}>Điều chuyển</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 700, whiteSpace: 'nowrap', width: 65 }}>Tổng</TableCell>
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
@@ -1534,9 +1543,15 @@ const AssetHandoverBhl: React.FC = () => {
                                                 <TableRow><TableCell colSpan={7} align="center" sx={{ py: 3, color: 'text.secondary' }}>Chưa có dữ liệu trong khoảng thời gian đã chọn.</TableCell></TableRow>
                                             ) : employeeSummary.map(row => (
                                                 <TableRow key={`${row.employeeName}-${row.department}-${row.equipmentName}`} hover>
-                                                    <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{row.employeeName}</TableCell>
-                                                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.department}</TableCell>
-                                                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{row.equipmentName}</TableCell>
+                                                    <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={row.employeeName}>
+                                                        {row.employeeName}
+                                                    </TableCell>
+                                                    <TableCell sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={row.department}>
+                                                        {row.department}
+                                                    </TableCell>
+                                                    <TableCell sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={row.equipmentName}>
+                                                        {row.equipmentName}
+                                                    </TableCell>
                                                     <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>{row.allocated}</TableCell>
                                                     <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>{row.revoked}</TableCell>
                                                     <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>{row.transferred}</TableCell>
