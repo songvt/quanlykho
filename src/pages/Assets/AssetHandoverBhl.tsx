@@ -1471,98 +1471,6 @@ const AssetHandoverBhl: React.FC = () => {
                                 )}
                             </CardContent>
                         </Card>
-
-                        <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid #334155', boxShadow: '0 8px 24px rgba(15,23,42,0.18)' }}>
-                            <CardContent sx={{ p: 3 }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, gap: 1 }}>
-                                    <Box>
-                                        <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-                                            Báo cáo tổng hợp theo nhân viên
-                                        </Typography>
-                                        <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
-                                            Thống kê theo từng nhân viên và từng trang bị từ các biên bản đã lưu.
-                                        </Typography>
-                                    </Box>
-                                    <Button
-                                        variant="contained"
-                                        size="small"
-                                        startIcon={<ExcelBrandIcon size={18} />}
-                                        onClick={handleExportEmployeeSummary}
-                                        disabled={employeeSummary.length === 0}
-                                        sx={{ whiteSpace: 'nowrap' }}
-                                    >
-                                        Xuất Excel
-                                    </Button>
-                                </Box>
-
-                                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
-                                    <TextField
-                                        label="Từ ngày"
-                                        type="date"
-                                        value={reportStartDate}
-                                        onChange={(event) => setReportStartDate(event.target.value)}
-                                        size="small"
-                                        fullWidth
-                                        slotProps={{ inputLabel: { shrink: true } }}
-                                    />
-                                    <TextField
-                                        label="Đến ngày"
-                                        type="date"
-                                        value={reportEndDate}
-                                        onChange={(event) => setReportEndDate(event.target.value)}
-                                        size="small"
-                                        fullWidth
-                                        slotProps={{ inputLabel: { shrink: true } }}
-                                    />
-                                </Stack>
-
-                                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, maxHeight: 340, overflowX: 'auto', border: '1px solid #334155' }}>
-                                    <Table size="small" stickyHeader sx={{ minWidth: 1080, width: '100%', tableLayout: 'fixed' }}>
-                                        <colgroup>
-                                            <col style={{ width: '250px' }} />
-                                            <col style={{ width: '350px' }} />
-                                            <col style={{ width: '200px' }} />
-                                            <col style={{ width: '70px' }} />
-                                            <col style={{ width: '70px' }} />
-                                            <col style={{ width: '80px' }} />
-                                            <col style={{ width: '60px' }} />
-                                        </colgroup>
-                                        <TableHead>
-                                            <TableRow>
-                                                <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap', width: 250, minWidth: 250 }}>Nhân viên</TableCell>
-                                                <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap', width: 350, minWidth: 350 }}>Đơn vị</TableCell>
-                                                <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap', width: 200, minWidth: 200 }}>Tên trang bị</TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#16a34a', whiteSpace: 'nowrap', width: 70, minWidth: 70 }}>Cấp phát</TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#dc2626', whiteSpace: 'nowrap', width: 70, minWidth: 70 }}>Thu hồi</TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#7c3aed', whiteSpace: 'nowrap', width: 80, minWidth: 80 }}>Điều chuyển</TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 700, whiteSpace: 'nowrap', width: 60, minWidth: 60 }}>Tổng</TableCell>
-                                            </TableRow>
-                                        </TableHead>
-                                        <TableBody>
-                                            {employeeSummary.length === 0 ? (
-                                                <TableRow><TableCell colSpan={7} align="center" sx={{ py: 3, color: 'text.secondary' }}>Chưa có dữ liệu trong khoảng thời gian đã chọn.</TableCell></TableRow>
-                                            ) : employeeSummary.map(row => (
-                                                <TableRow key={`${row.employeeName}-${row.department}-${row.equipmentName}`} hover>
-                                                    <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap', width: 250, minWidth: 250 }} title={row.employeeName}>
-                                                        {row.employeeName}
-                                                    </TableCell>
-                                                    <TableCell sx={{ whiteSpace: 'nowrap', width: 350, minWidth: 350 }} title={row.department}>
-                                                        {row.department}
-                                                    </TableCell>
-                                                    <TableCell sx={{ whiteSpace: 'nowrap', width: 200, minWidth: 200 }} title={row.equipmentName}>
-                                                        {row.equipmentName}
-                                                    </TableCell>
-                                                    <TableCell align="center" sx={{ whiteSpace: 'nowrap', width: 70, minWidth: 70 }}>{row.allocated}</TableCell>
-                                                    <TableCell align="center" sx={{ whiteSpace: 'nowrap', width: 70, minWidth: 70 }}>{row.revoked}</TableCell>
-                                                    <TableCell align="center" sx={{ whiteSpace: 'nowrap', width: 80, minWidth: 80 }}>{row.transferred}</TableCell>
-                                                    <TableCell align="center" sx={{ fontWeight: 700, whiteSpace: 'nowrap', width: 60, minWidth: 60 }}>{row.total}</TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </TableContainer>
-                            </CardContent>
-                        </Card>
                     </Stack>
                 </Grid>
 
@@ -1765,6 +1673,92 @@ const AssetHandoverBhl: React.FC = () => {
                             </Box>
                         </Paper>
                     </Box>
+                </Grid>
+
+                {/* ── Báo cáo tổng hợp theo nhân viên (Full Width) ── */}
+                <Grid size={{ xs: 12 }}>
+                    <Card variant="outlined" sx={{ borderRadius: 3, border: '1px solid #334155', boxShadow: '0 8px 24px rgba(15,23,42,0.18)' }}>
+                        <CardContent sx={{ p: 3 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, gap: 1 }}>
+                                <Box>
+                                    <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                                        Báo cáo tổng hợp theo nhân viên
+                                    </Typography>
+                                    <Typography variant="caption" sx={{ color: 'var(--text-secondary)' }}>
+                                        Thống kê theo từng nhân viên và từng trang bị từ các biên bản đã lưu.
+                                    </Typography>
+                                </Box>
+                                <Button
+                                    variant="contained"
+                                    size="small"
+                                    startIcon={<ExcelBrandIcon size={18} />}
+                                    onClick={handleExportEmployeeSummary}
+                                    disabled={employeeSummary.length === 0}
+                                    sx={{ whiteSpace: 'nowrap' }}
+                                >
+                                    Xuất Excel
+                                </Button>
+                            </Box>
+
+                            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
+                                <TextField
+                                    label="Từ ngày"
+                                    type="date"
+                                    value={reportStartDate}
+                                    onChange={(event) => setReportStartDate(event.target.value)}
+                                    size="small"
+                                    sx={{ minWidth: 200 }}
+                                    slotProps={{ inputLabel: { shrink: true } }}
+                                />
+                                <TextField
+                                    label="Đến ngày"
+                                    type="date"
+                                    value={reportEndDate}
+                                    onChange={(event) => setReportEndDate(event.target.value)}
+                                    size="small"
+                                    sx={{ minWidth: 200 }}
+                                    slotProps={{ inputLabel: { shrink: true } }}
+                                />
+                            </Stack>
+
+                            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, maxHeight: 420, overflowX: 'auto', border: '1px solid #334155' }}>
+                                <Table size="small" stickyHeader sx={{ minWidth: 1050, width: '100%' }}>
+                                    <TableHead>
+                                        <TableRow sx={{ bgcolor: 'rgba(255, 255, 255, 0.03)' }}>
+                                            <TableCell style={{ whiteSpace: 'nowrap' }} sx={{ fontWeight: 700, width: '22%', minWidth: 240, py: 1.5 }}>Nhân viên</TableCell>
+                                            <TableCell style={{ whiteSpace: 'nowrap' }} sx={{ fontWeight: 700, width: '32%', minWidth: 320, py: 1.5 }}>Đơn vị</TableCell>
+                                            <TableCell style={{ whiteSpace: 'nowrap' }} sx={{ fontWeight: 700, width: '22%', minWidth: 200, py: 1.5 }}>Tên trang bị</TableCell>
+                                            <TableCell align="center" style={{ whiteSpace: 'nowrap' }} sx={{ fontWeight: 700, color: '#16a34a', width: '6%', minWidth: 75, py: 1.5 }}>Cấp phát</TableCell>
+                                            <TableCell align="center" style={{ whiteSpace: 'nowrap' }} sx={{ fontWeight: 700, color: '#dc2626', width: '6%', minWidth: 75, py: 1.5 }}>Thu hồi</TableCell>
+                                            <TableCell align="center" style={{ whiteSpace: 'nowrap' }} sx={{ fontWeight: 700, color: '#7c3aed', width: '6%', minWidth: 85, py: 1.5 }}>Điều chuyển</TableCell>
+                                            <TableCell align="center" style={{ whiteSpace: 'nowrap' }} sx={{ fontWeight: 700, width: '6%', minWidth: 65, py: 1.5 }}>Tổng</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {employeeSummary.length === 0 ? (
+                                            <TableRow><TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>Chưa có dữ liệu trong khoảng thời gian đã chọn.</TableCell></TableRow>
+                                        ) : employeeSummary.map(row => (
+                                            <TableRow key={`${row.employeeName}-${row.department}-${row.equipmentName}`} hover>
+                                                <TableCell style={{ whiteSpace: 'nowrap', wordBreak: 'keep-all' }} sx={{ fontWeight: 600, py: 1.5 }} title={row.employeeName}>
+                                                    {row.employeeName}
+                                                </TableCell>
+                                                <TableCell style={{ whiteSpace: 'nowrap', wordBreak: 'keep-all' }} sx={{ py: 1.5 }} title={row.department}>
+                                                    {row.department}
+                                                </TableCell>
+                                                <TableCell style={{ whiteSpace: 'nowrap', wordBreak: 'keep-all' }} sx={{ py: 1.5 }} title={row.equipmentName}>
+                                                    {row.equipmentName}
+                                                </TableCell>
+                                                <TableCell align="center" style={{ whiteSpace: 'nowrap' }} sx={{ py: 1.5 }}>{row.allocated}</TableCell>
+                                                <TableCell align="center" style={{ whiteSpace: 'nowrap' }} sx={{ py: 1.5 }}>{row.revoked}</TableCell>
+                                                <TableCell align="center" style={{ whiteSpace: 'nowrap' }} sx={{ py: 1.5 }}>{row.transferred}</TableCell>
+                                                <TableCell align="center" style={{ whiteSpace: 'nowrap' }} sx={{ fontWeight: 700, py: 1.5 }}>{row.total}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        </CardContent>
+                    </Card>
                 </Grid>
 
             </Grid>
