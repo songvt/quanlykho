@@ -1474,7 +1474,7 @@ export const exportEmployeeHandoverSummary = async (
     });
 
     sheet.columns = [
-        { width: 7 }, { width: 26 }, { width: 28 }, { width: 34 },
+        { width: 7 }, { width: 32 }, { width: 42 }, { width: 34 },
         { width: 16 }, { width: 16 }, { width: 18 }, { width: 18 }
     ];
     sheet.mergeCells('A1:H1');

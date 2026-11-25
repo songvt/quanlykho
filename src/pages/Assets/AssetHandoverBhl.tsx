@@ -1516,26 +1516,26 @@ const AssetHandoverBhl: React.FC = () => {
                                     />
                                 </Stack>
 
-                                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, maxHeight: 320, overflowX: 'auto', border: '1px solid #334155' }}>
-                                    <Table size="small" stickyHeader sx={{ minWidth: 920, width: '100%', tableLayout: 'fixed' }}>
+                                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, maxHeight: 340, overflowX: 'auto', border: '1px solid #334155' }}>
+                                    <Table size="small" stickyHeader sx={{ minWidth: 1080, width: '100%', tableLayout: 'fixed' }}>
                                         <colgroup>
-                                            <col style={{ width: '190px' }} />
                                             <col style={{ width: '250px' }} />
-                                            <col style={{ width: '180px' }} />
-                                            <col style={{ width: '75px' }} />
-                                            <col style={{ width: '75px' }} />
-                                            <col style={{ width: '85px' }} />
-                                            <col style={{ width: '65px' }} />
+                                            <col style={{ width: '350px' }} />
+                                            <col style={{ width: '200px' }} />
+                                            <col style={{ width: '70px' }} />
+                                            <col style={{ width: '70px' }} />
+                                            <col style={{ width: '80px' }} />
+                                            <col style={{ width: '60px' }} />
                                         </colgroup>
                                         <TableHead>
                                             <TableRow>
-                                                <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap', width: 190 }}>Nhân viên</TableCell>
-                                                <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap', width: 250 }}>Đơn vị</TableCell>
-                                                <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap', width: 180 }}>Tên trang bị</TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#16a34a', whiteSpace: 'nowrap', width: 75 }}>Cấp phát</TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#dc2626', whiteSpace: 'nowrap', width: 75 }}>Thu hồi</TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#7c3aed', whiteSpace: 'nowrap', width: 85 }}>Điều chuyển</TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 700, whiteSpace: 'nowrap', width: 65 }}>Tổng</TableCell>
+                                                <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap', width: 250, minWidth: 250 }}>Nhân viên</TableCell>
+                                                <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap', width: 350, minWidth: 350 }}>Đơn vị</TableCell>
+                                                <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap', width: 200, minWidth: 200 }}>Tên trang bị</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#16a34a', whiteSpace: 'nowrap', width: 70, minWidth: 70 }}>Cấp phát</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#dc2626', whiteSpace: 'nowrap', width: 70, minWidth: 70 }}>Thu hồi</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 700, color: '#7c3aed', whiteSpace: 'nowrap', width: 80, minWidth: 80 }}>Điều chuyển</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 700, whiteSpace: 'nowrap', width: 60, minWidth: 60 }}>Tổng</TableCell>
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
@@ -1543,19 +1543,19 @@ const AssetHandoverBhl: React.FC = () => {
                                                 <TableRow><TableCell colSpan={7} align="center" sx={{ py: 3, color: 'text.secondary' }}>Chưa có dữ liệu trong khoảng thời gian đã chọn.</TableCell></TableRow>
                                             ) : employeeSummary.map(row => (
                                                 <TableRow key={`${row.employeeName}-${row.department}-${row.equipmentName}`} hover>
-                                                    <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={row.employeeName}>
+                                                    <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap', width: 250, minWidth: 250 }} title={row.employeeName}>
                                                         {row.employeeName}
                                                     </TableCell>
-                                                    <TableCell sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={row.department}>
+                                                    <TableCell sx={{ whiteSpace: 'nowrap', width: 350, minWidth: 350 }} title={row.department}>
                                                         {row.department}
                                                     </TableCell>
-                                                    <TableCell sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={row.equipmentName}>
+                                                    <TableCell sx={{ whiteSpace: 'nowrap', width: 200, minWidth: 200 }} title={row.equipmentName}>
                                                         {row.equipmentName}
                                                     </TableCell>
-                                                    <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>{row.allocated}</TableCell>
-                                                    <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>{row.revoked}</TableCell>
-                                                    <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>{row.transferred}</TableCell>
-                                                    <TableCell align="center" sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{row.total}</TableCell>
+                                                    <TableCell align="center" sx={{ whiteSpace: 'nowrap', width: 70, minWidth: 70 }}>{row.allocated}</TableCell>
+                                                    <TableCell align="center" sx={{ whiteSpace: 'nowrap', width: 70, minWidth: 70 }}>{row.revoked}</TableCell>
+                                                    <TableCell align="center" sx={{ whiteSpace: 'nowrap', width: 80, minWidth: 80 }}>{row.transferred}</TableCell>
+                                                    <TableCell align="center" sx={{ fontWeight: 700, whiteSpace: 'nowrap', width: 60, minWidth: 60 }}>{row.total}</TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
